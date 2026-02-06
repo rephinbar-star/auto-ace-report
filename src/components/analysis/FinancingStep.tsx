@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -19,7 +19,11 @@ import { CreditCard, Banknote, Car } from "lucide-react";
 import { FinancingInfo } from "@/types/vehicle";
 
 const loanSchema = z.object({
-  loanAmount: z.coerce.number().min(1, "Amount is required"),
+  salesPrice: z.coerce.number().min(1, "Sales price is required"),
+  salesTax: z.coerce.number().min(0),
+  fees: z.coerce.number().min(0),
+  downPayment: z.coerce.number().min(0),
+  amountFinanced: z.coerce.number().min(0),
   loanTerm: z.coerce.number().min(12).max(84),
   apr: z.coerce.number().min(0).max(30),
 });
@@ -45,11 +49,31 @@ export function FinancingStep({ onComplete, onBack, askingPrice }: FinancingStep
   const loanForm = useForm<z.infer<typeof loanSchema>>({
     resolver: zodResolver(loanSchema),
     defaultValues: {
-      loanAmount: askingPrice,
+      salesPrice: askingPrice,
+      salesTax: 0,
+      fees: 0,
+      downPayment: 0,
+      amountFinanced: askingPrice,
       loanTerm: 60,
       apr: 7.0,
     },
   });
+
+  // Watch loan fields for auto-calculation
+  const salesPrice = loanForm.watch("salesPrice");
+  const salesTax = loanForm.watch("salesTax");
+  const fees = loanForm.watch("fees");
+  const downPayment = loanForm.watch("downPayment");
+
+  // Auto-calculate amount financed when inputs change
+  useEffect(() => {
+    const calculated = (salesPrice || 0) + (salesTax || 0) + (fees || 0) - (downPayment || 0);
+    const currentAmountFinanced = loanForm.getValues("amountFinanced");
+    // Only update if the calculated value differs significantly (user hasn't manually edited)
+    if (Math.abs(calculated - currentAmountFinanced) > 0.01) {
+      loanForm.setValue("amountFinanced", Math.max(0, calculated));
+    }
+  }, [salesPrice, salesTax, fees, downPayment]);
 
   const leaseForm = useForm<z.infer<typeof leaseSchema>>({
     resolver: zodResolver(leaseSchema),
@@ -64,7 +88,7 @@ export function FinancingStep({ onComplete, onBack, askingPrice }: FinancingStep
   const handleLoanSubmit = (data: z.infer<typeof loanSchema>) => {
     onComplete({
       type: "loan",
-      loanAmount: data.loanAmount,
+      loanAmount: data.amountFinanced,
       loanTerm: data.loanTerm,
       apr: data.apr,
     });
@@ -88,10 +112,10 @@ export function FinancingStep({ onComplete, onBack, askingPrice }: FinancingStep
 
   // Calculate monthly payment estimate for loan
   const watchedLoan = loanForm.watch();
-  const monthlyPayment = (() => {
-    const P = watchedLoan.loanAmount;
-    const r = watchedLoan.apr / 100 / 12;
-    const n = watchedLoan.loanTerm;
+  const estimatedMonthlyPayment = (() => {
+    const P = watchedLoan.amountFinanced || 0;
+    const r = (watchedLoan.apr || 0) / 100 / 12;
+    const n = watchedLoan.loanTerm || 60;
     if (r === 0) return P / n;
     return (P * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
   })();
@@ -133,12 +157,13 @@ export function FinancingStep({ onComplete, onBack, askingPrice }: FinancingStep
             <CardContent>
               <Form {...loanForm}>
                 <form onSubmit={loanForm.handleSubmit(handleLoanSubmit)} className="space-y-6">
+                  {/* Sales Price */}
                   <FormField
                     control={loanForm.control}
-                    name="loanAmount"
+                    name="salesPrice"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Amount Financed</FormLabel>
+                        <FormLabel>Sales Price</FormLabel>
                         <FormControl>
                           <div className="relative">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
@@ -152,13 +177,113 @@ export function FinancingStep({ onComplete, onBack, askingPrice }: FinancingStep
                           </div>
                         </FormControl>
                         <FormDescription>
-                          Total amount borrowed (asking price minus down payment)
+                          Vehicle selling price before taxes and fees
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
 
+                  {/* Sales Tax and Fees */}
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <FormField
+                      control={loanForm.control}
+                      name="salesTax"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Sales Tax</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                                $
+                              </span>
+                              <Input 
+                                type="number" 
+                                className="pl-7"
+                                {...field} 
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={loanForm.control}
+                      name="fees"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Fees (Title, Registration, Doc)</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                                $
+                              </span>
+                              <Input 
+                                type="number" 
+                                className="pl-7"
+                                {...field} 
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Down Payment and Amount Financed */}
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <FormField
+                      control={loanForm.control}
+                      name="downPayment"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Down Payment</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                                $
+                              </span>
+                              <Input 
+                                type="number" 
+                                className="pl-7"
+                                {...field} 
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={loanForm.control}
+                      name="amountFinanced"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Amount Financed</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                                $
+                              </span>
+                              <Input 
+                                type="number" 
+                                className="pl-7"
+                                {...field} 
+                              />
+                            </div>
+                          </FormControl>
+                          <FormDescription>
+                            Price + Tax + Fees − Down Payment
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Loan Terms */}
                   <div className="grid gap-4 sm:grid-cols-2">
                     <FormField
                       control={loanForm.control}
@@ -216,7 +341,7 @@ export function FinancingStep({ onComplete, onBack, askingPrice }: FinancingStep
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">Estimated Monthly Payment:</span>
                       <span className="text-xl font-bold text-primary">
-                        ${monthlyPayment.toFixed(2)}
+                        ${estimatedMonthlyPayment.toFixed(2)}
                       </span>
                     </div>
                   </div>
