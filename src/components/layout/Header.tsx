@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Menu, X } from "lucide-react";
+import { Car, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import logoIcon from "@/assets/logo-icon.png";
 
 const navigation = [
   { name: "Home", href: "/" },
@@ -20,7 +19,9 @@ export function Header() {
       <nav className="container mx-auto flex h-16 items-center justify-between px-4">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
-          <img src={logoIcon} alt="CarWise" className="h-9 w-9" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
+            <Car className="h-5 w-5 text-primary-foreground" />
+          </div>
           <span className="text-xl font-bold">CarWise</span>
         </Link>
 
