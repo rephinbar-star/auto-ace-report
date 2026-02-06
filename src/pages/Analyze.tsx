@@ -34,8 +34,18 @@ export default function AnalyzePage() {
     : "";
 
   // Step handlers
-  const handleVehicleComplete = (v: VehicleInfo) => {
+  const handleVehicleComplete = (v: VehicleInfo, listingUrl?: string, scrapedCondition?: Partial<VehicleCondition>) => {
     setVehicle(v);
+    if (scrapedCondition) {
+      // Pre-fill condition data from scraped listing
+      setCondition(prev => ({
+        mileage: scrapedCondition.mileage || prev?.mileage || 0,
+        askingPrice: scrapedCondition.askingPrice || prev?.askingPrice || 0,
+        condition: scrapedCondition.condition || prev?.condition || "good",
+        sellerType: scrapedCondition.sellerType || prev?.sellerType || "dealer",
+        listingUrl: scrapedCondition.listingUrl || prev?.listingUrl,
+      }));
+    }
     setCurrentStep(2);
   };
 
