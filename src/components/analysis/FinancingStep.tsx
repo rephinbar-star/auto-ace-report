@@ -13,10 +13,18 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CreditCard, Banknote, Car } from "lucide-react";
+import { CreditCard, Banknote, Car, Calculator } from "lucide-react";
 import { FinancingInfo } from "@/types/vehicle";
+import { STATE_TAX_DATA, getCountiesForState, getCountyRate, getStateCombinedRate, CountyTax } from "@/lib/sales-tax-data";
 
 const loanSchema = z.object({
   salesPrice: z.coerce.number().min(1, "Sales price is required"),
@@ -45,6 +53,9 @@ interface FinancingStepProps {
 
 export function FinancingStep({ onComplete, onBack, askingPrice }: FinancingStepProps) {
   const [activeTab, setActiveTab] = useState<string>("loan");
+  const [selectedState, setSelectedState] = useState<string>("");
+  const [selectedCounty, setSelectedCounty] = useState<string>("");
+  const [availableCounties, setAvailableCounties] = useState<CountyTax[]>([]);
 
   const loanForm = useForm<z.infer<typeof loanSchema>>({
     resolver: zodResolver(loanSchema),
@@ -58,6 +69,33 @@ export function FinancingStep({ onComplete, onBack, askingPrice }: FinancingStep
       apr: 7.0,
     },
   });
+
+  // Update counties when state changes
+  useEffect(() => {
+    if (selectedState) {
+      const counties = getCountiesForState(selectedState);
+      setAvailableCounties(counties);
+      setSelectedCounty("");
+      
+      // Set tax rate to state combined rate (state + avg local)
+      const rate = getStateCombinedRate(selectedState);
+      loanForm.setValue("salesTaxRate", parseFloat(rate.toFixed(3)));
+    } else {
+      setAvailableCounties([]);
+      setSelectedCounty("");
+    }
+  }, [selectedState]);
+
+  // Update tax rate when county changes
+  useEffect(() => {
+    if (selectedState && selectedCounty) {
+      const rate = getCountyRate(selectedState, selectedCounty);
+      loanForm.setValue("salesTaxRate", parseFloat(rate.toFixed(3)));
+    } else if (selectedState) {
+      const rate = getStateCombinedRate(selectedState);
+      loanForm.setValue("salesTaxRate", parseFloat(rate.toFixed(3)));
+    }
+  }, [selectedCounty, selectedState]);
 
   // Watch loan fields for auto-calculation
   const salesPrice = loanForm.watch("salesPrice");
@@ -187,57 +225,128 @@ export function FinancingStep({ onComplete, onBack, askingPrice }: FinancingStep
                     )}
                   />
 
-                  {/* Sales Tax Rate and Fees */}
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <FormField
-                      control={loanForm.control}
-                      name="salesTaxRate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Sales Tax Rate</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Input 
-                                type="number" 
-                                step="0.1"
-                                placeholder="e.g. 8.5"
-                                {...field} 
-                              />
-                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                                %
-                              </span>
-                            </div>
-                          </FormControl>
-                          <FormDescription>
-                            Tax: ${salesTaxAmount.toFixed(2)}
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={loanForm.control}
-                      name="fees"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Fees (Title, Registration, Doc)</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                                $
-                              </span>
-                              <Input 
-                                type="number" 
-                                className="pl-7"
-                                {...field} 
-                              />
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                  {/* Sales Tax Calculator */}
+                  <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Calculator className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Sales Tax Calculator</span>
+                    </div>
+                    
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">State</label>
+                        <Select
+                          value={selectedState}
+                          onValueChange={setSelectedState}
+                        >
+                          <SelectTrigger className="bg-background">
+                            <SelectValue placeholder="Select state" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background max-h-[300px]">
+                            {STATE_TAX_DATA.map((state) => (
+                              <SelectItem key={state.abbreviation} value={state.abbreviation}>
+                                {state.name} ({(state.stateRate + state.avgLocalRate).toFixed(2)}%)
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">County (Optional)</label>
+                        <Select
+                          value={selectedCounty}
+                          onValueChange={setSelectedCounty}
+                          disabled={!selectedState || availableCounties.length === 0}
+                        >
+                          <SelectTrigger className="bg-background">
+                            <SelectValue placeholder={
+                              !selectedState 
+                                ? "Select state first" 
+                                : availableCounties.length === 0 
+                                  ? "No county data" 
+                                  : "Select county"
+                            } />
+                          </SelectTrigger>
+                          <SelectContent className="bg-background max-h-[300px]">
+                            {availableCounties.map((county) => {
+                              const state = STATE_TAX_DATA.find(s => s.abbreviation === selectedState);
+                              const totalRate = state ? state.stateRate + county.rate : county.rate;
+                              return (
+                                <SelectItem key={county.name} value={county.name}>
+                                  {county.name} ({totalRate.toFixed(2)}%)
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2 pt-2 border-t">
+                      <FormField
+                        control={loanForm.control}
+                        name="salesTaxRate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Tax Rate</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Input 
+                                  type="number" 
+                                  step="0.01"
+                                  placeholder="e.g. 8.5"
+                                  {...field} 
+                                />
+                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                                  %
+                                </span>
+                              </div>
+                            </FormControl>
+                            <FormDescription>
+                              Or enter manually
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Calculated Tax</label>
+                        <div className="flex h-10 items-center rounded-md border bg-muted/50 px-3">
+                          <span className="text-lg font-semibold text-primary">
+                            ${salesTaxAmount.toFixed(2)}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Based on ${salesPrice?.toLocaleString() || 0} × {salesTaxRate || 0}%
+                        </p>
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Fees */}
+                  <FormField
+                    control={loanForm.control}
+                    name="fees"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Fees (Title, Registration, Doc)</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                              $
+                            </span>
+                            <Input 
+                              type="number" 
+                              className="pl-7"
+                              {...field} 
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   {/* Down Payment and Amount Financed */}
                   <div className="grid gap-4 sm:grid-cols-2">
