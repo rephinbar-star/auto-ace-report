@@ -6,7 +6,7 @@ import { ConditionStep } from "@/components/analysis/ConditionStep";
 import { HistoryStep } from "@/components/analysis/HistoryStep";
 import { FinancingStep } from "@/components/analysis/FinancingStep";
 import { Progress } from "@/components/ui/progress";
-import { VehicleInfo, VehicleCondition, FinancingInfo } from "@/types/vehicle";
+import { VehicleInfo, VehicleCondition, VehicleHistory, FinancingInfo } from "@/types/vehicle";
 import { useNavigate } from "react-router-dom";
 
 const steps = [
@@ -23,8 +23,7 @@ export default function AnalyzePage() {
   // Form data state
   const [vehicle, setVehicle] = useState<VehicleInfo | null>(null);
   const [condition, setCondition] = useState<VehicleCondition | null>(null);
-  const [historyFile, setHistoryFile] = useState<File | undefined>();
-  const [historyUrl, setHistoryUrl] = useState<string | undefined>();
+  const [history, setHistory] = useState<VehicleHistory | null>(null);
   const [financing, setFinancing] = useState<FinancingInfo | null>(null);
 
   const progress = (currentStep / steps.length) * 100;
@@ -54,9 +53,10 @@ export default function AnalyzePage() {
     setCurrentStep(3);
   };
 
-  const handleHistoryComplete = (file?: File, url?: string) => {
-    setHistoryFile(file);
-    setHistoryUrl(url);
+  const handleHistoryComplete = (parsedHistory?: VehicleHistory) => {
+    if (parsedHistory) {
+      setHistory(parsedHistory);
+    }
     setCurrentStep(4);
   };
 
@@ -67,22 +67,19 @@ export default function AnalyzePage() {
   const handleFinancingComplete = async (f: FinancingInfo) => {
     setFinancing(f);
     
-    // TODO: Submit to AI analysis and navigate to report
-    // For now, just show a placeholder
+    // Store analysis data and navigate to report
     console.log("Analysis data:", {
       vehicle,
       condition,
-      historyFile: historyFile?.name,
-      historyUrl,
+      history,
       financing: f,
     });
 
-    // Navigate to report page (will be implemented next)
-    // For now, store in sessionStorage for demo
+    // Store in sessionStorage for the report page
     sessionStorage.setItem("analysisData", JSON.stringify({
       vehicle,
       condition,
-      historyUrl,
+      history,
       financing: f,
     }));
     
