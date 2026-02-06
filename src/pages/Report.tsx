@@ -82,36 +82,51 @@ export default function ReportPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [vehicleData, setVehicleData] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const loadAnalysis = async () => {
       // For demo, load from sessionStorage
       const stored = sessionStorage.getItem("analysisData");
-      if (stored) {
+      console.log("Loading analysis data from sessionStorage:", stored ? "found" : "not found");
+      
+      if (!stored) {
+        setError("No analysis data found. Please start a new analysis.");
+        setIsLoading(false);
+        return;
+      }
+      
+      try {
         const data = JSON.parse(stored);
+        console.log("Parsed analysis data:", data);
         setVehicleData(data);
         
         // Call AI analysis
-        try {
-          const { data: result, error } = await supabase.functions.invoke("analyze-vehicle", {
-            body: data,
-          });
+        console.log("Calling analyze-vehicle edge function...");
+        const { data: result, error: invokeError } = await supabase.functions.invoke("analyze-vehicle", {
+          body: data,
+        });
 
-          if (error) throw error;
-          
-          if (result.success) {
-            setAnalysis(result.analysis);
-          } else {
-            throw new Error(result.error);
-          }
-        } catch (error) {
-          console.error("Analysis error:", error);
-          toast({
-            title: "Analysis Error",
-            description: "Failed to generate analysis. Please try again.",
-            variant: "destructive",
-          });
+        console.log("Edge function response:", { result, invokeError });
+
+        if (invokeError) {
+          throw new Error(invokeError.message || "Failed to invoke analysis function");
         }
+        
+        if (result?.success) {
+          setAnalysis(result.analysis);
+        } else {
+          throw new Error(result?.error || "Analysis returned no data");
+        }
+      } catch (err) {
+        console.error("Analysis error:", err);
+        const errorMessage = err instanceof Error ? err.message : "Failed to generate analysis";
+        setError(errorMessage);
+        toast({
+          title: "Analysis Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
       }
       setIsLoading(false);
     };
@@ -142,13 +157,22 @@ export default function ReportPage() {
         <main className="flex flex-1 items-center justify-center">
           <Card className="max-w-md text-center">
             <CardHeader>
-              <CardTitle>Report Not Found</CardTitle>
+              <CardTitle>{error ? "Analysis Error" : "Report Not Found"}</CardTitle>
               <CardDescription>
-                We couldn't find this analysis. Start a new one?
+                {error || "We couldn't find this analysis. Start a new one?"}
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Button asChild>
+            <CardContent className="space-y-4">
+              {error && vehicleData && (
+                <Button 
+                  variant="outline" 
+                  onClick={() => window.location.reload()}
+                  className="w-full"
+                >
+                  Try Again
+                </Button>
+              )}
+              <Button asChild className="w-full">
                 <Link to="/analyze">Start New Analysis</Link>
               </Button>
             </CardContent>
