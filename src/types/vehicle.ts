@@ -1,4 +1,4 @@
-// Vehicle analysis types for AutoSage
+// Vehicle analysis types for CarWise
 
 export interface VehicleInfo {
   vin?: string;

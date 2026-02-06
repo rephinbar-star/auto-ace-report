@@ -11,7 +11,7 @@ export function CTA() {
             Ready to Make a Smarter Car Purchase?
           </h2>
           <p className="mb-8 text-lg text-primary-foreground/80">
-            Join thousands of smart buyers who use AutoSage to avoid overpaying 
+            Join thousands of smart buyers who use CarWise to avoid overpaying 
             and catch hidden problems before they become expensive surprises.
           </p>
           <Button 
