@@ -101,7 +101,7 @@ const plans: Plan[] = [
       { name: "Expert AI opinion", included: true },
       { name: "History report parsing (Carfax, AutoCheck)", included: true },
       { name: "PDF report export", included: true },
-      { name: "Compare up to 3 vehicles", included: true },
+      { name: "Compare up to 6 vehicles", included: true },
       { name: "Priority support", included: true },
     ],
     popular: true,
