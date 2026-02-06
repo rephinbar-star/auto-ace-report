@@ -20,7 +20,7 @@ import { FinancingInfo } from "@/types/vehicle";
 
 const loanSchema = z.object({
   salesPrice: z.coerce.number().min(1, "Sales price is required"),
-  salesTax: z.coerce.number().min(0),
+  salesTaxRate: z.coerce.number().min(0).max(20),
   fees: z.coerce.number().min(0),
   downPayment: z.coerce.number().min(0),
   amountFinanced: z.coerce.number().min(0),
@@ -50,7 +50,7 @@ export function FinancingStep({ onComplete, onBack, askingPrice }: FinancingStep
     resolver: zodResolver(loanSchema),
     defaultValues: {
       salesPrice: askingPrice,
-      salesTax: 0,
+      salesTaxRate: 0,
       fees: 0,
       downPayment: 0,
       amountFinanced: askingPrice,
@@ -61,19 +61,22 @@ export function FinancingStep({ onComplete, onBack, askingPrice }: FinancingStep
 
   // Watch loan fields for auto-calculation
   const salesPrice = loanForm.watch("salesPrice");
-  const salesTax = loanForm.watch("salesTax");
+  const salesTaxRate = loanForm.watch("salesTaxRate");
   const fees = loanForm.watch("fees");
   const downPayment = loanForm.watch("downPayment");
 
+  // Calculate sales tax amount from rate
+  const salesTaxAmount = (salesPrice || 0) * ((salesTaxRate || 0) / 100);
+
   // Auto-calculate amount financed when inputs change
   useEffect(() => {
-    const calculated = (salesPrice || 0) + (salesTax || 0) + (fees || 0) - (downPayment || 0);
+    const calculated = (salesPrice || 0) + salesTaxAmount + (fees || 0) - (downPayment || 0);
     const currentAmountFinanced = loanForm.getValues("amountFinanced");
     // Only update if the calculated value differs significantly (user hasn't manually edited)
     if (Math.abs(calculated - currentAmountFinanced) > 0.01) {
       loanForm.setValue("amountFinanced", Math.max(0, calculated));
     }
-  }, [salesPrice, salesTax, fees, downPayment]);
+  }, [salesPrice, salesTaxAmount, fees, downPayment]);
 
   const leaseForm = useForm<z.infer<typeof leaseSchema>>({
     resolver: zodResolver(leaseSchema),
@@ -184,26 +187,30 @@ export function FinancingStep({ onComplete, onBack, askingPrice }: FinancingStep
                     )}
                   />
 
-                  {/* Sales Tax and Fees */}
+                  {/* Sales Tax Rate and Fees */}
                   <div className="grid gap-4 sm:grid-cols-2">
                     <FormField
                       control={loanForm.control}
-                      name="salesTax"
+                      name="salesTaxRate"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Sales Tax</FormLabel>
+                          <FormLabel>Sales Tax Rate</FormLabel>
                           <FormControl>
                             <div className="relative">
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                                $
-                              </span>
                               <Input 
                                 type="number" 
-                                className="pl-7"
+                                step="0.1"
+                                placeholder="e.g. 8.5"
                                 {...field} 
                               />
+                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                                %
+                              </span>
                             </div>
                           </FormControl>
+                          <FormDescription>
+                            Tax: ${salesTaxAmount.toFixed(2)}
+                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
