@@ -12,7 +12,6 @@ import {
   Check, 
   X, 
   Zap, 
-  Building2, 
   User,
   ArrowRight,
   HelpCircle,
@@ -30,7 +29,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useSubscription, STRIPE_PRICES, SubscriptionTier } from "@/hooks/useSubscription";
 import { toast } from "sonner";
 
-type PlanKey = "free" | "basic" | "pro" | "dealer";
+type PlanKey = "free" | "basic" | "pro";
 
 interface Plan {
   key: PlanKey;
@@ -103,30 +102,9 @@ const plans: Plan[] = [
       { name: "History report parsing (Carfax, AutoCheck)", included: true },
       { name: "PDF report export", included: true },
       { name: "Compare up to 3 vehicles", included: true },
-      { name: "Priority support", included: false },
+      { name: "Priority support", included: true },
     ],
     popular: true,
-  },
-  {
-    key: "dealer",
-    name: "Dealer",
-    description: "For dealerships & professionals",
-    monthlyPrice: STRIPE_PRICES.dealer.monthlyPrice,
-    yearlyPrice: STRIPE_PRICES.dealer.yearlyPrice,
-    icon: Building2,
-    priceId: STRIPE_PRICES.dealer.priceId,
-    features: [
-      { name: "Unlimited vehicle analyses", included: true },
-      { name: "Advanced price assessment", included: true },
-      { name: "Deal rating with confidence score", included: true },
-      { name: "5-year depreciation forecast", included: true },
-      { name: "Expert AI opinion", included: true },
-      { name: "History report parsing (Carfax, AutoCheck)", included: true },
-      { name: "PDF report export & white-labeling", included: true },
-      { name: "Compare up to 3 vehicles", included: true },
-      { name: "Priority support & API access", included: true },
-    ],
-    popular: false,
   },
 ];
 
@@ -220,7 +198,7 @@ export default function PricingPage() {
     if (tier === plan.key && subscribed) return "Manage Plan";
     
     if (subscribed) {
-      const tierOrder: PlanKey[] = ["free", "basic", "pro", "dealer"];
+      const tierOrder: PlanKey[] = ["free", "basic", "pro"];
       const currentIndex = tierOrder.indexOf(tier);
       const planIndex = tierOrder.indexOf(plan.key);
       return planIndex > currentIndex ? "Upgrade" : "Downgrade";
