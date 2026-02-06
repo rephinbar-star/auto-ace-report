@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 
-export type SubscriptionTier = "free" | "basic" | "pro" | "dealer";
+export type SubscriptionTier = "free" | "basic" | "pro";
 
 interface SubscriptionState {
   subscribed: boolean;
@@ -23,18 +23,11 @@ export const STRIPE_PRICES = {
     name: "Basic",
   },
   pro: {
-    priceId: "price_1SuovjBo6mQ2JDIsSk1X4sWE",
-    productId: "prod_Tsa5Yj91Bm6IkQ",
-    monthlyPrice: 24.99,
-    yearlyPrice: 249.99,
+    priceId: "price_1SxjQOBo6mQ2JDIsilRvUBSe",
+    productId: "prod_TvabBuJcmLf5BM",
+    monthlyPrice: 19.99,
+    yearlyPrice: 199.99,
     name: "Pro",
-  },
-  dealer: {
-    priceId: "price_1SxiutBo6mQ2JDIsgHE9gj3p",
-    productId: "prod_Tva5VOjr44iZxe",
-    monthlyPrice: 99.00,
-    yearlyPrice: 999.00,
-    name: "Dealer",
   },
 } as const;
 
