@@ -40,10 +40,13 @@ import {
   Share2,
   Download,
   ArrowRight,
-  Sparkles
+  Sparkles,
+  Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SEO } from "@/components/seo/SEO";
+import { generateReportPDF } from "@/lib/generatePDF";
+import { toast } from "sonner";
 import type { Variants } from "framer-motion";
 
 // Animation variants
@@ -150,6 +153,7 @@ const riskLevelColors = {
 export default function SampleReportPage() {
   const { priceAssessment, depreciationTable, riskAssessment, historyAnalysis } = sampleAnalysis;
   const [includeRepairs, setIncludeRepairs] = useState(true);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const chartData = depreciationTable.map((row) => ({
     name: `Year ${row.year}`,
@@ -168,6 +172,36 @@ export default function SampleReportPage() {
     return includeRepairs 
       ? row.tradeInValue - row.loanBalance - cumulativeRepairs
       : row.tradeInValue - row.loanBalance;
+  };
+
+  const handleDownloadPDF = async () => {
+    setIsDownloading(true);
+    try {
+      await generateReportPDF({
+        vehicle: sampleVehicle,
+        priceAssessment: {
+          fairMarketPrivate: priceAssessment.fairMarketPrivate,
+          fairMarketTradeIn: priceAssessment.fairMarketTradeIn,
+          dealRating: priceAssessment.dealRating,
+          priceDifference: priceAssessment.priceDifference,
+        },
+        riskAssessment: {
+          level: riskAssessment.level,
+          fairOfferPrice: riskAssessment.fairOfferPrice,
+          expertOpinion: riskAssessment.expertOpinion,
+          depreciationRisk: riskAssessment.depreciationRisk,
+          reliabilityConcerns: riskAssessment.reliabilityConcerns,
+        },
+        historyAnalysis,
+        depreciationTable,
+      });
+      toast.success("PDF downloaded successfully!");
+    } catch (error) {
+      toast.error("Failed to generate PDF");
+      console.error(error);
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   return (
@@ -233,9 +267,18 @@ export default function SampleReportPage() {
                 <Share2 className="mr-2 h-4 w-4" />
                 Share
               </Button>
-              <Button variant="outline" size="sm" disabled>
-                <Download className="mr-2 h-4 w-4" />
-                Download PDF
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleDownloadPDF}
+                disabled={isDownloading}
+              >
+                {isDownloading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="mr-2 h-4 w-4" />
+                )}
+                {isDownloading ? "Generating..." : "Download PDF"}
               </Button>
             </div>
           </motion.div>
