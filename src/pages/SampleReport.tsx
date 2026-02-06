@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Switch } from "@/components/ui/switch";
@@ -43,6 +44,40 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SEO } from "@/components/seo/SEO";
+import type { Variants } from "framer-motion";
+
+// Animation variants
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.5,
+    },
+  },
+};
+
+const statCardVariants: Variants = {
+  hidden: { opacity: 0, scale: 0.9 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    transition: {
+      duration: 0.4,
+    },
+  },
+};
 
 // Sample data for demonstration
 const sampleVehicle = {
@@ -146,10 +181,20 @@ export default function SampleReportPage() {
       <main className="flex-1 bg-gradient-to-b from-primary/5 to-background py-8">
         <div className="container mx-auto max-w-6xl px-4">
           {/* Sample Banner */}
-          <div className="mb-6 rounded-lg border border-primary/20 bg-primary/5 p-4">
+          <motion.div 
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            className="mb-6 rounded-lg border border-primary/20 bg-primary/5 p-4"
+          >
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <Sparkles className="h-5 w-5 text-primary" />
+                <motion.div
+                  animate={{ rotate: [0, 15, -15, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+                >
+                  <Sparkles className="h-5 w-5 text-primary" />
+                </motion.div>
                 <div>
                   <p className="font-medium">This is a sample report</p>
                   <p className="text-sm text-muted-foreground">
@@ -157,17 +202,24 @@ export default function SampleReportPage() {
                   </p>
                 </div>
               </div>
-              <Button asChild>
-                <Link to="/analyze">
-                  Analyze Your Vehicle
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-              </Button>
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Button asChild>
+                  <Link to="/analyze">
+                    Analyze Your Vehicle
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+              </motion.div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Report Header */}
-          <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
+          >
             <div>
               <h1 className="text-3xl font-bold">
                 {sampleVehicle.year} {sampleVehicle.make} {sampleVehicle.model}
@@ -186,119 +238,145 @@ export default function SampleReportPage() {
                 Download PDF
               </Button>
             </div>
-          </div>
+          </motion.div>
 
           {/* Quick Stats */}
           <div className="mb-8 grid gap-4 md:grid-cols-4">
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                    <DollarSign className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Fair Market Price</p>
-                    <p className="text-xl font-bold">${priceAssessment.fairMarketPrivate.toLocaleString()}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className={cn("flex h-10 w-10 items-center justify-center rounded-full", dealRatingColors[priceAssessment.dealRating])}>
-                    <Gauge className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Deal Rating</p>
-                    <p className="text-xl font-bold capitalize">{priceAssessment.dealRating}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className={cn("flex h-10 w-10 items-center justify-center rounded-full", riskLevelColors[riskAssessment.level])}>
-                    <AlertTriangle className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Risk Level</p>
-                    <p className="text-xl font-bold capitalize">{riskAssessment.level}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-500/10">
-                    <TrendingDown className="h-5 w-5 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Fair Offer</p>
-                    <p className="text-xl font-bold">${riskAssessment.fairOfferPrice.toLocaleString()}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            {[
+              {
+                icon: DollarSign,
+                label: "Fair Market Price",
+                value: `$${priceAssessment.fairMarketPrivate.toLocaleString()}`,
+                iconClass: "bg-primary/10",
+                iconColor: "text-primary",
+              },
+              {
+                icon: Gauge,
+                label: "Deal Rating",
+                value: priceAssessment.dealRating,
+                iconClass: dealRatingColors[priceAssessment.dealRating],
+                capitalize: true,
+              },
+              {
+                icon: AlertTriangle,
+                label: "Risk Level",
+                value: riskAssessment.level,
+                iconClass: riskLevelColors[riskAssessment.level],
+                capitalize: true,
+              },
+              {
+                icon: TrendingDown,
+                label: "Fair Offer",
+                value: `$${riskAssessment.fairOfferPrice.toLocaleString()}`,
+                iconClass: "bg-green-500/10",
+                iconColor: "text-green-600",
+              },
+            ].map((stat, i) => (
+              <motion.div
+                key={stat.label}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: i * 0.1, duration: 0.4 }}
+                whileHover={{ scale: 1.05, y: -5 }}
+              >
+                <Card className="h-full transition-shadow hover:shadow-lg">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <motion.div 
+                        className={cn("flex h-10 w-10 items-center justify-center rounded-full", stat.iconClass)}
+                        whileHover={{ rotate: 10 }}
+                      >
+                        <stat.icon className={cn("h-5 w-5", stat.iconColor)} />
+                      </motion.div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">{stat.label}</p>
+                        <p className={cn("text-xl font-bold", stat.capitalize && "capitalize")}>{stat.value}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
           </div>
 
           <div className="grid gap-8 lg:grid-cols-3">
             {/* Left Column - Main Content */}
-            <div className="space-y-8 lg:col-span-2">
+            <motion.div 
+              className="space-y-8 lg:col-span-2"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+            >
               {/* Price Assessment */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <DollarSign className="h-5 w-5 text-primary" />
-                    Price Assessment
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between rounded-lg bg-muted p-4">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Asking Price</p>
-                        <p className="text-2xl font-bold">${sampleVehicle.askingPrice.toLocaleString()}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm text-muted-foreground">vs Fair Market</p>
-                        <p className={cn(
-                          "text-2xl font-bold",
-                          priceAssessment.priceDifference > 0 ? "text-red-600" : "text-green-600"
-                        )}>
-                          {priceAssessment.priceDifference > 0 ? "+" : ""}
-                          ${Math.abs(priceAssessment.priceDifference).toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
+              <motion.div variants={itemVariants}>
+                <Card className="overflow-hidden">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <DollarSign className="h-5 w-5 text-primary" />
+                      Price Assessment
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <motion.div 
+                        className="flex items-center justify-between rounded-lg bg-muted p-4"
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.3 }}
+                      >
+                        <div>
+                          <p className="text-sm text-muted-foreground">Asking Price</p>
+                          <p className="text-2xl font-bold">${sampleVehicle.askingPrice.toLocaleString()}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-muted-foreground">vs Fair Market</p>
+                          <motion.p 
+                            className={cn(
+                              "text-2xl font-bold",
+                              priceAssessment.priceDifference > 0 ? "text-red-600" : "text-green-600"
+                            )}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.5 }}
+                          >
+                            {priceAssessment.priceDifference > 0 ? "+" : ""}
+                            ${Math.abs(priceAssessment.priceDifference).toLocaleString()}
+                          </motion.p>
+                        </div>
+                      </motion.div>
 
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="rounded-lg border p-4">
-                        <p className="text-sm text-muted-foreground">Private Sale Value</p>
-                        <p className="text-xl font-semibold">${priceAssessment.fairMarketPrivate.toLocaleString()}</p>
-                      </div>
-                      <div className="rounded-lg border p-4">
-                        <p className="text-sm text-muted-foreground">Trade-In Value</p>
-                        <p className="text-xl font-semibold">${priceAssessment.fairMarketTradeIn.toLocaleString()}</p>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <motion.div 
+                          className="rounded-lg border p-4"
+                          whileHover={{ scale: 1.02, borderColor: "hsl(var(--primary))" }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <p className="text-sm text-muted-foreground">Private Sale Value</p>
+                          <p className="text-xl font-semibold">${priceAssessment.fairMarketPrivate.toLocaleString()}</p>
+                        </motion.div>
+                        <motion.div 
+                          className="rounded-lg border p-4"
+                          whileHover={{ scale: 1.02, borderColor: "hsl(var(--primary))" }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <p className="text-sm text-muted-foreground">Trade-In Value</p>
+                          <p className="text-xl font-semibold">${priceAssessment.fairMarketTradeIn.toLocaleString()}</p>
+                        </motion.div>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </motion.div>
 
               {/* Depreciation Chart */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingDown className="h-5 w-5 text-primary" />
-                    5-Year Depreciation & Equity
-                  </CardTitle>
-                </CardHeader>
+              <motion.div variants={itemVariants}>
+                <Card className="overflow-hidden">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <TrendingDown className="h-5 w-5 text-primary" />
+                      5-Year Depreciation & Equity
+                    </CardTitle>
+                  </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex items-center justify-end space-x-2">
                     <Switch
@@ -398,136 +476,211 @@ export default function SampleReportPage() {
                     </Table>
                   </div>
                 </CardContent>
-              </Card>
+                </Card>
+              </motion.div>
 
               {/* Expert Opinion */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-primary" />
-                    Expert Opinion
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="prose prose-sm max-w-none dark:prose-invert">
-                    <p className="whitespace-pre-line text-muted-foreground leading-relaxed">
-                      {riskAssessment.expertOpinion}
-                    </p>
-                  </div>
-                  
-                  {/* Repair Analysis Section */}
-                  <div className="border-t pt-6">
-                    <h4 className="flex items-center gap-2 font-semibold mb-4">
-                      <Wrench className="h-4 w-4 text-primary" />
-                      Anticipated Repairs & Maintenance
-                    </h4>
-                    <div className="prose prose-sm max-w-none dark:prose-invert">
-                      <div className="whitespace-pre-line text-muted-foreground leading-relaxed text-sm">
-                        {riskAssessment.repairAnalysis.split('\n').map((line, i) => {
-                          if (line.startsWith('**') && line.endsWith('**')) {
-                            return <p key={i} className="font-semibold text-foreground mt-4 mb-2">{line.replace(/\*\*/g, '')}</p>;
-                          }
-                          if (line.startsWith('•')) {
-                            return <p key={i} className="ml-2">{line}</p>;
-                          }
-                          return <p key={i}>{line}</p>;
-                        })}
+              <motion.div variants={itemVariants}>
+                <Card className="overflow-hidden">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <FileText className="h-5 w-5 text-primary" />
+                      Expert Opinion
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <motion.div 
+                      className="prose prose-sm max-w-none dark:prose-invert"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.4 }}
+                    >
+                      <p className="whitespace-pre-line text-muted-foreground leading-relaxed">
+                        {riskAssessment.expertOpinion}
+                      </p>
+                    </motion.div>
+                    
+                    {/* Repair Analysis Section */}
+                    <motion.div 
+                      className="border-t pt-6"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.5 }}
+                    >
+                      <h4 className="flex items-center gap-2 font-semibold mb-4">
+                        <motion.div
+                          animate={{ rotate: [0, 10, -10, 0] }}
+                          transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 5 }}
+                        >
+                          <Wrench className="h-4 w-4 text-primary" />
+                        </motion.div>
+                        Anticipated Repairs & Maintenance
+                      </h4>
+                      <div className="prose prose-sm max-w-none dark:prose-invert">
+                        <div className="whitespace-pre-line text-muted-foreground leading-relaxed text-sm">
+                          {riskAssessment.repairAnalysis.split('\n').map((line, i) => {
+                            if (line.startsWith('**') && line.endsWith('**')) {
+                              return <p key={i} className="font-semibold text-foreground mt-4 mb-2">{line.replace(/\*\*/g, '')}</p>;
+                            }
+                            if (line.startsWith('•')) {
+                              return <p key={i} className="ml-2">{line}</p>;
+                            }
+                            return <p key={i}>{line}</p>;
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                    </motion.div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </motion.div>
 
             {/* Right Column - Sidebar */}
-            <div className="space-y-6">
+            <motion.div 
+              className="space-y-6"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+            >
               {/* Vehicle Health Score */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Car className="h-5 w-5 text-primary" />
-                    Vehicle Health
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="mb-4 text-center">
-                    <div className="text-4xl font-bold">{historyAnalysis.healthScore}</div>
-                    <p className="text-sm text-muted-foreground">out of 100</p>
-                  </div>
-                  <Progress value={historyAnalysis.healthScore} className="h-3" />
+              <motion.div variants={itemVariants} whileHover={{ y: -5 }} transition={{ duration: 0.2 }}>
+                <Card className="overflow-hidden transition-shadow hover:shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Car className="h-5 w-5 text-primary" />
+                      Vehicle Health
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <motion.div 
+                      className="mb-4 text-center"
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", stiffness: 200, delay: 0.3 }}
+                    >
+                      <div className="text-4xl font-bold">{historyAnalysis.healthScore}</div>
+                      <p className="text-sm text-muted-foreground">out of 100</p>
+                    </motion.div>
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: "100%" }}
+                      transition={{ delay: 0.5, duration: 0.8 }}
+                    >
+                      <Progress value={historyAnalysis.healthScore} className="h-3" />
+                    </motion.div>
 
-                  <div className="mt-6 space-y-4">
-                    <div>
-                      <h4 className="mb-2 flex items-center gap-2 text-sm font-medium text-green-600">
-                        <CheckCircle className="h-4 w-4" />
-                        Positives
-                      </h4>
-                      <ul className="space-y-1 text-sm">
-                        {historyAnalysis.positives.map((item, i) => (
-                          <li key={i} className="text-muted-foreground">• {item}</li>
-                        ))}
-                      </ul>
-                    </div>
+                    <div className="mt-6 space-y-4">
+                      <div>
+                        <h4 className="mb-2 flex items-center gap-2 text-sm font-medium text-green-600">
+                          <CheckCircle className="h-4 w-4" />
+                          Positives
+                        </h4>
+                        <ul className="space-y-1 text-sm">
+                          {historyAnalysis.positives.map((item, i) => (
+                            <motion.li 
+                              key={i} 
+                              className="text-muted-foreground"
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: 0.6 + i * 0.1 }}
+                            >
+                              • {item}
+                            </motion.li>
+                          ))}
+                        </ul>
+                      </div>
 
-                    <div>
-                      <h4 className="mb-2 flex items-center gap-2 text-sm font-medium text-red-600">
-                        <XCircle className="h-4 w-4" />
-                        Concerns
-                      </h4>
-                      <ul className="space-y-1 text-sm">
-                        {historyAnalysis.concerns.map((item, i) => (
-                          <li key={i} className="text-muted-foreground">• {item}</li>
-                        ))}
-                      </ul>
+                      <div>
+                        <h4 className="mb-2 flex items-center gap-2 text-sm font-medium text-red-600">
+                          <XCircle className="h-4 w-4" />
+                          Concerns
+                        </h4>
+                        <ul className="space-y-1 text-sm">
+                          {historyAnalysis.concerns.map((item, i) => (
+                            <motion.li 
+                              key={i} 
+                              className="text-muted-foreground"
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: 1.1 + i * 0.1 }}
+                            >
+                              • {item}
+                            </motion.li>
+                          ))}
+                        </ul>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </motion.div>
 
               {/* Risk Assessment */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <AlertTriangle className="h-5 w-5 text-primary" />
-                    Risk Assessment
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <h4 className="mb-2 text-sm font-medium">Depreciation Risk</h4>
-                    <p className="text-sm text-muted-foreground">{riskAssessment.depreciationRisk}</p>
-                  </div>
+              <motion.div variants={itemVariants} whileHover={{ y: -5 }} transition={{ duration: 0.2 }}>
+                <Card className="overflow-hidden transition-shadow hover:shadow-lg">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-primary" />
+                      Risk Assessment
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <h4 className="mb-2 text-sm font-medium">Depreciation Risk</h4>
+                      <p className="text-sm text-muted-foreground">{riskAssessment.depreciationRisk}</p>
+                    </div>
 
-                  <div>
-                    <h4 className="mb-2 text-sm font-medium">Reliability Concerns</h4>
-                    <ul className="space-y-1">
-                      {riskAssessment.reliabilityConcerns.map((concern, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                          <Wrench className="mt-0.5 h-3 w-3 flex-shrink-0" />
-                          {concern}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </CardContent>
-              </Card>
+                    <div>
+                      <h4 className="mb-2 text-sm font-medium">Reliability Concerns</h4>
+                      <ul className="space-y-1">
+                        {riskAssessment.reliabilityConcerns.map((concern, i) => (
+                          <motion.li 
+                            key={i} 
+                            className="flex items-start gap-2 text-sm text-muted-foreground"
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.3 + i * 0.1 }}
+                          >
+                            <Wrench className="mt-0.5 h-3 w-3 flex-shrink-0" />
+                            {concern}
+                          </motion.li>
+                        ))}
+                      </ul>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
 
               {/* CTA Card */}
-              <Card className="border-primary/20 bg-primary/5">
-                <CardContent className="p-6 text-center">
-                  <h3 className="font-semibold mb-2">Ready to analyze your vehicle?</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Get the same detailed insights for any car you're considering.
-                  </p>
-                  <Button asChild className="w-full">
-                    <Link to="/analyze">
-                      Start Your Analysis
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
+              <motion.div 
+                variants={itemVariants}
+                whileHover={{ scale: 1.03, y: -5 }}
+                transition={{ type: "spring", stiffness: 300 }}
+              >
+                <Card className="border-primary/20 bg-primary/5 overflow-hidden">
+                  <CardContent className="p-6 text-center">
+                    <motion.h3 
+                      className="font-semibold mb-2"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.5 }}
+                    >
+                      Ready to analyze your vehicle?
+                    </motion.h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Get the same detailed insights for any car you're considering.
+                    </p>
+                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                      <Button asChild className="w-full">
+                        <Link to="/analyze">
+                          Start Your Analysis
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Link>
+                      </Button>
+                    </motion.div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </motion.div>
           </div>
         </div>
       </main>
