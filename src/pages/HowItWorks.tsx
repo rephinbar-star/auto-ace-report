@@ -38,6 +38,8 @@ const steps = [
       "PDF upload or URL paste",
       "AI-powered data extraction",
       "Accident and title status detection",
+      "Analyze service and maintenance history",
+      "Predict future repairs and cost",
     ],
   },
   {
