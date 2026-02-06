@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.scrape-listing]
 verify_jwt = false
+
+[functions.parse-history-report]
+verify_jwt = false

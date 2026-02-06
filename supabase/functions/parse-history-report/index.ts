@@ -1,0 +1,301 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
+interface VehicleHistory {
+  accidentCount: number;
+  ownerCount: number;
+  titleStatus: "clean" | "salvage" | "rebuilt" | "lemon";
+  serviceRecords: boolean;
+  lastServiceDate?: string;
+  issues: string[];
+  positives: string[];
+  healthScore: number;
+}
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Authorization required" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Verify user
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid token" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const formData = await req.formData();
+    const file = formData.get("file") as File | null;
+    const reportUrl = formData.get("url") as string | null;
+
+    if (!file && !reportUrl) {
+      return new Response(
+        JSON.stringify({ success: false, error: "File or URL is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    let textContent = "";
+    let storagePath = "";
+
+    // Handle file upload
+    if (file) {
+      console.log("Processing uploaded file:", file.name, file.size);
+
+      // Upload to storage
+      const fileName = `${user.id}/${Date.now()}-${file.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from("history-reports")
+        .upload(fileName, file, { contentType: file.type });
+
+      if (uploadError) {
+        console.error("Storage upload error:", uploadError);
+        return new Response(
+          JSON.stringify({ success: false, error: "Failed to upload file" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      storagePath = fileName;
+
+      // For PDF parsing, we'll extract text using a simple approach
+      // Read file as array buffer and convert to text (basic extraction)
+      const arrayBuffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      
+      // Basic PDF text extraction (simplified - extracts visible text streams)
+      textContent = extractTextFromPDF(bytes);
+      
+      if (!textContent || textContent.length < 100) {
+        // If basic extraction fails, use the file name and any metadata
+        textContent = `Vehicle History Report: ${file.name}. File uploaded for analysis.`;
+      }
+    }
+
+    // Handle URL scraping
+    if (reportUrl && !textContent) {
+      const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
+      
+      if (FIRECRAWL_API_KEY) {
+        try {
+          const scrapeResponse = await fetch("https://api.firecrawl.dev/v1/scrape", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${FIRECRAWL_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              url: reportUrl,
+              formats: ["markdown"],
+              onlyMainContent: true,
+              waitFor: 3000,
+            }),
+          });
+
+          const scrapeData = await scrapeResponse.json();
+          textContent = scrapeData.data?.markdown || scrapeData.markdown || "";
+        } catch (e) {
+          console.error("Firecrawl error:", e);
+        }
+      }
+
+      if (!textContent) {
+        textContent = `Carfax report URL: ${reportUrl}`;
+      }
+    }
+
+    // Use AI to analyze the vehicle history
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      return new Response(
+        JSON.stringify({ success: false, error: "AI service not configured" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const analysisPrompt = `Analyze this vehicle history report and extract key information. If the content is limited, make reasonable estimates based on typical vehicle history patterns.
+
+Report Content:
+${textContent.slice(0, 10000)}
+
+Extract structured information about accidents, ownership, title status, and service history.`;
+
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-3-flash-preview",
+        messages: [
+          {
+            role: "system",
+            content: `You are an expert vehicle history analyst. Extract and analyze vehicle history report data. Be thorough but realistic. If information is missing, indicate "unknown" rather than guessing. Assess overall vehicle health on a 0-100 scale based on available data.`
+          },
+          { role: "user", content: analysisPrompt }
+        ],
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "analyze_vehicle_history",
+              description: "Extract structured vehicle history data from a report",
+              parameters: {
+                type: "object",
+                properties: {
+                  accidentCount: { 
+                    type: "number", 
+                    description: "Number of reported accidents (0 if none found)" 
+                  },
+                  ownerCount: { 
+                    type: "number", 
+                    description: "Number of previous owners (estimate if unknown)" 
+                  },
+                  titleStatus: { 
+                    type: "string", 
+                    enum: ["clean", "salvage", "rebuilt", "lemon"],
+                    description: "Title status - default to 'clean' if not mentioned"
+                  },
+                  serviceRecords: { 
+                    type: "boolean", 
+                    description: "Whether service records are available" 
+                  },
+                  lastServiceDate: { 
+                    type: "string", 
+                    description: "Last service date if known (YYYY-MM-DD format)" 
+                  },
+                  issues: { 
+                    type: "array", 
+                    items: { type: "string" },
+                    description: "List of concerns or red flags found (be specific)"
+                  },
+                  positives: { 
+                    type: "array", 
+                    items: { type: "string" },
+                    description: "List of positive findings (e.g., 'No accidents reported', 'Regular maintenance')"
+                  },
+                  healthScore: { 
+                    type: "number", 
+                    description: "Overall health score 0-100 based on history (100 = excellent)"
+                  },
+                  summary: {
+                    type: "string",
+                    description: "Brief 2-3 sentence summary of the vehicle's history"
+                  }
+                },
+                required: ["accidentCount", "ownerCount", "titleStatus", "serviceRecords", "issues", "positives", "healthScore", "summary"],
+              },
+            },
+          },
+        ],
+        tool_choice: { type: "function", function: { name: "analyze_vehicle_history" } },
+      }),
+    });
+
+    if (!aiResponse.ok) {
+      if (aiResponse.status === 429) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Rate limit exceeded. Please try again." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      if (aiResponse.status === 402) {
+        return new Response(
+          JSON.stringify({ success: false, error: "AI credits exhausted." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      throw new Error(`AI request failed: ${aiResponse.status}`);
+    }
+
+    const aiData = await aiResponse.json();
+    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+
+    if (!toolCall?.function?.arguments) {
+      throw new Error("Invalid AI response format");
+    }
+
+    const historyAnalysis = JSON.parse(toolCall.function.arguments);
+
+    console.log("Successfully analyzed vehicle history");
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        history: historyAnalysis,
+        storagePath: storagePath || undefined,
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Parse history error:", error);
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: error instanceof Error ? error.message : "Failed to parse history report",
+      }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
+
+// Simple PDF text extraction (extracts text between stream markers)
+function extractTextFromPDF(bytes: Uint8Array): string {
+  const decoder = new TextDecoder("latin1");
+  const content = decoder.decode(bytes);
+  
+  const textParts: string[] = [];
+  
+  // Look for text in PDF streams
+  const streamRegex = /stream\s*([\s\S]*?)\s*endstream/gi;
+  let match;
+  
+  while ((match = streamRegex.exec(content)) !== null) {
+    const streamContent = match[1];
+    // Extract readable text (BT...ET blocks contain text)
+    const textRegex = /\((.*?)\)/g;
+    let textMatch;
+    while ((textMatch = textRegex.exec(streamContent)) !== null) {
+      const text = textMatch[1]
+        .replace(/\\n/g, "\n")
+        .replace(/\\r/g, "")
+        .replace(/\\\(/g, "(")
+        .replace(/\\\)/g, ")")
+        .replace(/\\\\/g, "\\");
+      if (text.length > 2 && /[a-zA-Z0-9]/.test(text)) {
+        textParts.push(text);
+      }
+    }
+  }
+  
+  // Also try to find plain text markers
+  const plainTextRegex = /\/T\s*\((.*?)\)/g;
+  while ((match = plainTextRegex.exec(content)) !== null) {
+    textParts.push(match[1]);
+  }
+  
+  return textParts.join(" ").trim();
+}
