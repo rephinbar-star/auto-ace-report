@@ -9,6 +9,7 @@ import AnalyzePage from "./pages/Analyze";
 import ReportPage from "./pages/Report";
 import DashboardPage from "./pages/Dashboard";
 import HowItWorksPage from "./pages/HowItWorks";
+import SampleReportPage from "./pages/SampleReport";
 import LoginPage from "./pages/Login";
 import SignupPage from "./pages/Signup";
 import NotFound from "./pages/NotFound";
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/how-it-works" element={<HowItWorksPage />} />
+            <Route path="/sample-report" element={<SampleReportPage />} />
             <Route path="/analyze" element={<AnalyzePage />} />
             <Route path="/report/:id" element={<ReportPage />} />
             <Route path="/login" element={<LoginPage />} />
