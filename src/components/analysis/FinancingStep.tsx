@@ -385,8 +385,11 @@ export function FinancingStep({ onComplete, onBack, askingPrice }: FinancingStep
                               </span>
                               <Input 
                                 type="number" 
+                                step="0.01"
                                 className="pl-7"
-                                {...field} 
+                                {...field}
+                                value={Number(field.value || 0).toFixed(2)}
+                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                               />
                             </div>
                           </FormControl>

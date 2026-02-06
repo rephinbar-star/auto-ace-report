@@ -77,11 +77,17 @@ export default function SignupPage() {
   const handleSubmit = async (data: z.infer<typeof signupSchema>) => {
     setIsLoading(true);
     try {
+      // Determine redirect URL based on pending report
+      const hasPendingReport = sessionStorage.getItem("pendingReport") === "true";
+      const redirectUrl = hasPendingReport 
+        ? `${window.location.origin}/report/demo`
+        : `${window.location.origin}/dashboard`;
+      
       const { error } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`,
+          emailRedirectTo: redirectUrl,
         },
       });
 
@@ -120,7 +126,10 @@ export default function SignupPage() {
                 <CardTitle className="text-2xl">Check your email</CardTitle>
                 <CardDescription>
                   We've sent a confirmation link to your email address. 
-                  Please click the link to verify your account.
+                  {sessionStorage.getItem("pendingReport") === "true" 
+                    ? " Click the link to verify your account and view your vehicle report."
+                    : " Please click the link to verify your account."
+                  }
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -135,13 +144,20 @@ export default function SignupPage() {
                 <Link to="/" className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary">
                   <Car className="h-6 w-6 text-primary-foreground" />
                 </Link>
-                <CardTitle className="text-2xl">Create your account</CardTitle>
+                <CardTitle className="text-2xl">
+                  {sessionStorage.getItem("pendingReport") === "true" 
+                    ? "Create an account to view your report"
+                    : "Create your account"
+                  }
+                </CardTitle>
                 <CardDescription>
-                  {plan === "pro" 
-                    ? "Start your Pro trial today" 
-                    : plan === "compare-pass"
-                    ? "Create an account to purchase Compare Pass"
-                    : "Sign up for free vehicle analysis"
+                  {sessionStorage.getItem("pendingReport") === "true"
+                    ? "Sign up to access your personalized vehicle analysis"
+                    : plan === "pro" 
+                      ? "Start your Pro trial today" 
+                      : plan === "compare-pass"
+                      ? "Create an account to purchase Compare Pass"
+                      : "Sign up for free vehicle analysis"
                   }
                 </CardDescription>
               </CardHeader>
@@ -249,7 +265,11 @@ export default function SignupPage() {
 
                 <div className="mt-6 text-center text-sm">
                   <span className="text-muted-foreground">Already have an account? </span>
-                  <Link to="/login" className="text-primary hover:underline">
+                  <Link 
+                    to="/login" 
+                    state={{ from: { pathname: sessionStorage.getItem("pendingReport") === "true" ? "/report/demo" : "/dashboard" } }}
+                    className="text-primary hover:underline"
+                  >
                     Log in
                   </Link>
                 </div>

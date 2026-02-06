@@ -8,6 +8,7 @@ import { FinancingStep } from "@/components/analysis/FinancingStep";
 import { Progress } from "@/components/ui/progress";
 import { VehicleInfo, VehicleCondition, VehicleHistory, FinancingInfo } from "@/types/vehicle";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
 const steps = [
   { id: 1, name: "Vehicle Info" },
@@ -18,6 +19,7 @@ const steps = [
 
 export default function AnalyzePage() {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   
   // Form data state
@@ -67,23 +69,26 @@ export default function AnalyzePage() {
   const handleFinancingComplete = async (f: FinancingInfo) => {
     setFinancing(f);
     
-    // Store analysis data and navigate to report
-    console.log("Analysis data:", {
+    // Store analysis data in sessionStorage
+    const analysisData = {
       vehicle,
       condition,
       history,
       financing: f,
-    });
-
-    // Store in sessionStorage for the report page
-    sessionStorage.setItem("analysisData", JSON.stringify({
-      vehicle,
-      condition,
-      history,
-      financing: f,
-    }));
+    };
     
-    navigate("/report/demo");
+    sessionStorage.setItem("analysisData", JSON.stringify(analysisData));
+    
+    // Check if user is authenticated
+    if (!isAuthenticated) {
+      // Mark that there's a pending report to generate after auth
+      sessionStorage.setItem("pendingReport", "true");
+      // Redirect to signup (with option to login)
+      navigate("/signup", { state: { from: { pathname: "/report/demo" } } });
+    } else {
+      // User is authenticated, go directly to report
+      navigate("/report/demo");
+    }
   };
 
   return (
