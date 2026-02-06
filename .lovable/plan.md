@@ -1,6 +1,4 @@
-
-
-# AutoSage - Car Buying Decision Support Tool
+# CarWise - Car Buying Decision Support Tool
 
 A consumer-friendly web app that provides expert-level analysis and recommendations for used and new car purchases.
 
@@ -67,4 +65,3 @@ A consumer-friendly web app that provides expert-level analysis and recommendati
 3. **Report View** - Full analysis with all sections (pricing, depreciation, recommendations); This must require the user to sign up for a free account with validated email. 
 4. **Dashboard** - User's saved reports and comparison view (only if on monthly subscription)
 5. **Login/Signup** - Simple authentication pages
-

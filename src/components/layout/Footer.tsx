@@ -29,10 +29,10 @@ export function Footer() {
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
                 <Car className="h-5 w-5 text-primary-foreground" />
               </div>
-              <span className="text-xl font-bold">AutoSage</span>
+              <span className="text-xl font-bold">CarWise</span>
             </Link>
             <p className="mt-4 text-sm text-muted-foreground">
-              Expert car buying analysis powered by AI. Make smarter vehicle purchases with confidence.
+              Expert car buying analysis powered by AI. Get fair price estimates, depreciation forecasts, and risk assessments.
             </p>
           </div>
 
@@ -91,7 +91,7 @@ export function Footer() {
         {/* Bottom bar */}
         <div className="mt-12 border-t pt-8">
           <p className="text-center text-sm text-muted-foreground">
-            © {new Date().getFullYear()} AutoSage. All rights reserved.
+            © {new Date().getFullYear()} CarWise. All rights reserved.
           </p>
         </div>
 
