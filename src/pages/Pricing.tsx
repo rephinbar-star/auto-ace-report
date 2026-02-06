@@ -66,7 +66,7 @@ const plans: Plan[] = [
   },
   {
     key: "basic",
-    name: "Basic",
+    name: "Standard",
     description: "For occasional car shoppers",
     monthlyPrice: STRIPE_PRICES.basic.monthlyPrice,
     yearlyPrice: STRIPE_PRICES.basic.yearlyPrice,
@@ -83,7 +83,7 @@ const plans: Plan[] = [
       { name: "Compare up to 3 vehicles", included: true },
       { name: "Priority support", included: false },
     ],
-    popular: false,
+    popular: true,
   },
   {
     key: "pro",
@@ -104,7 +104,7 @@ const plans: Plan[] = [
       { name: "Compare up to 6 vehicles", included: true },
       { name: "Priority support", included: true },
     ],
-    popular: true,
+    popular: false,
   },
 ];
 
