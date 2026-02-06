@@ -1,6 +1,9 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -77,6 +80,7 @@ const sampleAnalysis = {
     valueProposition: "This Accord represents solid value with its combination of reliability, fuel efficiency, and sporty performance. The asking price is slightly above market, but the clean history and single ownership justify a modest premium.",
     fairOfferPrice: 25500,
     expertOpinion: "This 2021 Honda Accord Sport 2.0T is a compelling option for buyers seeking a balance of reliability and performance. With only 42,500 miles and a clean title, this vehicle is well within the expected mileage range for its age.\n\nThe 2.0-liter turbocharged engine paired with the 10-speed automatic provides spirited acceleration while maintaining respectable fuel economy. Honda's reputation for longevity means you can expect many trouble-free miles ahead.\n\nWhile the asking price of $26,995 is about $1,195 above the fair market value, the single-owner history and documented service records add peace of mind. I recommend negotiating toward $25,500-$26,000 for a fair deal.\n\nOverall verdict: A smart, practical choice with low ownership risk.",
+    repairAnalysis: "**Anticipated Repairs Based on Mileage & History**\n\nBased on the vehicle's current 42,500 miles and Carfax service records showing regular maintenance at Honda dealerships, here's what to expect:\n\n**Completed Maintenance (Per Carfax):**\n• Regular oil changes every 5,000 miles ✓\n• Brake fluid flush at 30,000 miles ✓\n• Cabin/engine air filters replaced at 35,000 miles ✓\n• Tire rotation every 7,500 miles ✓\n\n**Upcoming Service (45k-60k miles):**\n• Brake pad replacement (~$300-450) - Front pads typically need replacement around 50,000 miles\n• Transmission fluid change (~$150-200) - Recommended at 60,000 miles for 2.0T models\n• Spark plug inspection (~$50-100)\n\n**Mid-Term Repairs (60k-100k miles):**\n• Rear brake pads & rotors (~$400-550)\n• Drive belt replacement (~$150-250)\n• Battery replacement (~$150-200) - Typically lasts 4-5 years\n• Suspension components inspection - May need bushings/struts (~$500-800)\n\n**Long-Term Considerations (100k+ miles):**\n• Turbo system maintenance (~$200-400 inspection)\n• Timing chain inspection (2.0T uses chain, not belt - good for longevity)\n• Water pump replacement (~$400-600)\n• AC compressor service (~$300-500)\n\n**Total Estimated 5-Year Repair Costs: $1,800-$2,500**\n\nThis is below average for vehicles in this class, reflecting Honda's reliability reputation. The documented service history reduces risk of unexpected failures.",
   },
   historyAnalysis: {
     healthScore: 87,
@@ -110,13 +114,26 @@ const riskLevelColors = {
 
 export default function SampleReportPage() {
   const { priceAssessment, depreciationTable, riskAssessment, historyAnalysis } = sampleAnalysis;
+  const [includeRepairs, setIncludeRepairs] = useState(true);
 
   const chartData = depreciationTable.map((row) => ({
     name: `Year ${row.year}`,
     "Private Value": row.privateValue,
     "Trade-In Value": row.tradeInValue,
     "Loan Balance": row.loanBalance,
+    "Cumulative Repairs": depreciationTable
+      .filter((r) => r.year <= row.year)
+      .reduce((sum, r) => sum + r.repairCosts, 0),
   }));
+
+  const calculateNetEquity = (row: typeof depreciationTable[0]) => {
+    const cumulativeRepairs = depreciationTable
+      .filter((r) => r.year <= row.year)
+      .reduce((sum, r) => sum + r.repairCosts, 0);
+    return includeRepairs 
+      ? row.tradeInValue - row.loanBalance - cumulativeRepairs
+      : row.tradeInValue - row.loanBalance;
+  };
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -282,7 +299,17 @@ export default function SampleReportPage() {
                     5-Year Depreciation & Equity
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-end space-x-2">
+                    <Switch
+                      id="include-repairs"
+                      checked={includeRepairs}
+                      onCheckedChange={setIncludeRepairs}
+                    />
+                    <Label htmlFor="include-repairs" className="text-sm cursor-pointer">
+                      Include repair costs in calculations
+                    </Label>
+                  </div>
                   <div className="h-[300px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={chartData}>
@@ -317,6 +344,15 @@ export default function SampleReportPage() {
                           strokeWidth={2}
                           strokeDasharray="5 5"
                         />
+                        {includeRepairs && (
+                          <Line 
+                            type="monotone" 
+                            dataKey="Cumulative Repairs" 
+                            stroke="hsl(0, 84%, 60%)" 
+                            strokeWidth={2}
+                            strokeDasharray="3 3"
+                          />
+                        )}
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -330,8 +366,8 @@ export default function SampleReportPage() {
                           <TableHead className="text-right">Private Value</TableHead>
                           <TableHead className="text-right">Trade-In</TableHead>
                           <TableHead className="text-right">Loan Balance</TableHead>
-                          <TableHead className="text-right">Repair Costs</TableHead>
-                          <TableHead className="text-right">Net Equity</TableHead>
+                          {includeRepairs && <TableHead className="text-right">Cumulative Repairs</TableHead>}
+                          <TableHead className="text-right">Net Equity {includeRepairs ? "(w/ repairs)" : "(w/o repairs)"}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -341,13 +377,20 @@ export default function SampleReportPage() {
                             <TableCell className="text-right">${row.privateValue.toLocaleString()}</TableCell>
                             <TableCell className="text-right">${row.tradeInValue.toLocaleString()}</TableCell>
                             <TableCell className="text-right">${row.loanBalance.toLocaleString()}</TableCell>
-                            <TableCell className="text-right">${row.repairCosts.toLocaleString()}</TableCell>
+                            {includeRepairs && (
+                              <TableCell className="text-right text-destructive">
+                                ${depreciationTable
+                                  .filter((r) => r.year <= row.year)
+                                  .reduce((sum, r) => sum + r.repairCosts, 0)
+                                  .toLocaleString()}
+                              </TableCell>
+                            )}
                             <TableCell className={cn(
                               "text-right font-semibold",
-                              row.netEquityTradeIn >= 0 ? "text-green-600" : "text-red-600"
+                              calculateNetEquity(row) >= 0 ? "text-green-600" : "text-red-600"
                             )}>
-                              {row.netEquityTradeIn >= 0 ? "+" : ""}
-                              ${row.netEquityTradeIn.toLocaleString()}
+                              {calculateNetEquity(row) >= 0 ? "+" : ""}
+                              ${calculateNetEquity(row).toLocaleString()}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -365,11 +408,32 @@ export default function SampleReportPage() {
                     Expert Opinion
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-6">
                   <div className="prose prose-sm max-w-none dark:prose-invert">
                     <p className="whitespace-pre-line text-muted-foreground leading-relaxed">
                       {riskAssessment.expertOpinion}
                     </p>
+                  </div>
+                  
+                  {/* Repair Analysis Section */}
+                  <div className="border-t pt-6">
+                    <h4 className="flex items-center gap-2 font-semibold mb-4">
+                      <Wrench className="h-4 w-4 text-primary" />
+                      Anticipated Repairs & Maintenance
+                    </h4>
+                    <div className="prose prose-sm max-w-none dark:prose-invert">
+                      <div className="whitespace-pre-line text-muted-foreground leading-relaxed text-sm">
+                        {riskAssessment.repairAnalysis.split('\n').map((line, i) => {
+                          if (line.startsWith('**') && line.endsWith('**')) {
+                            return <p key={i} className="font-semibold text-foreground mt-4 mb-2">{line.replace(/\*\*/g, '')}</p>;
+                          }
+                          if (line.startsWith('•')) {
+                            return <p key={i} className="ml-2">{line}</p>;
+                          }
+                          return <p key={i}>{line}</p>;
+                        })}
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
