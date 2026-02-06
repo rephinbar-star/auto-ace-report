@@ -20,7 +20,7 @@ export function Header() {
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
           <div className="relative flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-            <Lightbulb className="absolute -top-0.5 left-0.5 h-4 w-4 text-yellow-400 fill-yellow-400" />
+            <Lightbulb className="absolute -top-0.5 right-0.5 h-5 w-5 text-yellow-400 fill-yellow-400" />
             <Car className="h-5 w-5 text-primary-foreground mt-1" />
           </div>
           <span className="text-xl font-bold">CarWise</span>
