@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { SEO } from "@/components/seo/SEO";
@@ -15,7 +15,9 @@ import {
   Building2, 
   User,
   ArrowRight,
-  HelpCircle
+  HelpCircle,
+  Loader2,
+  Crown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -24,9 +26,27 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { useAuth } from "@/hooks/useAuth";
+import { useSubscription, STRIPE_PRICES, SubscriptionTier } from "@/hooks/useSubscription";
+import { toast } from "sonner";
 
-const plans = [
+type PlanKey = "free" | "basic" | "pro" | "dealer";
+
+interface Plan {
+  key: PlanKey;
+  name: string;
+  description: string;
+  monthlyPrice: number;
+  yearlyPrice: number;
+  icon: React.ComponentType<{ className?: string }>;
+  features: { name: string; included: boolean }[];
+  priceId?: string;
+  popular: boolean;
+}
+
+const plans: Plan[] = [
   {
+    key: "free",
     name: "Free",
     description: "Perfect for trying out CarWise",
     monthlyPrice: 0,
@@ -42,16 +62,36 @@ const plans = [
       { name: "PDF report export", included: false },
       { name: "Priority support", included: false },
     ],
-    cta: "Get Started",
-    ctaLink: "/signup",
     popular: false,
   },
   {
+    key: "basic",
+    name: "Basic",
+    description: "For occasional car shoppers",
+    monthlyPrice: STRIPE_PRICES.basic.monthlyPrice,
+    yearlyPrice: STRIPE_PRICES.basic.yearlyPrice,
+    icon: Zap,
+    priceId: STRIPE_PRICES.basic.priceId,
+    features: [
+      { name: "5 vehicle analyses per month", included: true },
+      { name: "Advanced price assessment", included: true },
+      { name: "Deal rating with confidence score", included: true },
+      { name: "5-year depreciation forecast", included: true },
+      { name: "Expert AI opinion", included: false },
+      { name: "History report parsing", included: false },
+      { name: "PDF report export", included: false },
+      { name: "Priority support", included: false },
+    ],
+    popular: false,
+  },
+  {
+    key: "pro",
     name: "Pro",
     description: "For serious car buyers",
-    monthlyPrice: 19,
-    yearlyPrice: 190,
-    icon: Zap,
+    monthlyPrice: STRIPE_PRICES.pro.monthlyPrice,
+    yearlyPrice: STRIPE_PRICES.pro.yearlyPrice,
+    icon: Crown,
+    priceId: STRIPE_PRICES.pro.priceId,
     features: [
       { name: "Unlimited vehicle analyses", included: true },
       { name: "Advanced price assessment", included: true },
@@ -62,16 +102,16 @@ const plans = [
       { name: "PDF report export", included: true },
       { name: "Priority support", included: false },
     ],
-    cta: "Start Free Trial",
-    ctaLink: "/signup?plan=pro",
     popular: true,
   },
   {
+    key: "dealer",
     name: "Dealer",
     description: "For dealerships & professionals",
-    monthlyPrice: 99,
-    yearlyPrice: 990,
+    monthlyPrice: STRIPE_PRICES.dealer.monthlyPrice,
+    yearlyPrice: STRIPE_PRICES.dealer.yearlyPrice,
     icon: Building2,
+    priceId: STRIPE_PRICES.dealer.priceId,
     features: [
       { name: "Unlimited vehicle analyses", included: true },
       { name: "Advanced price assessment", included: true },
@@ -82,8 +122,6 @@ const plans = [
       { name: "PDF report export & white-labeling", included: true },
       { name: "Priority support & API access", included: true },
     ],
-    cta: "Contact Sales",
-    ctaLink: "/contact",
     popular: false,
   },
 ];
@@ -103,20 +141,94 @@ const faqs = [
   },
   {
     question: "Do you offer refunds?",
-    answer: "We offer a 7-day money-back guarantee for Pro and Dealer plans. If you're not satisfied with the service, contact us within 7 days of purchase for a full refund.",
+    answer: "We offer a 7-day money-back guarantee for all paid plans. If you're not satisfied with the service, contact us within 7 days of purchase for a full refund.",
   },
   {
     question: "Can I upgrade or downgrade my plan?",
-    answer: "Yes, you can change your plan at any time. Upgrades take effect immediately, and downgrades take effect at the start of your next billing cycle.",
+    answer: "Yes, you can change your plan at any time through your account settings. Upgrades take effect immediately, and downgrades take effect at the start of your next billing cycle.",
   },
   {
     question: "Is there a free trial?",
-    answer: "The Pro plan includes a 7-day free trial with full access to all features. No credit card required to start. The Free plan is always available with limited features.",
+    answer: "The Free plan is always available with limited features. Paid plans can be canceled within 7 days for a full refund if you're not satisfied.",
   },
 ];
 
 export default function PricingPage() {
   const [isYearly, setIsYearly] = useState(false);
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const { user } = useAuth();
+  const { tier, subscribed, createCheckout, openCustomerPortal } = useSubscription();
+  const navigate = useNavigate();
+
+  const handlePlanAction = async (plan: Plan) => {
+    // Free plan - just navigate to signup
+    if (plan.key === "free") {
+      if (user) {
+        navigate("/dashboard");
+      } else {
+        navigate("/signup");
+      }
+      return;
+    }
+
+    // Must be logged in for paid plans
+    if (!user) {
+      toast.info("Please sign up or log in to subscribe");
+      navigate("/signup", { state: { returnTo: "/pricing" } });
+      return;
+    }
+
+    // Already on this plan - open portal to manage
+    if (tier === plan.key && subscribed) {
+      try {
+        setLoadingPlan(plan.key);
+        await openCustomerPortal();
+      } catch (error) {
+        toast.error("Failed to open subscription management");
+      } finally {
+        setLoadingPlan(null);
+      }
+      return;
+    }
+
+    // Create checkout for new subscription
+    if (plan.priceId) {
+      try {
+        setLoadingPlan(plan.key);
+        await createCheckout(plan.priceId);
+      } catch (error) {
+        toast.error("Failed to start checkout");
+      } finally {
+        setLoadingPlan(null);
+      }
+    }
+  };
+
+  const getButtonText = (plan: Plan) => {
+    if (loadingPlan === plan.key) return "Loading...";
+    
+    if (plan.key === "free") {
+      return user ? "Current Plan" : "Get Started";
+    }
+
+    if (!user) return "Subscribe";
+    
+    if (tier === plan.key && subscribed) return "Manage Plan";
+    
+    if (subscribed) {
+      const tierOrder: PlanKey[] = ["free", "basic", "pro", "dealer"];
+      const currentIndex = tierOrder.indexOf(tier);
+      const planIndex = tierOrder.indexOf(plan.key);
+      return planIndex > currentIndex ? "Upgrade" : "Downgrade";
+    }
+    
+    return "Subscribe";
+  };
+
+  const isCurrentPlan = (planKey: PlanKey) => {
+    if (planKey === "free" && !subscribed) return true;
+    return tier === planKey && subscribed;
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -163,19 +275,27 @@ export default function PricingPage() {
         {/* Pricing cards */}
         <section className="py-12 md:py-16">
           <div className="container mx-auto px-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
               {plans.map((plan) => (
                 <Card 
-                  key={plan.name}
+                  key={plan.key}
                   className={cn(
                     "relative flex flex-col",
-                    plan.popular && "border-primary shadow-lg scale-105 md:scale-110"
+                    plan.popular && "border-primary shadow-lg",
+                    isCurrentPlan(plan.key) && "ring-2 ring-primary"
                   )}
                 >
                   {plan.popular && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                       <Badge className="bg-primary text-primary-foreground">
                         Most Popular
+                      </Badge>
+                    </div>
+                  )}
+                  {isCurrentPlan(plan.key) && (
+                    <div className="absolute -top-3 right-4">
+                      <Badge variant="secondary" className="bg-green-500/10 text-green-600 border-green-500/20">
+                        Your Plan
                       </Badge>
                     </div>
                   )}
@@ -224,14 +344,18 @@ export default function PricingPage() {
 
                   <CardFooter>
                     <Button 
-                      asChild 
                       className="w-full" 
                       variant={plan.popular ? "default" : "outline"}
+                      onClick={() => handlePlanAction(plan)}
+                      disabled={loadingPlan === plan.key || (plan.key === "free" && user && !subscribed)}
                     >
-                      <Link to={plan.ctaLink}>
-                        {plan.cta}
+                      {loadingPlan === plan.key && (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      )}
+                      {getButtonText(plan)}
+                      {!loadingPlan && plan.key !== "free" && !isCurrentPlan(plan.key) && (
                         <ArrowRight className="ml-2 h-4 w-4" />
-                      </Link>
+                      )}
                     </Button>
                   </CardFooter>
                 </Card>
