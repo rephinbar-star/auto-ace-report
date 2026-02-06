@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -13,11 +13,18 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Search, Car, Link as LinkIcon, CheckCircle, AlertCircle } from "lucide-react";
-import { decodeVIN, isValidVIN } from "@/lib/nhtsa";
+import { decodeVIN, isValidVIN, getMakes, getModels } from "@/lib/nhtsa";
 import { VehicleInfo, VehicleCondition } from "@/types/vehicle";
 import { useToast } from "@/hooks/use-toast";
 import { scrapeCarListing, ScrapedVehicle } from "@/lib/api/scrape-listing";
@@ -50,6 +57,16 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
   const [scrapedData, setScrapedData] = useState<{ vehicle: ScrapedVehicle; sourceUrl: string } | null>(null);
   const { toast } = useToast();
 
+  // State for NHTSA data
+  const [availableMakes, setAvailableMakes] = useState<string[]>([]);
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
+  const [isLoadingMakes, setIsLoadingMakes] = useState(false);
+  const [isLoadingModels, setIsLoadingModels] = useState(false);
+
+  // Generate years from 1980 to next year
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: currentYear - 1979 + 1 }, (_, i) => currentYear + 1 - i);
+
   // VIN form
   const vinForm = useForm<z.infer<typeof vinSchema>>({
     resolver: zodResolver(vinSchema),
@@ -72,6 +89,48 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
     resolver: zodResolver(listingSchema),
     defaultValues: { listingUrl: "" },
   });
+
+  // Watch year and make for dynamic updates
+  const selectedYear = manualForm.watch("year");
+  const selectedMake = manualForm.watch("make");
+
+  // Fetch makes when year changes
+  useEffect(() => {
+    const fetchMakes = async () => {
+      if (!selectedYear) return;
+      setIsLoadingMakes(true);
+      setAvailableModels([]);
+      manualForm.setValue("make", "");
+      manualForm.setValue("model", "");
+      try {
+        const makes = await getMakes(selectedYear);
+        setAvailableMakes(makes);
+      } catch (error) {
+        console.error("Failed to fetch makes:", error);
+      } finally {
+        setIsLoadingMakes(false);
+      }
+    };
+    fetchMakes();
+  }, [selectedYear]);
+
+  // Fetch models when make changes
+  useEffect(() => {
+    const fetchModels = async () => {
+      if (!selectedMake || !selectedYear) return;
+      setIsLoadingModels(true);
+      manualForm.setValue("model", "");
+      try {
+        const models = await getModels(selectedMake, selectedYear);
+        setAvailableModels(models);
+      } catch (error) {
+        console.error("Failed to fetch models:", error);
+      } finally {
+        setIsLoadingModels(false);
+      }
+    };
+    fetchModels();
+  }, [selectedMake, selectedYear]);
 
   const handleVINSubmit = async (data: z.infer<typeof vinSchema>) => {
     setIsLoading(true);
@@ -237,6 +296,21 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                       {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Decode VIN
                     </Button>
+                    
+                    <div className="mt-4 rounded-lg border border-dashed p-4">
+                      <p className="text-sm text-muted-foreground">
+                        <span className="font-medium text-foreground">Don't have a VIN?</span>{" "}
+                        Select year, make, and model using the{" "}
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("manual")}
+                          className="text-primary hover:underline font-medium"
+                        >
+                          Manual Entry
+                        </button>{" "}
+                        tab.
+                      </p>
+                    </div>
                   </form>
                 </Form>
               ) : (
@@ -301,7 +375,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
             <CardHeader>
               <CardTitle>Manual Entry</CardTitle>
               <CardDescription>
-                Enter the vehicle details manually if you don't have the VIN.
+                Select your vehicle details from the dropdowns below.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -314,9 +388,23 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Year</FormLabel>
-                          <FormControl>
-                            <Input type="number" placeholder="2024" {...field} />
-                          </FormControl>
+                          <Select
+                            onValueChange={(value) => field.onChange(parseInt(value, 10))}
+                            value={field.value?.toString()}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="bg-background">
+                                <SelectValue placeholder="Select year" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="bg-background max-h-[300px]">
+                              {years.map((year) => (
+                                <SelectItem key={year} value={year.toString()}>
+                                  {year}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -327,9 +415,24 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Make</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Toyota" {...field} />
-                          </FormControl>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            disabled={!selectedYear || isLoadingMakes}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="bg-background">
+                                <SelectValue placeholder={isLoadingMakes ? "Loading makes..." : "Select make"} />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="bg-background max-h-[300px]">
+                              {availableMakes.map((make) => (
+                                <SelectItem key={make} value={make}>
+                                  {make}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -340,9 +443,24 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Model</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Camry" {...field} />
-                          </FormControl>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            disabled={!selectedMake || isLoadingModels}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="bg-background">
+                                <SelectValue placeholder={isLoadingModels ? "Loading models..." : "Select model"} />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="bg-background max-h-[300px]">
+                              {availableModels.map((model) => (
+                                <SelectItem key={model} value={model}>
+                                  {model}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -354,14 +472,19 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                         <FormItem>
                           <FormLabel>Trim (Optional)</FormLabel>
                           <FormControl>
-                            <Input placeholder="XLE" {...field} />
+                            <Input placeholder="e.g., XLE, Sport, Limited" {...field} />
                           </FormControl>
+                          <FormDescription className="text-xs">
+                            Enter the trim level if known
+                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
                   </div>
-                  <Button type="submit">Continue</Button>
+                  <Button type="submit" disabled={!manualForm.formState.isValid}>
+                    Continue
+                  </Button>
                 </form>
               </Form>
             </CardContent>
