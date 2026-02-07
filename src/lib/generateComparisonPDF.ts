@@ -340,22 +340,36 @@ export async function generateComparisonPDF(data: ComparisonPDFData): Promise<vo
     });
   }
 
+  // Footnotes section
+  yPosition += 5;
+  pdf.setFontSize(8);
+  pdf.setTextColor(100, 100, 100);
+  
   // Mileage depreciation footnote (only when excess mileage applies)
   if (annualMiles > 12000) {
-    yPosition += 5;
-    pdf.setFontSize(8);
-    pdf.setTextColor(100, 100, 100);
-    const footnoteText = `* Mileage Depreciation: Driving above 12,000 miles/year adds ~$0.18 per excess mile in depreciation over 5 years, reflecting reduced resale value from higher-than-average mileage.`;
-    const footnoteLines = pdf.splitTextToSize(footnoteText, pageWidth - 2 * margin);
+    const depFootnote = `* Mileage Depreciation: Driving above 12,000 miles/year adds ~$0.18 per excess mile in depreciation over 5 years, reflecting reduced resale value from higher-than-average mileage.`;
+    const depLines = pdf.splitTextToSize(depFootnote, pageWidth - 2 * margin);
     
-    if (yPosition + footnoteLines.length * 3.5 > pageHeight - 15) {
+    if (yPosition + depLines.length * 3.5 > pageHeight - 20) {
       pdf.addPage();
       yPosition = margin;
     }
     
-    pdf.text(footnoteLines, margin, yPosition);
-    yPosition += footnoteLines.length * 3.5 + 3;
+    pdf.text(depLines, margin, yPosition);
+    yPosition += depLines.length * 3.5 + 2;
   }
+  
+  // Maintenance cost scaling footnote
+  const maintenanceFootnote = `* Maintenance Costs: Scaled using a 0.85 power factor based on annual mileage. At ${annualMiles.toLocaleString()} mi/yr, maintenance is ${Math.round(Math.pow(annualMiles / 12000, 0.85) * 100)}% of the 12,000 mi/yr baseline, reflecting economies of scale at higher mileage.`;
+  const maintLines = pdf.splitTextToSize(maintenanceFootnote, pageWidth - 2 * margin);
+  
+  if (yPosition + maintLines.length * 3.5 > pageHeight - 15) {
+    pdf.addPage();
+    yPosition = margin;
+  }
+  
+  pdf.text(maintLines, margin, yPosition);
+  yPosition += maintLines.length * 3.5 + 3;
 
   // Footer
   const footerY = pageHeight - 10;
