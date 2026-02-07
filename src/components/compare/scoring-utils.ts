@@ -387,10 +387,17 @@ export function calculateTCOScore(
   };
 }
 
+export interface TCOConfig {
+  annualMiles?: number;
+}
+
 /**
  * Calculate base score for a vehicle (without TCO, which requires comparison)
  */
-export function calculateVehicleScore(vehicle: VehicleReport): VehicleScoreResult {
+export function calculateVehicleScore(
+  vehicle: VehicleReport,
+  config: TCOConfig = {}
+): VehicleScoreResult {
   const breakdown: ScoreBreakdownItem[] = [
     calculateDealScore(vehicle.deal_rating),
     calculateTitleScore(vehicle.title_status),
@@ -404,7 +411,7 @@ export function calculateVehicleScore(vehicle: VehicleReport): VehicleScoreResul
   // Base score without TCO (will be added in scoreAndRankVehicles)
   const baseScore = breakdown.reduce((sum, item) => sum + item.score, 0);
   
-  // Calculate TCO for this vehicle
+  // Calculate TCO for this vehicle with mileage config
   const vehicleWithMpg = vehicle as VehicleReport & { 
     mpg_combined?: number | null;
     mpg_city?: number | null;
@@ -416,13 +423,13 @@ export function calculateVehicleScore(vehicle: VehicleReport): VehicleScoreResul
     vehicleWithMpg.mpg_combined || null,
     vehicle.fuel_type || null,
     vehicle.depreciation_table,
-    {}, // default config
-    { make: vehicle.make, year: vehicle.year } // for fallback maintenance
+    { annualMiles: config.annualMiles || 12000 },
+    { make: vehicle.make, year: vehicle.year }
   );
   
   return {
     vehicle,
-    totalScore: baseScore, // Will be updated with TCO
+    totalScore: baseScore,
     breakdown,
     whyNotReasons: [],
     tco,
@@ -563,9 +570,12 @@ export function generateWhyNotReasons(
 /**
  * Score and rank all vehicles for comparison
  */
-export function scoreAndRankVehicles(vehicles: VehicleReport[]): VehicleScoreResult[] {
-  // Calculate base scores for all vehicles (without TCO)
-  const scored = vehicles.map(calculateVehicleScore);
+export function scoreAndRankVehicles(
+  vehicles: VehicleReport[],
+  config: TCOConfig = {}
+): VehicleScoreResult[] {
+  // Calculate base scores for all vehicles (with mileage config)
+  const scored = vehicles.map(v => calculateVehicleScore(v, config));
   
   // Collect all TCO values for relative comparison
   const allTCOs = scored.map(s => s.tco?.totalTCO || 0).filter(t => t > 0);
