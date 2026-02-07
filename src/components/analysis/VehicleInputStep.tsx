@@ -30,6 +30,7 @@ import { decodeVIN, isValidVIN, getMakes, getModels } from "@/lib/nhtsa";
 import { VehicleInfo, VehicleCondition } from "@/types/vehicle";
 import { useToast } from "@/hooks/use-toast";
 import { scrapeCarListing, ScrapedVehicle } from "@/lib/api/scrape-listing";
+import { cacheImages, getCachedUrls } from "@/lib/api/cache-images";
 
 const vinSchema = z.object({
   vin: z.string()
@@ -243,7 +244,9 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
     });
   };
 
-  const confirmImportedListing = () => {
+  const [isCachingImages, setIsCachingImages] = useState(false);
+
+  const confirmImportedListing = async () => {
     if (!importedListing) return;
     
     const v = importedListing.vehicle;
@@ -269,8 +272,27 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
     if (v.askingPrice) scrapedCondition.askingPrice = v.askingPrice;
     if (v.condition) scrapedCondition.condition = v.condition;
     if (v.sellerType) scrapedCondition.sellerType = v.sellerType;
-    if (v.images && v.images.length > 0) scrapedCondition.images = v.images;
     scrapedCondition.listingUrl = importedListing.sourceUrl;
+    
+    // Cache images to Lovable Cloud storage for persistence
+    if (v.images && v.images.length > 0) {
+      setIsCachingImages(true);
+      try {
+        const cacheResult = await cacheImages(v.images);
+        if (cacheResult.success && cacheResult.images) {
+          scrapedCondition.images = getCachedUrls(cacheResult);
+          console.log(`Cached ${cacheResult.cached}/${cacheResult.total} vehicle images`);
+        } else {
+          // Fallback to original images if caching fails
+          scrapedCondition.images = v.images;
+        }
+      } catch (error) {
+        console.error("Image caching failed, using original URLs:", error);
+        scrapedCondition.images = v.images;
+      } finally {
+        setIsCachingImages(false);
+      }
+    }
     
     onComplete(vehicleInfo, importedListing.sourceUrl, scrapedCondition);
   };
@@ -601,11 +623,20 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
             <Separator />
 
             <div className="flex gap-3">
-              <Button onClick={confirmImportedListing} className="flex-1 sm:flex-none">
-                Continue
-                <ArrowRight className="ml-2 h-4 w-4" />
+              <Button onClick={confirmImportedListing} disabled={isCachingImages} className="flex-1 sm:flex-none">
+                {isCachingImages ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Caching Images...
+                  </>
+                ) : (
+                  <>
+                    Continue
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
               </Button>
-              <Button variant="outline" onClick={resetImportedListing}>
+              <Button variant="outline" onClick={resetImportedListing} disabled={isCachingImages}>
                 Try Different Listing
               </Button>
             </div>
