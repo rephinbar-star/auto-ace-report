@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +15,7 @@ import { Plus, Search, Filter, Car, FileText, TrendingUp, AlertCircle, Scale, X,
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
 
 type VehicleReport = Tables<"vehicle_reports">;
@@ -27,9 +28,9 @@ const TIER_LIMITS = {
 
 function DashboardContent() {
   const { user } = useAuth();
-  const { tier } = useSubscription();
+  const { tier, checkSubscription } = useSubscription();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -44,6 +45,27 @@ function DashboardContent() {
   // Get comparison limit based on tier
   const comparisonLimit = TIER_LIMITS[tier] || 0;
   const canCompare = tier !== "free";
+
+  // Handle checkout success - refresh subscription status
+  useEffect(() => {
+    const checkoutStatus = searchParams.get("checkout");
+    if (checkoutStatus === "success") {
+      // Remove the query param to prevent re-triggering
+      setSearchParams((prev) => {
+        prev.delete("checkout");
+        return prev;
+      });
+      
+      // Refresh subscription status
+      checkSubscription();
+      
+      // Show success toast
+      toast.success("Payment successful! Your subscription is now active.", {
+        description: "You now have access to all premium features.",
+        duration: 5000,
+      });
+    }
+  }, [searchParams, setSearchParams, checkSubscription]);
 
   // Selection handlers
   const handleSelect = (id: string, selected: boolean) => {
@@ -165,7 +187,8 @@ function DashboardContent() {
             <div className="flex items-center gap-3">
               {stats.complete >= 2 && (
                 <Button
-                  variant={selectionMode ? "secondary" : "outline"}
+                  variant={selectionMode ? "secondary" : canCompare ? "default" : "outline"}
+                  className={canCompare && !selectionMode ? "bg-success hover:bg-success/90 text-success-foreground" : ""}
                   onClick={() => {
                     if (!canCompare) {
                       // Free user - redirect to pricing
