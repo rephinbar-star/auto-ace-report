@@ -18,10 +18,14 @@ import {
   Scale, 
   AlertCircle,
   Lock,
+  Download,
+  Loader2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { generateComparisonPDF } from "@/lib/generateComparisonPDF";
+import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
 
 type VehicleReport = Tables<"vehicle_reports">;
@@ -37,6 +41,7 @@ function CompareContent() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { tier, subscribed, isLoading: isSubscriptionLoading } = useSubscription();
+  const [isDownloading, setIsDownloading] = useState(false);
   
   // Get vehicle IDs from URL
   const vehicleIds = useMemo(() => {
@@ -75,6 +80,25 @@ function CompareContent() {
       setSearchParams({});
     } else {
       setSearchParams({ ids: newIds.join(",") });
+    }
+  };
+
+  // Download comparison as PDF
+  const handleDownloadPDF = async () => {
+    if (!vehicles || vehicles.length < 2) {
+      toast.error("Add at least 2 vehicles to download comparison");
+      return;
+    }
+    
+    setIsDownloading(true);
+    try {
+      await generateComparisonPDF({ vehicles });
+      toast.success("Comparison PDF downloaded!");
+    } catch (err) {
+      console.error("PDF generation error:", err);
+      toast.error("Failed to generate PDF");
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -227,14 +251,30 @@ function CompareContent() {
                 </div>
               </div>
             </div>
-            {canAddMore && (
-              <Button asChild>
-                <Link to="/dashboard?select=true">
-                  <Plus className="h-5 w-5 mr-2" />
-                  Add Vehicle
-                </Link>
-              </Button>
-            )}
+            <div className="flex gap-2">
+              {vehicleCount >= 2 && (
+                <Button 
+                  variant="outline" 
+                  onClick={handleDownloadPDF}
+                  disabled={isDownloading}
+                >
+                  {isDownloading ? (
+                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                  ) : (
+                    <Download className="h-5 w-5 mr-2" />
+                  )}
+                  {isDownloading ? "Generating..." : "Download PDF"}
+                </Button>
+              )}
+              {canAddMore && (
+                <Button asChild>
+                  <Link to="/dashboard?select=true">
+                    <Plus className="h-5 w-5 mr-2" />
+                    Add Vehicle
+                  </Link>
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Loading state */}

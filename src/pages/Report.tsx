@@ -49,6 +49,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useSubscription } from "@/hooks/useSubscription";
 import { VehicleImageGallery } from "@/components/report/VehicleImageGallery";
 import { DealerReview } from "@/components/report/DealerReview";
+import { FuelEconomyCard } from "@/components/report/FuelEconomyCard";
 import { generateReportPDF } from "@/lib/generatePDF";
 import { toast as sonnerToast } from "sonner";
 
@@ -639,6 +640,18 @@ export default function ReportPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Fuel Economy & TCO */}
+              <FuelEconomyCard
+                mpgCity={mpgData?.mpgCity ?? null}
+                mpgHighway={mpgData?.mpgHighway ?? null}
+                mpgCombined={mpgData?.mpgCombined ?? null}
+                fuelType={mpgData?.fuelType ?? null}
+                askingPrice={condition.askingPrice}
+                make={vehicle.make}
+                year={vehicle.year}
+                depreciationTable={depreciationTable}
+              />
 
               {/* Depreciation Chart */}
               <Card>
