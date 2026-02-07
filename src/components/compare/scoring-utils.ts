@@ -415,7 +415,9 @@ export function calculateVehicleScore(vehicle: VehicleReport): VehicleScoreResul
     Number(vehicle.asking_price),
     vehicleWithMpg.mpg_combined || null,
     vehicle.fuel_type || null,
-    vehicle.depreciation_table
+    vehicle.depreciation_table,
+    {}, // default config
+    { make: vehicle.make, year: vehicle.year } // for fallback maintenance
   );
   
   return {

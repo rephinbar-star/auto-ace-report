@@ -78,6 +78,95 @@ export function calculateAnnualFuelCost(
   return (annualMiles / effectiveMPG) * gasPricePerGallon;
 }
 
+// Brand reliability tiers for maintenance estimation
+// Based on J.D. Power VDS & Consumer Reports data
+const BRAND_MAINTENANCE_TIER: Record<string, 'low' | 'medium' | 'high'> = {
+  // Low maintenance (Japanese reliability leaders)
+  "Toyota": "low",
+  "Lexus": "low",
+  "Honda": "low",
+  "Acura": "low",
+  "Mazda": "low",
+  
+  // Medium maintenance (solid but more repairs)
+  "Hyundai": "medium",
+  "Kia": "medium",
+  "Genesis": "medium",
+  "Subaru": "medium",
+  "Nissan": "medium",
+  "Ford": "medium",
+  "Chevrolet": "medium",
+  "GMC": "medium",
+  "Buick": "medium",
+  "Volkswagen": "medium",
+  "Volvo": "medium",
+  "Porsche": "medium",
+  
+  // High maintenance (luxury/European brands)
+  "BMW": "high",
+  "Mercedes-Benz": "high",
+  "Audi": "high",
+  "Cadillac": "high",
+  "Lincoln": "high",
+  "Infiniti": "high",
+  "Land Rover": "high",
+  "Jaguar": "high",
+  "Jeep": "high",
+  "Dodge": "high",
+  "Ram": "high",
+  "Chrysler": "high",
+  "Alfa Romeo": "high",
+  "Maserati": "high",
+  "MINI": "high",
+};
+
+// Annual maintenance cost estimates by tier and age bracket
+// Based on AAA and Edmunds TCO data
+const ANNUAL_MAINTENANCE_BY_TIER: Record<'low' | 'medium' | 'high', Record<string, number>> = {
+  low: {
+    "0-3": 400,    // Under warranty, minimal costs
+    "4-6": 650,    // Some wear items
+    "7-10": 900,   // More frequent repairs
+    "11+": 1200,   // Aging components
+  },
+  medium: {
+    "0-3": 550,
+    "4-6": 850,
+    "7-10": 1200,
+    "11+": 1600,
+  },
+  high: {
+    "0-3": 800,
+    "4-6": 1400,
+    "7-10": 2200,
+    "11+": 3000,
+  },
+};
+
+/**
+ * Estimate annual maintenance cost based on make and vehicle age
+ */
+export function estimateAnnualMaintenance(make: string, vehicleAge: number): number {
+  const tier = BRAND_MAINTENANCE_TIER[make] || "medium";
+  const costs = ANNUAL_MAINTENANCE_BY_TIER[tier];
+  
+  if (vehicleAge <= 3) return costs["0-3"];
+  if (vehicleAge <= 6) return costs["4-6"];
+  if (vehicleAge <= 10) return costs["7-10"];
+  return costs["11+"];
+}
+
+/**
+ * Estimate 5-year maintenance costs based on make and starting age
+ */
+export function estimate5YearMaintenance(make: string, currentAge: number): number {
+  let total = 0;
+  for (let i = 0; i < 5; i++) {
+    total += estimateAnnualMaintenance(make, currentAge + i);
+  }
+  return total;
+}
+
 /**
  * Extract 5-year repair costs from depreciation table
  */
@@ -110,7 +199,8 @@ export function calculateTCO(
   mpgCombined: number | null,
   fuelType: string | null,
   depreciationTable: unknown,
-  config: Partial<TCOConfig> = {}
+  config: Partial<TCOConfig> = {},
+  vehicleInfo?: { make: string; year: number }
 ): TCOResult {
   const mergedConfig = { ...DEFAULT_CONFIG, ...config };
   const { yearsToCalculate } = mergedConfig;
@@ -119,8 +209,15 @@ export function calculateTCO(
   const annualFuelCost = calculateAnnualFuelCost(mpgCombined, fuelType, mergedConfig);
   const fuelCost5Year = annualFuelCost * yearsToCalculate;
 
-  // Extract repair costs from depreciation table
-  const repairCost5Year = get5YearRepairCosts(depreciationTable);
+  // Extract repair costs from depreciation table, or estimate if missing
+  let repairCost5Year = get5YearRepairCosts(depreciationTable);
+  
+  // If no repair data in depreciation table, estimate based on make/age
+  if (repairCost5Year === 0 && vehicleInfo) {
+    const currentYear = new Date().getFullYear();
+    const vehicleAge = currentYear - vehicleInfo.year;
+    repairCost5Year = estimate5YearMaintenance(vehicleInfo.make, vehicleAge);
+  }
 
   // Total TCO
   const totalTCO = askingPrice + fuelCost5Year + repairCost5Year;
