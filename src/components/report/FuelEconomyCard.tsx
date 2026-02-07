@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
-import { Fuel, DollarSign, Gauge, TrendingUp, Car } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Fuel, DollarSign, Gauge, TrendingUp, Car, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { 
   calculateTCO, 
@@ -153,8 +154,21 @@ export function FuelEconomyCard({
             </div>
             {(tco.mileageDepreciation ?? 0) > 0 && (
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">
+                <span className="text-sm text-muted-foreground flex items-center gap-1">
                   Excess Mileage Depreciation
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p className="text-sm">
+                          <strong>How it's calculated:</strong> Driving above 12,000 miles/year adds ~$0.18 per excess mile in depreciation. 
+                          This reflects the reduced resale value from higher-than-average mileage accumulation over 5 years.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </span>
                 <span className="font-medium text-warning">
                   +${tco.mileageDepreciation?.toLocaleString()}

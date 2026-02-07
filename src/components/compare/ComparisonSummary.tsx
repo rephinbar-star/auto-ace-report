@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Crown, TrendingUp, Shield, DollarSign, Info, Fuel } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Crown, TrendingUp, Shield, DollarSign, Info, Fuel, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScoreBreakdown } from "./ScoreBreakdown";
 import { FinancialOutlookCard } from "./FinancialOutlookCard";
@@ -244,7 +245,23 @@ export function ComparisonSummary({ vehicles, annualMiles = 12000 }: ComparisonS
                     <th className="text-right py-2 px-1 font-medium text-muted-foreground">Fuel</th>
                     <th className="text-right py-2 px-1 font-medium text-muted-foreground">Repairs</th>
                     {scoredVehicles.some(s => (s.tco?.mileageDepreciation ?? 0) > 0) && (
-                      <th className="text-right py-2 px-1 font-medium text-muted-foreground">Mile Dep.</th>
+                      <th className="text-right py-2 px-1 font-medium text-muted-foreground">
+                        <span className="flex items-center justify-end gap-1">
+                          Mile Dep.
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <HelpCircle className="h-3.5 w-3.5 cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs">
+                                <p className="text-sm">
+                                  <strong>Mileage Depreciation:</strong> Driving above 12,000 miles/year adds ~$0.18 per excess mile in depreciation over 5 years.
+                                </p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </span>
+                      </th>
                     )}
                     <th className="text-right py-2 px-1 font-medium text-muted-foreground">Total TCO</th>
                   </tr>
