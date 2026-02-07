@@ -66,21 +66,14 @@ function ProfileContent() {
     enabled: !!user,
   });
 
-  // Fetch subscription data
-  const { data: subscription } = useQuery({
-    queryKey: ["subscription", user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("subscriptions")
-        .select("*")
-        .eq("user_id", user!.id)
-        .single();
-
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!user,
-  });
+  // Get subscription data from Stripe via the hook
+  const { 
+    tier: subscriptionTier, 
+    subscribed, 
+    subscriptionEnd,
+    isLoading: subscriptionLoading,
+    checkSubscription 
+  } = useSubscription();
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
