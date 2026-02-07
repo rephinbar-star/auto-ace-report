@@ -49,6 +49,7 @@ serve(async (req) => {
     }
 
     const origin = req.headers.get("origin") || "http://localhost:3000";
+    logStep("Using origin for redirect", { origin });
     
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
