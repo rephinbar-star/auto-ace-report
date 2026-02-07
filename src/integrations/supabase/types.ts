@@ -108,6 +108,7 @@ export type Database = {
           history_positives: string[] | null
           id: string
           lease_term_months: number | null
+          listing_images: string[] | null
           listing_url: string | null
           loan_amount: number | null
           loan_term: number | null
@@ -156,6 +157,7 @@ export type Database = {
           history_positives?: string[] | null
           id?: string
           lease_term_months?: number | null
+          listing_images?: string[] | null
           listing_url?: string | null
           loan_amount?: number | null
           loan_term?: number | null
@@ -204,6 +206,7 @@ export type Database = {
           history_positives?: string[] | null
           id?: string
           lease_term_months?: number | null
+          listing_images?: string[] | null
           listing_url?: string | null
           loan_amount?: number | null
           loan_term?: number | null
