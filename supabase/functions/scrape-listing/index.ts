@@ -15,6 +15,7 @@ interface ScrapedVehicle {
   condition?: string;
   vin?: string;
   sellerType?: "dealer" | "private";
+  sellerName?: string;
   images?: string[];
   description?: string;
   features?: string[];
@@ -237,6 +238,7 @@ Source URL: ${formattedUrl}`;
                   askingPrice: { type: "number", description: "Listed price in dollars (no commas)" },
                   vin: { type: "string", description: "17-character VIN if visible" },
                   sellerType: { type: "string", enum: ["dealer", "private"], description: "Whether seller is a dealership or private party" },
+                  sellerName: { type: "string", description: "Name of the dealership if it's a dealer listing (e.g., 'CarMax', 'AutoNation Honda')" },
                   condition: { type: "string", enum: ["excellent", "good", "fair", "poor"], description: "Overall condition assessment" },
                   description: { type: "string", description: "Brief summary of the listing (max 200 chars)" },
                   features: { type: "array", items: { type: "string" }, description: "Notable features mentioned" },

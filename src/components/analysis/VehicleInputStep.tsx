@@ -272,6 +272,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
     if (v.askingPrice) scrapedCondition.askingPrice = v.askingPrice;
     if (v.condition) scrapedCondition.condition = v.condition;
     if (v.sellerType) scrapedCondition.sellerType = v.sellerType;
+    if (v.sellerName) scrapedCondition.sellerName = v.sellerName;
     scrapedCondition.listingUrl = importedListing.sourceUrl;
     
     // Cache images to Lovable Cloud storage for persistence

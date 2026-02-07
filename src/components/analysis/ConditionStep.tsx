@@ -27,6 +27,7 @@ const conditionSchema = z.object({
   askingPrice: z.coerce.number().min(0, "Price must be positive"),
   condition: z.enum(["excellent", "good", "fair", "poor"]),
   sellerType: z.enum(["private", "dealer"]),
+  sellerName: z.string().max(100).optional().or(z.literal("")),
   listingUrl: z.string().url().optional().or(z.literal("")),
 });
 
@@ -45,9 +46,12 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
       askingPrice: initialData?.askingPrice || 0,
       condition: initialData?.condition || "good",
       sellerType: initialData?.sellerType || "dealer",
+      sellerName: initialData?.sellerName || "",
       listingUrl: initialData?.listingUrl || "",
     },
   });
+
+  const watchSellerType = form.watch("sellerType");
 
   const handleSubmit = (data: z.infer<typeof conditionSchema>) => {
     onComplete({
@@ -55,6 +59,7 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
       askingPrice: data.askingPrice,
       condition: data.condition,
       sellerType: data.sellerType,
+      sellerName: data.sellerType === "dealer" ? data.sellerName || undefined : undefined,
       listingUrl: data.listingUrl || undefined,
       images: initialData?.images, // Preserve images from scraped listing
     });
@@ -179,6 +184,29 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
                   )}
                 />
               </div>
+
+              {/* Dealer Name field - shows when seller type is dealer */}
+              {watchSellerType === "dealer" && (
+                <FormField
+                  control={form.control}
+                  name="sellerName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Dealership Name (Optional)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="e.g., ABC Motors, CarMax, AutoNation..." 
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Enter the dealer name for trust analysis (Pro feature).
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <FormField
                 control={form.control}
