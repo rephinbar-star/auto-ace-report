@@ -140,6 +140,27 @@ function CompareContent() {
       .sort((a, b) => b.score - a.score);
   }, [vehicles]);
 
+  // Get loading state from subscription hook
+  const { isLoading: isSubscriptionLoading } = useSubscription();
+
+  // Show loading while checking subscription (prevents flash of upgrade prompt)
+  if (isSubscriptionLoading) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Header />
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4 animate-pulse">
+              <Scale className="h-6 w-6 text-primary" />
+            </div>
+            <p className="text-muted-foreground">Loading comparison...</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   // Show upgrade prompt for free tier
   if (!canCompare) {
     return (
