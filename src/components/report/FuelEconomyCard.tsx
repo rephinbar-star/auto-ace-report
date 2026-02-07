@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
+import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Fuel, DollarSign, Gauge, TrendingUp, Car, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -10,6 +11,9 @@ import {
   calculateMonthlyOwnershipCost,
   type TCOResult 
 } from "@/lib/tco-calculations";
+
+// National average for 89 octane (mid-grade/plus) as of early 2025
+const NATIONAL_AVG_GAS_PRICE = 3.25;
 
 interface FuelEconomyCardProps {
   mpgCity: number | null;
@@ -33,14 +37,16 @@ export function FuelEconomyCard({
   depreciationTable,
 }: FuelEconomyCardProps) {
   const [annualMiles, setAnnualMiles] = useState(12000);
+  const [gasPricePerGallon, setGasPricePerGallon] = useState(NATIONAL_AVG_GAS_PRICE);
+  const [gasPriceInput, setGasPriceInput] = useState(NATIONAL_AVG_GAS_PRICE.toFixed(2));
 
-  // Calculate TCO with user-adjustable mileage
+  // Calculate TCO with user-adjustable mileage and gas price
   const tco = calculateTCO(
     askingPrice,
     mpgCombined,
     fuelType,
     depreciationTable,
-    { annualMiles },
+    { annualMiles, gasPricePerGallon },
     { make, year }
   );
 
@@ -61,6 +67,27 @@ export function FuelEconomyCard({
 
   const handleMileageChange = (value: number[]) => {
     setAnnualMiles(value[0]);
+  };
+
+  const handleGasPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setGasPriceInput(value);
+    
+    const parsed = parseFloat(value);
+    if (!isNaN(parsed) && parsed > 0 && parsed <= 10) {
+      setGasPricePerGallon(parsed);
+    }
+  };
+
+  const handleGasPriceBlur = () => {
+    // Reset to valid value if input is invalid
+    const parsed = parseFloat(gasPriceInput);
+    if (isNaN(parsed) || parsed <= 0 || parsed > 10) {
+      setGasPriceInput(gasPricePerGallon.toFixed(2));
+    } else {
+      setGasPriceInput(parsed.toFixed(2));
+      setGasPricePerGallon(parsed);
+    }
   };
 
   return (
@@ -140,6 +167,41 @@ export function FuelEconomyCard({
         <div>
           <h4 className="text-sm font-medium mb-3">5-Year Total Cost of Ownership</h4>
           <div className="rounded-lg bg-muted/50 p-4 space-y-3">
+            {/* Editable Gas Price */}
+            {!isElectric && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground flex items-center gap-1">
+                  Gas Price (89 octane avg.)
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p className="text-sm">
+                          National average price for 89 octane (mid-grade) gasoline. 
+                          Adjust to match your local fuel prices for more accurate estimates.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </span>
+                <div className="flex items-center gap-1">
+                  <span className="text-sm font-medium">$</span>
+                  <Input
+                    type="number"
+                    value={gasPriceInput}
+                    onChange={handleGasPriceChange}
+                    onBlur={handleGasPriceBlur}
+                    step="0.01"
+                    min="1"
+                    max="10"
+                    className="w-20 h-8 text-right font-medium"
+                  />
+                  <span className="text-sm text-muted-foreground">/gal</span>
+                </div>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Purchase Price</span>
               <span className="font-medium">${tco.purchasePrice.toLocaleString()}</span>
@@ -212,7 +274,7 @@ export function FuelEconomyCard({
         </div>
 
         <p className="text-xs text-muted-foreground">
-          * Based on {annualMiles.toLocaleString()} miles/year, $3.50/gal gas. Maintenance scales with mileage.
+          * Based on {annualMiles.toLocaleString()} miles/year{!isElectric && `, $${gasPricePerGallon.toFixed(2)}/gal gas`}. Maintenance scales with mileage.
           {annualMiles > 12000 && " Excess mileage (above 12k/yr) adds ~$0.18/mi in depreciation."}
         </p>
       </CardContent>
