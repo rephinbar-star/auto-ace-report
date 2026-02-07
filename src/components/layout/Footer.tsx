@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Car } from "lucide-react";
+import { Car, Lightbulb } from "lucide-react";
 
 const footerLinks = {
   product: [
@@ -29,7 +29,10 @@ export function Footer() {
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
                 <Car className="h-5 w-5 text-primary-foreground" />
               </div>
-              <span className="text-xl font-bold">CarWise</span>
+              <div className="flex items-end gap-0">
+                <span className="text-xl font-bold">CarWise</span>
+                <Lightbulb className="h-5 w-5 text-yellow-400 fill-yellow-400 -ml-0.5 mb-0.5 animate-glow-pulse" />
+              </div>
             </Link>
             <p className="mt-4 text-sm text-muted-foreground">
               Expert car buying analysis powered by AI. Get fair price estimates, depreciation forecasts, and risk assessments.
