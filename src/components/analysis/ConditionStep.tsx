@@ -56,6 +56,7 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
       condition: data.condition,
       sellerType: data.sellerType,
       listingUrl: data.listingUrl || undefined,
+      images: initialData?.images, // Preserve images from scraped listing
     });
   };
 
