@@ -340,6 +340,23 @@ export async function generateComparisonPDF(data: ComparisonPDFData): Promise<vo
     });
   }
 
+  // Mileage depreciation footnote (only when excess mileage applies)
+  if (annualMiles > 12000) {
+    yPosition += 5;
+    pdf.setFontSize(8);
+    pdf.setTextColor(100, 100, 100);
+    const footnoteText = `* Mileage Depreciation: Driving above 12,000 miles/year adds ~$0.18 per excess mile in depreciation over 5 years, reflecting reduced resale value from higher-than-average mileage.`;
+    const footnoteLines = pdf.splitTextToSize(footnoteText, pageWidth - 2 * margin);
+    
+    if (yPosition + footnoteLines.length * 3.5 > pageHeight - 15) {
+      pdf.addPage();
+      yPosition = margin;
+    }
+    
+    pdf.text(footnoteLines, margin, yPosition);
+    yPosition += footnoteLines.length * 3.5 + 3;
+  }
+
   // Footer
   const footerY = pageHeight - 10;
   pdf.setFontSize(8);
