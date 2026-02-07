@@ -289,6 +289,14 @@ export default function ReportPage() {
             },
           });
           
+          // Load MPG data from saved report
+          setMpgData({
+            mpgCity: report.mpg_city,
+            mpgHighway: report.mpg_highway,
+            mpgCombined: report.mpg_combined,
+            fuelType: report.fuel_type,
+          });
+          
           setIsLoading(false);
           return;
         } catch (err) {
