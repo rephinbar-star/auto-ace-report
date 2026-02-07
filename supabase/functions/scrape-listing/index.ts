@@ -52,6 +52,9 @@ serve(async (req) => {
     }
 
     console.log("Scraping listing URL:", formattedUrl);
+    
+    // Detect if this is a Bring a Trailer listing
+    const isBringATrailer = formattedUrl.includes("bringatrailer.com");
 
     // First, scrape the page with Firecrawl - include links to extract images
     const scrapeResponse = await fetch("https://api.firecrawl.dev/v1/scrape", {
@@ -64,7 +67,7 @@ serve(async (req) => {
         url: formattedUrl,
         formats: ["markdown", "html", "links"],
         onlyMainContent: false, // Include full page to capture image gallery
-        waitFor: 2000,
+        waitFor: isBringATrailer ? 3000 : 2000, // BAT needs more time to load
       }),
     });
 
@@ -83,11 +86,74 @@ serve(async (req) => {
     const metadata = scrapeData.data?.metadata || scrapeData.metadata || {};
     
     // Extract vehicle images from the HTML content
-    const extractVehicleImages = (htmlContent: string, pageUrl: string): string[] => {
+    const extractVehicleImages = (htmlContent: string, pageUrl: string, isBat: boolean): string[] => {
       const images: string[] = [];
       const seenUrls = new Set<string>();
       
-      // Common patterns for vehicle listing images
+      // Bring a Trailer specific image patterns
+      if (isBat) {
+        // BAT uses specific image patterns in their gallery
+        const batPatterns = [
+          // BAT CDN images (high quality)
+          /https:\/\/bringatrailer\.com\/wp-content\/uploads\/[^"'\s)]+\.(jpg|jpeg|png|webp)/gi,
+          // BAT media CDN
+          /https:\/\/media\.bringatrailer\.com\/[^"'\s)]+\.(jpg|jpeg|png|webp)/gi,
+          // WordPress uploads
+          /https?:\/\/[^"'\s)]*wp-content\/uploads\/[^"'\s)]+\.(jpg|jpeg|png|webp)/gi,
+        ];
+        
+        for (const pattern of batPatterns) {
+          let match;
+          while ((match = pattern.exec(htmlContent)) !== null) {
+            let imgUrl = match[0];
+            
+            // Skip thumbnails and small versions
+            if (imgUrl.includes('-150x') || imgUrl.includes('-300x') || 
+                imgUrl.includes('-768x') || imgUrl.includes('-scaled')) {
+              // Try to get the full size version
+              imgUrl = imgUrl.replace(/-\d+x\d+/, '').replace('-scaled', '');
+            }
+            
+            if (!seenUrls.has(imgUrl) && imgUrl.length > 30) {
+              seenUrls.add(imgUrl);
+              images.push(imgUrl);
+            }
+          }
+        }
+        
+        // Also look for data-full attributes which BAT uses for gallery
+        const dataFullPattern = /data-full=["']([^"']+)["']/gi;
+        let dataMatch;
+        while ((dataMatch = dataFullPattern.exec(htmlContent)) !== null) {
+          const imgUrl = dataMatch[1];
+          if (!seenUrls.has(imgUrl) && imgUrl.includes('bringatrailer')) {
+            seenUrls.add(imgUrl);
+            images.push(imgUrl);
+          }
+        }
+        
+        // Look for srcset high-res images
+        const srcsetPattern = /srcset=["']([^"']+)["']/gi;
+        let srcMatch;
+        while ((srcMatch = srcsetPattern.exec(htmlContent)) !== null) {
+          const srcset = srcMatch[1];
+          const srcUrls = srcset.split(',').map(s => s.trim().split(' ')[0]);
+          for (const url of srcUrls) {
+            if (url.includes('bringatrailer') && !seenUrls.has(url)) {
+              // Get highest resolution
+              if (url.includes('1920') || url.includes('1600') || url.includes('1200') || !url.match(/-\d+x\d+/)) {
+                seenUrls.add(url);
+                images.push(url);
+              }
+            }
+          }
+        }
+        
+        // Limit BAT to first 15 images (they often have many)
+        return images.slice(0, 15);
+      }
+      
+      // Standard patterns for other sites
       const imgPatterns = [
         // Standard img tags with src
         /<img[^>]+src=["']([^"']+)["'][^>]*>/gi,
@@ -180,7 +246,7 @@ serve(async (req) => {
       return images.slice(0, 10);
     };
     
-    const extractedImages = extractVehicleImages(html, formattedUrl);
+    const extractedImages = extractVehicleImages(html, formattedUrl, isBringATrailer);
     console.log(`Extracted ${extractedImages.length} vehicle images`);
 
     // Now use AI to extract structured vehicle data from the scraped content
@@ -198,10 +264,21 @@ serve(async (req) => {
       );
     }
 
-    const extractionPrompt = `Extract vehicle listing information from this car listing content. Return ONLY the structured data, no explanations.
+    // Special extraction prompt for Bring a Trailer
+    const batExtractionHint = isBringATrailer ? `
+This is a Bring a Trailer (BaT) auction listing. Key patterns:
+- Title format is usually: "Year Make Model Trim" (e.g., "2019 Porsche 911 GT3 RS")
+- Current bid or "Sold for" price in the sidebar or header
+- Mileage is often listed as "~XX,XXX Miles" in the title or specs
+- VIN is in the vehicle details section
+- Seller type is usually "private" (individual sellers) unless noted as dealer consignment
+- Look for "Current Bid", "Buy Now Price", or "Sold for" for the price
+` : '';
 
+    const extractionPrompt = `Extract vehicle listing information from this car listing content. Return ONLY the structured data, no explanations.
+${batExtractionHint}
 Content:
-${markdown.slice(0, 8000)}
+${markdown.slice(0, 10000)}
 
 Page Title: ${metadata.title || "Unknown"}
 Source URL: ${formattedUrl}`;
@@ -217,7 +294,7 @@ Source URL: ${formattedUrl}`;
         messages: [
           {
             role: "system",
-            content: `You are a vehicle listing data extractor. Extract structured vehicle information from car listing pages. Be precise with numbers and identify the seller type based on context (dealerships mention things like "certified", "warranty", dealer name, etc.).`
+            content: `You are a vehicle listing data extractor. Extract structured vehicle information from car listing pages. Be precise with numbers and identify the seller type based on context (dealerships mention things like "certified", "warranty", dealer name, etc.). For auction sites like Bring a Trailer, the price is the current bid or final sale price. Parse the title carefully - it usually contains year, make, model in that order.`
           },
           { role: "user", content: extractionPrompt }
         ],
@@ -230,15 +307,15 @@ Source URL: ${formattedUrl}`;
               parameters: {
                 type: "object",
                 properties: {
-                  year: { type: "number", description: "Model year of the vehicle" },
-                  make: { type: "string", description: "Vehicle manufacturer (e.g., Toyota, Honda)" },
-                  model: { type: "string", description: "Vehicle model name" },
-                  trim: { type: "string", description: "Trim level (e.g., XLE, Sport, Limited)" },
-                  mileage: { type: "number", description: "Odometer reading in miles" },
-                  askingPrice: { type: "number", description: "Listed price in dollars (no commas)" },
+                  year: { type: "number", description: "Model year of the vehicle (4 digit year like 2019)" },
+                  make: { type: "string", description: "Vehicle manufacturer (e.g., Toyota, Honda, Porsche, BMW)" },
+                  model: { type: "string", description: "Vehicle model name (e.g., Camry, Civic, 911, M3)" },
+                  trim: { type: "string", description: "Trim level (e.g., XLE, Sport, GT3 RS, Competition)" },
+                  mileage: { type: "number", description: "Odometer reading in miles (just the number, no commas)" },
+                  askingPrice: { type: "number", description: "Listed price, current bid, or sold price in dollars (just the number, no commas or $)" },
                   vin: { type: "string", description: "17-character VIN if visible" },
                   sellerType: { type: "string", enum: ["dealer", "private"], description: "Whether seller is a dealership or private party" },
-                  sellerName: { type: "string", description: "Name of the dealership if it's a dealer listing (e.g., 'CarMax', 'AutoNation Honda')" },
+                  sellerName: { type: "string", description: "Name of the dealership if it's a dealer listing" },
                   condition: { type: "string", enum: ["excellent", "good", "fair", "poor"], description: "Overall condition assessment" },
                   description: { type: "string", description: "Brief summary of the listing (max 200 chars)" },
                   features: { type: "array", items: { type: "string" }, description: "Notable features mentioned" },
