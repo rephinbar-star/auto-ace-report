@@ -12,6 +12,7 @@ export interface TCOResult {
   purchasePrice: number;
   fuelCost5Year: number;
   repairCost5Year: number;
+  mileageDepreciation?: number; // Additional depreciation from excess mileage
   totalTCO: number;
   annualFuelCost: number;
   costPerMile: number;
@@ -19,6 +20,7 @@ export interface TCOResult {
     purchase: number;
     fuel: number;
     repairs: number;
+    mileageDepreciation?: number;
   };
 }
 
@@ -37,6 +39,36 @@ const DEFAULT_CONFIG: TCOConfig = {
   electricityPerKwh: 0.15,
   yearsToCalculate: 5,
 };
+
+// Standard baseline for mileage adjustments
+const BASELINE_ANNUAL_MILES = 12000;
+
+/**
+ * Calculate mileage adjustment factor for maintenance costs
+ * Higher mileage = more wear = higher maintenance costs
+ * Uses a slightly non-linear scale (mileage^0.85) to reflect economies of scale
+ */
+export function getMileageMaintenanceMultiplier(annualMiles: number): number {
+  const ratio = annualMiles / BASELINE_ANNUAL_MILES;
+  // Use power of 0.85 for slight diminishing returns at very high mileage
+  return Math.pow(ratio, 0.85);
+}
+
+/**
+ * Calculate additional depreciation due to excess mileage
+ * Standard assumption: 12,000 miles/year
+ * Excess mileage costs approximately $0.15-0.25 per mile in additional depreciation
+ */
+export function calculateMileageDepreciationAdjustment(
+  annualMiles: number,
+  yearsToCalculate: number = 5
+): number {
+  const excessMilesPerYear = Math.max(0, annualMiles - BASELINE_ANNUAL_MILES);
+  const totalExcessMiles = excessMilesPerYear * yearsToCalculate;
+  // ~$0.18 per excess mile in depreciation (industry average)
+  const DEPRECIATION_PER_EXCESS_MILE = 0.18;
+  return Math.round(totalExcessMiles * DEPRECIATION_PER_EXCESS_MILE);
+}
 
 // Depreciation table row type
 interface DepreciationRow {
@@ -193,6 +225,7 @@ export function get5YearRepairCosts(depreciationTable: unknown): number {
 
 /**
  * Calculate Total Cost of Ownership (TCO) for a vehicle
+ * Now includes mileage-based adjustments for maintenance and depreciation
  */
 export function calculateTCO(
   askingPrice: number,
@@ -203,27 +236,34 @@ export function calculateTCO(
   vehicleInfo?: { make: string; year: number }
 ): TCOResult {
   const mergedConfig = { ...DEFAULT_CONFIG, ...config };
-  const { yearsToCalculate } = mergedConfig;
+  const { yearsToCalculate, annualMiles } = mergedConfig;
 
-  // Calculate fuel costs
+  // Calculate fuel costs (already uses annualMiles)
   const annualFuelCost = calculateAnnualFuelCost(mpgCombined, fuelType, mergedConfig);
   const fuelCost5Year = annualFuelCost * yearsToCalculate;
 
-  // Extract repair costs from depreciation table, or estimate if missing
-  let repairCost5Year = get5YearRepairCosts(depreciationTable);
+  // Extract base repair costs from depreciation table, or estimate if missing
+  let baseRepairCost5Year = get5YearRepairCosts(depreciationTable);
   
   // If no repair data in depreciation table, estimate based on make/age
-  if (repairCost5Year === 0 && vehicleInfo) {
+  if (baseRepairCost5Year === 0 && vehicleInfo) {
     const currentYear = new Date().getFullYear();
     const vehicleAge = currentYear - vehicleInfo.year;
-    repairCost5Year = estimate5YearMaintenance(vehicleInfo.make, vehicleAge);
+    baseRepairCost5Year = estimate5YearMaintenance(vehicleInfo.make, vehicleAge);
   }
 
-  // Total TCO
-  const totalTCO = askingPrice + fuelCost5Year + repairCost5Year;
+  // Apply mileage multiplier to maintenance/repair costs
+  const mileageMultiplier = getMileageMaintenanceMultiplier(annualMiles);
+  const repairCost5Year = baseRepairCost5Year * mileageMultiplier;
+
+  // Calculate additional depreciation for excess mileage
+  const mileageDepreciation = calculateMileageDepreciationAdjustment(annualMiles, yearsToCalculate);
+
+  // Total TCO includes purchase + fuel + repairs + mileage depreciation
+  const totalTCO = askingPrice + fuelCost5Year + repairCost5Year + mileageDepreciation;
 
   // Cost per mile (over 5 years)
-  const totalMiles = mergedConfig.annualMiles * yearsToCalculate;
+  const totalMiles = annualMiles * yearsToCalculate;
   const costPerMile = totalTCO / totalMiles;
 
   return {
@@ -232,11 +272,13 @@ export function calculateTCO(
     repairCost5Year: Math.round(repairCost5Year),
     totalTCO: Math.round(totalTCO),
     annualFuelCost: Math.round(annualFuelCost),
-    costPerMile: Math.round(costPerMile * 100) / 100, // 2 decimal places
+    costPerMile: Math.round(costPerMile * 100) / 100,
+    mileageDepreciation: Math.round(mileageDepreciation), // New field
     breakdown: {
       purchase: askingPrice,
       fuel: Math.round(fuelCost5Year),
       repairs: Math.round(repairCost5Year),
+      mileageDepreciation: Math.round(mileageDepreciation), // New field
     },
   };
 }

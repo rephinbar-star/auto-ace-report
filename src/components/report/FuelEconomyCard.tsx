@@ -151,6 +151,16 @@ export function FuelEconomyCard({
               <span className="text-sm text-muted-foreground">Est. Maintenance (5 yr)</span>
               <span className="font-medium">${tco.repairCost5Year.toLocaleString()}</span>
             </div>
+            {(tco.mileageDepreciation ?? 0) > 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">
+                  Excess Mileage Depreciation
+                </span>
+                <span className="font-medium text-warning">
+                  +${tco.mileageDepreciation?.toLocaleString()}
+                </span>
+              </div>
+            )}
             <div className="border-t pt-3 flex items-center justify-between">
               <span className="font-semibold">Total 5-Year Cost</span>
               <span className="text-lg font-bold text-primary">${tco.totalTCO.toLocaleString()}</span>
@@ -188,7 +198,8 @@ export function FuelEconomyCard({
         </div>
 
         <p className="text-xs text-muted-foreground">
-          * Based on {annualMiles.toLocaleString()} miles/year, $3.50/gal gas. Maintenance estimated from industry data for {make} vehicles.
+          * Based on {annualMiles.toLocaleString()} miles/year, $3.50/gal gas. Maintenance scales with mileage.
+          {annualMiles > 12000 && " Excess mileage (above 12k/yr) adds ~$0.18/mi in depreciation."}
         </p>
       </CardContent>
     </Card>
