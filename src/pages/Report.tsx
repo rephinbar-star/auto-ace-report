@@ -41,7 +41,9 @@ import {
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useSubscription } from "@/hooks/useSubscription";
 import { VehicleImageGallery } from "@/components/report/VehicleImageGallery";
+import { DealerReview } from "@/components/report/DealerReview";
 import { generateReportPDF } from "@/lib/generatePDF";
 import { toast as sonnerToast } from "sonner";
 
@@ -82,6 +84,8 @@ interface Analysis {
 export default function ReportPage() {
   const { id } = useParams();
   const { toast } = useToast();
+  const { tier } = useSubscription();
+  const isPro = tier === "pro";
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
@@ -498,6 +502,14 @@ export default function ReportPage() {
                   listingUrl={condition.listingUrl}
                 />
               )}
+
+              {/* Dealer Trust Analysis - Pro Feature */}
+              <DealerReview
+                dealerName={condition?.sellerName}
+                listingUrl={condition?.listingUrl}
+                sellerType={condition?.sellerType}
+                isPro={isPro}
+              />
 
               {/* Vehicle Health Score */}
               <Card>
