@@ -12,14 +12,15 @@ type VehicleReport = Tables<"vehicle_reports">;
 
 interface ComparisonSummaryProps {
   vehicles: VehicleReport[];
+  annualMiles?: number;
 }
 
-export function ComparisonSummary({ vehicles }: ComparisonSummaryProps) {
+export function ComparisonSummary({ vehicles, annualMiles = 12000 }: ComparisonSummaryProps) {
   const analysis = useMemo(() => {
     if (vehicles.length === 0) return null;
 
-    // Use the new research-backed scoring algorithm
-    const scoredVehicles = scoreAndRankVehicles(vehicles);
+    // Use the new research-backed scoring algorithm with mileage config
+    const scoredVehicles = scoreAndRankVehicles(vehicles, { annualMiles });
     
     const bestBuy = scoredVehicles[0];
     const others = scoredVehicles.slice(1);
@@ -106,7 +107,7 @@ export function ComparisonSummary({ vehicles }: ComparisonSummaryProps) {
       lowestTCO,
       recommendation,
     };
-  }, [vehicles]);
+  }, [vehicles, annualMiles]);
 
   if (!analysis || vehicles.length < 2) {
     return (
@@ -225,14 +226,14 @@ export function ComparisonSummary({ vehicles }: ComparisonSummaryProps) {
         {/* Score Breakdown */}
         <ScoreBreakdown scoredVehicles={scoredVehicles} />
 
-        {/* 5-Year Financial Outlook Card - NEW */}
-        <FinancialOutlookCard scoredVehicles={scoredVehicles} />
+        {/* 5-Year Financial Outlook Card */}
+        <FinancialOutlookCard scoredVehicles={scoredVehicles} annualMiles={annualMiles} />
 
         {/* TCO Comparison Table */}
         {scoredVehicles.some(s => s.tco) && (
           <div className="space-y-2">
             <h4 className="font-semibold text-sm flex items-center gap-2">
-              ⛽ Total Cost of Ownership (5 Years)
+              ⛽ Total Cost of Ownership (5 Years @ {annualMiles.toLocaleString()} mi/yr)
             </h4>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -242,12 +243,16 @@ export function ComparisonSummary({ vehicles }: ComparisonSummaryProps) {
                     <th className="text-right py-2 px-1 font-medium text-muted-foreground">Purchase</th>
                     <th className="text-right py-2 px-1 font-medium text-muted-foreground">Fuel</th>
                     <th className="text-right py-2 px-1 font-medium text-muted-foreground">Repairs</th>
+                    {scoredVehicles.some(s => (s.tco?.mileageDepreciation ?? 0) > 0) && (
+                      <th className="text-right py-2 px-1 font-medium text-muted-foreground">Mile Dep.</th>
+                    )}
                     <th className="text-right py-2 px-1 font-medium text-muted-foreground">Total TCO</th>
                   </tr>
                 </thead>
                 <tbody>
                   {scoredVehicles.map((scored, index) => {
                     const isLowestTCO = lowestTCO?.vehicle.id === scored.vehicle.id;
+                    const hasMileageDepreciation = scoredVehicles.some(s => (s.tco?.mileageDepreciation ?? 0) > 0);
                     return (
                       <tr 
                         key={scored.vehicle.id} 
@@ -273,6 +278,11 @@ export function ComparisonSummary({ vehicles }: ComparisonSummaryProps) {
                         <td className="text-right py-2 px-1">
                           {scored.tco ? `$${scored.tco.repairCost5Year.toLocaleString()}` : "—"}
                         </td>
+                        {hasMileageDepreciation && (
+                          <td className="text-right py-2 px-1 text-warning">
+                            {scored.tco?.mileageDepreciation ? `+$${scored.tco.mileageDepreciation.toLocaleString()}` : "—"}
+                          </td>
+                        )}
                         <td className={cn(
                           "text-right py-2 px-1 font-bold",
                           isLowestTCO ? "text-success" : ""
@@ -287,7 +297,7 @@ export function ComparisonSummary({ vehicles }: ComparisonSummaryProps) {
             </div>
             {lowestTCO?.tco && scoredVehicles.length > 1 && (
               <p className="text-xs text-muted-foreground">
-                💡 <strong>{lowestTCO.vehicle.year} {lowestTCO.vehicle.make} {lowestTCO.vehicle.model}</strong> has the lowest 5-year ownership cost.
+                💡 <strong>{lowestTCO.vehicle.year} {lowestTCO.vehicle.make} {lowestTCO.vehicle.model}</strong> has the lowest 5-year ownership cost at {annualMiles.toLocaleString()} miles/year.
                 {(() => {
                   const highestTCO = Math.max(...scoredVehicles.map(s => s.tco?.totalTCO || 0));
                   const savings = highestTCO - lowestTCO.tco.totalTCO;

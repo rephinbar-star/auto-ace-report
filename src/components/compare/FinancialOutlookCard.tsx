@@ -8,9 +8,10 @@ import { calculateMonthlyOwnershipCost } from "@/lib/tco-calculations";
 
 interface FinancialOutlookCardProps {
   scoredVehicles: VehicleScoreResult[];
+  annualMiles?: number;
 }
 
-export function FinancialOutlookCard({ scoredVehicles }: FinancialOutlookCardProps) {
+export function FinancialOutlookCard({ scoredVehicles, annualMiles = 12000 }: FinancialOutlookCardProps) {
   const financialData = useMemo(() => {
     if (scoredVehicles.length < 2) return null;
 
