@@ -163,10 +163,15 @@ function DashboardContent() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              {canCompare && stats.complete >= 2 && (
+              {stats.complete >= 2 && (
                 <Button
                   variant={selectionMode ? "secondary" : "outline"}
                   onClick={() => {
+                    if (!canCompare) {
+                      // Free user - redirect to pricing
+                      navigate("/pricing");
+                      return;
+                    }
                     setSelectionMode(!selectionMode);
                     if (selectionMode) setSelectedIds(new Set());
                   }}
