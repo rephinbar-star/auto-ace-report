@@ -1,237 +1,83 @@
 
-# Add Total Cost of Ownership (TCO) to Vehicle Comparison
+
+# Plan: Factor in 5-Year Depreciation & TCO into Comparison Verdict
 
 ## Overview
+The current comparison verdict identifies a "Best Buy" and shows TCO/depreciation data, but it doesn't deeply integrate these financial projections into the recommendation narrative or "Why Not the Others?" explanations. This plan enhances the verdict to highlight **long-term ownership cost differences** and **equity position** as key decision factors.
 
-This plan adds Total Cost of Ownership (TCO) analysis to the vehicle comparison feature, incorporating fuel economy (MPG) data and repair/maintenance costs to help users make more informed purchasing decisions.
+## What Will Change
 
-## What TCO Includes
+### 1. Enhanced Verdict Recommendation
+The main recommendation text will now include:
+- **5-year TCO savings** comparison (e.g., "Saves $4,200 over 5 years compared to alternatives")
+- **Equity position** at year 5 (e.g., "Projects $3,500 positive equity vs $2,100 underwater for the runner-up")
+- Specific cost breakdown highlights when relevant
 
-TCO compares the true cost of owning each vehicle over 5 years:
-- **Purchase Price**: The asking price of the vehicle
-- **5-Year Fuel Costs**: Based on EPA MPG data and estimated annual driving
-- **5-Year Repair/Maintenance Costs**: Already calculated in the depreciation table
+### 2. "Why Not the Others?" Depreciation & TCO Reasons
+Add new explanations that help buyers understand financial trade-offs:
+- **Higher TCO**: "This vehicle costs **$X more to own over 5 years** due to higher fuel costs ($Y/year) and projected repairs ($Z)"
+- **Worse Equity Position**: "Projects **$X negative equity at year 5** — you'd owe more than the car is worth, making it harder to trade in or sell"
+- **Higher Depreciation Rate**: "Depreciates faster, losing more value in the first 5 years compared to the winner"
 
-## Implementation Phases
+### 3. New "Financial Outlook" Summary Card
+Add a focused section comparing the financial futures of the vehicles:
+- 5-year equity position for each vehicle (side-by-side)
+- Monthly cost comparison (fuel + prorated repairs)
+- "True cost to own" difference highlighted
 
-### Phase 1: Database Schema Update
+### 4. Improved TCO Insight Text
+Enhance the existing TCO table footnote to explain:
+- What contributes to TCO differences (fuel efficiency, repair projections)
+- The real-world impact of the savings (e.g., "$X/month difference")
 
-Add MPG fields to store fuel economy data:
+---
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `mpg_city` | integer | City fuel economy (EPA) |
-| `mpg_highway` | integer | Highway fuel economy (EPA) |
-| `mpg_combined` | integer | Combined fuel economy (EPA) |
+## Technical Implementation
 
-### Phase 2: EPA Fuel Economy API Integration
+### File Changes
 
-Create a new edge function to fetch MPG data from the free FuelEconomy.gov API:
+**1. `src/components/compare/scoring-utils.ts`**
+- Update `generateWhyNotReasons()` to add TCO and depreciation-based explanations
+- Add helper functions to compare TCO components (fuel, repairs) between vehicles
+- Add equity position comparison logic
 
-**API Flow:**
-1. Look up vehicle by year/make/model
-2. Return city, highway, and combined MPG values
-3. Store in vehicle_reports table during analysis
+**2. `src/components/compare/ComparisonSummary.tsx`**
+- Enhance the recommendation text to include TCO savings and equity projections
+- Add a new "5-Year Financial Outlook" comparison card before the TCO table
+- Show monthly cost difference between best buy and alternatives
+- Improve the insight text below the TCO table to highlight actionable differences
 
-**API Endpoints Used:**
-- `/ws/rest/vehicle/menu/year` - Get available years
-- `/ws/rest/vehicle/menu/make?year=YYYY` - Get makes for year  
-- `/ws/rest/vehicle/menu/model?year=YYYY&make=XXX` - Get models
-- `/ws/rest/vehicle/{id}` - Get vehicle details including MPG
+**3. `src/lib/tco-calculations.ts`** (minor)
+- Add a helper to calculate monthly ownership cost for comparison display
 
-### Phase 3: TCO Calculation Logic
+---
 
-Add TCO calculation utilities with configurable assumptions:
+## Example Output
 
-**Default Assumptions:**
-| Factor | Value | Notes |
-|--------|-------|-------|
-| Annual miles | 12,000 | Industry average |
-| Gas price | $3.50/gal | National average |
-| Diesel price | $4.00/gal | National average |
-| Electricity | $0.15/kWh | For EVs |
-| Analysis period | 5 years | Match depreciation table |
+### Enhanced Verdict Text
+> The **2021 Toyota Camry** scores **87/100** in our comprehensive analysis, excelling in clean title, clean accident history, and lowest total ownership cost. **Over 5 years, you'll save $4,850** compared to the BMW 750i in fuel and repairs. The Camry also projects **$3,200 positive equity at year 5**, while competitors project negative equity.
 
-**Formulas:**
+### New "Why Not" Reasons
+> **2016 BMW 750i** (#3, 62/100)
+> - Costs **$4,850 more to own over 5 years** due to higher fuel costs ($1,260/year vs $795/year) and projected repairs ($6,500 vs $2,100)
+> - Projects **$8,200 negative equity at year 5** — you'd owe significantly more than the car is worth
+> - Has a **rebuilt title**, reducing resale value by 20-40%
+
+### New Financial Outlook Card
 ```text
-Annual Fuel Cost = (Annual Miles / Combined MPG) x Fuel Price
-5-Year Fuel Cost = Annual Fuel Cost x 5
-
-5-Year Repair Cost = Sum of repairCosts from depreciation table (years 1-5)
-
-Total TCO = Purchase Price + 5-Year Fuel Cost + 5-Year Repair Cost
+┌─────────────────────────────────────────────────────────┐
+│  📊 5-Year Financial Outlook                            │
+├─────────────────────────────────────────────────────────┤
+│                  Camry     Accord      BMW 750i         │
+│  Year 5 Equity   +$3,200   +$1,800    -$8,200          │
+│  Monthly Cost    $198      $212       $385              │
+│  Total Savings   —         -$840      -$11,220         │
+└─────────────────────────────────────────────────────────┘
+   ✓ Camry has the best long-term financial position
 ```
-
-### Phase 4: Scoring Algorithm Update
-
-Add TCO as a new scoring category (or enhance existing equity scoring):
-
-**Option A: Separate TCO Category (Recommended)**
-- Rebalance weights to add 10-point TCO category
-- Score based on relative TCO among compared vehicles
-- Lower TCO = Higher score
-
-**Option B: Enhance 5-Year Equity**
-- Integrate fuel costs into existing equity calculation
-- Modify net equity formula to include cumulative fuel costs
-
-### Phase 5: UI Updates
-
-#### ComparisonSummary Component
-Add new "TCO Comparison" section showing:
-- Total 5-year cost for each vehicle
-- Breakdown: Purchase + Fuel + Repairs
-- "Lowest TCO" quick stat card
-- Savings comparison vs highest TCO vehicle
-
-#### CompareVehicleCard Component  
-Add to specifications section:
-- MPG (city/highway/combined)
-- Estimated annual fuel cost
-- 5-year repair cost total
-
-#### ScoreBreakdown Component
-Add TCO category with tooltip explaining:
-- How fuel costs are calculated
-- Source of MPG data (EPA)
-- Repair cost assumptions
-
----
-
-## Technical Details
-
-### New Edge Function: `lookup-mpg/index.ts`
-
-```typescript
-// Fetches MPG data from FuelEconomy.gov API
-// Input: { year, make, model }
-// Output: { mpgCity, mpgHighway, mpgCombined, fuelType }
-```
-
-### New Utility: `src/lib/tco-calculations.ts`
-
-```typescript
-interface TCOConfig {
-  annualMiles: number;      // Default: 12000
-  gasPricePerGallon: number; // Default: 3.50
-  yearsToCalculate: number;  // Default: 5
-}
-
-interface TCOResult {
-  purchasePrice: number;
-  fuelCost5Year: number;
-  repairCost5Year: number;
-  totalTCO: number;
-  annualFuelCost: number;
-  costPerMile: number;
-}
-
-function calculateTCO(
-  askingPrice: number,
-  mpgCombined: number,
-  depreciationTable: DepreciationYear[],
-  config?: Partial<TCOConfig>
-): TCOResult
-```
-
-### Updated Scoring Utils
-
-```typescript
-// New function in scoring-utils.ts
-export function calculateTCOScore(
-  vehicleTCO: number,
-  allVehicleTCOs: number[]
-): ScoreBreakdownItem {
-  // Score based on percentile ranking
-  // Lowest TCO gets max points (10)
-  // Highest TCO gets min points (2)
-}
-```
-
-### Database Migration
-
-```sql
-ALTER TABLE vehicle_reports 
-ADD COLUMN mpg_city integer,
-ADD COLUMN mpg_highway integer,
-ADD COLUMN mpg_combined integer;
-```
-
----
-
-## UI Mockup
-
-### TCO Comparison Section (in ComparisonSummary)
-
-```text
-+--------------------------------------------------+
-| Total Cost of Ownership (5 Years)                |
-+--------------------------------------------------+
-| Vehicle          | Purchase | Fuel   | Repairs | TCO      |
-|------------------|----------|--------|---------|----------|
-| 2021 Toyota      | $24,000  | $8,750 | $2,100  | $34,850  |
-| 2020 Honda       | $26,995  | $9,100 | $1,800  | $37,895  |
-| 2016 BMW         | $18,500  | $12,600| $8,500  | $39,600  |
-+--------------------------------------------------+
-| Lowest TCO: Toyota Camry saves $4,750 over 5 years
-+--------------------------------------------------+
-```
-
-### Quick Stats Addition
-
-Add "Lowest TCO" card alongside existing:
-- Lowest Price
-- Lowest Mileage  
-- Lowest Risk
-- **Lowest TCO (NEW)**
-
----
-
-## Files to Create
-
-| File | Purpose |
-|------|---------|
-| `supabase/functions/lookup-mpg/index.ts` | EPA API integration |
-| `src/lib/tco-calculations.ts` | TCO calculation utilities |
-
-## Files to Modify
-
-| File | Changes |
-|------|---------|
-| `src/components/compare/scoring-utils.ts` | Add TCO scoring function |
-| `src/components/compare/ComparisonSummary.tsx` | Add TCO comparison table |
-| `src/components/compare/CompareVehicleCard.tsx` | Show MPG and fuel costs |
-| `src/components/compare/ScoreBreakdown.tsx` | Add TCO category and tooltip |
-| `supabase/functions/analyze-vehicle/index.ts` | Call MPG lookup, store results |
-
----
-
-## Edge Cases
-
-1. **Missing MPG Data**: Some older/rare vehicles may not have EPA data
-   - Fallback: Use average MPG for vehicle class (sedan: 28, SUV: 22, truck: 18)
-   - Display "Estimated" badge when using fallback
-
-2. **Electric Vehicles**: Different fuel cost calculation
-   - Use kWh/100mi efficiency rating
-   - Calculate based on electricity cost instead of gas
-
-3. **Hybrid Vehicles**: May have both MPG and electric range
-   - Use combined MPG rating from EPA
-   - Note hybrid status in UI
-
-4. **No Depreciation Table**: Some reports may lack repair data
-   - Use industry average repair costs by make/age
-   - Display "Estimated" badge
 
 ---
 
 ## Summary
+This enhancement makes the comparison verdict more actionable by clearly showing buyers **how much they'll save** and **where they'll stand financially** after 5 years — not just which car scored highest. The "Why Not" section will educate buyers on the real costs of choosing a different vehicle.
 
-This enhancement adds significant value to vehicle comparisons by showing the true cost of ownership, not just the purchase price. A vehicle with a lower sticker price might actually cost more over 5 years due to poor fuel economy or high maintenance costs.
-
-**Key Benefits:**
-- Helps users see beyond the sticker price
-- Uses authoritative EPA fuel economy data
-- Leverages existing repair cost projections
-- Integrates seamlessly with current scoring system
