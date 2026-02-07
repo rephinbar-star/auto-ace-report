@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Fuel, DollarSign, Gauge, TrendingUp } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { Fuel, DollarSign, Gauge, TrendingUp, Car } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { 
   calculateTCO, 
@@ -29,13 +31,15 @@ export function FuelEconomyCard({
   year,
   depreciationTable,
 }: FuelEconomyCardProps) {
-  // Calculate TCO
+  const [annualMiles, setAnnualMiles] = useState(12000);
+
+  // Calculate TCO with user-adjustable mileage
   const tco = calculateTCO(
     askingPrice,
     mpgCombined,
     fuelType,
     depreciationTable,
-    {},
+    { annualMiles },
     { make, year }
   );
 
@@ -54,6 +58,10 @@ export function FuelEconomyCard({
   const normalizedFuelType = (fuelType || "Gasoline").charAt(0).toUpperCase() + (fuelType || "gasoline").slice(1).toLowerCase();
   const isElectric = fuelType?.toLowerCase().includes("electric");
 
+  const handleMileageChange = (value: number[]) => {
+    setAnnualMiles(value[0]);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -63,6 +71,32 @@ export function FuelEconomyCard({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Annual Mileage Slider */}
+        <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Car className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Expected Annual Mileage</span>
+            </div>
+            <Badge variant="secondary" className="text-sm font-bold">
+              {annualMiles.toLocaleString()} mi/yr
+            </Badge>
+          </div>
+          <Slider
+            value={[annualMiles]}
+            onValueChange={handleMileageChange}
+            min={5000}
+            max={30000}
+            step={1000}
+            className="w-full"
+          />
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>5,000 mi</span>
+            <span>12,000 mi (avg)</span>
+            <span>30,000 mi</span>
+          </div>
+        </div>
+
         {/* MPG Stats */}
         <div>
           <div className="flex items-center justify-between mb-3">
@@ -154,7 +188,7 @@ export function FuelEconomyCard({
         </div>
 
         <p className="text-xs text-muted-foreground">
-          * Based on 12,000 miles/year, $3.50/gal gas. Maintenance estimated from industry data for {make} vehicles.
+          * Based on {annualMiles.toLocaleString()} miles/year, $3.50/gal gas. Maintenance estimated from industry data for {make} vehicles.
         </p>
       </CardContent>
     </Card>
