@@ -1,7 +1,10 @@
+import { useState } from "react";
 import { Check, X, User, Zap, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Link } from "react-router-dom";
 import { STRIPE_PRICES } from "@/hooks/useSubscription";
 import { cn } from "@/lib/utils";
@@ -9,8 +12,8 @@ import { cn } from "@/lib/utils";
 const plans = [
   {
     name: "Free",
-    price: "$0",
-    period: "/month",
+    monthlyPrice: 0,
+    yearlyPrice: 0,
     description: "Perfect for trying out CarWise",
     icon: User,
     features: [
@@ -28,8 +31,8 @@ const plans = [
   },
   {
     name: "Standard",
-    price: `$${STRIPE_PRICES.basic.monthlyPrice}`,
-    period: "/month",
+    monthlyPrice: STRIPE_PRICES.basic.monthlyPrice,
+    yearlyPrice: STRIPE_PRICES.basic.yearlyPrice,
     description: "For occasional car shoppers",
     icon: Zap,
     features: [
@@ -47,8 +50,8 @@ const plans = [
   },
   {
     name: "Pro",
-    price: `$${STRIPE_PRICES.pro.monthlyPrice}`,
-    period: "/month",
+    monthlyPrice: STRIPE_PRICES.pro.monthlyPrice,
+    yearlyPrice: STRIPE_PRICES.pro.yearlyPrice,
     description: "For serious car buyers",
     icon: Crown,
     features: [
@@ -69,17 +72,51 @@ const plans = [
 ];
 
 export function Pricing() {
+  const [isYearly, setIsYearly] = useState(false);
+
   return (
     <section className="py-20 md:py-28">
       <div className="container mx-auto px-4">
-        <div className="mx-auto mb-16 max-w-2xl text-center">
+        <div className="mx-auto mb-12 max-w-2xl text-center">
           <Badge variant="outline" className="mb-4">Pricing</Badge>
           <h2 className="mb-4 text-3xl font-bold tracking-tight md:text-4xl">
             Simple, Transparent Pricing
           </h2>
-          <p className="text-lg text-muted-foreground">
+          <p className="text-lg text-muted-foreground mb-6">
             Start for free. Upgrade when you need more features.
           </p>
+
+          {/* Billing toggle */}
+          <div className="flex items-center justify-center gap-3">
+            <Label 
+              htmlFor="landing-billing-toggle" 
+              className={cn(
+                "cursor-pointer transition-colors",
+                !isYearly ? "text-foreground font-medium" : "text-muted-foreground"
+              )}
+            >
+              Monthly
+            </Label>
+            <Switch
+              id="landing-billing-toggle"
+              checked={isYearly}
+              onCheckedChange={setIsYearly}
+            />
+            <Label 
+              htmlFor="landing-billing-toggle" 
+              className={cn(
+                "cursor-pointer transition-colors",
+                isYearly ? "text-foreground font-medium" : "text-muted-foreground"
+              )}
+            >
+              Yearly
+            </Label>
+            {isYearly && (
+              <Badge variant="secondary" className="ml-2 bg-green-500/10 text-green-600 border-green-500/20">
+                Save 17%
+              </Badge>
+            )}
+          </div>
         </div>
 
         <div className="mx-auto grid max-w-5xl gap-6 md:grid-cols-3">
@@ -105,9 +142,16 @@ export function Pricing() {
                 </div>
                 <CardTitle className="text-xl">{plan.name}</CardTitle>
                 <div className="mt-4">
-                  <span className="text-4xl font-bold">{plan.price}</span>
-                  <span className="text-muted-foreground">{plan.period}</span>
+                  <span className="text-4xl font-bold">
+                    ${isYearly ? Math.round(plan.yearlyPrice / 12) : plan.monthlyPrice}
+                  </span>
+                  <span className="text-muted-foreground">/month</span>
                 </div>
+                {isYearly && plan.yearlyPrice > 0 && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    ${plan.yearlyPrice} billed annually
+                  </p>
+                )}
                 <CardDescription className="mt-2">{plan.description}</CardDescription>
               </CardHeader>
 
