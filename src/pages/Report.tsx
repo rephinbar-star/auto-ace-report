@@ -81,16 +81,28 @@ interface Analysis {
   };
 }
 
+interface DealerAnalysisData {
+  dealerName: string;
+  overallTrustScore: number;
+  trustLevel: "high" | "medium" | "low" | "unknown";
+  summary: string;
+  sources: { source: string; reviews: string[]; rating?: number; reviewCount?: number }[];
+  redFlags: string[];
+  positives: string[];
+}
+
 export default function ReportPage() {
   const { id } = useParams();
   const { toast } = useToast();
   const { tier } = useSubscription();
   const isPro = tier === "pro";
+  const isPaid = tier === "basic" || tier === "pro";
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [vehicleData, setVehicleData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [dealerAnalysis, setDealerAnalysis] = useState<DealerAnalysisData | null>(null);
 
   useEffect(() => {
     const loadAnalysis = async () => {
@@ -197,6 +209,19 @@ export default function ReportPage() {
   const handleDownloadPDF = async () => {
     setIsDownloading(true);
     try {
+      // Prepare dealer review data for PDF if available (Pro users only)
+      const dealerReviewForPDF = isPro && dealerAnalysis ? {
+        dealerName: dealerAnalysis.dealerName,
+        trustScore: dealerAnalysis.overallTrustScore,
+        sentiment: dealerAnalysis.trustLevel === "high" ? "positive" as const :
+                   dealerAnalysis.trustLevel === "medium" ? "mixed" as const :
+                   dealerAnalysis.trustLevel === "low" ? "negative" as const : "unknown" as const,
+        summary: dealerAnalysis.summary,
+        positives: dealerAnalysis.positives,
+        watchOuts: dealerAnalysis.redFlags,
+        sources: dealerAnalysis.sources.map(s => s.source),
+      } : undefined;
+
       await generateReportPDF({
         vehicle: {
           year: vehicle.year,
@@ -222,6 +247,7 @@ export default function ReportPage() {
         historyAnalysis,
         depreciationTable,
         images: condition.images,
+        dealerReview: dealerReviewForPDF,
       });
       sonnerToast.success("PDF downloaded successfully!");
     } catch (error) {
@@ -509,6 +535,7 @@ export default function ReportPage() {
                 listingUrl={condition?.listingUrl}
                 sellerType={condition?.sellerType}
                 isPro={isPro}
+                onAnalysisComplete={setDealerAnalysis}
               />
 
               {/* Vehicle Health Score */}

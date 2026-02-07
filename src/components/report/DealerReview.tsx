@@ -44,9 +44,10 @@ interface DealerReviewProps {
   listingUrl?: string;
   sellerType?: string;
   isPro: boolean;
+  onAnalysisComplete?: (analysis: DealerAnalysis | null) => void;
 }
 
-export function DealerReview({ dealerName, listingUrl, sellerType, isPro }: DealerReviewProps) {
+export function DealerReview({ dealerName, listingUrl, sellerType, isPro, onAnalysisComplete }: DealerReviewProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [analysis, setAnalysis] = useState<DealerAnalysis | null>(null);
@@ -72,11 +73,13 @@ export function DealerReview({ dealerName, listingUrl, sellerType, isPro }: Deal
 
       if (data?.success) {
         setAnalysis(data.analysis);
+        onAnalysisComplete?.(data.analysis);
       } else {
         throw new Error(data?.error || "Failed to analyze dealer");
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to fetch dealer review";
+      onAnalysisComplete?.(null);
       setError(message);
       toast({
         title: "Dealer Review Error",
