@@ -28,11 +28,13 @@ export function Header() {
       <nav className="container mx-auto flex h-16 items-center justify-between px-4">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2">
-          <div className="relative flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
-            <Lightbulb className="absolute -top-0.5 right-0.5 h-5 w-5 text-yellow-400 fill-yellow-400" />
-            <Car className="h-5 w-5 text-primary-foreground mt-1" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary">
+            <Car className="h-5 w-5 text-primary-foreground" />
           </div>
-          <span className="text-xl font-bold">CarWise</span>
+          <div className="flex items-end gap-0">
+            <span className="text-xl font-bold">CarWise</span>
+            <Lightbulb className="h-5 w-5 text-yellow-400 fill-yellow-400 -ml-0.5 mb-0.5 rotate-180" />
+          </div>
         </Link>
 
         {/* Desktop navigation */}
