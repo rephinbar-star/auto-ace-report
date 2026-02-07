@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,6 +20,7 @@ import { Car, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email"),
@@ -32,6 +33,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const { toast } = useToast();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
 
   // Get redirect path from location state, pending report, or default to dashboard
   const getRedirectPath = () => {
@@ -42,17 +44,35 @@ export default function LoginPage() {
     return location.state?.from?.pathname || "/dashboard";
   };
 
+  // Redirect if already authenticated (e.g., after OAuth callback)
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      const redirectPath = getRedirectPath();
+      if (sessionStorage.getItem("pendingReport") === "true") {
+        sessionStorage.removeItem("pendingReport");
+      }
+      navigate(redirectPath, { replace: true });
+    }
+  }, [isAuthenticated, authLoading, navigate]);
+
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     try {
-      const { error } = await lovable.auth.signInWithOAuth("google", {
+      const result = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: window.location.origin,
       });
 
-      if (error) {
+      // If not redirected (popup flow completed), check result
+      if (!result.redirected && !result.error) {
+        // Session was set, auth state listener will handle redirect
+        toast({
+          title: "Welcome back!",
+          description: "You've successfully signed in with Google.",
+        });
+      } else if (result.error) {
         toast({
           title: "Google sign in failed",
-          description: error.message,
+          description: result.error.message,
           variant: "destructive",
         });
       }

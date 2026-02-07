@@ -14,8 +14,10 @@ export async function parseHistoryReport(
 ): Promise<ParseHistoryResponse> {
   const { data: { session } } = await supabase.auth.getSession();
   
-  if (!session) {
-    return { success: false, error: "Please sign in to analyze history reports" };
+  // Allow analysis without auth - will store to session instead of server
+  const headers: Record<string, string> = {};
+  if (session) {
+    headers.Authorization = `Bearer ${session.access_token}`;
   }
 
   const formData = new FormData();
@@ -25,14 +27,15 @@ export async function parseHistoryReport(
   if (url) {
     formData.append("url", url);
   }
+  
+  // Add flag for unauthenticated analysis
+  formData.append("allowUnauthenticated", session ? "false" : "true");
 
   const response = await fetch(
     `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-history-report`,
     {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-      },
+      headers,
       body: formData,
     }
   );
