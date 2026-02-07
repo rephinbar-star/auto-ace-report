@@ -144,7 +144,11 @@ Provide your expert analysis.`;
                     properties: {
                       level: { type: "string", enum: ["low", "medium", "high"] },
                       depreciationRisk: { type: "string" },
-                      reliabilityConcerns: { type: "array", items: { type: "string" } },
+                      reliabilityConcerns: { 
+                        type: "array", 
+                        items: { type: "string" },
+                        description: "List of reliability concerns. Each concern MUST include typical mileage when the issue occurs, e.g. 'Transmission issues (typically 80,000-120,000 miles)' or 'Water pump failure (common around 60,000-90,000 miles)'"
+                      },
                       valueProposition: { type: "string" },
                       fairOfferPrice: { type: "number" },
                       expertOpinion: { type: "string", description: "Detailed expert analysis in 2-3 paragraphs" },

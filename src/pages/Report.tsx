@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,7 +38,9 @@ import {
   FileText,
   Share2,
   Download,
-  Loader2
+  Loader2,
+  Scale,
+  Save
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -95,17 +97,94 @@ interface DealerAnalysisData {
 
 export default function ReportPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const { tier } = useSubscription();
   const isPro = tier === "pro";
   const isPaid = tier === "basic" || tier === "pro";
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [excludeRepairs, setExcludeRepairs] = useState(false);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [vehicleData, setVehicleData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [dealerAnalysis, setDealerAnalysis] = useState<DealerAnalysisData | null>(null);
+
+  const handleSaveReport = async () => {
+    if (!analysis || !vehicleData) return;
+    
+    setIsSaving(true);
+    try {
+      const { vehicle, condition, financing, history } = vehicleData;
+      const { priceAssessment, depreciationTable, riskAssessment, historyAnalysis } = analysis;
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast({
+          title: "Login Required",
+          description: "Please log in to save your report.",
+          variant: "destructive",
+        });
+        navigate("/login");
+        return;
+      }
+
+      const { error: saveError } = await supabase.from("vehicle_reports").insert({
+        user_id: user.id,
+        year: vehicle.year,
+        make: vehicle.make,
+        model: vehicle.model,
+        trim: vehicle.trim || null,
+        vin: vehicle.vin || null,
+        mileage: condition.mileage,
+        asking_price: condition.askingPrice,
+        condition: condition.condition,
+        seller_type: condition.sellerType,
+        financing_type: financing.type,
+        loan_amount: financing.loanAmount || null,
+        loan_term: financing.loanTerm || null,
+        apr: financing.apr || null,
+        monthly_payment: financing.monthlyPayment || null,
+        lease_term_months: financing.leaseTermMonths || null,
+        residual_value: financing.residualValue || null,
+        accident_count: history?.accidentCount || null,
+        owner_count: history?.ownerCount || null,
+        title_status: history?.titleStatus || null,
+        history_issues: history?.issues || null,
+        deal_rating: priceAssessment.dealRating,
+        fair_market_private: priceAssessment.fairMarketPrivate,
+        fair_market_trade_in: priceAssessment.fairMarketTradeIn,
+        price_difference: priceAssessment.priceDifference,
+        risk_level: riskAssessment.level,
+        depreciation_risk: riskAssessment.depreciationRisk,
+        reliability_concerns: riskAssessment.reliabilityConcerns,
+        value_proposition: riskAssessment.valueProposition,
+        fair_offer_price: riskAssessment.fairOfferPrice,
+        expert_opinion: riskAssessment.expertOpinion,
+        health_score: historyAnalysis.healthScore,
+        history_positives: historyAnalysis.positives,
+        depreciation_table: depreciationTable as any,
+        listing_images: condition.images || null,
+        status: "complete",
+      });
+
+      if (saveError) throw saveError;
+
+      sonnerToast.success("Report saved successfully!");
+      sessionStorage.removeItem("analysisData");
+      navigate("/dashboard");
+    } catch (err) {
+      console.error("Save error:", err);
+      toast({
+        title: "Save Failed",
+        description: "Failed to save your report. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   useEffect(() => {
     const loadAnalysis = async () => {
@@ -492,12 +571,13 @@ export default function ReportPage() {
                           <TableHead className="text-right">Private Value</TableHead>
                           <TableHead className="text-right">Trade-In</TableHead>
                           <TableHead className="text-right">Loan Balance</TableHead>
-                          {!excludeRepairs && <TableHead className="text-right">Repair Costs</TableHead>}
+                          <TableHead className="text-right">Repair Costs</TableHead>
                           <TableHead className="text-right">Net Equity</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {depreciationTable.map((row) => {
+                          // When excluding repairs, calculate equity without subtracting repair costs
                           const netEquity = excludeRepairs 
                             ? row.tradeInValue - row.loanBalance
                             : row.netEquityTradeIn;
@@ -507,7 +587,12 @@ export default function ReportPage() {
                               <TableCell className="text-right">${row.privateValue.toLocaleString()}</TableCell>
                               <TableCell className="text-right">${row.tradeInValue.toLocaleString()}</TableCell>
                               <TableCell className="text-right">${row.loanBalance.toLocaleString()}</TableCell>
-                              {!excludeRepairs && <TableCell className="text-right">${row.repairCosts.toLocaleString()}</TableCell>}
+                              <TableCell className={cn(
+                                "text-right",
+                                excludeRepairs && "text-muted-foreground line-through"
+                              )}>
+                                ${row.repairCosts.toLocaleString()}
+                              </TableCell>
                               <TableCell className={cn(
                                 "text-right font-semibold",
                                 netEquity >= 0 ? "text-success" : "text-danger"
@@ -539,6 +624,36 @@ export default function ReportPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => {
+                    if (isPaid) {
+                      navigate("/dashboard?select=true");
+                    } else {
+                      navigate("/pricing");
+                    }
+                  }}
+                >
+                  <Scale className="mr-2 h-4 w-4" />
+                  Compare with Another Vehicle
+                </Button>
+                <Button 
+                  className="flex-1"
+                  onClick={handleSaveReport}
+                  disabled={isSaving}
+                >
+                  {isSaving ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                  )}
+                  {isSaving ? "Saving..." : "Save Report"}
+                </Button>
+              </div>
             </div>
 
             {/* Right Column - Sidebar */}
@@ -621,11 +736,11 @@ export default function ReportPage() {
 
                     <div>
                       <p className="mb-2 text-sm font-medium">Reliability Concerns</p>
-                      <ul className="space-y-1">
+                      <ul className="space-y-2">
                         {riskAssessment.reliabilityConcerns.map((concern, i) => (
-                          <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                            <Wrench className="mt-0.5 h-3 w-3 shrink-0" />
-                            {concern}
+                          <li key={i} className="flex items-start gap-2 text-sm">
+                            <Wrench className="mt-0.5 h-3 w-3 shrink-0 text-warning" />
+                            <span className="text-muted-foreground">{concern}</span>
                           </li>
                         ))}
                       </ul>
