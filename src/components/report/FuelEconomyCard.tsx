@@ -87,14 +87,14 @@ export function FuelEconomyCard({
             value={[annualMiles]}
             onValueChange={handleMileageChange}
             min={5000}
-            max={30000}
+            max={19000}
             step={1000}
             className="w-full"
           />
           <div className="flex justify-between text-xs text-muted-foreground">
             <span>5,000 mi</span>
             <span>12,000 mi (avg)</span>
-            <span>30,000 mi</span>
+            <span>19,000 mi</span>
           </div>
         </div>
 
