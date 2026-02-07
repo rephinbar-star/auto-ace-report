@@ -43,28 +43,51 @@ export const EQUITY_THRESHOLDS = {
   deepUnderwater: { points: 0 },
 };
 
-// 5. Vehicle Age (15 points max)
-export const AGE_SCORES: Record<string, number> = {
-  "0-2": 15,  // Likely under warranty
-  "3-4": 12,  // Warranty may be expiring
-  "5-6": 8,
-  "7-8": 5,
-  "9+": 2,
-};
-
-// 6. Risk Level base scores (part of 15 points)
-export const RISK_LEVEL_SCORES: Record<string, number> = {
-  low: 10,
-  medium: 6,
-  high: 2,
-};
-
-// Reliability concerns adjustments
-export const RELIABILITY_ADJUSTMENTS: Record<string, number> = {
-  "0": 5,     // No concerns: +5 bonus
-  "1-2": 2,   // 1-2 concerns: +2
-  "3-4": 0,   // 3-4 concerns: no bonus
-  "5+": -2,   // 5+ concerns: penalty (capped at 0 total)
+// 5. Brand Reliability Ratings (J.D. Power VDS & Consumer Reports 2024)
+// Scale: 1-10, where 10 is most reliable
+export const BRAND_RELIABILITY: Record<string, number> = {
+  // Excellent (8-10): Industry leaders in reliability
+  "Toyota": 9,
+  "Lexus": 9,
+  "Honda": 9,
+  "Acura": 8,
+  "Mazda": 8,
+  
+  // Good (6-7): Above average reliability
+  "Hyundai": 7,
+  "Kia": 7,
+  "Genesis": 7,
+  "Subaru": 6,
+  "Porsche": 7,
+  "Buick": 6,
+  
+  // Average (5): Industry standard
+  "Ford": 5,
+  "Chevrolet": 5,
+  "GMC": 5,
+  "Nissan": 5,
+  "Volkswagen": 5,
+  "Volvo": 5,
+  "MINI": 5,
+  
+  // Below Average (3-4): More issues expected
+  "BMW": 4,
+  "Mercedes-Benz": 4,
+  "Audi": 4,
+  "Cadillac": 4,
+  "Lincoln": 4,
+  "Infiniti": 4,
+  "Jeep": 3,
+  "Dodge": 3,
+  "Ram": 3,
+  "Chrysler": 3,
+  "Land Rover": 3,
+  "Jaguar": 3,
+  "Alfa Romeo": 3,
+  "Maserati": 3,
+  
+  // Default for unknown brands
+  "default": 5,
 };
 
 // ============================================================================
@@ -204,39 +227,26 @@ export function calculateEquityScore(depTable: Json | null): ScoreBreakdownItem 
 
 /**
  * Calculate vehicle age & warranty score (15 points max)
+ * Uses continuous scoring formula for year-by-year precision
  */
 export function calculateAgeScore(year: number, healthScore: number | null): ScoreBreakdownItem {
   const currentYear = new Date().getFullYear();
   const age = currentYear - year;
   
-  let baseScore: number;
-  let ageRange: string;
+  // Continuous scoring: starts at 15, decreases ~1.3 points per year, minimum 2
+  const baseScore = Math.max(2, Math.round(15 - (age * 1.3)));
   
-  if (age <= 2) {
-    baseScore = AGE_SCORES["0-2"];
-    ageRange = "0-2 years (likely under warranty)";
-  } else if (age <= 4) {
-    baseScore = AGE_SCORES["3-4"];
-    ageRange = "3-4 years (warranty may be expiring)";
-  } else if (age <= 6) {
-    baseScore = AGE_SCORES["5-6"];
-    ageRange = "5-6 years old";
-  } else if (age <= 8) {
-    baseScore = AGE_SCORES["7-8"];
-    ageRange = "7-8 years old";
-  } else {
-    baseScore = AGE_SCORES["9+"];
-    ageRange = "9+ years old";
-  }
+  // Health bonus: >= 80 gets +1, >= 90 gets +2
+  let healthBonus = 0;
+  if (healthScore && healthScore >= 90) healthBonus = 2;
+  else if (healthScore && healthScore >= 80) healthBonus = 1;
   
-  // Health score bonus: +2 if well-maintained (health > 85)
-  const healthBonus = (healthScore && healthScore > 85) ? 2 : 0;
   const finalScore = Math.min(baseScore + healthBonus, 15);
   
-  let description = `${age} years old (${ageRange})`;
-  if (healthBonus > 0) {
-    description += " • Well-maintained (+2)";
-  }
+  let description = `${age} year${age !== 1 ? "s" : ""} old`;
+  if (age <= 3) description += " (likely under warranty)";
+  else if (age <= 5) description += " (warranty may be expiring)";
+  if (healthBonus > 0) description += ` • Well-maintained (+${healthBonus})`;
   
   return {
     category: "Age & Warranty",
@@ -248,32 +258,36 @@ export function calculateAgeScore(year: number, healthScore: number | null): Sco
 
 /**
  * Calculate reliability & risk score (15 points max)
+ * Based on J.D. Power VDS & Consumer Reports brand reliability (60%)
+ * plus model-specific concerns from analysis (40%)
  */
 export function calculateReliabilityScore(
-  riskLevel: string | null,
+  make: string,
   reliabilityConcerns: string[] | null
 ): ScoreBreakdownItem {
-  const risk = riskLevel?.toLowerCase() || "medium";
-  const concerns = reliabilityConcerns || [];
-  const concernCount = concerns.length;
+  // Get brand reliability score (1-10 scale)
+  const brandScore = BRAND_RELIABILITY[make] ?? BRAND_RELIABILITY["default"];
   
-  // Base score from risk level
-  const baseScore = RISK_LEVEL_SCORES[risk] ?? 6;
+  // Convert to 0-9 points (60% of 15 max)
+  const brandPoints = Math.round((brandScore / 10) * 9);
   
-  // Adjustment based on reliability concerns
-  let adjustment: number;
-  if (concernCount === 0) adjustment = RELIABILITY_ADJUSTMENTS["0"];
-  else if (concernCount <= 2) adjustment = RELIABILITY_ADJUSTMENTS["1-2"];
-  else if (concernCount <= 4) adjustment = RELIABILITY_ADJUSTMENTS["3-4"];
-  else adjustment = RELIABILITY_ADJUSTMENTS["5+"];
+  // Concern-based adjustment (40% of 15 max = 6 points max)
+  const concerns = reliabilityConcerns?.length || 0;
+  let concernPoints: number;
+  if (concerns === 0) concernPoints = 6;
+  else if (concerns <= 2) concernPoints = 4;
+  else if (concerns <= 4) concernPoints = 2;
+  else concernPoints = 0;
   
-  const finalScore = Math.max(0, Math.min(baseScore + adjustment, 15));
+  const finalScore = Math.min(brandPoints + concernPoints, 15);
   
-  let description = `${risk.charAt(0).toUpperCase() + risk.slice(1)} risk`;
-  if (concernCount > 0) {
-    description += ` • ${concernCount} reliability concern${concernCount !== 1 ? "s" : ""}`;
-  } else {
-    description += " • No reliability concerns";
+  const brandRating = brandScore >= 8 ? "Excellent" : 
+                      brandScore >= 6 ? "Good" :
+                      brandScore >= 5 ? "Average" : "Below average";
+  
+  let description = `${make}: ${brandRating} brand reliability`;
+  if (concerns > 0) {
+    description += ` • ${concerns} model-specific concern${concerns !== 1 ? "s" : ""}`;
   }
   
   return {
@@ -294,7 +308,7 @@ export function calculateVehicleScore(vehicle: VehicleReport): VehicleScoreResul
     calculateAccidentScore(vehicle.accident_count),
     calculateEquityScore(vehicle.depreciation_table),
     calculateAgeScore(vehicle.year, vehicle.health_score),
-    calculateReliabilityScore(vehicle.risk_level, vehicle.reliability_concerns),
+    calculateReliabilityScore(vehicle.make, vehicle.reliability_concerns),
   ];
   
   const totalScore = breakdown.reduce((sum, item) => sum + item.score, 0);
