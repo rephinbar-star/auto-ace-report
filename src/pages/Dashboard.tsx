@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SEO } from "@/components/seo/SEO";
-import { Plus, Search, Filter, Car, FileText, TrendingUp, AlertCircle, LogOut } from "lucide-react";
+import { Plus, Search, Filter, Car, FileText, TrendingUp, AlertCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import type { Tables } from "@/integrations/supabase/types";
@@ -18,7 +18,7 @@ import type { Tables } from "@/integrations/supabase/types";
 type VehicleReport = Tables<"vehicle_reports">;
 
 function DashboardContent() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dealRatingFilter, setDealRatingFilter] = useState<string>("all");
@@ -117,18 +117,12 @@ function DashboardContent() {
                 Track and manage your vehicle analyses
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <Button asChild size="lg">
-                <Link to="/analyze">
-                  <Plus className="h-5 w-5 mr-2" />
-                  New Analysis
-                </Link>
-              </Button>
-              <Button variant="outline" size="lg" onClick={signOut}>
-                <LogOut className="h-5 w-5 mr-2" />
-                Sign Out
-              </Button>
-            </div>
+            <Button asChild size="lg">
+              <Link to="/analyze">
+                <Plus className="h-5 w-5 mr-2" />
+                New Analysis
+              </Link>
+            </Button>
           </div>
 
           {/* Stats cards */}
