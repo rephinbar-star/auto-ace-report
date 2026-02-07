@@ -4,7 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Crown, TrendingUp, Shield, DollarSign, Info, Fuel } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScoreBreakdown } from "./ScoreBreakdown";
-import { scoreAndRankVehicles, type VehicleScoreResult } from "./scoring-utils";
+import { FinancialOutlookCard } from "./FinancialOutlookCard";
+import { scoreAndRankVehicles, getYearFiveEquity, type VehicleScoreResult } from "./scoring-utils";
 import type { Tables } from "@/integrations/supabase/types";
 
 type VehicleReport = Tables<"vehicle_reports">;
@@ -41,7 +42,7 @@ export function ComparisonSummary({ vehicles }: ComparisonSummaryProps) {
       return current.tco.totalTCO < best.tco.totalTCO ? current : best;
     }, scoredVehicles[0]);
 
-    // Generate recommendation text
+    // Generate enhanced recommendation text with TCO savings and equity
     let recommendation = "";
     if (bestBuy) {
       const v = bestBuy.vehicle;
@@ -66,7 +67,33 @@ export function ComparisonSummary({ vehicles }: ComparisonSummaryProps) {
       if (strengths.length > 0) {
         recommendation += `, excelling in ${strengths.slice(0, 3).join(", ")}`;
       }
-      recommendation += `. Our algorithm evaluates title status, accident history, deal quality, total cost of ownership, age/warranty, reliability, mileage, and 5-year equity position.`;
+      recommendation += ".";
+      
+      // Add TCO savings comparison
+      if (bestBuy.tco && others.length > 0) {
+        const highestTCO = Math.max(...scoredVehicles.map(s => s.tco?.totalTCO || 0));
+        const tcoSavings = highestTCO - bestBuy.tco.totalTCO;
+        if (tcoSavings > 1000) {
+          recommendation += ` **Over 5 years, you'll save $${tcoSavings.toLocaleString()}** in ownership costs compared to the most expensive option.`;
+        }
+      }
+      
+      // Add equity position comparison
+      const bestEquity = getYearFiveEquity(bestBuy.vehicle.depreciation_table);
+      if (bestEquity !== null && others.length > 0) {
+        const otherEquities = others.map(o => getYearFiveEquity(o.vehicle.depreciation_table)).filter(e => e !== null) as number[];
+        const worstEquity = otherEquities.length > 0 ? Math.min(...otherEquities) : null;
+        
+        if (worstEquity !== null && bestEquity > worstEquity + 2000) {
+          const equityDesc = bestEquity >= 0 
+            ? `**+$${bestEquity.toLocaleString()} positive equity**` 
+            : `**$${Math.abs(bestEquity).toLocaleString()} better equity position**`;
+          const comparisonDesc = worstEquity < 0
+            ? `vs $${Math.abs(worstEquity).toLocaleString()} underwater`
+            : `vs $${worstEquity.toLocaleString()}`;
+          recommendation += ` At year 5, this vehicle projects ${equityDesc} ${comparisonDesc} for alternatives.`;
+        }
+      }
     }
 
     return {
@@ -177,11 +204,11 @@ export function ComparisonSummary({ vehicles }: ComparisonSummaryProps) {
             </Badge>
           </div>
 
-          {/* Lowest TCO - NEW */}
+          {/* Lowest TCO */}
           {lowestTCO?.tco && (
             <div className="p-3 rounded-lg bg-background border">
               <div className="flex items-center gap-2 mb-1">
-                <Fuel className="h-4 w-4 text-blue-500" />
+                <Fuel className="h-4 w-4 text-primary" />
                 <span className="text-xs text-muted-foreground">Lowest TCO</span>
               </div>
               <p className="font-semibold text-sm truncate">
@@ -198,7 +225,10 @@ export function ComparisonSummary({ vehicles }: ComparisonSummaryProps) {
         {/* Score Breakdown */}
         <ScoreBreakdown scoredVehicles={scoredVehicles} />
 
-        {/* TCO Comparison Table - NEW */}
+        {/* 5-Year Financial Outlook Card - NEW */}
+        <FinancialOutlookCard scoredVehicles={scoredVehicles} />
+
+        {/* TCO Comparison Table */}
         {scoredVehicles.some(s => s.tco) && (
           <div className="space-y-2">
             <h4 className="font-semibold text-sm flex items-center gap-2">
