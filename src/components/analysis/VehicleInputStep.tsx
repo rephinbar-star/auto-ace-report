@@ -24,7 +24,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Search, Car, Link as LinkIcon, CheckCircle, AlertCircle, ArrowRight, ExternalLink } from "lucide-react";
+import { Loader2, Search, Car, Link as LinkIcon, CheckCircle, AlertCircle, ArrowRight, ExternalLink, AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { decodeVIN, isValidVIN, getMakes, getModels } from "@/lib/nhtsa";
 import { VehicleInfo, VehicleCondition } from "@/types/vehicle";
 import { useToast } from "@/hooks/use-toast";
@@ -309,6 +310,41 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
 
   const displayVehicle = getDisplayVehicle();
 
+  // Check for mismatch between listing claims and VIN decode
+  const getMismatchWarning = () => {
+    if (!importedListing?.decodedVehicle || !importedListing?.vehicle) return null;
+    
+    const decoded = importedListing.decodedVehicle;
+    const scraped = importedListing.vehicle;
+    const mismatches: string[] = [];
+    
+    // Normalize strings for comparison (lowercase, trim)
+    const normalize = (str?: string | null) => str?.toLowerCase().trim() || "";
+    
+    // Check year mismatch
+    if (scraped.year && decoded.year && scraped.year !== decoded.year) {
+      mismatches.push(`Year: Listing says ${scraped.year}, VIN shows ${decoded.year}`);
+    }
+    
+    // Check make mismatch
+    if (scraped.make && decoded.make && normalize(scraped.make) !== normalize(decoded.make)) {
+      mismatches.push(`Make: Listing says "${scraped.make}", VIN shows "${decoded.make}"`);
+    }
+    
+    // Check model mismatch (more lenient - check if one contains the other)
+    if (scraped.model && decoded.model) {
+      const scrapedModel = normalize(scraped.model);
+      const decodedModel = normalize(decoded.model);
+      if (!scrapedModel.includes(decodedModel) && !decodedModel.includes(scrapedModel)) {
+        mismatches.push(`Model: Listing says "${scraped.model}", VIN shows "${decoded.model}"`);
+      }
+    }
+    
+    return mismatches.length > 0 ? mismatches : null;
+  };
+
+  const mismatchWarning = getMismatchWarning();
+
   return (
     <div className="space-y-6">
       <div>
@@ -391,6 +427,27 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Mismatch Warning */}
+            {mismatchWarning && (
+              <Alert variant="destructive" className="border-destructive/50 bg-destructive/10">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Vehicle Mismatch Detected</AlertTitle>
+                <AlertDescription className="mt-2">
+                  <p className="text-sm mb-2">
+                    The VIN decode results don't match what the listing claims. This could indicate an error in the listing or a potential scam.
+                  </p>
+                  <ul className="list-disc list-inside text-sm space-y-1">
+                    {mismatchWarning.map((mismatch, i) => (
+                      <li key={i}>{mismatch}</li>
+                    ))}
+                  </ul>
+                  <p className="text-sm mt-2 font-medium">
+                    We recommend verifying the vehicle details before proceeding.
+                  </p>
+                </AlertDescription>
+              </Alert>
+            )}
+
             {/* Vehicle Details */}
             <div className="rounded-lg border bg-background p-4">
               <div className="grid gap-3 sm:grid-cols-2">
