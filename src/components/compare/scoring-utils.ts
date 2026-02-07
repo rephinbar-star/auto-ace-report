@@ -462,6 +462,53 @@ export function generateWhyNotReasons(
     }
   }
   
+  // === NEW: TCO-based explanations ===
+  if (scored.tco && bestScore.tco) {
+    const tcoDiff = scored.tco.totalTCO - bestScore.tco.totalTCO;
+    const fuelDiff = scored.tco.fuelCost5Year - bestScore.tco.fuelCost5Year;
+    const repairDiff = scored.tco.repairCost5Year - bestScore.tco.repairCost5Year;
+    
+    // Higher total ownership cost
+    if (tcoDiff > 2000) {
+      const fuelAnnual = Math.round(scored.tco.annualFuelCost);
+      const bestFuelAnnual = Math.round(bestScore.tco.annualFuelCost);
+      
+      let explanation = `Costs **$${tcoDiff.toLocaleString()} more to own over 5 years**`;
+      const details: string[] = [];
+      
+      if (fuelDiff > 500) {
+        details.push(`higher fuel costs ($${fuelAnnual.toLocaleString()}/yr vs $${bestFuelAnnual.toLocaleString()}/yr)`);
+      }
+      if (repairDiff > 500) {
+        details.push(`projected repairs ($${scored.tco.repairCost5Year.toLocaleString()} vs $${bestScore.tco.repairCost5Year.toLocaleString()})`);
+      }
+      
+      if (details.length > 0) {
+        explanation += ` due to ${details.join(" and ")}`;
+      }
+      explanation += ".";
+      reasons.push(explanation);
+    } else if (tcoDiff > 500) {
+      // Moderate TCO difference
+      reasons.push(`Ownership costs **$${tcoDiff.toLocaleString()} more** over 5 years when factoring in fuel and repairs.`);
+    }
+  }
+  
+  // === NEW: Equity position explanations ===
+  const equity = getYearFiveEquity(v.depreciation_table);
+  const bestEquity = getYearFiveEquity(best.depreciation_table);
+  if (equity !== null && bestEquity !== null) {
+    const equityDiff = bestEquity - equity;
+    
+    if (equity < -5000) {
+      reasons.push(`Projects **$${Math.abs(equity).toLocaleString()} negative equity at year 5** — you'd owe significantly more than the car is worth, making it harder to trade in or sell.`);
+    } else if (equity < 0 && bestEquity >= 0) {
+      reasons.push(`Projects **$${Math.abs(equity).toLocaleString()} underwater at year 5** while the winner projects positive equity. You'd need to cover the difference to sell or trade.`);
+    } else if (equityDiff > 3000 && equity >= 0) {
+      reasons.push(`**$${equityDiff.toLocaleString()} less equity** at year 5 compared to the winner (${equity >= 0 ? '+' : ''}$${equity.toLocaleString()} vs +$${bestEquity.toLocaleString()}).`);
+    }
+  }
+  
   // Vehicle age
   const currentYear = new Date().getFullYear();
   const age = currentYear - v.year;
@@ -471,17 +518,6 @@ export function generateWhyNotReasons(
       reasons.push(`At **${age} years old**, this vehicle is past its factory warranty period. Budget for out-of-pocket repairs averaging $1,500-2,500 annually.`);
     } else if (age >= 4) {
       reasons.push(`At **${age} years old**, the factory warranty may have expired. Consider an extended warranty or budget for repairs.`);
-    }
-  }
-  
-  // 5-year equity
-  const equity = getYearFiveEquity(v.depreciation_table);
-  const bestEquity = getYearFiveEquity(best.depreciation_table);
-  if (equity !== null && bestEquity !== null && equity < bestEquity - 2000) {
-    if (equity < -5000) {
-      reasons.push(`The depreciation analysis shows **$${Math.abs(equity).toLocaleString()} negative equity** at year 5, meaning you'd owe significantly more than the car is worth.`);
-    } else if (equity < 0) {
-      reasons.push(`Projects **$${Math.abs(equity).toLocaleString()} negative equity** at year 5. The winner projects ${bestEquity >= 0 ? "positive" : "better"} equity.`);
     }
   }
   

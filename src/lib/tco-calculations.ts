@@ -217,12 +217,41 @@ export function getTCORating(
   const percentile = ((maxTCO - vehicleTCO) / range) * 100;
 
   if (percentile >= 75) {
-    return { rating: "Best Value", color: "text-green-600" };
+    return { rating: "Best Value", color: "text-success" };
   } else if (percentile >= 50) {
-    return { rating: "Good Value", color: "text-emerald-600" };
+    return { rating: "Good Value", color: "text-success" };
   } else if (percentile >= 25) {
-    return { rating: "Fair Value", color: "text-yellow-600" };
+    return { rating: "Fair Value", color: "text-warning" };
   } else {
-    return { rating: "High Cost", color: "text-red-600" };
+    return { rating: "High Cost", color: "text-destructive" };
   }
+}
+
+/**
+ * Calculate monthly ownership cost (fuel + prorated repairs)
+ */
+export function calculateMonthlyOwnershipCost(tco: TCOResult): number {
+  const monthlyFuel = tco.annualFuelCost / 12;
+  const monthlyRepairs = tco.repairCost5Year / 60; // 5 years = 60 months
+  return Math.round(monthlyFuel + monthlyRepairs);
+}
+
+/**
+ * Calculate 5-year total savings compared to highest TCO vehicle
+ */
+export function calculate5YearSavings(
+  vehicleTCO: number,
+  allTCOs: number[]
+): { vsHighest: number; vsAverage: number } {
+  if (allTCOs.length < 2) {
+    return { vsHighest: 0, vsAverage: 0 };
+  }
+  
+  const highestTCO = Math.max(...allTCOs);
+  const avgTCO = allTCOs.reduce((sum, t) => sum + t, 0) / allTCOs.length;
+  
+  return {
+    vsHighest: Math.round(highestTCO - vehicleTCO),
+    vsAverage: Math.round(avgTCO - vehicleTCO),
+  };
 }
