@@ -113,6 +113,12 @@ export default function ReportPage() {
   const [error, setError] = useState<string | null>(null);
   const [dealerAnalysis, setDealerAnalysis] = useState<DealerAnalysisData | null>(null);
   const [isSavedReport, setIsSavedReport] = useState(false);
+  const [mpgData, setMpgData] = useState<{
+    mpgCity: number | null;
+    mpgHighway: number | null;
+    mpgCombined: number | null;
+    fuelType: string | null;
+  } | null>(null);
   
   // Check if coming from comparison
   const fromComparison = searchParams.get("from") === "compare";
@@ -174,6 +180,10 @@ export default function ReportPage() {
         history_positives: historyAnalysis.positives,
         depreciation_table: depreciationTable as any,
         listing_images: condition.images || null,
+        mpg_city: mpgData?.mpgCity || null,
+        mpg_highway: mpgData?.mpgHighway || null,
+        mpg_combined: mpgData?.mpgCombined || null,
+        fuel_type: mpgData?.fuelType || null,
         status: "complete",
       });
 
@@ -315,6 +325,15 @@ export default function ReportPage() {
         
         if (result?.success) {
           setAnalysis(result.analysis);
+          // Store MPG data from the response
+          if (result.mpgData) {
+            setMpgData({
+              mpgCity: result.mpgData.mpgCity,
+              mpgHighway: result.mpgData.mpgHighway,
+              mpgCombined: result.mpgData.mpgCombined,
+              fuelType: result.mpgData.fuelType,
+            });
+          }
         } else {
           throw new Error(result?.error || "Analysis returned no data");
         }
