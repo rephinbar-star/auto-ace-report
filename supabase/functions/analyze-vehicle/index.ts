@@ -97,6 +97,10 @@ serve(async (req) => {
 
     const { vehicle, condition, financing, history } = vehicleData;
 
+    // Fetch MPG data in parallel with AI analysis
+    const mpgPromise = lookupMPG(vehicle.year, vehicle.make, vehicle.model);
+    console.log(`Looking up MPG for ${vehicle.year} ${vehicle.make} ${vehicle.model}`);
+
     const systemPrompt = `You are an expert automotive analyst combining the knowledge of a professional mechanic with 30+ years experience and a seasoned used car buyer. You provide comprehensive, honest, and actionable vehicle purchase analysis.
 
 Your analysis must be data-driven and consider:
@@ -247,8 +251,22 @@ Provide your expert analysis.`;
 
     const analysis = JSON.parse(toolCall.function.arguments);
 
+    // Wait for MPG data
+    const mpgData = await mpgPromise;
+    console.log("MPG data retrieved:", mpgData);
+
     return new Response(
-      JSON.stringify({ success: true, analysis }),
+      JSON.stringify({ 
+        success: true, 
+        analysis,
+        mpgData: {
+          mpgCity: mpgData.mpgCity,
+          mpgHighway: mpgData.mpgHighway,
+          mpgCombined: mpgData.mpgCombined,
+          fuelType: mpgData.fuelType,
+          isEstimate: mpgData.isEstimate,
+        }
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
