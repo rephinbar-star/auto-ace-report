@@ -7,44 +7,44 @@ type VehicleReport = Tables<"vehicle_reports">;
 // ============================================================================
 // SCORING CONSTANTS (100-point scale)
 // Weight distribution optimized per research:
-// - Accident history increased (10-15% value impact per accident)
-// - Deal rating reduced (prevents circular reasoning from defects lowering price)
-// - Mileage added as new category
+// - Accident history: 10-15% value impact per accident
+// - Deal rating: reduced to prevent circular reasoning from defects lowering price
+// - TCO: includes fuel economy and repair costs over 5 years
 // ============================================================================
 
-// 1. Deal Rating (15 points max) - Reduced from 20
+// 1. Deal Rating (14 points max)
 export const DEAL_RATING_SCORES: Record<string, number> = {
-  excellent: 15,
-  good: 12,
-  fair: 9,
-  poor: 6,
-  overpriced: 3,
+  excellent: 14,
+  good: 11,
+  fair: 8,
+  poor: 5,
+  overpriced: 2,
 };
 
-// 2. Title Status (20 points max) - Unchanged, critical factor
+// 2. Title Status (18 points max) - Critical factor
 // Research: Rebuilt 20-40% loss, Salvage 40-60% loss
 export const TITLE_STATUS_SCORES: Record<string, number> = {
-  clean: 20,
-  rebuilt: 10,
+  clean: 18,
+  rebuilt: 9,
   salvage: 4,
   lemon: 2,
 };
 
-// 3. Accident History (20 points max) - Increased from 15
+// 3. Accident History (18 points max)
 // Research: 10-15% value reduction per accident (Carfax, NADA)
 export const ACCIDENT_SCORES: Record<number, number> = {
-  0: 20,
-  1: 16, // ~10% impact
-  2: 10, // ~20% impact
+  0: 18,
+  1: 14, // ~10% impact
+  2: 9,  // ~20% impact
   3: 4,  // ~30% impact (3+ accidents)
 };
 
-// 4. 5-Year Equity thresholds (12 points max) - Reduced from 15
+// 4. 5-Year Equity thresholds (10 points max)
 export const EQUITY_THRESHOLDS = {
-  strongPositive: { min: 5000, points: 12 },
-  moderatePositive: { min: 1000, points: 9 },
-  breakEven: { min: -1000, points: 6 },
-  negativeEquity: { min: -5000, points: 3 },
+  strongPositive: { min: 5000, points: 10 },
+  moderatePositive: { min: 1000, points: 7 },
+  breakEven: { min: -1000, points: 5 },
+  negativeEquity: { min: -5000, points: 2 },
   deepUnderwater: { points: 0 },
 };
 
@@ -134,25 +134,25 @@ export function getYearFiveEquity(depTable: Json | null): number | null {
 }
 
 /**
- * Calculate deal rating score (15 points max)
+ * Calculate deal rating score (14 points max)
  */
 export function calculateDealScore(dealRating: string | null): ScoreBreakdownItem {
   const rating = dealRating?.toLowerCase() || "fair";
-  const score = DEAL_RATING_SCORES[rating] ?? 9;
+  const score = DEAL_RATING_SCORES[rating] ?? 8;
   return {
     category: "Deal Rating",
     score,
-    maxScore: 15,
+    maxScore: 14,
     description: `${rating.charAt(0).toUpperCase() + rating.slice(1)} deal`,
   };
 }
 
 /**
- * Calculate title status score (20 points max)
+ * Calculate title status score (18 points max)
  */
 export function calculateTitleScore(titleStatus: string | null): ScoreBreakdownItem {
   const status = titleStatus?.toLowerCase() || "clean";
-  const score = TITLE_STATUS_SCORES[status] ?? 20;
+  const score = TITLE_STATUS_SCORES[status] ?? 18;
   
   let description = "Clean title";
   if (status === "rebuilt") description = "Rebuilt title (20-40% value impact)";
@@ -162,13 +162,13 @@ export function calculateTitleScore(titleStatus: string | null): ScoreBreakdownI
   return {
     category: "Title Status",
     score,
-    maxScore: 20,
+    maxScore: 18,
     description,
   };
 }
 
 /**
- * Calculate accident history score (20 points max)
+ * Calculate accident history score (18 points max)
  */
 export function calculateAccidentScore(accidentCount: number | null): ScoreBreakdownItem {
   const count = accidentCount ?? 0;
@@ -183,13 +183,13 @@ export function calculateAccidentScore(accidentCount: number | null): ScoreBreak
   return {
     category: "Accident History",
     score,
-    maxScore: 20,
+    maxScore: 18,
     description,
   };
 }
 
 /**
- * Calculate 5-year equity score (12 points max)
+ * Calculate 5-year equity score (10 points max)
  */
 export function calculateEquityScore(depTable: Json | null): ScoreBreakdownItem {
   const equity = getYearFiveEquity(depTable);
@@ -197,8 +197,8 @@ export function calculateEquityScore(depTable: Json | null): ScoreBreakdownItem 
   if (equity === null) {
     return {
       category: "5-Year Equity",
-      score: 6, // Default to middle score if no data
-      maxScore: 12,
+      score: 5, // Default to middle score if no data
+      maxScore: 10,
       description: "No depreciation data available",
     };
   }
@@ -226,28 +226,28 @@ export function calculateEquityScore(depTable: Json | null): ScoreBreakdownItem 
   return {
     category: "5-Year Equity",
     score,
-    maxScore: 12,
+    maxScore: 10,
     description,
   };
 }
 
 /**
- * Calculate vehicle age & warranty score (13 points max)
+ * Calculate vehicle age & warranty score (12 points max)
  * Uses continuous scoring formula for year-by-year precision
  */
 export function calculateAgeScore(year: number, healthScore: number | null): ScoreBreakdownItem {
   const currentYear = new Date().getFullYear();
   const age = currentYear - year;
   
-  // Continuous scoring: starts at 13, decreases ~1.1 points per year, minimum 2
-  const baseScore = Math.max(2, Math.round(13 - (age * 1.1)));
+  // Continuous scoring: starts at 12, decreases ~1 point per year, minimum 2
+  const baseScore = Math.max(2, Math.round(12 - age));
   
   // Health bonus: >= 80 gets +1, >= 90 gets +2
   let healthBonus = 0;
   if (healthScore && healthScore >= 90) healthBonus = 2;
   else if (healthScore && healthScore >= 80) healthBonus = 1;
   
-  const finalScore = Math.min(baseScore + healthBonus, 13);
+  const finalScore = Math.min(baseScore + healthBonus, 12);
   
   let description = `${age} year${age !== 1 ? "s" : ""} old`;
   if (age <= 3) description += " (likely under warranty)";
@@ -257,13 +257,13 @@ export function calculateAgeScore(year: number, healthScore: number | null): Sco
   return {
     category: "Age & Warranty",
     score: finalScore,
-    maxScore: 13,
+    maxScore: 12,
     description,
   };
 }
 
 /**
- * Calculate reliability & risk score (12 points max)
+ * Calculate reliability & risk score (10 points max)
  * Based on J.D. Power VDS & Consumer Reports brand reliability (60%)
  * plus model-specific concerns from analysis (40%)
  */
@@ -274,18 +274,18 @@ export function calculateReliabilityScore(
   // Get brand reliability score (1-10 scale)
   const brandScore = BRAND_RELIABILITY[make] ?? BRAND_RELIABILITY["default"];
   
-  // Convert to 0-7 points (60% of 12 max)
-  const brandPoints = Math.round((brandScore / 10) * 7);
+  // Convert to 0-6 points (60% of 10 max)
+  const brandPoints = Math.round((brandScore / 10) * 6);
   
-  // Concern-based adjustment (40% of 12 max = 5 points max)
+  // Concern-based adjustment (40% of 10 max = 4 points max)
   const concerns = reliabilityConcerns?.length || 0;
   let concernPoints: number;
-  if (concerns === 0) concernPoints = 5;
-  else if (concerns <= 2) concernPoints = 3;
+  if (concerns === 0) concernPoints = 4;
+  else if (concerns <= 2) concernPoints = 2;
   else if (concerns <= 4) concernPoints = 1;
   else concernPoints = 0;
   
-  const finalScore = Math.min(brandPoints + concernPoints, 12);
+  const finalScore = Math.min(brandPoints + concernPoints, 10);
   
   const brandRating = brandScore >= 8 ? "Excellent" : 
                       brandScore >= 6 ? "Good" :
@@ -299,7 +299,7 @@ export function calculateReliabilityScore(
   return {
     category: "Reliability & Risk",
     score: finalScore,
-    maxScore: 12,
+    maxScore: 10,
     description,
   };
 }
@@ -342,8 +342,8 @@ export function calculateMileageScore(mileage: number, year: number): ScoreBreak
 }
 
 /**
- * Calculate TCO score based on relative ranking (displayed but NOT counted in 100-pt total)
- * This is a supplementary metric shown alongside the main score
+ * Calculate TCO score based on relative ranking (10 points max)
+ * Lower TCO = Higher score
  */
 export function calculateTCOScore(
   vehicleTCO: number,
@@ -352,9 +352,9 @@ export function calculateTCOScore(
   if (allVehicleTCOs.length < 2) {
     return {
       category: "5-Year TCO",
-      score: 0,
-      maxScore: 0,
-      description: "Add more vehicles to compare TCO",
+      score: 5, // Default middle score for single vehicle
+      maxScore: 10,
+      description: `$${vehicleTCO.toLocaleString()} total cost`,
     };
   }
 
@@ -362,25 +362,33 @@ export function calculateTCOScore(
   const maxTCO = Math.max(...allVehicleTCOs);
   const range = maxTCO - minTCO;
 
-  // Calculate percentile (0-100, where 100 = best/lowest TCO)
-  const percentile = range > 0 ? Math.round(((maxTCO - vehicleTCO) / range) * 100) : 50;
-  
+  // Calculate score: lowest TCO gets 10, highest gets 2
+  let score: number;
   let rating: string;
-  if (percentile >= 75) rating = "Best value";
-  else if (percentile >= 50) rating = "Good value";
-  else if (percentile >= 25) rating = "Fair value";
-  else rating = "Highest cost";
+  
+  if (range === 0) {
+    score = 6;
+    rating = "Equal";
+  } else {
+    const percentile = ((maxTCO - vehicleTCO) / range);
+    score = Math.round(2 + (percentile * 8)); // Scale from 2-10
+    
+    if (percentile >= 0.75) rating = "Best value";
+    else if (percentile >= 0.5) rating = "Good value";
+    else if (percentile >= 0.25) rating = "Fair value";
+    else rating = "Highest cost";
+  }
 
   return {
     category: "5-Year TCO",
-    score: percentile,
-    maxScore: 100,
+    score,
+    maxScore: 10,
     description: `$${vehicleTCO.toLocaleString()} total — ${rating}`,
   };
 }
 
 /**
- * Calculate complete score for a vehicle (includes TCO calculation)
+ * Calculate base score for a vehicle (without TCO, which requires comparison)
  */
 export function calculateVehicleScore(vehicle: VehicleReport): VehicleScoreResult {
   const breakdown: ScoreBreakdownItem[] = [
@@ -393,10 +401,10 @@ export function calculateVehicleScore(vehicle: VehicleReport): VehicleScoreResul
     calculateMileageScore(vehicle.mileage, vehicle.year),
   ];
   
-  const totalScore = breakdown.reduce((sum, item) => sum + item.score, 0);
+  // Base score without TCO (will be added in scoreAndRankVehicles)
+  const baseScore = breakdown.reduce((sum, item) => sum + item.score, 0);
   
   // Calculate TCO for this vehicle
-  // Access mpg_combined via type assertion since it may be newly added
   const vehicleWithMpg = vehicle as VehicleReport & { 
     mpg_combined?: number | null;
     mpg_city?: number | null;
@@ -412,9 +420,9 @@ export function calculateVehicleScore(vehicle: VehicleReport): VehicleScoreResul
   
   return {
     vehicle,
-    totalScore,
+    totalScore: baseScore, // Will be updated with TCO
     breakdown,
-    whyNotReasons: [], // Will be populated during comparison
+    whyNotReasons: [],
     tco,
   };
 }
@@ -518,10 +526,22 @@ export function generateWhyNotReasons(
  * Score and rank all vehicles for comparison
  */
 export function scoreAndRankVehicles(vehicles: VehicleReport[]): VehicleScoreResult[] {
-  // Calculate scores for all vehicles
+  // Calculate base scores for all vehicles (without TCO)
   const scored = vehicles.map(calculateVehicleScore);
   
-  // Sort by total score descending
+  // Collect all TCO values for relative comparison
+  const allTCOs = scored.map(s => s.tco?.totalTCO || 0).filter(t => t > 0);
+  
+  // Add TCO scores to each vehicle's breakdown and update total
+  scored.forEach(s => {
+    if (s.tco) {
+      const tcoScore = calculateTCOScore(s.tco.totalTCO, allTCOs);
+      s.breakdown.push(tcoScore);
+      s.totalScore += tcoScore.score;
+    }
+  });
+  
+  // Sort by total score descending (now includes TCO)
   scored.sort((a, b) => b.totalScore - a.totalScore);
   
   // Generate "why not" reasons for non-winners

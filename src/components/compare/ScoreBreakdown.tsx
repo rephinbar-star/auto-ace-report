@@ -27,60 +27,61 @@ const categoryColors: Record<string, string> = {
   "Age & Warranty": "bg-violet-500",
   "Reliability & Risk": "bg-rose-500",
   "Mileage": "bg-cyan-500",
+  "5-Year TCO": "bg-orange-500",
 };
 
 const categoryTooltips: Record<string, { title: string; details: string[] }> = {
   "Deal Rating": {
-    title: "How good is the price? (15 pts max)",
+    title: "How good is the price? (14 pts max)",
     details: [
-      "Excellent: 15 pts — Priced well below market",
-      "Good: 12 pts — Fair price, some savings",
-      "Fair: 9 pts — At market value",
-      "Poor: 6 pts — Above market value",
-      "Overpriced: 3 pts — Significantly inflated",
+      "Excellent: 14 pts — Priced well below market",
+      "Good: 11 pts — Fair price, some savings",
+      "Fair: 8 pts — At market value",
+      "Poor: 5 pts — Above market value",
+      "Overpriced: 2 pts — Significantly inflated",
     ],
   },
   "Title Status": {
-    title: "Vehicle title history impact (20 pts max)",
+    title: "Vehicle title history impact (18 pts max)",
     details: [
-      "Clean: 20 pts — Full value, no issues",
-      "Rebuilt: 10 pts — 20-40% value reduction",
+      "Clean: 18 pts — Full value, no issues",
+      "Rebuilt: 9 pts — 20-40% value reduction",
       "Salvage: 4 pts — 40-60% value loss, financing issues",
       "Lemon: 2 pts — Manufacturer buyback history",
     ],
   },
   "Accident History": {
-    title: "Prior accident impact on value (20 pts max)",
+    title: "Prior accident impact on value (18 pts max)",
     details: [
-      "0 accidents: 20 pts — Clean history",
-      "1 accident: 16 pts — ~10% value impact",
-      "2 accidents: 10 pts — ~20% value impact",
+      "0 accidents: 18 pts — Clean history",
+      "1 accident: 14 pts — ~10% value impact",
+      "2 accidents: 9 pts — ~20% value impact",
       "3+ accidents: 4 pts — ~30% value impact",
     ],
   },
   "5-Year Equity": {
-    title: "Projected equity after 5 years (12 pts max)",
+    title: "Projected equity after 5 years (10 pts max)",
     details: [
-      ">$5,000 positive: 12 pts — Strong investment",
-      "$1K-$5K positive: 9 pts — Good equity",
-      "Break-even: 6 pts — Neutral position",
-      "$1K-$5K negative: 3 pts — Underwater",
+      ">$5,000 positive: 10 pts — Strong investment",
+      "$1K-$5K positive: 7 pts — Good equity",
+      "Break-even: 5 pts — Neutral position",
+      "$1K-$5K negative: 2 pts — Underwater",
       ">$5K negative: 0 pts — Deep loss",
     ],
   },
   "Age & Warranty": {
-    title: "Vehicle age and warranty status (13 pts max)",
+    title: "Vehicle age and warranty status (12 pts max)",
     details: [
-      "Each year: ~1.1 pts decrease",
-      "0 years: 13 pts — Under full warranty",
-      "3 years: 10 pts — Warranty expiring",
-      "5 years: 8 pts — Post-warranty",
+      "Each year: ~1 pt decrease",
+      "0 years: 12 pts — Under full warranty",
+      "3 years: 9 pts — Warranty expiring",
+      "5 years: 7 pts — Post-warranty",
       "8 years: 4 pts — Higher repair risk",
       "+1 bonus if health ≥80, +2 if ≥90",
     ],
   },
   "Reliability & Risk": {
-    title: "Brand reliability + concerns (12 pts max)",
+    title: "Brand reliability + concerns (10 pts max)",
     details: [
       "60%: Brand rating (J.D. Power/Consumer Reports)",
       "40%: Model-specific concerns",
@@ -98,6 +99,17 @@ const categoryTooltips: Record<string, { title: string; details: string[] }> = {
       "12k-15k/year: 5 pts — Average (industry std)",
       "15k-18k/year: 3 pts — Above average",
       "Over 18k/year: 1 pt — High mileage",
+    ],
+  },
+  "5-Year TCO": {
+    title: "Total Cost of Ownership (10 pts max)",
+    details: [
+      "Includes: Purchase + Fuel + Repairs",
+      "Fuel: Based on EPA MPG × 12k miles/yr × $3.50/gal",
+      "Repairs: From 5-year depreciation table",
+      "Lowest TCO: 10 pts — Best value",
+      "Highest TCO: 2 pts — Most expensive",
+      "Score is relative to other vehicles compared",
     ],
   },
 };
