@@ -138,17 +138,21 @@ function ProfileContent() {
     : user?.email?.substring(0, 2).toUpperCase() || "U";
 
   const getSubscriptionBadge = () => {
-    if (!subscription) return null;
-    
     const variants: Record<string, "default" | "secondary" | "outline"> = {
       pro: "default",
-      compare_pass: "secondary",
+      basic: "secondary",
       free: "outline",
     };
 
+    const displayName: Record<string, string> = {
+      pro: "Pro",
+      basic: "Standard",
+      free: "Free",
+    };
+
     return (
-      <Badge variant={variants[subscription.type] || "outline"} className="capitalize">
-        {subscription.type === "compare_pass" ? "Compare Pass" : subscription.type}
+      <Badge variant={variants[subscriptionTier] || "outline"} className="capitalize">
+        {displayName[subscriptionTier] || subscriptionTier}
       </Badge>
     );
   };
@@ -323,82 +327,80 @@ function ProfileContent() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-muted-foreground">
-                        Subscription Plan
-                      </p>
-                      <div className="flex items-center gap-2">
-                        {getSubscriptionBadge()}
-                        {subscription?.status === "active" && (
-                          <span className="text-xs text-success">Active</span>
+                  {subscriptionLoading ? (
+                    <div className="space-y-2">
+                      <Skeleton className="h-6 w-24" />
+                      <Skeleton className="h-4 w-32" />
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium text-muted-foreground">
+                            Subscription Plan
+                          </p>
+                          <div className="flex items-center gap-2">
+                            {getSubscriptionBadge()}
+                            {subscribed && (
+                              <span className="text-xs text-success">Active</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium text-muted-foreground">
+                            Member Since
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm">
+                              {profile?.created_at
+                                ? format(new Date(profile.created_at), "MMMM d, yyyy")
+                                : "N/A"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {subscriptionEnd && (
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium text-muted-foreground">
+                              Next Billing Date
+                            </p>
+                            <span className="text-sm">
+                              {format(new Date(subscriptionEnd), "MMMM d, yyyy")}
+                            </span>
+                          </div>
                         )}
                       </div>
-                    </div>
 
-                    {subscription?.type === "compare_pass" && subscription.compare_passes_remaining !== null && (
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium text-muted-foreground">
-                          Compare Passes Remaining
-                        </p>
-                        <p className="text-lg font-semibold">
-                          {subscription.compare_passes_remaining}
-                        </p>
-                      </div>
-                    )}
+                      <Separator />
 
-                    <div className="space-y-1">
-                      <p className="text-sm font-medium text-muted-foreground">
-                        Member Since
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">
-                          {profile?.created_at
-                            ? format(new Date(profile.created_at), "MMMM d, yyyy")
-                            : "N/A"}
-                        </span>
-                      </div>
-                    </div>
-
-                    {subscription?.expires_at && (
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium text-muted-foreground">
-                          Subscription Expires
-                        </p>
-                        <span className="text-sm">
-                          {format(new Date(subscription.expires_at), "MMMM d, yyyy")}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  <Separator />
-
-                  <div className="flex flex-wrap gap-3">
-                    <Button variant="outline" asChild>
-                      <a href="/pricing">View Plans</a>
-                    </Button>
-                    {subscription?.stripe_customer_id && (
-                      <Button 
-                        variant="outline"
-                        onClick={handleManageBilling}
-                        disabled={isOpeningPortal}
-                      >
-                        {isOpeningPortal ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Opening...
-                          </>
-                        ) : (
-                          <>
-                            <ExternalLink className="mr-2 h-4 w-4" />
-                            Manage Billing
-                          </>
+                      <div className="flex flex-wrap gap-3">
+                        <Button variant="outline" asChild>
+                          <a href="/pricing">View Plans</a>
+                        </Button>
+                        {subscribed && (
+                          <Button 
+                            variant="outline"
+                            onClick={handleManageBilling}
+                            disabled={isOpeningPortal}
+                          >
+                            {isOpeningPortal ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Opening...
+                              </>
+                            ) : (
+                              <>
+                                <ExternalLink className="mr-2 h-4 w-4" />
+                                Manage Billing
+                              </>
+                            )}
+                          </Button>
                         )}
-                      </Button>
-                    )}
-                  </div>
+                      </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             </div>
