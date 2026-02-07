@@ -52,7 +52,7 @@ serve(async (req) => {
 
     console.log("Scraping listing URL:", formattedUrl);
 
-    // First, scrape the page with Firecrawl
+    // First, scrape the page with Firecrawl - include links to extract images
     const scrapeResponse = await fetch("https://api.firecrawl.dev/v1/scrape", {
       method: "POST",
       headers: {
@@ -61,8 +61,8 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         url: formattedUrl,
-        formats: ["markdown", "html"],
-        onlyMainContent: true,
+        formats: ["markdown", "html", "links"],
+        onlyMainContent: false, // Include full page to capture image gallery
         waitFor: 2000,
       }),
     });
@@ -78,7 +78,92 @@ serve(async (req) => {
     }
 
     const markdown = scrapeData.data?.markdown || scrapeData.markdown || "";
+    const html = scrapeData.data?.html || scrapeData.html || "";
     const metadata = scrapeData.data?.metadata || scrapeData.metadata || {};
+    
+    // Extract vehicle images from the HTML content
+    const extractVehicleImages = (htmlContent: string, pageUrl: string): string[] => {
+      const images: string[] = [];
+      const seenUrls = new Set<string>();
+      
+      // Common patterns for vehicle listing images
+      const imgPatterns = [
+        // Standard img tags with src
+        /<img[^>]+src=["']([^"']+)["'][^>]*>/gi,
+        // Data-src for lazy loading
+        /<img[^>]+data-src=["']([^"']+)["'][^>]*>/gi,
+        // Background images in style
+        /background-image:\s*url\(["']?([^"')]+)["']?\)/gi,
+        // Source tags in picture elements
+        /<source[^>]+srcset=["']([^"'\s,]+)/gi,
+      ];
+      
+      // Keywords that indicate vehicle photos (not icons/logos)
+      const vehicleImageKeywords = [
+        'vehicle', 'car', 'auto', 'listing', 'gallery', 'photo',
+        'image', 'media', 'inventory', 'stock', 'vdp', 'detail',
+        'full', 'large', 'zoom', 'main', 'primary'
+      ];
+      
+      // Keywords to exclude (icons, logos, UI elements)
+      const excludeKeywords = [
+        'logo', 'icon', 'sprite', 'button', 'nav', 'menu',
+        'arrow', 'chevron', 'close', 'search', 'social',
+        'facebook', 'twitter', 'instagram', 'youtube', 'linkedin',
+        'badge', 'seal', 'cert', 'rating', 'star', 'thumb',
+        'avatar', 'profile', 'user', 'placeholder', '1x1',
+        'pixel', 'tracking', 'spacer', 'blank', 'transparent'
+      ];
+      
+      for (const pattern of imgPatterns) {
+        let match;
+        while ((match = pattern.exec(htmlContent)) !== null) {
+          let imgUrl = match[1];
+          
+          // Skip data URIs and very short URLs
+          if (imgUrl.startsWith('data:') || imgUrl.length < 20) continue;
+          
+          // Make absolute URL
+          if (imgUrl.startsWith('//')) {
+            imgUrl = 'https:' + imgUrl;
+          } else if (imgUrl.startsWith('/')) {
+            try {
+              const baseUrl = new URL(pageUrl);
+              imgUrl = baseUrl.origin + imgUrl;
+            } catch { continue; }
+          } else if (!imgUrl.startsWith('http')) {
+            continue;
+          }
+          
+          // Skip if already seen
+          if (seenUrls.has(imgUrl)) continue;
+          
+          const lowerUrl = imgUrl.toLowerCase();
+          
+          // Check for exclude keywords
+          if (excludeKeywords.some(kw => lowerUrl.includes(kw))) continue;
+          
+          // Check for small image dimensions in URL
+          if (/[_-](\d{1,2}x\d{1,2}|thumb|tiny|small|xs|sm)[_.-]/i.test(imgUrl)) continue;
+          
+          // Prioritize images that look like vehicle photos
+          const isLikelyVehicleImage = vehicleImageKeywords.some(kw => lowerUrl.includes(kw)) ||
+            /\d{3,}x\d{3,}/.test(imgUrl) || // Large dimensions
+            /\.(jpg|jpeg|png|webp)(\?|$)/i.test(imgUrl); // Standard photo formats
+          
+          if (isLikelyVehicleImage) {
+            seenUrls.add(imgUrl);
+            images.push(imgUrl);
+          }
+        }
+      }
+      
+      // Limit to first 10 unique images
+      return images.slice(0, 10);
+    };
+    
+    const extractedImages = extractVehicleImages(html, formattedUrl);
+    console.log(`Extracted ${extractedImages.length} vehicle images`);
 
     // Now use AI to extract structured vehicle data from the scraped content
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -190,6 +275,11 @@ Source URL: ${formattedUrl}`;
     }
 
     const extractedVehicle: ScrapedVehicle = JSON.parse(toolCall.function.arguments);
+    
+    // Add extracted images to vehicle data
+    if (extractedImages.length > 0) {
+      extractedVehicle.images = extractedImages;
+    }
 
     console.log("Successfully extracted vehicle data:", extractedVehicle);
 

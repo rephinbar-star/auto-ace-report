@@ -12,6 +12,7 @@ export interface ScrapedVehicle {
   sellerType?: "dealer" | "private";
   description?: string;
   features?: string[];
+  images?: string[];
 }
 
 export interface ScrapeListingResponse {
