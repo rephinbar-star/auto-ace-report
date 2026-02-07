@@ -42,6 +42,8 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { VehicleImageGallery } from "@/components/report/VehicleImageGallery";
+import { generateReportPDF } from "@/lib/generatePDF";
+import { toast as sonnerToast } from "sonner";
 
 interface DepreciationYear {
   year: number;
@@ -81,6 +83,7 @@ export default function ReportPage() {
   const { id } = useParams();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [vehicleData, setVehicleData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -187,6 +190,44 @@ export default function ReportPage() {
   const { vehicle, condition, financing } = vehicleData;
   const { priceAssessment, depreciationTable, riskAssessment, historyAnalysis } = analysis;
 
+  const handleDownloadPDF = async () => {
+    setIsDownloading(true);
+    try {
+      await generateReportPDF({
+        vehicle: {
+          year: vehicle.year,
+          make: vehicle.make,
+          model: vehicle.model,
+          trim: vehicle.trim,
+          mileage: condition.mileage,
+          askingPrice: condition.askingPrice,
+        },
+        priceAssessment: {
+          fairMarketPrivate: priceAssessment.fairMarketPrivate,
+          fairMarketTradeIn: priceAssessment.fairMarketTradeIn,
+          dealRating: priceAssessment.dealRating,
+          priceDifference: priceAssessment.priceDifference,
+        },
+        riskAssessment: {
+          level: riskAssessment.level,
+          fairOfferPrice: riskAssessment.fairOfferPrice,
+          expertOpinion: riskAssessment.expertOpinion,
+          depreciationRisk: riskAssessment.depreciationRisk,
+          reliabilityConcerns: riskAssessment.reliabilityConcerns,
+        },
+        historyAnalysis,
+        depreciationTable,
+        images: condition.images,
+      });
+      sonnerToast.success("PDF downloaded successfully!");
+    } catch (error) {
+      sonnerToast.error("Failed to generate PDF");
+      console.error(error);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   const dealRatingColors = {
     excellent: "bg-success text-success-foreground",
     good: "bg-success/80 text-success-foreground",
@@ -229,9 +270,18 @@ export default function ReportPage() {
                 <Share2 className="mr-2 h-4 w-4" />
                 Share
               </Button>
-              <Button variant="outline" size="sm">
-                <Download className="mr-2 h-4 w-4" />
-                Download PDF
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleDownloadPDF}
+                disabled={isDownloading}
+              >
+                {isDownloading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="mr-2 h-4 w-4" />
+                )}
+                {isDownloading ? "Generating..." : "Download PDF"}
               </Button>
             </div>
           </div>

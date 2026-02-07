@@ -45,6 +45,39 @@ interface ReportData {
   riskAssessment: RiskAssessment;
   historyAnalysis: HistoryAnalysis;
   depreciationTable: DepreciationRow[];
+  images?: string[];
+}
+
+// Helper to load image as base64 for PDF
+async function loadImageAsBase64(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url, { mode: "cors" });
+    if (!response.ok) return null;
+    
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+// Get image dimensions while maintaining aspect ratio
+function fitImageToBox(
+  imgWidth: number,
+  imgHeight: number,
+  maxWidth: number,
+  maxHeight: number
+): { width: number; height: number } {
+  const ratio = Math.min(maxWidth / imgWidth, maxHeight / imgHeight);
+  return {
+    width: imgWidth * ratio,
+    height: imgHeight * ratio,
+  };
 }
 
 export async function generateReportPDF(
@@ -57,7 +90,7 @@ export async function generateReportPDF(
   const margin = 15;
   let yPosition = margin;
 
-  const { vehicle, priceAssessment, riskAssessment, historyAnalysis, depreciationTable } = data;
+  const { vehicle, priceAssessment, riskAssessment, historyAnalysis, depreciationTable, images } = data;
 
   // Helper functions
   const addText = (text: string, fontSize: number, isBold = false, color: [number, number, number] = [0, 0, 0]) => {
@@ -97,7 +130,86 @@ export async function generateReportPDF(
   // Vehicle Info
   addText(`${vehicle.year} ${vehicle.make} ${vehicle.model}${vehicle.trim ? ` ${vehicle.trim}` : ""}`, 18, true);
   addText(`${vehicle.mileage.toLocaleString()} miles • Asking ${formatCurrency(vehicle.askingPrice)}`, 11, false, [100, 100, 100]);
-  yPosition += 5;
+  yPosition += 3;
+
+  // Vehicle Images Section (if available)
+  if (images && images.length > 0) {
+    // Load first 4 images for the PDF
+    const imagesToLoad = images.slice(0, 4);
+    const loadedImages: { base64: string; width: number; height: number }[] = [];
+    
+    await Promise.all(
+      imagesToLoad.map(async (url) => {
+        const base64 = await loadImageAsBase64(url);
+        if (base64) {
+          // Create an image element to get dimensions
+          const img = new Image();
+          await new Promise<void>((resolve) => {
+            img.onload = () => {
+              loadedImages.push({
+                base64,
+                width: img.width,
+                height: img.height,
+              });
+              resolve();
+            };
+            img.onerror = () => resolve();
+            img.src = base64;
+          });
+        }
+      })
+    );
+
+    if (loadedImages.length > 0) {
+      // Calculate grid layout - 2 images per row
+      const gridCols = Math.min(2, loadedImages.length);
+      const imgBoxWidth = (pageWidth - 2 * margin - 5) / gridCols;
+      const imgBoxHeight = 35;
+      
+      // Check if we need space for images
+      const totalRows = Math.ceil(loadedImages.length / 2);
+      const requiredHeight = totalRows * (imgBoxHeight + 3);
+      
+      if (yPosition + requiredHeight > pageHeight - margin) {
+        pdf.addPage();
+        yPosition = margin;
+      }
+      
+      loadedImages.forEach((imgData, index) => {
+        const col = index % 2;
+        const row = Math.floor(index / 2);
+        const xPos = margin + col * (imgBoxWidth + 5);
+        const yPos = yPosition + row * (imgBoxHeight + 3);
+        
+        // Draw border/background
+        pdf.setFillColor(245, 247, 250);
+        pdf.roundedRect(xPos, yPos, imgBoxWidth, imgBoxHeight, 2, 2, "F");
+        
+        // Fit image to box with padding
+        const padding = 2;
+        const fitted = fitImageToBox(
+          imgData.width,
+          imgData.height,
+          imgBoxWidth - padding * 2,
+          imgBoxHeight - padding * 2
+        );
+        
+        // Center the image in the box
+        const imgX = xPos + (imgBoxWidth - fitted.width) / 2;
+        const imgY = yPos + (imgBoxHeight - fitted.height) / 2;
+        
+        try {
+          pdf.addImage(imgData.base64, "JPEG", imgX, imgY, fitted.width, fitted.height);
+        } catch {
+          // Silently skip if image fails to add
+        }
+      });
+      
+      yPosition += totalRows * (imgBoxHeight + 3) + 5;
+    }
+  }
+
+  yPosition += 2;
 
   // Quick Stats Box
   pdf.setFillColor(245, 247, 250);
