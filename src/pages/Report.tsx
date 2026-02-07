@@ -577,20 +577,17 @@ export default function ReportPage() {
                       </TableHeader>
                       <TableBody>
                         {depreciationTable.map((row) => {
-                          // When excluding repairs, calculate equity without subtracting repair costs
+                          // Net equity = Trade-In Value - Loan Balance - Repair Costs (unless excluded)
                           const netEquity = excludeRepairs 
                             ? row.tradeInValue - row.loanBalance
-                            : row.netEquityTradeIn;
+                            : row.tradeInValue - row.loanBalance - row.repairCosts;
                           return (
                             <TableRow key={row.year}>
                               <TableCell className="font-medium">Year {row.year}</TableCell>
                               <TableCell className="text-right">${row.privateValue.toLocaleString()}</TableCell>
                               <TableCell className="text-right">${row.tradeInValue.toLocaleString()}</TableCell>
                               <TableCell className="text-right">${row.loanBalance.toLocaleString()}</TableCell>
-                              <TableCell className={cn(
-                                "text-right",
-                                excludeRepairs && "text-muted-foreground line-through"
-                              )}>
+                              <TableCell className="text-right">
                                 ${row.repairCosts.toLocaleString()}
                               </TableCell>
                               <TableCell className={cn(
