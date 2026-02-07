@@ -19,6 +19,7 @@ export interface VehicleCondition {
   condition: "excellent" | "good" | "fair" | "poor";
   listingUrl?: string;
   sellerType: "private" | "dealer";
+  sellerName?: string;
   images?: string[];
 }
 

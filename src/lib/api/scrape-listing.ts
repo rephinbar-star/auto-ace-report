@@ -10,6 +10,7 @@ export interface ScrapedVehicle {
   condition?: "excellent" | "good" | "fair" | "poor";
   vin?: string;
   sellerType?: "dealer" | "private";
+  sellerName?: string;
   description?: string;
   features?: string[];
   images?: string[];
