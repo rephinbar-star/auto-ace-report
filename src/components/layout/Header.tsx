@@ -33,7 +33,7 @@ export function Header() {
           </div>
           <div className="flex items-end gap-0">
             <span className="text-xl font-bold">CarWise</span>
-            <Lightbulb className="h-5 w-5 text-yellow-400 fill-yellow-400 -ml-0.5 mb-0.5" />
+            <Lightbulb className="h-5 w-5 text-yellow-400 fill-yellow-400 -ml-0.5 mb-0.5 animate-glow-pulse" />
           </div>
         </Link>
 
