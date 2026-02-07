@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Table, 
   TableBody, 
@@ -44,12 +45,14 @@ import {
   Loader2,
   Building2,
   ShieldCheck,
-  Star
+  Star,
+  Scale,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SEO } from "@/components/seo/SEO";
 import { generateReportPDF } from "@/lib/generatePDF";
 import { toast } from "sonner";
+import { SampleComparisonReport } from "@/components/sample/SampleComparisonReport";
 import type { Variants } from "framer-motion";
 
 // Animation variants
@@ -175,6 +178,7 @@ export default function SampleReportPage() {
   const { priceAssessment, depreciationTable, riskAssessment, historyAnalysis, dealerReview } = sampleAnalysis;
   const [includeRepairs, setIncludeRepairs] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [activeTab, setActiveTab] = useState("vehicle");
 
   const chartData = depreciationTable.map((row) => ({
     name: `Year ${row.year}`,
@@ -268,13 +272,28 @@ export default function SampleReportPage() {
             </div>
           </motion.div>
 
-          {/* Report Header */}
-          <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
-          >
+          {/* Report Type Tabs */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
+            <TabsList className="grid w-full grid-cols-2 max-w-md">
+              <TabsTrigger value="vehicle" className="gap-2">
+                <Car className="h-4 w-4" />
+                Vehicle Report
+              </TabsTrigger>
+              <TabsTrigger value="comparison" className="gap-2">
+                <Scale className="h-4 w-4" />
+                Comparison Report
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Vehicle Report Tab */}
+            <TabsContent value="vehicle" className="mt-6">
+              {/* Report Header */}
+              <motion.div 
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+                className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
+              >
             <div>
               <h1 className="text-3xl font-bold">
                 {sampleVehicle.year} {sampleVehicle.make} {sampleVehicle.model}
@@ -850,6 +869,13 @@ export default function SampleReportPage() {
               </motion.div>
             </motion.div>
           </div>
+            </TabsContent>
+
+            {/* Comparison Report Tab */}
+            <TabsContent value="comparison" className="mt-6">
+              <SampleComparisonReport />
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
 
