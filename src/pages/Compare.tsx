@@ -95,7 +95,7 @@ function CompareContent() {
     
     setIsDownloading(true);
     try {
-      await generateComparisonPDF({ vehicles });
+      await generateComparisonPDF({ vehicles, annualMiles });
       toast.success("Comparison PDF downloaded!");
     } catch (err) {
       console.error("PDF generation error:", err);
