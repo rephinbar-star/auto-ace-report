@@ -101,19 +101,27 @@ serve(async (req) => {
       // Keywords that indicate vehicle photos (not icons/logos)
       const vehicleImageKeywords = [
         'vehicle', 'car', 'auto', 'listing', 'gallery', 'photo',
-        'image', 'media', 'inventory', 'stock', 'vdp', 'detail',
-        'full', 'large', 'zoom', 'main', 'primary'
+        'media', 'inventory', 'stock', 'vdp', 'detail',
+        'full', 'zoom', 'main', 'primary', 'exterior', 'interior',
+        'front', 'rear', 'side', 'engine', 'dashboard', 'wheel'
       ];
       
-      // Keywords to exclude (icons, logos, UI elements)
+      // Keywords to exclude (icons, logos, UI elements, non-vehicle content)
       const excludeKeywords = [
         'logo', 'icon', 'sprite', 'button', 'nav', 'menu',
         'arrow', 'chevron', 'close', 'search', 'social',
         'facebook', 'twitter', 'instagram', 'youtube', 'linkedin',
         'badge', 'seal', 'cert', 'rating', 'star', 'thumb',
         'avatar', 'profile', 'user', 'placeholder', '1x1',
-        'pixel', 'tracking', 'spacer', 'blank', 'transparent'
+        'pixel', 'tracking', 'spacer', 'blank', 'transparent',
+        'app-store', 'google-play', 'play-store', 'apple-store',
+        'mobile-apps', 'download', 'footer', 'header', 'sidebar',
+        'privacy', 'cookie', 'gdpr', 'consent', 'banner',
+        'advertisement', 'promo', 'sponsor', 'partner'
       ];
+      
+      // Excluded file patterns (not typically vehicle photos)
+      const excludedExtensions = ['.svg', '.gif', '.ico'];
       
       for (const pattern of imgPatterns) {
         let match;
@@ -121,7 +129,10 @@ serve(async (req) => {
           let imgUrl = match[1];
           
           // Skip data URIs and very short URLs
-          if (imgUrl.startsWith('data:') || imgUrl.length < 20) continue;
+          if (imgUrl.startsWith('data:') || imgUrl.length < 30) continue;
+          
+          // Skip SVGs, GIFs, and ICOs (typically not vehicle photos)
+          if (excludedExtensions.some(ext => imgUrl.toLowerCase().includes(ext))) continue;
           
           // Make absolute URL
           if (imgUrl.startsWith('//')) {
@@ -146,10 +157,16 @@ serve(async (req) => {
           // Check for small image dimensions in URL
           if (/[_-](\d{1,2}x\d{1,2}|thumb|tiny|small|xs|sm)[_.-]/i.test(imgUrl)) continue;
           
-          // Prioritize images that look like vehicle photos
-          const isLikelyVehicleImage = vehicleImageKeywords.some(kw => lowerUrl.includes(kw)) ||
-            /\d{3,}x\d{3,}/.test(imgUrl) || // Large dimensions
-            /\.(jpg|jpeg|png|webp)(\?|$)/i.test(imgUrl); // Standard photo formats
+          // Check for large dimensions in URL (indicates actual photo)
+          const hasLargeDimensions = /\d{3,}x\d{3,}/.test(imgUrl) || 
+            /[_-](large|big|full|hd|xl|xxl)[_.-]/i.test(imgUrl);
+          
+          // Check for vehicle-related keywords in URL
+          const hasVehicleKeyword = vehicleImageKeywords.some(kw => lowerUrl.includes(kw));
+          
+          // Must have either vehicle keyword OR large dimensions (be more strict)
+          const isLikelyVehicleImage = (hasVehicleKeyword || hasLargeDimensions) &&
+            /\.(jpg|jpeg|png|webp)(\?|$)/i.test(imgUrl); // Must be photo format
           
           if (isLikelyVehicleImage) {
             seenUrls.add(imgUrl);
