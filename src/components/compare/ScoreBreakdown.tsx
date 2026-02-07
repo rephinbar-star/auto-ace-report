@@ -1,4 +1,11 @@
 import { Progress } from "@/components/ui/progress";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { VehicleScoreResult } from "./scoring-utils";
 
@@ -15,6 +22,69 @@ const categoryColors: Record<string, string> = {
   "Reliability & Risk": "bg-rose-500",
 };
 
+const categoryTooltips: Record<string, { title: string; details: string[] }> = {
+  "Deal Rating": {
+    title: "How good is the price?",
+    details: [
+      "Excellent: 20 pts — Priced well below market",
+      "Good: 16 pts — Fair price, some savings",
+      "Fair: 12 pts — At market value",
+      "Poor: 8 pts — Above market value",
+      "Overpriced: 4 pts — Significantly inflated",
+    ],
+  },
+  "Title Status": {
+    title: "Vehicle title history impact",
+    details: [
+      "Clean: 20 pts — Full value, no issues",
+      "Rebuilt: 10 pts — 20-40% value reduction",
+      "Salvage: 4 pts — 40-60% value loss, financing issues",
+      "Lemon: 2 pts — Manufacturer buyback history",
+    ],
+  },
+  "Accident History": {
+    title: "Prior accident impact on value",
+    details: [
+      "0 accidents: 15 pts — Clean history",
+      "1 accident: 12 pts — ~10% value impact",
+      "2 accidents: 8 pts — ~20% value impact",
+      "3+ accidents: 4 pts — ~30% value impact",
+    ],
+  },
+  "5-Year Equity": {
+    title: "Projected equity after 5 years",
+    details: [
+      ">$5,000 positive: 15 pts — Strong investment",
+      "$1K-$5K positive: 12 pts — Good equity",
+      "Break-even: 8 pts — Neutral position",
+      "$1K-$5K negative: 4 pts — Underwater",
+      ">$5K negative: 0 pts — Deep loss",
+    ],
+  },
+  "Age & Warranty": {
+    title: "Vehicle age and warranty status",
+    details: [
+      "0-2 years: 15 pts — Likely under warranty",
+      "3-4 years: 12 pts — Warranty expiring",
+      "5-6 years: 8 pts — Post-warranty",
+      "7-8 years: 5 pts — Higher repair risk",
+      "9+ years: 2 pts — Significant age",
+      "+2 bonus if health score > 85",
+    ],
+  },
+  "Reliability & Risk": {
+    title: "Ownership risk and reliability",
+    details: [
+      "Low risk: 10 pts base",
+      "Medium risk: 6 pts base",
+      "High risk: 2 pts base",
+      "0 concerns: +5 pts bonus",
+      "1-2 concerns: +2 pts",
+      "5+ concerns: -2 pts penalty",
+    ],
+  },
+};
+
 export function ScoreBreakdown({ scoredVehicles }: ScoreBreakdownProps) {
   if (scoredVehicles.length === 0) return null;
 
@@ -22,89 +92,144 @@ export function ScoreBreakdown({ scoredVehicles }: ScoreBreakdownProps) {
   const categories = scoredVehicles[0]?.breakdown.map((b) => b.category) || [];
 
   return (
-    <div className="space-y-4">
-      <h4 className="font-semibold text-sm flex items-center gap-2">
-        📊 Score Breakdown
-        <span className="text-xs font-normal text-muted-foreground">
-          (out of 100 points)
-        </span>
-      </h4>
+    <TooltipProvider delayDuration={200}>
+      <div className="space-y-4">
+        <h4 className="font-semibold text-sm flex items-center gap-2">
+          📊 Score Breakdown
+          <span className="text-xs font-normal text-muted-foreground">
+            (out of 100 points)
+          </span>
+        </h4>
 
-      <div className="space-y-6">
-        {scoredVehicles.map((scored, vehicleIndex) => {
-          const v = scored.vehicle;
-          const isWinner = vehicleIndex === 0;
-          
-          return (
-            <div
-              key={v.id}
-              className={cn(
-                "p-4 rounded-lg border",
-                isWinner ? "bg-primary/5 border-primary/30" : "bg-muted/30"
-              )}
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  {isWinner && <span className="text-lg">🏆</span>}
-                  <span className="font-semibold text-sm">
-                    {v.year} {v.make} {v.model}
-                  </span>
-                </div>
-                <div className={cn(
-                  "text-lg font-bold",
-                  isWinner ? "text-primary" : "text-muted-foreground"
-                )}>
-                  {scored.totalScore}/100
-                </div>
-              </div>
+        <div className="space-y-6">
+          {scoredVehicles.map((scored, vehicleIndex) => {
+            const v = scored.vehicle;
+            const isWinner = vehicleIndex === 0;
 
-              <div className="space-y-2">
-                {scored.breakdown.map((item) => (
-                  <div key={item.category} className="space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">{item.category}</span>
-                      <span className="font-medium">
-                        {item.score}/{item.maxScore}
-                      </span>
-                    </div>
-                    <div className="relative">
-                      <Progress
-                        value={(item.score / item.maxScore) * 100}
-                        className="h-2"
-                      />
-                      <div
-                        className={cn(
-                          "absolute inset-0 rounded-full opacity-80",
-                          categoryColors[item.category] || "bg-primary"
-                        )}
-                        style={{
-                          width: `${(item.score / item.maxScore) * 100}%`,
-                          height: "100%",
-                        }}
-                      />
-                    </div>
+            return (
+              <div
+                key={v.id}
+                className={cn(
+                  "p-4 rounded-lg border",
+                  isWinner ? "bg-primary/5 border-primary/30" : "bg-muted/30"
+                )}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    {isWinner && <span className="text-lg">🏆</span>}
+                    <span className="font-semibold text-sm">
+                      {v.year} {v.make} {v.model}
+                    </span>
                   </div>
-                ))}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+                  <div
+                    className={cn(
+                      "text-lg font-bold",
+                      isWinner ? "text-primary" : "text-muted-foreground"
+                    )}
+                  >
+                    {scored.totalScore}/100
+                  </div>
+                </div>
 
-      {/* Legend */}
-      <div className="flex flex-wrap gap-3 pt-2">
-        {categories.map((category) => (
-          <div key={category} className="flex items-center gap-1.5 text-xs">
-            <div
-              className={cn(
-                "w-2.5 h-2.5 rounded-full",
-                categoryColors[category] || "bg-primary"
-              )}
-            />
-            <span className="text-muted-foreground">{category}</span>
-          </div>
-        ))}
+                <div className="space-y-2">
+                  {scored.breakdown.map((item) => {
+                    const tooltip = categoryTooltips[item.category];
+                    return (
+                      <div key={item.category} className="space-y-1">
+                        <div className="flex justify-between text-xs">
+                          <div className="flex items-center gap-1">
+                            <span className="text-muted-foreground">
+                              {item.category}
+                            </span>
+                            {tooltip && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <HelpCircle className="h-3 w-3 text-muted-foreground/60 cursor-help" />
+                                </TooltipTrigger>
+                                <TooltipContent
+                                  side="top"
+                                  className="max-w-[280px] p-3"
+                                >
+                                  <p className="font-semibold text-sm mb-2">
+                                    {tooltip.title}
+                                  </p>
+                                  <ul className="space-y-1">
+                                    {tooltip.details.map((detail, i) => (
+                                      <li
+                                        key={i}
+                                        className="text-xs text-muted-foreground"
+                                      >
+                                        {detail}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
+                          <span className="font-medium">
+                            {item.score}/{item.maxScore}
+                          </span>
+                        </div>
+                        <div className="relative">
+                          <Progress
+                            value={(item.score / item.maxScore) * 100}
+                            className="h-2"
+                          />
+                          <div
+                            className={cn(
+                              "absolute inset-0 rounded-full opacity-80",
+                              categoryColors[item.category] || "bg-primary"
+                            )}
+                            style={{
+                              width: `${(item.score / item.maxScore) * 100}%`,
+                              height: "100%",
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Legend */}
+        <div className="flex flex-wrap gap-3 pt-2">
+          {categories.map((category) => {
+            const tooltip = categoryTooltips[category];
+            return (
+              <Tooltip key={category}>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-1.5 text-xs cursor-help">
+                    <div
+                      className={cn(
+                        "w-2.5 h-2.5 rounded-full",
+                        categoryColors[category] || "bg-primary"
+                      )}
+                    />
+                    <span className="text-muted-foreground">{category}</span>
+                  </div>
+                </TooltipTrigger>
+                {tooltip && (
+                  <TooltipContent side="top" className="max-w-[280px] p-3">
+                    <p className="font-semibold text-sm mb-2">{tooltip.title}</p>
+                    <ul className="space-y-1">
+                      {tooltip.details.map((detail, i) => (
+                        <li key={i} className="text-xs text-muted-foreground">
+                          {detail}
+                        </li>
+                      ))}
+                    </ul>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            );
+          })}
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   );
 }
