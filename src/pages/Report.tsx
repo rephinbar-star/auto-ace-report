@@ -111,8 +111,8 @@ export default function ReportPage() {
   const [error, setError] = useState<string | null>(null);
   const [dealerAnalysis, setDealerAnalysis] = useState<DealerAnalysisData | null>(null);
 
-  const handleSaveReport = async () => {
-    if (!analysis || !vehicleData) return;
+  const handleSaveReport = async (skipNavigation = false): Promise<boolean> => {
+    if (!analysis || !vehicleData) return false;
     
     setIsSaving(true);
     try {
@@ -127,7 +127,7 @@ export default function ReportPage() {
           variant: "destructive",
         });
         navigate("/login");
-        return;
+        return false;
       }
 
       const { error: saveError } = await supabase.from("vehicle_reports").insert({
@@ -173,7 +173,11 @@ export default function ReportPage() {
 
       sonnerToast.success("Report saved successfully!");
       sessionStorage.removeItem("analysisData");
-      navigate("/dashboard");
+      
+      if (!skipNavigation) {
+        navigate("/dashboard");
+      }
+      return true;
     } catch (err) {
       console.error("Save error:", err);
       toast({
@@ -181,6 +185,7 @@ export default function ReportPage() {
         description: "Failed to save your report. Please try again.",
         variant: "destructive",
       });
+      return false;
     } finally {
       setIsSaving(false);
     }
@@ -627,20 +632,29 @@ export default function ReportPage() {
                 <Button 
                   variant="outline" 
                   className="flex-1"
-                  onClick={() => {
-                    if (isPaid) {
-                      navigate("/dashboard?select=true");
-                    } else {
+                  onClick={async () => {
+                    if (!isPaid) {
                       navigate("/pricing");
+                      return;
+                    }
+                    // Save report first, then navigate to compare
+                    const saved = await handleSaveReport(true);
+                    if (saved) {
+                      navigate("/dashboard?select=true");
                     }
                   }}
+                  disabled={isSaving}
                 >
-                  <Scale className="mr-2 h-4 w-4" />
+                  {isSaving ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Scale className="mr-2 h-4 w-4" />
+                  )}
                   Compare with Another Vehicle
                 </Button>
                 <Button 
                   className="flex-1"
-                  onClick={handleSaveReport}
+                  onClick={() => handleSaveReport()}
                   disabled={isSaving}
                 >
                   {isSaving ? (
