@@ -349,7 +349,7 @@ function CompareContent() {
                         value={[annualMiles]}
                         onValueChange={(value) => setAnnualMiles(value[0])}
                         min={5000}
-                        max={30000}
+                        max={19000}
                         step={1000}
                         className="flex-1"
                       />
@@ -361,7 +361,7 @@ function CompareContent() {
                   <div className="flex justify-between text-xs text-muted-foreground mt-2 px-1">
                     <span>5,000 mi</span>
                     <span>12,000 mi (avg)</span>
-                    <span>30,000 mi</span>
+                    <span>19,000 mi</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
                     Adjust to see how driving habits affect fuel costs, maintenance, and depreciation across all vehicles.
