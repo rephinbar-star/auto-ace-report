@@ -24,10 +24,11 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SEO } from "@/components/seo/SEO";
-import { User, Mail, Calendar, Shield, Loader2, Check, AlertCircle } from "lucide-react";
+import { User, Mail, Calendar, Shield, Loader2, Check, AlertCircle, ExternalLink } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { useToast } from "@/hooks/use-toast";
+import { useSubscription } from "@/hooks/useSubscription";
 import { format } from "date-fns";
 
 const profileSchema = z.object({
@@ -46,6 +47,8 @@ function ProfileContent() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
+  const [isOpeningPortal, setIsOpeningPortal] = useState(false);
+  const { openCustomerPortal } = useSubscription();
 
   // Fetch profile data
   const { data: profile, isLoading, error } = useQuery({
@@ -155,6 +158,22 @@ function ProfileContent() {
         {subscription.type === "compare_pass" ? "Compare Pass" : subscription.type}
       </Badge>
     );
+  };
+
+  const handleManageBilling = async () => {
+    setIsOpeningPortal(true);
+    try {
+      await openCustomerPortal();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to open billing portal. Please try again.",
+        variant: "destructive",
+      });
+      console.error("Customer portal error:", error);
+    } finally {
+      setIsOpeningPortal(false);
+    }
   };
 
   return (
@@ -368,8 +387,22 @@ function ProfileContent() {
                       <a href="/pricing">View Plans</a>
                     </Button>
                     {subscription?.stripe_customer_id && (
-                      <Button variant="outline">
-                        Manage Billing
+                      <Button 
+                        variant="outline"
+                        onClick={handleManageBilling}
+                        disabled={isOpeningPortal}
+                      >
+                        {isOpeningPortal ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Opening...
+                          </>
+                        ) : (
+                          <>
+                            <ExternalLink className="mr-2 h-4 w-4" />
+                            Manage Billing
+                          </>
+                        )}
                       </Button>
                     )}
                   </div>
