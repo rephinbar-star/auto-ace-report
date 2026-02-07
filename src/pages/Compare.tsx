@@ -214,7 +214,7 @@ function CompareContent() {
                   </Badge>
                 </div>
                 <p className="text-muted-foreground mt-1">
-                  Analyze vehicles side-by-side to find the best deal
+                  Analyze vehicles side-by-side to find the best buy
                 </p>
               </div>
             </div>
