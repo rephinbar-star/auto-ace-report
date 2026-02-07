@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,7 +40,8 @@ import {
   Download,
   Loader2,
   Scale,
-  Save
+  Save,
+  ArrowLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -97,6 +98,7 @@ interface DealerAnalysisData {
 
 export default function ReportPage() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { tier } = useSubscription();
@@ -110,6 +112,12 @@ export default function ReportPage() {
   const [vehicleData, setVehicleData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [dealerAnalysis, setDealerAnalysis] = useState<DealerAnalysisData | null>(null);
+  const [isSavedReport, setIsSavedReport] = useState(false);
+  
+  // Check if coming from comparison
+  const fromComparison = searchParams.get("from") === "compare";
+  const comparisonIds = searchParams.get("ids") || "";
+  const backToComparisonUrl = fromComparison ? `/compare?ids=${comparisonIds}` : null;
 
   const handleSaveReport = async (skipNavigation = false): Promise<boolean> => {
     if (!analysis || !vehicleData) return false;
@@ -193,7 +201,92 @@ export default function ReportPage() {
 
   useEffect(() => {
     const loadAnalysis = async () => {
-      // For demo, load from sessionStorage
+      // First, check if we have a saved report ID (UUID format)
+      const isUUID = id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+      
+      if (isUUID) {
+        // Load saved report from database
+        try {
+          const { data: report, error: fetchError } = await supabase
+            .from("vehicle_reports")
+            .select("*")
+            .eq("id", id)
+            .single();
+          
+          if (fetchError) throw fetchError;
+          if (!report) throw new Error("Report not found");
+          
+          setIsSavedReport(true);
+          
+          // Convert saved report to vehicleData format
+          setVehicleData({
+            vehicle: {
+              year: report.year,
+              make: report.make,
+              model: report.model,
+              trim: report.trim,
+              vin: report.vin,
+            },
+            condition: {
+              mileage: report.mileage,
+              askingPrice: report.asking_price,
+              condition: report.condition,
+              sellerType: report.seller_type,
+              images: report.listing_images,
+            },
+            financing: {
+              type: report.financing_type,
+              loanAmount: report.loan_amount,
+              loanTerm: report.loan_term,
+              apr: report.apr,
+              monthlyPayment: report.monthly_payment,
+              leaseTermMonths: report.lease_term_months,
+              residualValue: report.residual_value,
+            },
+            history: {
+              accidentCount: report.accident_count,
+              ownerCount: report.owner_count,
+              titleStatus: report.title_status,
+              issues: report.history_issues,
+            },
+          });
+          
+          // Convert saved report to analysis format
+          setAnalysis({
+            priceAssessment: {
+              fairMarketPrivate: report.fair_market_private || 0,
+              fairMarketTradeIn: report.fair_market_trade_in || 0,
+              dealRating: report.deal_rating || "fair",
+              priceDifference: report.price_difference || 0,
+              percentDifference: report.price_difference && report.fair_market_private 
+                ? (report.price_difference / report.fair_market_private) * 100 
+                : 0,
+            },
+            depreciationTable: (report.depreciation_table as unknown as DepreciationYear[]) || [],
+            riskAssessment: {
+              level: report.risk_level || "medium",
+              depreciationRisk: report.depreciation_risk || "",
+              reliabilityConcerns: report.reliability_concerns || [],
+              valueProposition: report.value_proposition || "",
+              fairOfferPrice: report.fair_offer_price || 0,
+              expertOpinion: report.expert_opinion || "",
+            },
+            historyAnalysis: {
+              healthScore: report.health_score || 0,
+              positives: report.history_positives || [],
+              concerns: report.history_issues || [],
+            },
+          });
+          
+          setIsLoading(false);
+          return;
+        } catch (err) {
+          console.error("Error loading saved report:", err);
+          // Fall through to try sessionStorage
+        }
+      }
+      
+      // For new analysis, load from sessionStorage
       const stored = sessionStorage.getItem("analysisData");
       console.log("Loading analysis data from sessionStorage:", stored ? "found" : "not found");
       
@@ -372,6 +465,20 @@ export default function ReportPage() {
       
       <main className="flex-1 bg-gradient-hero py-8">
         <div className="container mx-auto max-w-6xl px-4">
+          {/* Back Navigation */}
+          {backToComparisonUrl && (
+            <Button 
+              variant="ghost" 
+              className="mb-4 -ml-2" 
+              asChild
+            >
+              <Link to={backToComparisonUrl}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Comparison
+              </Link>
+            </Button>
+          )}
+          
           {/* Report Header */}
           <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
@@ -383,6 +490,14 @@ export default function ReportPage() {
               </p>
             </div>
             <div className="flex gap-2">
+              {!isSavedReport && !backToComparisonUrl && (
+                <Button variant="outline" size="sm" asChild>
+                  <Link to="/dashboard">
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Dashboard
+                  </Link>
+                </Button>
+              )}
               <Button variant="outline" size="sm">
                 <Share2 className="mr-2 h-4 w-4" />
                 Share

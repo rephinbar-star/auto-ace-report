@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Crown, TrendingUp, Shield, DollarSign, AlertTriangle } from "lucide-react";
+import { Crown, TrendingUp, Shield, DollarSign, AlertTriangle, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -11,7 +11,7 @@ interface ComparisonSummaryProps {
   vehicles: VehicleReport[];
 }
 
-const dealRatingScore = {
+const dealRatingScore: Record<string, number> = {
   excellent: 5,
   good: 4,
   fair: 3,
@@ -19,10 +19,24 @@ const dealRatingScore = {
   overpriced: 1,
 };
 
-const riskScore = {
+const riskScore: Record<string, number> = {
   low: 3,
   medium: 2,
   high: 1,
+};
+
+const dealRatingLabels: Record<string, string> = {
+  excellent: "excellent",
+  good: "good",
+  fair: "fair",
+  poor: "poor",
+  overpriced: "overpriced",
+};
+
+const riskLabels: Record<string, string> = {
+  low: "low",
+  medium: "medium",
+  high: "high",
 };
 
 export function ComparisonSummary({ vehicles }: ComparisonSummaryProps) {
@@ -31,8 +45,8 @@ export function ComparisonSummary({ vehicles }: ComparisonSummaryProps) {
 
     // Calculate scores for each vehicle
     const scored = vehicles.map((v) => {
-      const dealScore = v.deal_rating ? dealRatingScore[v.deal_rating] : 3;
-      const riskScoreVal = v.risk_level ? riskScore[v.risk_level] : 2;
+      const dealScore = v.deal_rating ? dealRatingScore[v.deal_rating] || 3 : 3;
+      const riskScoreVal = v.risk_level ? riskScore[v.risk_level] || 2 : 2;
       
       // Price difference as a percentage (lower is better)
       const priceDiffPct = v.fair_offer_price && v.asking_price
@@ -64,40 +78,100 @@ export function ComparisonSummary({ vehicles }: ComparisonSummaryProps) {
     scored.sort((a, b) => b.totalScore - a.totalScore);
 
     const bestBuy = scored[0];
+    const others = scored.slice(1);
     const lowestPrice = [...vehicles].sort((a, b) => Number(a.asking_price) - Number(b.asking_price))[0];
     const lowestMileage = [...vehicles].sort((a, b) => a.mileage - b.mileage)[0];
     const lowestRisk = [...vehicles].sort((a, b) => {
-      const aScore = a.risk_level ? riskScore[a.risk_level] : 2;
-      const bScore = b.risk_level ? riskScore[b.risk_level] : 2;
+      const aScore = a.risk_level ? riskScore[a.risk_level] || 2 : 2;
+      const bScore = b.risk_level ? riskScore[b.risk_level] || 2 : 2;
       return bScore - aScore;
     })[0];
 
-    // Generate recommendation text
+    // Generate detailed recommendation text with "why not" explanations
     let recommendation = "";
+    let whyNotExplanations: { vehicle: VehicleReport; reason: string }[] = [];
+    
     if (bestBuy) {
       const v = bestBuy.vehicle;
       const title = `${v.year} ${v.make} ${v.model}`;
       
-      const reasons: string[] = [];
-      if (bestBuy.dealScore >= 4) reasons.push("excellent deal rating");
-      if (bestBuy.riskScoreVal >= 3) reasons.push("low risk profile");
-      if (bestBuy.priceDiffPct < 0) reasons.push("priced below market value");
-      if (v.mileage === lowestMileage.mileage) reasons.push("lowest mileage");
+      // Build strengths for the winner
+      const strengths: string[] = [];
+      if (bestBuy.dealScore >= 4) strengths.push("excellent deal rating");
+      if (bestBuy.riskScoreVal >= 3) strengths.push("low risk profile");
+      if (bestBuy.priceDiffPct < 0) strengths.push("priced below market value");
+      if (bestBuy.priceDiffPct >= 0 && bestBuy.priceDiffPct < 5) strengths.push("fairly priced");
+      if (v.mileage === lowestMileage.mileage) strengths.push("lowest mileage in the comparison");
+      if (v.accident_count === 0) strengths.push("clean accident history");
+      if ((v.reliability_concerns?.length || 0) === 0) strengths.push("no major reliability concerns");
       
-      recommendation = `The **${title}** is our recommended choice`;
-      if (reasons.length > 0) {
-        recommendation += ` due to its ${reasons.slice(0, 2).join(" and ")}`;
+      recommendation = `The **${title}** stands out as the best overall choice`;
+      if (strengths.length > 0) {
+        recommendation += ` thanks to its ${strengths.slice(0, 3).join(", ")}`;
       }
-      recommendation += `. It offers the best overall value considering price, condition, and risk factors.`;
+      recommendation += `. Our analysis weighs deal quality (30%), risk level (25%), price fairness (20%), and mileage (15%) to find you the best value.`;
+      
+      // Generate "why not" explanations for other vehicles
+      others.forEach((scored, index) => {
+        const other = scored.vehicle;
+        const otherTitle = `${other.year} ${other.make} ${other.model}`;
+        const concerns: string[] = [];
+        
+        // Compare deal ratings
+        if (scored.dealScore < bestBuy.dealScore) {
+          const rating = other.deal_rating ? dealRatingLabels[other.deal_rating] || "fair" : "fair";
+          concerns.push(`has a ${rating} deal rating (vs. ${bestBuy.vehicle.deal_rating || "fair"} for the winner)`);
+        }
+        
+        // Compare risk levels
+        if (scored.riskScoreVal < bestBuy.riskScoreVal) {
+          const risk = other.risk_level ? riskLabels[other.risk_level] || "medium" : "medium";
+          concerns.push(`carries ${risk} risk which may lead to higher ownership costs`);
+        }
+        
+        // Compare pricing
+        if (scored.priceDiffPct > bestBuy.priceDiffPct + 5) {
+          const overPrice = Math.round(scored.priceDiffPct);
+          concerns.push(`is priced ${overPrice}% above its fair market value`);
+        }
+        
+        // Compare mileage
+        if (other.mileage > bestBuy.vehicle.mileage * 1.2) {
+          const mileageDiff = Math.round(((other.mileage - bestBuy.vehicle.mileage) / bestBuy.vehicle.mileage) * 100);
+          concerns.push(`has ${mileageDiff}% higher mileage which affects long-term value`);
+        }
+        
+        // Compare accidents
+        if ((other.accident_count || 0) > (bestBuy.vehicle.accident_count || 0)) {
+          concerns.push(`has ${other.accident_count} accident${other.accident_count !== 1 ? "s" : ""} on record`);
+        }
+        
+        // Build the reason string
+        let reason = "";
+        if (concerns.length > 0) {
+          reason = concerns.slice(0, 2).join(" and ");
+        } else {
+          // Fallback if scores are close
+          const scoreDiff = Math.round(bestBuy.totalScore - scored.totalScore);
+          reason = `scored ${scoreDiff} points lower in our overall value analysis`;
+        }
+        
+        whyNotExplanations.push({
+          vehicle: other,
+          reason,
+        });
+      });
     }
 
     return {
       scored,
       bestBuy,
+      others,
       lowestPrice,
       lowestMileage,
       lowestRisk,
       recommendation,
+      whyNotExplanations,
     };
   }, [vehicles]);
 
@@ -113,7 +187,7 @@ export function ComparisonSummary({ vehicles }: ComparisonSummaryProps) {
     );
   }
 
-  const { bestBuy, lowestPrice, lowestMileage, lowestRisk, recommendation } = analysis;
+  const { bestBuy, lowestPrice, lowestMileage, lowestRisk, recommendation, whyNotExplanations } = analysis;
 
   return (
     <Card className="bg-gradient-to-br from-primary/5 to-primary/10 border-primary/20">
@@ -140,7 +214,7 @@ export function ComparisonSummary({ vehicles }: ComparisonSummaryProps) {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="p-3 rounded-lg bg-background border">
             <div className="flex items-center gap-2 mb-1">
-              <DollarSign className="h-4 w-4 text-green-600" />
+              <DollarSign className="h-4 w-4 text-success" />
               <span className="text-xs text-muted-foreground">Lowest Price</span>
             </div>
             <p className="font-semibold text-sm truncate">
@@ -153,7 +227,7 @@ export function ComparisonSummary({ vehicles }: ComparisonSummaryProps) {
 
           <div className="p-3 rounded-lg bg-background border">
             <div className="flex items-center gap-2 mb-1">
-              <TrendingUp className="h-4 w-4 text-blue-600" />
+              <TrendingUp className="h-4 w-4 text-primary" />
               <span className="text-xs text-muted-foreground">Lowest Mileage</span>
             </div>
             <p className="font-semibold text-sm truncate">
@@ -166,7 +240,7 @@ export function ComparisonSummary({ vehicles }: ComparisonSummaryProps) {
 
           <div className="p-3 rounded-lg bg-background border">
             <div className="flex items-center gap-2 mb-1">
-              <Shield className="h-4 w-4 text-emerald-600" />
+              <Shield className="h-4 w-4 text-success" />
               <span className="text-xs text-muted-foreground">Lowest Risk</span>
             </div>
             <p className="font-semibold text-sm truncate">
@@ -174,9 +248,9 @@ export function ComparisonSummary({ vehicles }: ComparisonSummaryProps) {
             </p>
             <Badge variant="outline" className={cn(
               "mt-1",
-              lowestRisk.risk_level === "low" ? "bg-green-500/10 text-green-600" :
-              lowestRisk.risk_level === "medium" ? "bg-yellow-500/10 text-yellow-600" :
-              "bg-red-500/10 text-red-600"
+              lowestRisk.risk_level === "low" ? "bg-success/10 text-success" :
+              lowestRisk.risk_level === "medium" ? "bg-warning/10 text-warning" :
+              "bg-danger/10 text-danger"
             )}>
               {lowestRisk.risk_level || "Unknown"} risk
             </Badge>
@@ -203,7 +277,7 @@ export function ComparisonSummary({ vehicles }: ComparisonSummaryProps) {
                     {savings !== 0 && (
                       <span className={cn(
                         "text-xs font-medium",
-                        savings > 0 ? "text-red-600" : "text-green-600"
+                        savings > 0 ? "text-destructive" : "text-success"
                       )}>
                         {savings > 0 ? "+" : ""}{savings.toLocaleString()} vs fair
                       </span>
@@ -214,6 +288,41 @@ export function ComparisonSummary({ vehicles }: ComparisonSummaryProps) {
             })}
           </div>
         </div>
+
+        {/* Why Not Other Vehicles - Educational Section */}
+        {whyNotExplanations && whyNotExplanations.length > 0 && (
+          <div className="space-y-3 pt-2 border-t">
+            <div className="flex items-center gap-2">
+              <Info className="h-4 w-4 text-muted-foreground" />
+              <h4 className="font-semibold text-sm">Why Not the Others?</h4>
+            </div>
+            <div className="space-y-2">
+              {whyNotExplanations.map(({ vehicle, reason }, index) => (
+                <div 
+                  key={vehicle.id} 
+                  className="p-3 rounded-lg bg-muted/50 border border-muted"
+                >
+                  <div className="flex items-start gap-2">
+                    <span className="text-muted-foreground font-bold text-sm">
+                      #{index + 2}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm">
+                        {vehicle.year} {vehicle.make} {vehicle.model}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                        This vehicle {reason}.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground italic">
+              💡 Tip: These factors affect long-term ownership costs and resale value. A higher upfront price with better ratings often saves money over time.
+            </p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

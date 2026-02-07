@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ import {
   CheckCircle,
   X,
   Crown,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Tables } from "@/integrations/supabase/types";
@@ -45,11 +47,16 @@ const riskConfig = {
 
 export function CompareVehicleCard({ report, onRemove, isBestBuy, rank }: CompareVehicleCardProps) {
   const [isOpen, setIsOpen] = useState(true);
+  const [searchParams] = useSearchParams();
   const dealRating = report.deal_rating ? dealRatingConfig[report.deal_rating] : null;
   const risk = report.risk_level ? riskConfig[report.risk_level] : null;
   const RiskIcon = risk?.icon || AlertTriangle;
 
   const vehicleTitle = `${report.year} ${report.make} ${report.model}${report.trim ? ` ${report.trim}` : ""}`;
+  
+  // Build the full report URL with comparison return context
+  const compareIds = searchParams.get("ids") || "";
+  const fullReportUrl = `/report/${report.id}?from=compare&ids=${encodeURIComponent(compareIds)}`;
 
   return (
     <Card className={cn(
@@ -255,6 +262,16 @@ export function CompareVehicleCard({ report, onRemove, isBestBuy, rank }: Compar
               </div>
             </div>
           </CollapsibleContent>
+
+          {/* Full Report Button */}
+          <div className="pt-4 border-t mt-4">
+            <Button asChild className="w-full" variant="outline">
+              <Link to={fullReportUrl}>
+                <FileText className="h-4 w-4 mr-2" />
+                View Full Report
+              </Link>
+            </Button>
+          </div>
         </CardContent>
       </Collapsible>
     </Card>
