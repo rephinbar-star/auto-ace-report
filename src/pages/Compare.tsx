@@ -216,6 +216,15 @@ function CompareContent() {
                 <p className="text-muted-foreground mt-1">
                   Analyze vehicles side-by-side to find the best buy
                 </p>
+                <div className="mt-3 text-sm text-muted-foreground max-w-2xl">
+                  <span className="font-semibold text-foreground">Methodology:</span>{" "}
+                  Our scoring system evaluates each vehicle across multiple dimensions including 
+                  deal quality relative to market value, title history and its impact on resale, 
+                  accident records and their long-term value implications, projected 5-year equity position, 
+                  vehicle age and warranty coverage, brand and model reliability ratings based on 
+                  industry data from J.D. Power and Consumer Reports, annual mileage accumulation, 
+                  and total cost of ownership including fuel economy and anticipated repair costs.
+                </div>
               </div>
             </div>
             {canAddMore && (
