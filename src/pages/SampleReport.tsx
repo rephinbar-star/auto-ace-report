@@ -41,7 +41,10 @@ import {
   Download,
   ArrowRight,
   Sparkles,
-  Loader2
+  Loader2,
+  Building2,
+  ShieldCheck,
+  Star
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SEO } from "@/components/seo/SEO";
@@ -91,6 +94,8 @@ const sampleVehicle = {
   mileage: 42500,
   askingPrice: 26995,
   condition: "good",
+  dealerName: "Premier Honda of San Jose",
+  sellerType: "dealer",
 };
 
 const sampleAnalysis = {
@@ -134,6 +139,22 @@ const sampleAnalysis = {
       "Last oil change was 4,500 miles ago",
     ],
   },
+  dealerReview: {
+    dealerName: "Premier Honda of San Jose",
+    trustScore: 82,
+    trustLevel: "high" as const,
+    summary: "Premier Honda has maintained a strong reputation with consistent positive feedback across major review platforms. Customers praise their transparent pricing and no-pressure sales approach.",
+    positives: [
+      "Transparent pricing - no hidden fees",
+      "Responsive customer service team",
+      "Clean, well-maintained facility",
+      "Strong post-sale support",
+    ],
+    redFlags: [
+      "Some complaints about extended wait times for service appointments",
+    ],
+    sources: ["Google Reviews", "AutoTrader", "CarGurus"],
+  },
 };
 
 const dealRatingColors = {
@@ -151,7 +172,7 @@ const riskLevelColors = {
 };
 
 export default function SampleReportPage() {
-  const { priceAssessment, depreciationTable, riskAssessment, historyAnalysis } = sampleAnalysis;
+  const { priceAssessment, depreciationTable, riskAssessment, historyAnalysis, dealerReview } = sampleAnalysis;
   const [includeRepairs, setIncludeRepairs] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -688,6 +709,110 @@ export default function SampleReportPage() {
                           </motion.li>
                         ))}
                       </ul>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              {/* Dealer Trust Analysis */}
+              <motion.div variants={itemVariants} whileHover={{ y: -5 }} transition={{ duration: 0.2 }}>
+                <Card className="overflow-hidden transition-shadow hover:shadow-lg">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-5 w-5 text-primary" />
+                        <CardTitle className="text-lg">Dealer Trust Analysis</CardTitle>
+                      </div>
+                      <Badge variant="secondary" className="text-xs">
+                        PRO
+                      </Badge>
+                    </div>
+                    <CardDescription className="line-clamp-1">
+                      {dealerReview.dealerName}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Trust Score */}
+                    <div className="flex items-center gap-4">
+                      <motion.div 
+                        className="flex h-14 w-14 items-center justify-center rounded-full bg-green-500/10"
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", stiffness: 200, delay: 0.3 }}
+                      >
+                        <ShieldCheck className="h-7 w-7 text-green-600" />
+                      </motion.div>
+                      <div className="flex-1">
+                        <div className="mb-1 flex items-center justify-between">
+                          <Badge className="bg-green-500 text-white">Highly Trusted</Badge>
+                          <span className="text-lg font-bold">{dealerReview.trustScore}/100</span>
+                        </div>
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: "100%" }}
+                          transition={{ delay: 0.5, duration: 0.8 }}
+                        >
+                          <Progress value={dealerReview.trustScore} className="h-2" />
+                        </motion.div>
+                      </div>
+                    </div>
+
+                    {/* Summary */}
+                    <p className="text-sm text-muted-foreground">{dealerReview.summary}</p>
+
+                    {/* Positives */}
+                    <div>
+                      <h4 className="mb-2 flex items-center gap-1 text-sm font-medium text-green-600">
+                        <CheckCircle className="h-4 w-4" />
+                        Positives
+                      </h4>
+                      <ul className="space-y-1">
+                        {dealerReview.positives.slice(0, 3).map((item, i) => (
+                          <motion.li 
+                            key={i} 
+                            className="text-xs text-muted-foreground"
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.6 + i * 0.1 }}
+                          >
+                            • {item}
+                          </motion.li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* Red Flags */}
+                    {dealerReview.redFlags.length > 0 && (
+                      <div>
+                        <h4 className="mb-2 flex items-center gap-1 text-sm font-medium text-red-600">
+                          <AlertTriangle className="h-4 w-4" />
+                          Watch Out
+                        </h4>
+                        <ul className="space-y-1">
+                          {dealerReview.redFlags.map((item, i) => (
+                            <motion.li 
+                              key={i} 
+                              className="text-xs text-muted-foreground"
+                              initial={{ opacity: 0, x: -10 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              transition={{ delay: 0.9 + i * 0.1 }}
+                            >
+                              • {item}
+                            </motion.li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Sources */}
+                    <div className="flex flex-wrap gap-2 border-t pt-3">
+                      <span className="text-xs text-muted-foreground">Sources:</span>
+                      {dealerReview.sources.map((source) => (
+                        <Badge key={source} variant="outline" className="text-xs">
+                          <Star className="mr-1 h-3 w-3" />
+                          {source}
+                        </Badge>
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
