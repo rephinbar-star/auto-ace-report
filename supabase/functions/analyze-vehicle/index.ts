@@ -36,6 +36,52 @@ interface VehicleData {
   };
 }
 
+interface MPGData {
+  mpgCity: number | null;
+  mpgHighway: number | null;
+  mpgCombined: number | null;
+  fuelType: string | null;
+  isEstimate: boolean;
+}
+
+async function lookupMPG(year: number, make: string, model: string): Promise<MPGData> {
+  try {
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+    
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      throw new Error("Supabase configuration missing");
+    }
+
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/lookup-mpg`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({ year, make, model }),
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      if (result.success && result.data) {
+        return result.data;
+      }
+    }
+  } catch (error) {
+    console.error("MPG lookup failed:", error);
+  }
+
+  // Default fallback
+  return {
+    mpgCity: 24,
+    mpgHighway: 32,
+    mpgCombined: 27,
+    fuelType: "Gasoline",
+    isEstimate: true,
+  };
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
