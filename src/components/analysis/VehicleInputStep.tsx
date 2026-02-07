@@ -336,6 +336,42 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
 
   const displayVehicle = getDisplayVehicle();
 
+  // Check if a specific model variant belongs to a model series
+  // e.g., "750i" is part of "7 Series", "330i" is part of "3 Series"
+  const isModelVariantOfSeries = (variant: string, series: string): boolean => {
+    const v = variant.toLowerCase().trim();
+    const s = series.toLowerCase().trim();
+    
+    // Direct match or containment
+    if (v.includes(s) || s.includes(v)) return true;
+    
+    // BMW series patterns: "7 series" matches "750i", "745e", "760i", etc.
+    // Also handles "3 series" -> "330i", "M340i", "320i", etc.
+    const seriesMatch = s.match(/^(\d+)\s*series$/i);
+    if (seriesMatch) {
+      const seriesNum = seriesMatch[1];
+      // Check if variant starts with the series number
+      // e.g., "750i" starts with "7", "330i" starts with "3"
+      if (v.startsWith(seriesNum)) return true;
+      // Also check for M variants like "M340i" for 3 series
+      if (v.startsWith(`m${seriesNum}`)) return true;
+    }
+    
+    // Handle X series: "X5" matches "X5 M50i", "X5 xDrive40i", etc.
+    const xSeriesMatch = s.match(/^x(\d+)$/i);
+    if (xSeriesMatch) {
+      const xNum = xSeriesMatch[1];
+      if (v.startsWith(`x${xNum}`)) return true;
+    }
+    
+    // Handle reverse: variant is "X5 M50i" and series is "X5"
+    const variantXMatch = v.match(/^x(\d+)/i);
+    const seriesXMatch = s.match(/^x(\d+)$/i);
+    if (variantXMatch && seriesXMatch && variantXMatch[1] === seriesXMatch[1]) return true;
+    
+    return false;
+  };
+
   // Check for mismatch between listing claims and VIN decode
   const getMismatchWarning = () => {
     if (!importedListing?.decodedVehicle || !importedListing?.vehicle) return null;
@@ -357,12 +393,22 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
       mismatches.push(`Make: Listing says "${scraped.make}", VIN shows "${decoded.make}"`);
     }
     
-    // Check model mismatch (more lenient - check if one contains the other)
+    // Check model mismatch (smart comparison for series/variants)
     if (scraped.model && decoded.model) {
-      const scrapedModel = normalize(scraped.model);
-      const decodedModel = normalize(decoded.model);
-      if (!scrapedModel.includes(decodedModel) && !decodedModel.includes(scrapedModel)) {
-        mismatches.push(`Model: Listing says "${scraped.model}", VIN shows "${decoded.model}"`);
+      const scrapedModel = scraped.model;
+      const decodedModel = decoded.model;
+      const normalizedScraped = normalize(scrapedModel);
+      const normalizedDecoded = normalize(decodedModel);
+      
+      // Check direct containment or series/variant relationship
+      const isMatch = 
+        normalizedScraped.includes(normalizedDecoded) || 
+        normalizedDecoded.includes(normalizedScraped) ||
+        isModelVariantOfSeries(decodedModel, scrapedModel) ||
+        isModelVariantOfSeries(scrapedModel, decodedModel);
+      
+      if (!isMatch) {
+        mismatches.push(`Model: Listing says "${scrapedModel}", VIN shows "${decodedModel}"`);
       }
     }
     
