@@ -92,10 +92,16 @@ export function Footer() {
         </div>
 
         {/* Bottom bar */}
-        <div className="mt-12 border-t pt-8">
-          <p className="text-center text-sm text-muted-foreground">
+        <div className="mt-12 border-t pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-sm text-muted-foreground">
             © {new Date().getFullYear()} CarWise. All rights reserved.
           </p>
+          <Link
+            to="/admin"
+            className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+          >
+            Admin
+          </Link>
         </div>
 
         {/* Ad placeholder - strategically placed at footer */}
