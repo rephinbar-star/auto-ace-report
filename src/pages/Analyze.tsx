@@ -45,6 +45,7 @@ export default function AnalyzePage() {
         condition: scrapedCondition.condition || prev?.condition || "good",
         sellerType: scrapedCondition.sellerType || prev?.sellerType || "dealer",
         listingUrl: scrapedCondition.listingUrl || prev?.listingUrl,
+        images: scrapedCondition.images || prev?.images,
       }));
     }
     setCurrentStep(2);

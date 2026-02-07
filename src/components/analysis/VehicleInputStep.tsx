@@ -24,7 +24,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Search, Car, Link as LinkIcon, CheckCircle, AlertCircle, ArrowRight, ExternalLink, AlertTriangle } from "lucide-react";
+import { Loader2, Search, Car, Link as LinkIcon, CheckCircle, AlertCircle, ArrowRight, ExternalLink, AlertTriangle, ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { decodeVIN, isValidVIN, getMakes, getModels } from "@/lib/nhtsa";
 import { VehicleInfo, VehicleCondition } from "@/types/vehicle";
@@ -65,6 +65,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
   const [isDecodingVin, setIsDecodingVin] = useState(false);
   const [decodedVehicle, setDecodedVehicle] = useState<VehicleInfo | null>(null);
   const [importedListing, setImportedListing] = useState<ImportedListingData | null>(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const { toast } = useToast();
 
   // State for NHTSA data
@@ -268,6 +269,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
     if (v.askingPrice) scrapedCondition.askingPrice = v.askingPrice;
     if (v.condition) scrapedCondition.condition = v.condition;
     if (v.sellerType) scrapedCondition.sellerType = v.sellerType;
+    if (v.images && v.images.length > 0) scrapedCondition.images = v.images;
     scrapedCondition.listingUrl = importedListing.sourceUrl;
     
     onComplete(vehicleInfo, importedListing.sourceUrl, scrapedCondition);
@@ -305,6 +307,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
       sellerType: scraped.sellerType,
       condition: scraped.condition,
       description: scraped.description,
+      images: scraped.images,
     };
   };
 
@@ -519,6 +522,80 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
               <p className="text-sm text-muted-foreground italic">
                 "{displayVehicle.description}"
               </p>
+            )}
+
+            {/* Vehicle Images Gallery */}
+            {displayVehicle.images && displayVehicle.images.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <ImageIcon className="h-4 w-4" />
+                  <span>{displayVehicle.images.length} photo{displayVehicle.images.length !== 1 ? 's' : ''} found</span>
+                </div>
+                <div className="relative rounded-lg overflow-hidden bg-muted aspect-video">
+                  <img
+                    src={displayVehicle.images[currentImageIndex]}
+                    alt={`Vehicle photo ${currentImageIndex + 1}`}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Hide broken images by replacing with placeholder
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                  {displayVehicle.images.length > 1 && (
+                    <>
+                      <button
+                        onClick={() => setCurrentImageIndex((prev) => 
+                          prev === 0 ? displayVehicle.images!.length - 1 : prev - 1
+                        )}
+                        className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-1.5 transition-colors"
+                        aria-label="Previous image"
+                      >
+                        <ChevronLeft className="h-5 w-5" />
+                      </button>
+                      <button
+                        onClick={() => setCurrentImageIndex((prev) => 
+                          prev === displayVehicle.images!.length - 1 ? 0 : prev + 1
+                        )}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full p-1.5 transition-colors"
+                        aria-label="Next image"
+                      >
+                        <ChevronRight className="h-5 w-5" />
+                      </button>
+                      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/50 text-white text-xs px-2 py-1 rounded-full">
+                        {currentImageIndex + 1} / {displayVehicle.images.length}
+                      </div>
+                    </>
+                  )}
+                </div>
+                {/* Thumbnail strip */}
+                {displayVehicle.images.length > 1 && (
+                  <div className="flex gap-1 overflow-x-auto pb-1">
+                    {displayVehicle.images.slice(0, 6).map((img, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setCurrentImageIndex(idx)}
+                        className={`flex-shrink-0 w-16 h-12 rounded overflow-hidden border-2 transition-colors ${
+                          currentImageIndex === idx ? 'border-primary' : 'border-transparent opacity-70 hover:opacity-100'
+                        }`}
+                      >
+                        <img
+                          src={img}
+                          alt={`Thumbnail ${idx + 1}`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.parentElement!.style.display = 'none';
+                          }}
+                        />
+                      </button>
+                    ))}
+                    {displayVehicle.images.length > 6 && (
+                      <div className="flex-shrink-0 w-16 h-12 rounded bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                        +{displayVehicle.images.length - 6}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
 
             <Separator />
