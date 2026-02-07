@@ -1,56 +1,70 @@
-import { Check } from "lucide-react";
+import { Check, X, User, Zap, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
+import { STRIPE_PRICES } from "@/hooks/useSubscription";
+import { cn } from "@/lib/utils";
 
 const plans = [
   {
     name: "Free",
     price: "$0",
-    period: "forever",
-    description: "Perfect for analyzing individual vehicles",
+    period: "/month",
+    description: "Perfect for trying out CarWise",
+    icon: User,
     features: [
-      "Unlimited single vehicle analyses",
-      "Fair market price assessment",
-      "5-year depreciation projections",
-      "Expert risk recommendations",
-      "Save reports to your account",
+      { name: "5 vehicle analyses per month", included: true },
+      { name: "Advanced price assessment", included: true },
+      { name: "5-year depreciation forecast", included: true },
+      { name: "Expert AI opinion", included: true },
+      { name: "History report parsing", included: true },
+      { name: "PDF report export", included: false },
+      { name: "Vehicle comparison", included: false },
     ],
     cta: "Get Started Free",
     href: "/signup",
     popular: false,
   },
   {
-    name: "Compare Pass",
-    price: "$7.95",
-    period: "one-time",
-    description: "One-time access to compare mode",
+    name: "Standard",
+    price: `$${STRIPE_PRICES.basic.monthlyPrice}`,
+    period: "/month",
+    description: "For occasional car shoppers",
+    icon: Zap,
     features: [
-      "Everything in Free",
-      "Compare up to 3 vehicles side-by-side",
-      "Best buy recommendation",
-      "One-time purchase, no subscription",
+      { name: "Unlimited vehicle analyses", included: true },
+      { name: "Advanced price assessment", included: true },
+      { name: "5-year depreciation forecast", included: true },
+      { name: "Expert AI opinion", included: true },
+      { name: "History report parsing", included: true },
+      { name: "PDF report export", included: true },
+      { name: "Compare up to 3 vehicles", included: true },
     ],
-    cta: "Buy Compare Pass",
-    href: "/signup?plan=compare-pass",
-    popular: false,
+    cta: "Subscribe",
+    href: "/pricing",
+    popular: true,
   },
   {
     name: "Pro",
-    price: "$14.95",
+    price: `$${STRIPE_PRICES.pro.monthlyPrice}`,
     period: "/month",
-    description: "For serious car shoppers",
+    description: "For serious car buyers",
+    icon: Crown,
     features: [
-      "Everything in Free",
-      "Unlimited vehicle comparisons",
-      "Priority report generation",
-      "Advanced market insights",
-      "Cancel anytime",
+      { name: "Unlimited vehicle analyses", included: true },
+      { name: "Advanced price assessment", included: true },
+      { name: "5-year depreciation forecast", included: true },
+      { name: "Expert AI opinion", included: true },
+      { name: "History report parsing", included: true },
+      { name: "PDF report export", included: true },
+      { name: "Compare up to 6 vehicles", included: true },
+      { name: "Dealer trust analysis", included: true },
+      { name: "Priority support", included: true },
     ],
-    cta: "Start Pro Trial",
-    href: "/signup?plan=pro",
-    popular: true,
+    cta: "Subscribe",
+    href: "/pricing",
+    popular: false,
   },
 ];
 
@@ -64,7 +78,7 @@ export function Pricing() {
             Simple, Transparent Pricing
           </h2>
           <p className="text-lg text-muted-foreground">
-            Start for free. Upgrade when you need to compare vehicles.
+            Start for free. Upgrade when you need more features.
           </p>
         </div>
 
@@ -72,11 +86,12 @@ export function Pricing() {
           {plans.map((plan) => (
             <Card 
               key={plan.name}
-              className={`relative flex flex-col ${
+              className={cn(
+                "relative flex flex-col",
                 plan.popular 
                   ? "border-2 border-primary shadow-card" 
                   : "border-2"
-              }`}
+              )}
             >
               {plan.popular && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -85,6 +100,9 @@ export function Pricing() {
               )}
               
               <CardHeader className="text-center">
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+                  <plan.icon className="h-6 w-6 text-primary" />
+                </div>
                 <CardTitle className="text-xl">{plan.name}</CardTitle>
                 <div className="mt-4">
                   <span className="text-4xl font-bold">{plan.price}</span>
@@ -96,9 +114,18 @@ export function Pricing() {
               <CardContent className="flex-1">
                 <ul className="space-y-3">
                   {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-start gap-3">
-                      <Check className="mt-0.5 h-5 w-5 shrink-0 text-success" />
-                      <span className="text-sm">{feature}</span>
+                    <li key={feature.name} className="flex items-start gap-3">
+                      {feature.included ? (
+                        <Check className="mt-0.5 h-5 w-5 shrink-0 text-green-600" />
+                      ) : (
+                        <X className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground/50" />
+                      )}
+                      <span className={cn(
+                        "text-sm",
+                        !feature.included && "text-muted-foreground/50"
+                      )}>
+                        {feature.name}
+                      </span>
                     </li>
                   ))}
                 </ul>
