@@ -1,15 +1,18 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
-import { Car, Lightbulb, Menu, X, Sun, Moon, Monitor } from "lucide-react";
+import { Car, Lightbulb, Menu, X, Sun, Moon, Monitor, User, LogOut, LayoutDashboard, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useAuth } from "@/hooks/useAuth";
 
 const navigation = [
   { name: "Home", href: "/" },
@@ -21,7 +24,18 @@ const navigation = [
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
+  const { user, isAuthenticated, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
+  };
+
+  const userInitials = user?.email
+    ? user.email.substring(0, 2).toUpperCase()
+    : "U";
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -82,12 +96,59 @@ export function Header() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          <Button asChild variant="ghost">
-            <Link to="/login">Log In</Link>
-          </Button>
-          <Button asChild>
-            <Link to="/analyze">Start Analysis</Link>
-          </Button>
+          {isAuthenticated ? (
+            <>
+              <Button asChild variant="ghost">
+                <Link to="/dashboard">Dashboard</Link>
+              </Button>
+              {/* User dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="gap-2 pl-2 pr-3">
+                    <Avatar className="h-7 w-7">
+                      <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                        {userInitials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <div className="px-2 py-1.5">
+                    <p className="text-sm font-medium">{user?.email}</p>
+                    <p className="text-xs text-muted-foreground">Signed in</p>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard" className="cursor-pointer">
+                      <LayoutDashboard className="mr-2 h-4 w-4" />
+                      Dashboard
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/profile" className="cursor-pointer">
+                      <User className="mr-2 h-4 w-4" />
+                      Profile
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive cursor-pointer">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          ) : (
+            <>
+              <Button asChild variant="ghost">
+                <Link to="/login">Log In</Link>
+              </Button>
+              <Button asChild>
+                <Link to="/analyze">Start Analysis</Link>
+              </Button>
+            </>
+          )}
         </div>
 
         {/* Mobile menu button */}
@@ -116,6 +177,45 @@ export function Header() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* Mobile user dropdown when authenticated */}
+          {isAuthenticated && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-9 w-9">
+                  <Avatar className="h-7 w-7">
+                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                      {userInitials}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <div className="px-2 py-1.5">
+                  <p className="text-sm font-medium truncate">{user?.email}</p>
+                  <p className="text-xs text-muted-foreground">Signed in</p>
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/dashboard" className="cursor-pointer">
+                    <LayoutDashboard className="mr-2 h-4 w-4" />
+                    Dashboard
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/profile" className="cursor-pointer">
+                    <User className="mr-2 h-4 w-4" />
+                    Profile
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut} className="text-destructive focus:text-destructive cursor-pointer">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
 
           <button
             type="button"
@@ -152,16 +252,33 @@ export function Header() {
               </Link>
             ))}
             <div className="flex flex-col gap-2 pt-4">
-              <Button asChild variant="outline" className="w-full">
-                <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
-                  Log In
-                </Link>
-              </Button>
-              <Button asChild className="w-full">
-                <Link to="/analyze" onClick={() => setMobileMenuOpen(false)}>
-                  Start Analysis
-                </Link>
-              </Button>
+              {isAuthenticated ? (
+                <>
+                  <Button asChild variant="outline" className="w-full">
+                    <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)}>
+                      Dashboard
+                    </Link>
+                  </Button>
+                  <Button asChild className="w-full">
+                    <Link to="/analyze" onClick={() => setMobileMenuOpen(false)}>
+                      Start Analysis
+                    </Link>
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button asChild variant="outline" className="w-full">
+                    <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
+                      Log In
+                    </Link>
+                  </Button>
+                  <Button asChild className="w-full">
+                    <Link to="/analyze" onClick={() => setMobileMenuOpen(false)}>
+                      Start Analysis
+                    </Link>
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>
