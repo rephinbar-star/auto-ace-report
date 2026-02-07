@@ -30,7 +30,6 @@ const conditionSchema = z.object({
   condition: z.enum(["excellent", "good", "fair", "poor"]),
   sellerType: z.enum(["private", "dealer"]),
   sellerName: z.string().max(100).optional().or(z.literal("")),
-  listingUrl: z.string().url().optional().or(z.literal("")),
 });
 
 interface ConditionStepProps {
@@ -52,7 +51,6 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
       condition: initialData?.condition || "good",
       sellerType: initialData?.sellerType || "dealer",
       sellerName: initialData?.sellerName || "",
-      listingUrl: initialData?.listingUrl || "",
     },
   });
 
@@ -66,7 +64,7 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
       condition: data.condition,
       sellerType: data.sellerType,
       sellerName: data.sellerType === "dealer" ? data.sellerName || undefined : undefined,
-      listingUrl: data.listingUrl || undefined,
+      listingUrl: initialData?.listingUrl, // Preserve listing URL from scraped listing
       images: initialData?.images, // Preserve images from scraped listing
     });
   };
@@ -219,26 +217,6 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
                   />
                 </div>
               )}
-
-              <FormField
-                control={form.control}
-                name="listingUrl"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Listing URL (Optional)</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="https://www.autotrader.com/..." 
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      If you have a link to the listing, we can extract additional details.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
 
               <div className="flex gap-4">
                 <Button type="button" variant="outline" onClick={onBack}>

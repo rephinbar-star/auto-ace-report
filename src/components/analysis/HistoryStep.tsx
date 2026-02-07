@@ -36,6 +36,7 @@ export function HistoryStep({ onComplete, onBack, onSkip }: HistoryStepProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<(VehicleHistory & { summary?: string }) | null>(null);
+  const [urlAccessError, setUrlAccessError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -93,29 +94,41 @@ export function HistoryStep({ onComplete, onBack, onSkip }: HistoryStepProps) {
 
     setIsAnalyzing(true);
     setAnalysisResult(null);
+    setUrlAccessError(false);
 
     try {
       const result = await parseHistoryReport(uploadedFile || undefined, historyUrl || undefined);
 
       if (result.success && result.history) {
         setAnalysisResult(result.history);
+        setUrlAccessError(false);
         toast({
           title: "Report Analyzed",
           description: `Health Score: ${result.history.healthScore}/100`,
         });
       } else {
+        // Check if this is a URL access error (no file uploaded, only URL)
+        if (!uploadedFile && historyUrl) {
+          setUrlAccessError(true);
+        } else {
+          toast({
+            title: "Analysis Failed",
+            description: result.error || "Could not analyze the report. Please try again.",
+            variant: "destructive",
+          });
+        }
+      }
+    } catch (error) {
+      // If only URL was provided, show URL access error
+      if (!uploadedFile && historyUrl) {
+        setUrlAccessError(true);
+      } else {
         toast({
-          title: "Analysis Failed",
-          description: result.error || "Could not analyze the report. Please try again.",
+          title: "Error",
+          description: "Failed to analyze report. Please try again.",
           variant: "destructive",
         });
       }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to analyze report. Please try again.",
-        variant: "destructive",
-      });
     } finally {
       setIsAnalyzing(false);
     }
@@ -156,7 +169,69 @@ export function HistoryStep({ onComplete, onBack, onSkip }: HistoryStepProps) {
         </p>
       </div>
 
-      {!analysisResult ? (
+      {/* URL Access Error State */}
+      {urlAccessError && !analysisResult && (
+        <Card className="border-warning/50 bg-warning/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-warning">
+              <AlertCircle className="h-5 w-5" />
+              CarFax Data Not Accessible
+            </CardTitle>
+            <CardDescription>
+              CarFax data is not accessible through the link. Please upload it in PDF format instead.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              CarFax reports are protected and cannot be scraped directly. To include your vehicle history in the analysis:
+            </p>
+            <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
+              <li>Open your CarFax report in a browser</li>
+              <li>Print the page as PDF (Ctrl+P / Cmd+P → Save as PDF)</li>
+              <li>Upload the PDF file below</li>
+            </ol>
+            
+            {/* File upload area for retry */}
+            <div
+              className={cn(
+                "relative cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors",
+                "border-muted-foreground/25 hover:border-primary/50"
+              )}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/pdf"
+                onChange={handleFileInputChange}
+                className="hidden"
+              />
+              <div className="flex flex-col items-center gap-2">
+                <Upload className="h-8 w-8 text-muted-foreground" />
+                <p className="font-medium">Upload CarFax PDF</p>
+                <p className="text-sm text-muted-foreground">Click to browse</p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-4">
+              <Button type="button" variant="outline" onClick={onBack}>
+                Back
+              </Button>
+              <Button 
+                type="button" 
+                onClick={() => {
+                  setUrlAccessError(false);
+                  onSkip();
+                }}
+              >
+                Continue Without History
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {!analysisResult && !urlAccessError ? (
         <Card>
           <CardHeader>
             <CardTitle>Upload Report</CardTitle>
@@ -290,7 +365,9 @@ export function HistoryStep({ onComplete, onBack, onSkip }: HistoryStepProps) {
             </Form>
           </CardContent>
         </Card>
-      ) : (
+      ) : null}
+
+      {analysisResult && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
@@ -379,7 +456,7 @@ export function HistoryStep({ onComplete, onBack, onSkip }: HistoryStepProps) {
         </Card>
       )}
 
-      {!analysisResult && (
+      {!analysisResult && !urlAccessError && (
         <Card className="border-warning/30 bg-warning/5">
           <CardContent className="flex items-start gap-3 p-4">
             <AlertCircle className="h-5 w-5 flex-shrink-0 text-warning" />
