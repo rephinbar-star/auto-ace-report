@@ -20,6 +20,7 @@ import PrivacyPage from "./pages/Privacy";
 import TermsPage from "./pages/Terms";
 import ContactPage from "./pages/Contact";
 import FAQPage from "./pages/FAQ";
+import HelpCenterPage from "./pages/HelpCenter";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -48,6 +49,7 @@ const App = () => (
               <Route path="/terms" element={<TermsPage />} />
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/faq" element={<FAQPage />} />
+              <Route path="/help" element={<HelpCenterPage />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
