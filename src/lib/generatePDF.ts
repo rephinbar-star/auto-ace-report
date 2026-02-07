@@ -39,6 +39,16 @@ interface DepreciationRow {
   repairCosts: number;
 }
 
+interface DealerReview {
+  dealerName: string;
+  trustScore: number;
+  sentiment: "positive" | "mixed" | "negative" | "unknown";
+  summary: string;
+  positives: string[];
+  watchOuts: string[];
+  sources: string[];
+}
+
 interface ReportData {
   vehicle: VehicleData;
   priceAssessment: PriceAssessment;
@@ -46,6 +56,7 @@ interface ReportData {
   historyAnalysis: HistoryAnalysis;
   depreciationTable: DepreciationRow[];
   images?: string[];
+  dealerReview?: DealerReview;
 }
 
 // Helper to load image as base64 for PDF
@@ -90,7 +101,7 @@ export async function generateReportPDF(
   const margin = 15;
   let yPosition = margin;
 
-  const { vehicle, priceAssessment, riskAssessment, historyAnalysis, depreciationTable, images } = data;
+  const { vehicle, priceAssessment, riskAssessment, historyAnalysis, depreciationTable, images, dealerReview } = data;
 
   // Helper functions
   const addText = (text: string, fontSize: number, isBold = false, color: [number, number, number] = [0, 0, 0]) => {
@@ -354,6 +365,83 @@ export async function generateReportPDF(
   addSection("Expert Opinion");
   pdf.setTextColor(80, 80, 80);
   addText(riskAssessment.expertOpinion, 10);
+
+  // Dealer Review Section (if available)
+  if (dealerReview) {
+    yPosition += 10;
+    
+    // Check if we need a new page
+    if (yPosition > pageHeight - 80) {
+      pdf.addPage();
+      yPosition = margin;
+    }
+    
+    addSection("Dealership Review");
+    
+    // Dealer name and trust score
+    pdf.setTextColor(0, 0, 0);
+    addText(dealerReview.dealerName, 12, true);
+    
+    // Trust score with color coding
+    const scoreColor: [number, number, number] = 
+      dealerReview.trustScore >= 70 ? [34, 197, 94] : 
+      dealerReview.trustScore >= 50 ? [234, 179, 8] : [239, 68, 68];
+    
+    // Draw trust score box
+    pdf.setFillColor(245, 247, 250);
+    pdf.roundedRect(margin, yPosition, 60, 18, 2, 2, "F");
+    pdf.setFontSize(10);
+    pdf.setTextColor(100, 100, 100);
+    pdf.text("Trust Score", margin + 5, yPosition + 6);
+    pdf.setFontSize(14);
+    pdf.setFont("helvetica", "bold");
+    pdf.setTextColor(...scoreColor);
+    pdf.text(`${dealerReview.trustScore}/100`, margin + 5, yPosition + 14);
+    
+    // Sentiment badge
+    const sentimentText = dealerReview.sentiment.charAt(0).toUpperCase() + dealerReview.sentiment.slice(1);
+    const sentimentColor: [number, number, number] = 
+      dealerReview.sentiment === "positive" ? [34, 197, 94] :
+      dealerReview.sentiment === "mixed" ? [234, 179, 8] :
+      dealerReview.sentiment === "negative" ? [239, 68, 68] : [100, 100, 100];
+    
+    pdf.setFillColor(...sentimentColor);
+    pdf.roundedRect(margin + 65, yPosition + 4, 30, 10, 2, 2, "F");
+    pdf.setFontSize(8);
+    pdf.setTextColor(255, 255, 255);
+    pdf.text(sentimentText, margin + 70, yPosition + 10);
+    
+    yPosition += 25;
+    
+    // Summary
+    pdf.setTextColor(80, 80, 80);
+    addText(dealerReview.summary, 10);
+    
+    // Positives
+    if (dealerReview.positives.length > 0) {
+      addText("Positives:", 11, true, [34, 197, 94]);
+      dealerReview.positives.forEach((item) => {
+        addText(`• ${item}`, 10);
+      });
+    }
+    
+    // Watch Outs
+    if (dealerReview.watchOuts.length > 0) {
+      addText("Watch Out:", 11, true, [239, 68, 68]);
+      dealerReview.watchOuts.forEach((item) => {
+        addText(`• ${item}`, 10);
+      });
+    }
+    
+    // Sources
+    if (dealerReview.sources.length > 0) {
+      yPosition += 3;
+      pdf.setFontSize(8);
+      pdf.setTextColor(150, 150, 150);
+      pdf.text(`Sources: ${dealerReview.sources.join(", ")}`, margin, yPosition);
+      yPosition += 5;
+    }
+  }
 
   // Footer
   const footerY = pageHeight - 10;
