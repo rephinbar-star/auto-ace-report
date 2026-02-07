@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/layout/Header";
@@ -9,20 +9,65 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { SEO } from "@/components/seo/SEO";
-import { Plus, Search, Filter, Car, FileText, TrendingUp, AlertCircle } from "lucide-react";
+import { Plus, Search, Filter, Car, FileText, TrendingUp, AlertCircle, Scale, X, Check } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useSubscription } from "@/hooks/useSubscription";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import type { Tables } from "@/integrations/supabase/types";
 
 type VehicleReport = Tables<"vehicle_reports">;
 
+const TIER_LIMITS = {
+  free: 0,
+  basic: 3,
+  pro: 6,
+};
+
 function DashboardContent() {
   const { user } = useAuth();
+  const { tier } = useSubscription();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [dealRatingFilter, setDealRatingFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("newest");
+  
+  // Selection mode state
+  const initialSelectMode = searchParams.get("select") === "true";
+  const [selectionMode, setSelectionMode] = useState(initialSelectMode);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Get comparison limit based on tier
+  const comparisonLimit = TIER_LIMITS[tier] || 0;
+  const canCompare = tier !== "free";
+
+  // Selection handlers
+  const handleSelect = (id: string, selected: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (selected && next.size < comparisonLimit) {
+        next.add(id);
+      } else if (!selected) {
+        next.delete(id);
+      }
+      return next;
+    });
+  };
+
+  const clearSelection = () => {
+    setSelectedIds(new Set());
+    setSelectionMode(false);
+  };
+
+  const goToCompare = () => {
+    if (selectedIds.size >= 2) {
+      navigate(`/compare?ids=${Array.from(selectedIds).join(",")}`);
+    }
+  };
 
   // Fetch vehicle reports
   const { data: reports, isLoading, error } = useQuery({
@@ -117,13 +162,60 @@ function DashboardContent() {
                 Track and manage your vehicle analyses
               </p>
             </div>
-            <Button asChild size="lg">
-              <Link to="/analyze">
-                <Plus className="h-5 w-5 mr-2" />
-                New Analysis
-              </Link>
-            </Button>
+            <div className="flex items-center gap-3">
+              {canCompare && stats.complete >= 2 && (
+                <Button
+                  variant={selectionMode ? "secondary" : "outline"}
+                  onClick={() => {
+                    setSelectionMode(!selectionMode);
+                    if (selectionMode) setSelectedIds(new Set());
+                  }}
+                >
+                  <Scale className="h-4 w-4 mr-2" />
+                  {selectionMode ? "Cancel" : "Compare"}
+                </Button>
+              )}
+              <Button asChild size="lg">
+                <Link to="/analyze">
+                  <Plus className="h-5 w-5 mr-2" />
+                  New Analysis
+                </Link>
+              </Button>
+            </div>
           </div>
+
+          {/* Selection mode banner */}
+          {selectionMode && (
+            <div className="mb-6 p-4 rounded-lg bg-primary/5 border border-primary/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <Scale className="h-5 w-5 text-primary" />
+                <div>
+                  <p className="font-medium">Select vehicles to compare</p>
+                  <p className="text-sm text-muted-foreground">
+                    Choose up to {comparisonLimit} completed reports • {selectedIds.size} selected
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearSelection}
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  disabled={selectedIds.size < 2}
+                  onClick={goToCompare}
+                >
+                  <Check className="h-4 w-4 mr-1" />
+                  Compare {selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Stats cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
@@ -140,8 +232,8 @@ function DashboardContent() {
             </div>
             <div className="p-4 rounded-xl bg-card border">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-green-500/10">
-                  <Car className="h-5 w-5 text-green-600" />
+                <div className="p-2 rounded-lg bg-emerald-500/10">
+                  <Car className="h-5 w-5 text-emerald-600" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{stats.complete}</p>
@@ -151,8 +243,8 @@ function DashboardContent() {
             </div>
             <div className="p-4 rounded-xl bg-card border">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-emerald-500/10">
-                  <TrendingUp className="h-5 w-5 text-emerald-600" />
+                <div className="p-2 rounded-lg bg-teal-500/10">
+                  <TrendingUp className="h-5 w-5 text-teal-600" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{stats.excellent}</p>
@@ -286,7 +378,14 @@ function DashboardContent() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredReports.map((report) => (
-                <ReportCard key={report.id} report={report} />
+                <ReportCard 
+                  key={report.id} 
+                  report={report}
+                  selectionMode={selectionMode}
+                  isSelected={selectedIds.has(report.id)}
+                  onSelect={handleSelect}
+                  selectionDisabled={selectedIds.size >= comparisonLimit && !selectedIds.has(report.id)}
+                />
               ))}
             </div>
           )}
