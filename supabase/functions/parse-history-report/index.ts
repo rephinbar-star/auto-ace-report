@@ -23,32 +23,34 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Authorization required" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Verify user
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ success: false, error: "Invalid token" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    const authHeader = req.headers.get("authorization");
+    let user = null;
+
+    // Check for authenticated user (optional now)
+    if (authHeader) {
+      const token = authHeader.replace("Bearer ", "");
+      const { data, error: authError } = await supabase.auth.getUser(token);
+      if (!authError && data?.user) {
+        user = data.user;
+      }
     }
 
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     const reportUrl = formData.get("url") as string | null;
+    const allowUnauthenticated = formData.get("allowUnauthenticated") === "true";
+
+    // If no auth and not explicitly allowing unauthenticated, reject
+    if (!user && !allowUnauthenticated) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Authorization required" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (!file && !reportUrl) {
       return new Response(
@@ -64,21 +66,20 @@ serve(async (req) => {
     if (file) {
       console.log("Processing uploaded file:", file.name, file.size);
 
-      // Upload to storage
-      const fileName = `${user.id}/${Date.now()}-${file.name}`;
-      const { error: uploadError } = await supabase.storage
-        .from("history-reports")
-        .upload(fileName, file, { contentType: file.type });
+      // Only upload to storage if user is authenticated
+      if (user) {
+        const fileName = `${user.id}/${Date.now()}-${file.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from("history-reports")
+          .upload(fileName, file, { contentType: file.type });
 
-      if (uploadError) {
-        console.error("Storage upload error:", uploadError);
-        return new Response(
-          JSON.stringify({ success: false, error: "Failed to upload file" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        if (uploadError) {
+          console.error("Storage upload error:", uploadError);
+          // Continue without storage - analysis still works
+        } else {
+          storagePath = fileName;
+        }
       }
-
-      storagePath = fileName;
 
       // For PDF parsing, we'll extract text using a simple approach
       // Read file as array buffer and convert to text (basic extraction)
