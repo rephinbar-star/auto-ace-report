@@ -12,11 +12,10 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[CHECK-SUBSCRIPTION] ${step}${detailsStr}`);
 };
 
-// Product IDs mapping
+// Product IDs mapping (must match STRIPE_PRICES in useSubscription.ts)
 const PRODUCT_TIERS: Record<string, string> = {
-  "prod_Tsa5IDIygPmVmk": "basic",
-  "prod_Tsa5Yj91Bm6IkQ": "pro",
-  "prod_Tva5VOjr44iZxe": "dealer",
+  "prod_Tsa5IDIygPmVmk": "basic",  // Standard plan
+  "prod_TvabBuJcmLf5BM": "pro",    // Pro plan
 };
 
 serve(async (req) => {
