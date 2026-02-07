@@ -247,7 +247,7 @@ export async function generateComparisonPDF(data: ComparisonPDFData): Promise<vo
   yPosition += 10;
 
   // Financial Outlook
-  addSection("5-Year Financial Outlook");
+  addSection(`5-Year Financial Outlook (${annualMiles.toLocaleString()} mi/yr)`);
   
   const finTableY = yPosition;
   const finCols = ["Vehicle", "Year 5 Equity", "Monthly Cost"];
