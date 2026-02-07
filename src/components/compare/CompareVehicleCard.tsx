@@ -18,11 +18,17 @@ import {
   X,
   Crown,
   FileText,
+  Fuel,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { calculateAnnualFuelCost } from "@/lib/tco-calculations";
 import type { Tables } from "@/integrations/supabase/types";
 
-type VehicleReport = Tables<"vehicle_reports">;
+type VehicleReport = Tables<"vehicle_reports"> & {
+  mpg_city?: number | null;
+  mpg_highway?: number | null;
+  mpg_combined?: number | null;
+};
 
 interface CompareVehicleCardProps {
   report: VehicleReport;
@@ -205,6 +211,42 @@ export function CompareVehicleCard({ report, onRemove, isBestBuy, rank }: Compar
                 )}
               </div>
             </div>
+
+            {/* Fuel Economy - NEW */}
+            {(report.mpg_combined || report.mpg_city || report.mpg_highway) && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold flex items-center gap-2">
+                  <Fuel className="h-4 w-4" /> Fuel Economy
+                </h4>
+                <div className="grid grid-cols-3 gap-2 text-sm">
+                  {report.mpg_city && (
+                    <div className="p-2 rounded bg-muted text-center">
+                      <p className="font-bold">{report.mpg_city}</p>
+                      <p className="text-xs text-muted-foreground">City MPG</p>
+                    </div>
+                  )}
+                  {report.mpg_highway && (
+                    <div className="p-2 rounded bg-muted text-center">
+                      <p className="font-bold">{report.mpg_highway}</p>
+                      <p className="text-xs text-muted-foreground">Hwy MPG</p>
+                    </div>
+                  )}
+                  {report.mpg_combined && (
+                    <div className="p-2 rounded bg-muted text-center">
+                      <p className="font-bold">{report.mpg_combined}</p>
+                      <p className="text-xs text-muted-foreground">Combined</p>
+                    </div>
+                  )}
+                </div>
+                {report.mpg_combined && (
+                  <p className="text-xs text-muted-foreground">
+                    Est. annual fuel cost: <span className="font-medium text-foreground">
+                      ${calculateAnnualFuelCost(report.mpg_combined, report.fuel_type).toLocaleString()}
+                    </span>
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Risk Assessment */}
             {report.reliability_concerns && report.reliability_concerns.length > 0 && (

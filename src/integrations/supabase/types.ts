@@ -189,6 +189,9 @@ export type Database = {
           mileage_allowance: number | null
           model: string
           monthly_payment: number | null
+          mpg_city: number | null
+          mpg_combined: number | null
+          mpg_highway: number | null
           owner_count: number | null
           price_difference: number | null
           reliability_concerns: string[] | null
@@ -238,6 +241,9 @@ export type Database = {
           mileage_allowance?: number | null
           model: string
           monthly_payment?: number | null
+          mpg_city?: number | null
+          mpg_combined?: number | null
+          mpg_highway?: number | null
           owner_count?: number | null
           price_difference?: number | null
           reliability_concerns?: string[] | null
@@ -287,6 +293,9 @@ export type Database = {
           mileage_allowance?: number | null
           model?: string
           monthly_payment?: number | null
+          mpg_city?: number | null
+          mpg_combined?: number | null
+          mpg_highway?: number | null
           owner_count?: number | null
           price_difference?: number | null
           reliability_concerns?: string[] | null

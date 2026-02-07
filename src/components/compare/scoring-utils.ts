@@ -1,5 +1,6 @@
 import type { Json } from "@/integrations/supabase/types";
 import type { Tables } from "@/integrations/supabase/types";
+import { calculateTCO, type TCOResult } from "@/lib/tco-calculations";
 
 type VehicleReport = Tables<"vehicle_reports">;
 
@@ -110,6 +111,7 @@ export interface VehicleScoreResult {
   totalScore: number;
   breakdown: ScoreBreakdownItem[];
   whyNotReasons: string[];
+  tco?: TCOResult;
 }
 
 interface DepreciationRow {
@@ -340,7 +342,45 @@ export function calculateMileageScore(mileage: number, year: number): ScoreBreak
 }
 
 /**
- * Calculate complete score for a vehicle
+ * Calculate TCO score based on relative ranking (displayed but NOT counted in 100-pt total)
+ * This is a supplementary metric shown alongside the main score
+ */
+export function calculateTCOScore(
+  vehicleTCO: number,
+  allVehicleTCOs: number[]
+): ScoreBreakdownItem {
+  if (allVehicleTCOs.length < 2) {
+    return {
+      category: "5-Year TCO",
+      score: 0,
+      maxScore: 0,
+      description: "Add more vehicles to compare TCO",
+    };
+  }
+
+  const minTCO = Math.min(...allVehicleTCOs);
+  const maxTCO = Math.max(...allVehicleTCOs);
+  const range = maxTCO - minTCO;
+
+  // Calculate percentile (0-100, where 100 = best/lowest TCO)
+  const percentile = range > 0 ? Math.round(((maxTCO - vehicleTCO) / range) * 100) : 50;
+  
+  let rating: string;
+  if (percentile >= 75) rating = "Best value";
+  else if (percentile >= 50) rating = "Good value";
+  else if (percentile >= 25) rating = "Fair value";
+  else rating = "Highest cost";
+
+  return {
+    category: "5-Year TCO",
+    score: percentile,
+    maxScore: 100,
+    description: `$${vehicleTCO.toLocaleString()} total — ${rating}`,
+  };
+}
+
+/**
+ * Calculate complete score for a vehicle (includes TCO calculation)
  */
 export function calculateVehicleScore(vehicle: VehicleReport): VehicleScoreResult {
   const breakdown: ScoreBreakdownItem[] = [
@@ -355,11 +395,27 @@ export function calculateVehicleScore(vehicle: VehicleReport): VehicleScoreResul
   
   const totalScore = breakdown.reduce((sum, item) => sum + item.score, 0);
   
+  // Calculate TCO for this vehicle
+  // Access mpg_combined via type assertion since it may be newly added
+  const vehicleWithMpg = vehicle as VehicleReport & { 
+    mpg_combined?: number | null;
+    mpg_city?: number | null;
+    mpg_highway?: number | null;
+  };
+  
+  const tco = calculateTCO(
+    Number(vehicle.asking_price),
+    vehicleWithMpg.mpg_combined || null,
+    vehicle.fuel_type || null,
+    vehicle.depreciation_table
+  );
+  
   return {
     vehicle,
     totalScore,
     breakdown,
     whyNotReasons: [], // Will be populated during comparison
+    tco,
   };
 }
 
