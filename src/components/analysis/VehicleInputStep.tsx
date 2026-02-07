@@ -337,37 +337,186 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
   const displayVehicle = getDisplayVehicle();
 
   // Check if a specific model variant belongs to a model series
-  // e.g., "750i" is part of "7 Series", "330i" is part of "3 Series"
+  // Supports all major brands with series-based naming conventions
   const isModelVariantOfSeries = (variant: string, series: string): boolean => {
-    const v = variant.toLowerCase().trim();
-    const s = series.toLowerCase().trim();
+    const v = variant.toLowerCase().trim().replace(/-/g, ' ');
+    const s = series.toLowerCase().trim().replace(/-/g, ' ');
     
     // Direct match or containment
     if (v.includes(s) || s.includes(v)) return true;
     
-    // BMW series patterns: "7 series" matches "750i", "745e", "760i", etc.
-    // Also handles "3 series" -> "330i", "M340i", "320i", etc.
-    const seriesMatch = s.match(/^(\d+)\s*series$/i);
-    if (seriesMatch) {
-      const seriesNum = seriesMatch[1];
-      // Check if variant starts with the series number
-      // e.g., "750i" starts with "7", "330i" starts with "3"
+    // Remove common suffixes for comparison
+    const cleanVariant = v.replace(/\s*(sedan|coupe|suv|wagon|convertible|cabriolet|roadster|sport|premium|luxury|base)$/i, '').trim();
+    const cleanSeries = s.replace(/\s*(sedan|coupe|suv|wagon|convertible|cabriolet|roadster|sport|premium|luxury|base)$/i, '').trim();
+    
+    if (cleanVariant.includes(cleanSeries) || cleanSeries.includes(cleanVariant)) return true;
+    
+    // === BMW ===
+    // "7 Series" matches "750i", "745e", "760i", "740i", etc.
+    // "3 Series" matches "330i", "M340i", "320i", etc.
+    const bmwSeriesMatch = s.match(/^(\d+)\s*series$/i);
+    if (bmwSeriesMatch) {
+      const seriesNum = bmwSeriesMatch[1];
       if (v.startsWith(seriesNum)) return true;
-      // Also check for M variants like "M340i" for 3 series
-      if (v.startsWith(`m${seriesNum}`)) return true;
+      if (v.startsWith(`m${seriesNum}`)) return true; // M variants
     }
     
-    // Handle X series: "X5" matches "X5 M50i", "X5 xDrive40i", etc.
-    const xSeriesMatch = s.match(/^x(\d+)$/i);
-    if (xSeriesMatch) {
-      const xNum = xSeriesMatch[1];
-      if (v.startsWith(`x${xNum}`)) return true;
+    // BMW X series: "X5" matches "X5 M50i", "X5 xDrive40i", etc.
+    const bmwXMatch = s.match(/^x(\d+)$/i);
+    if (bmwXMatch && v.match(new RegExp(`^x${bmwXMatch[1]}\\b`, 'i'))) return true;
+    
+    // BMW Z and i series
+    const bmwZMatch = s.match(/^z(\d+)$/i);
+    if (bmwZMatch && v.match(new RegExp(`^z${bmwZMatch[1]}`, 'i'))) return true;
+    
+    const bmwIMatch = s.match(/^i(\d+)$/i);
+    if (bmwIMatch && v.match(new RegExp(`^i${bmwIMatch[1]}`, 'i'))) return true;
+    
+    // === Mercedes-Benz ===
+    // "C-Class" or "C Class" matches "C300", "C43 AMG", "C63", etc.
+    // "E-Class" matches "E350", "E63 AMG", etc.
+    const mbClassMatch = s.match(/^([a-z]+)\s*class$/i);
+    if (mbClassMatch) {
+      const classLetter = mbClassMatch[1].toLowerCase();
+      // Match variants like "C300", "C43", "E350", "S500", "AMG C43"
+      if (v.startsWith(classLetter) && /^[a-z]\d/.test(v)) return true;
+      if (v.includes(`amg ${classLetter}`) || v.includes(`${classLetter} amg`)) return true;
     }
     
-    // Handle reverse: variant is "X5 M50i" and series is "X5"
-    const variantXMatch = v.match(/^x(\d+)/i);
-    const seriesXMatch = s.match(/^x(\d+)$/i);
-    if (variantXMatch && seriesXMatch && variantXMatch[1] === seriesXMatch[1]) return true;
+    // Mercedes GLE, GLC, GLA, GLB, GLS series
+    const mbGlMatch = s.match(/^(gl[abces]|gla|glb|glc|gle|gls)$/i);
+    if (mbGlMatch && v.match(new RegExp(`^${mbGlMatch[1]}\\d*`, 'i'))) return true;
+    
+    // Mercedes AMG GT
+    if (s === 'amg gt' && v.startsWith('amg gt')) return true;
+    
+    // === Audi ===
+    // "A4" matches "A4 Premium", "A4 2.0T", "S4", "RS4"
+    // "Q5" matches "Q5 Premium", "SQ5", etc.
+    const audiMatch = s.match(/^([aqrs]+)(\d+)$/i);
+    if (audiMatch) {
+      const audiPrefix = audiMatch[1].toLowerCase();
+      const audiNum = audiMatch[2];
+      // Direct match: A4 -> A4 Premium
+      if (v.match(new RegExp(`^${audiPrefix}${audiNum}\\b`, 'i'))) return true;
+      // S/RS variants: A4 -> S4, RS4
+      if (audiPrefix === 'a') {
+        if (v.match(new RegExp(`^s${audiNum}\\b`, 'i'))) return true;
+        if (v.match(new RegExp(`^rs${audiNum}\\b`, 'i'))) return true;
+      }
+      if (audiPrefix === 'q') {
+        if (v.match(new RegExp(`^sq${audiNum}\\b`, 'i'))) return true;
+        if (v.match(new RegExp(`^rsq${audiNum}\\b`, 'i'))) return true;
+      }
+    }
+    
+    // Audi e-tron variants
+    if (s.includes('e tron') || s.includes('etron')) {
+      if (v.includes('e tron') || v.includes('etron')) return true;
+    }
+    
+    // === Lexus ===
+    // "ES" matches "ES350", "ES300h", etc.
+    // "RX" matches "RX350", "RX450h", "RX500h", etc.
+    const lexusMatch = s.match(/^([a-z]{2,3})$/i);
+    if (lexusMatch) {
+      const lexusModel = lexusMatch[1].toLowerCase();
+      if (['es', 'is', 'ls', 'gs', 'rx', 'nx', 'ux', 'gx', 'lx', 'rc', 'lc'].includes(lexusModel)) {
+        if (v.match(new RegExp(`^${lexusModel}\\d`, 'i'))) return true;
+      }
+    }
+    
+    // === Infiniti ===
+    // "Q50" matches "Q50 3.0t", "Q50 Red Sport", etc.
+    // "QX60" matches "QX60 Luxe", etc.
+    const infinitiMatch = s.match(/^(q|qx)(\d+)$/i);
+    if (infinitiMatch && v.match(new RegExp(`^${infinitiMatch[1]}${infinitiMatch[2]}\\b`, 'i'))) return true;
+    
+    // === Acura ===
+    // "TLX" matches "TLX A-Spec", "TLX Type S", etc.
+    const acuraModels = ['tlx', 'mdx', 'rdx', 'ilx', 'nsx', 'integra'];
+    for (const model of acuraModels) {
+      if (s === model && v.startsWith(model)) return true;
+    }
+    
+    // === Genesis ===
+    // "G70" matches "G70 3.3T", "G70 Sport", etc.
+    // "GV70" matches "GV70 3.5T", etc.
+    const genesisMatch = s.match(/^(g|gv)(\d+)$/i);
+    if (genesisMatch && v.match(new RegExp(`^${genesisMatch[1]}${genesisMatch[2]}\\b`, 'i'))) return true;
+    
+    // === Porsche ===
+    // "911" matches "911 Carrera", "911 Turbo", "911 GT3", etc.
+    // "Cayenne" matches "Cayenne S", "Cayenne Turbo", etc.
+    const porscheNumMatch = s.match(/^(\d{3})$/);
+    if (porscheNumMatch && v.startsWith(porscheNumMatch[1])) return true;
+    
+    const porscheModels = ['cayenne', 'macan', 'panamera', 'taycan', 'boxster', 'cayman'];
+    for (const model of porscheModels) {
+      if (s === model && v.startsWith(model)) return true;
+    }
+    
+    // === Volvo ===
+    // "S60" matches "S60 T5", "S60 Recharge", etc.
+    // "XC90" matches "XC90 T6", "XC90 Recharge", etc.
+    const volvoMatch = s.match(/^(s|v|xc|c)(\d+)$/i);
+    if (volvoMatch && v.match(new RegExp(`^${volvoMatch[1]}${volvoMatch[2]}\\b`, 'i'))) return true;
+    
+    // === Land Rover / Range Rover ===
+    // "Range Rover" matches "Range Rover Sport", "Range Rover Velar", etc.
+    if (s === 'range rover' && v.startsWith('range rover')) return true;
+    if (s === 'discovery' && v.startsWith('discovery')) return true;
+    if (s === 'defender' && v.startsWith('defender')) return true;
+    
+    // === Jaguar ===
+    // "F-Type" matches "F-Type R", "F-Type SVR", etc.
+    // "XF" matches "XF 30t", etc.
+    const jaguarMatch = s.match(/^([a-z]+)\s*type$/i);
+    if (jaguarMatch && v.match(new RegExp(`^${jaguarMatch[1]}\\s*type`, 'i'))) return true;
+    
+    const jaguarModels = ['xf', 'xe', 'xj', 'e pace', 'f pace', 'i pace'];
+    for (const model of jaguarModels) {
+      if (s === model && v.startsWith(model.replace(' ', ''))) return true;
+      if (s === model && v.startsWith(model)) return true;
+    }
+    
+    // === Tesla ===
+    // "Model 3" matches "Model 3 Long Range", "Model 3 Performance", etc.
+    const teslaMatch = s.match(/^model\s*([3sxy])$/i);
+    if (teslaMatch && v.match(new RegExp(`^model\\s*${teslaMatch[1]}`, 'i'))) return true;
+    
+    // === Cadillac ===
+    // "CT5" matches "CT5-V", "CT5 Premium Luxury", etc.
+    // "Escalade" matches "Escalade ESV", etc.
+    const cadillacMatch = s.match(/^(ct|xt)(\d+)$/i);
+    if (cadillacMatch && v.match(new RegExp(`^${cadillacMatch[1]}${cadillacMatch[2]}`, 'i'))) return true;
+    
+    if (s === 'escalade' && v.startsWith('escalade')) return true;
+    
+    // === Lincoln ===
+    // "Navigator" matches "Navigator L", "Navigator Reserve", etc.
+    const lincolnModels = ['navigator', 'aviator', 'nautilus', 'corsair'];
+    for (const model of lincolnModels) {
+      if (s === model && v.startsWith(model)) return true;
+    }
+    
+    // === Alfa Romeo ===
+    // "Giulia" matches "Giulia Ti", "Giulia Quadrifoglio", etc.
+    const alfaModels = ['giulia', 'stelvio', 'tonale'];
+    for (const model of alfaModels) {
+      if (s === model && v.startsWith(model)) return true;
+    }
+    
+    // === Maserati ===
+    const maseratiModels = ['ghibli', 'quattroporte', 'levante', 'grecale', 'mc20'];
+    for (const model of maseratiModels) {
+      if (s === model && v.startsWith(model)) return true;
+    }
+    
+    // === Generic: Extract base model from variant ===
+    // If variant has numbers/letters after base, try matching
+    const baseModelMatch = v.match(/^([a-z]+\d*)/i);
+    if (baseModelMatch && baseModelMatch[1].toLowerCase() === cleanSeries) return true;
     
     return false;
   };
