@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { Shield, ShieldCheck, ShieldAlert, Loader2, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 import {
   Tooltip,
   TooltipContent,
@@ -21,6 +23,7 @@ interface TrustPreview {
 }
 
 export function DealerTrustPreview({ dealerName, isPro }: DealerTrustPreviewProps) {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState<TrustPreview | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -66,10 +69,15 @@ export function DealerTrustPreview({ dealerName, isPro }: DealerTrustPreviewProp
       <div className="flex items-center gap-2 rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30 p-3 text-sm text-muted-foreground">
         <Shield className="h-4 w-4" />
         <span>Dealer trust analysis available with Pro</span>
-        <Badge variant="secondary" className="ml-auto text-xs">
+        <Button 
+          variant="secondary" 
+          size="sm" 
+          className="ml-auto text-xs"
+          onClick={() => navigate("/pricing")}
+        >
           <Sparkles className="mr-1 h-3 w-3" />
-          Pro
-        </Badge>
+          Upgrade
+        </Button>
       </div>
     );
   }

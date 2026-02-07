@@ -6,6 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { 
   Table, 
   TableBody, 
@@ -99,6 +101,7 @@ export default function ReportPage() {
   const isPaid = tier === "basic" || tier === "pro";
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [excludeRepairs, setExcludeRepairs] = useState(false);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [vehicleData, setVehicleData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -467,7 +470,21 @@ export default function ReportPage() {
                   </div>
 
                   {/* Depreciation Table */}
-                  <div className="mt-6 overflow-x-auto">
+                  <div className="mt-6">
+                    <div className="mb-4 flex items-center justify-between">
+                      <h4 className="text-sm font-medium">Detailed Breakdown</h4>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          id="exclude-repairs"
+                          checked={excludeRepairs}
+                          onCheckedChange={setExcludeRepairs}
+                        />
+                        <Label htmlFor="exclude-repairs" className="text-sm text-muted-foreground cursor-pointer">
+                          Exclude repairs from equity
+                        </Label>
+                      </div>
+                    </div>
+                    <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -475,29 +492,35 @@ export default function ReportPage() {
                           <TableHead className="text-right">Private Value</TableHead>
                           <TableHead className="text-right">Trade-In</TableHead>
                           <TableHead className="text-right">Loan Balance</TableHead>
-                          <TableHead className="text-right">Repair Costs</TableHead>
+                          {!excludeRepairs && <TableHead className="text-right">Repair Costs</TableHead>}
                           <TableHead className="text-right">Net Equity</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {depreciationTable.map((row) => (
-                          <TableRow key={row.year}>
-                            <TableCell className="font-medium">Year {row.year}</TableCell>
-                            <TableCell className="text-right">${row.privateValue.toLocaleString()}</TableCell>
-                            <TableCell className="text-right">${row.tradeInValue.toLocaleString()}</TableCell>
-                            <TableCell className="text-right">${row.loanBalance.toLocaleString()}</TableCell>
-                            <TableCell className="text-right">${row.repairCosts.toLocaleString()}</TableCell>
-                            <TableCell className={cn(
-                              "text-right font-semibold",
-                              row.netEquityTradeIn >= 0 ? "text-success" : "text-danger"
-                            )}>
-                              {row.netEquityTradeIn >= 0 ? "+" : ""}
-                              ${row.netEquityTradeIn.toLocaleString()}
-                            </TableCell>
-                          </TableRow>
-                        ))}
+                        {depreciationTable.map((row) => {
+                          const netEquity = excludeRepairs 
+                            ? row.tradeInValue - row.loanBalance
+                            : row.netEquityTradeIn;
+                          return (
+                            <TableRow key={row.year}>
+                              <TableCell className="font-medium">Year {row.year}</TableCell>
+                              <TableCell className="text-right">${row.privateValue.toLocaleString()}</TableCell>
+                              <TableCell className="text-right">${row.tradeInValue.toLocaleString()}</TableCell>
+                              <TableCell className="text-right">${row.loanBalance.toLocaleString()}</TableCell>
+                              {!excludeRepairs && <TableCell className="text-right">${row.repairCosts.toLocaleString()}</TableCell>}
+                              <TableCell className={cn(
+                                "text-right font-semibold",
+                                netEquity >= 0 ? "text-success" : "text-danger"
+                              )}>
+                                {netEquity >= 0 ? "+" : ""}
+                                ${netEquity.toLocaleString()}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
                       </TableBody>
                     </Table>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
