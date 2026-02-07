@@ -743,43 +743,45 @@ export default function ReportPage() {
               </Card>
 
               {/* Action Buttons */}
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <Button 
-                  variant="outline" 
-                  className="flex-1"
-                  onClick={async () => {
-                    if (!isPaid) {
-                      navigate("/pricing");
-                      return;
-                    }
-                    // Save report first, then navigate to compare
-                    const saved = await handleSaveReport(true);
-                    if (saved) {
-                      navigate("/dashboard?select=true");
-                    }
-                  }}
-                  disabled={isSaving}
-                >
-                  {isSaving ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Scale className="mr-2 h-4 w-4" />
-                  )}
-                  Compare with Another Vehicle
-                </Button>
-                <Button 
-                  className="flex-1"
-                  onClick={() => handleSaveReport()}
-                  disabled={isSaving}
-                >
-                  {isSaving ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Save className="mr-2 h-4 w-4" />
-                  )}
-                  {isSaving ? "Saving..." : "Save Report"}
-                </Button>
-              </div>
+              {!isSavedReport && (
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={async () => {
+                      if (!isPaid) {
+                        navigate("/pricing");
+                        return;
+                      }
+                      // Save report first, then navigate to compare
+                      const saved = await handleSaveReport(true);
+                      if (saved) {
+                        navigate("/dashboard?select=true");
+                      }
+                    }}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Scale className="mr-2 h-4 w-4" />
+                    )}
+                    Compare with Another Vehicle
+                  </Button>
+                  <Button 
+                    className="flex-1"
+                    onClick={() => handleSaveReport()}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="mr-2 h-4 w-4" />
+                    )}
+                    {isSaving ? "Saving..." : "Save Report"}
+                  </Button>
+                </div>
+              )}
             </div>
 
             {/* Right Column - Sidebar */}

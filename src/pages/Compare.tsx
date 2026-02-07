@@ -36,7 +36,7 @@ function CompareContent() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
-  const { tier, subscribed } = useSubscription();
+  const { tier, subscribed, isLoading: isSubscriptionLoading } = useSubscription();
   
   // Get vehicle IDs from URL
   const vehicleIds = useMemo(() => {
@@ -139,9 +139,6 @@ function CompareContent() {
       }))
       .sort((a, b) => b.score - a.score);
   }, [vehicles]);
-
-  // Get loading state from subscription hook
-  const { isLoading: isSubscriptionLoading } = useSubscription();
 
   // Show loading while checking subscription (prevents flash of upgrade prompt)
   if (isSubscriptionLoading) {
