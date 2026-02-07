@@ -9,6 +9,7 @@ import Index from "./pages/Index";
 import AnalyzePage from "./pages/Analyze";
 import ReportPage from "./pages/Report";
 import DashboardPage from "./pages/Dashboard";
+import ComparePage from "./pages/Compare";
 import ProfilePage from "./pages/Profile";
 import HowItWorksPage from "./pages/HowItWorks";
 import SampleReportPage from "./pages/SampleReport";
@@ -34,6 +35,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/compare" element={<ComparePage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/how-it-works" element={<HowItWorksPage />} />
               <Route path="/sample-report" element={<SampleReportPage />} />

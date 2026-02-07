@@ -2,7 +2,8 @@ import { Link } from "react-router-dom";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Car, Calendar, Gauge, DollarSign, ArrowRight, AlertTriangle, CheckCircle, Clock } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Car, Calendar, Gauge, DollarSign, ArrowRight, AlertTriangle, CheckCircle, Clock, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -10,6 +11,10 @@ type VehicleReport = Tables<"vehicle_reports">;
 
 interface ReportCardProps {
   report: VehicleReport;
+  selectionMode?: boolean;
+  isSelected?: boolean;
+  onSelect?: (id: string, selected: boolean) => void;
+  selectionDisabled?: boolean;
 }
 
 const dealRatingConfig = {
@@ -33,16 +38,47 @@ const riskConfig = {
   high: { label: "High Risk", className: "text-red-600" },
 };
 
-export function ReportCard({ report }: ReportCardProps) {
+export function ReportCard({ report, selectionMode, isSelected, onSelect, selectionDisabled }: ReportCardProps) {
   const dealRating = report.deal_rating ? dealRatingConfig[report.deal_rating] : null;
   const status = statusConfig[report.status];
   const StatusIcon = status.icon;
   const risk = report.risk_level ? riskConfig[report.risk_level] : null;
 
+  const isComplete = report.status === "complete";
+  const canSelect = selectionMode && isComplete && !selectionDisabled;
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (selectionMode && canSelect) {
+      e.preventDefault();
+      onSelect?.(report.id, !isSelected);
+    }
+  };
+
   return (
-    <Card className="group hover:shadow-lg transition-all duration-200 hover:border-primary/50">
+    <Card 
+      className={cn(
+        "group transition-all duration-200",
+        selectionMode && canSelect && "cursor-pointer",
+        selectionMode && isSelected && "ring-2 ring-primary border-primary",
+        selectionMode && !canSelect && "opacity-50",
+        !selectionMode && "hover:shadow-lg hover:border-primary/50"
+      )}
+      onClick={handleCardClick}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-4">
+          {/* Selection checkbox */}
+          {selectionMode && (
+            <div className="shrink-0">
+              <Checkbox
+                checked={isSelected}
+                disabled={!canSelect}
+                onCheckedChange={(checked) => onSelect?.(report.id, !!checked)}
+                onClick={(e) => e.stopPropagation()}
+                className="mt-1"
+              />
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-lg truncate">
               {report.year} {report.make} {report.model}
@@ -107,12 +143,35 @@ export function ReportCard({ report }: ReportCardProps) {
       </CardContent>
 
       <CardFooter>
-        <Button asChild variant="ghost" className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-          <Link to={`/report/${report.id}`}>
-            View Full Report
-            <ArrowRight className="h-4 w-4 ml-2" />
-          </Link>
-        </Button>
+        {selectionMode ? (
+          <Button 
+            variant={isSelected ? "default" : "outline"} 
+            className="w-full"
+            disabled={!canSelect}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (canSelect) onSelect?.(report.id, !isSelected);
+            }}
+          >
+            {isSelected ? (
+              <>
+                <Check className="h-4 w-4 mr-2" />
+                Selected
+              </>
+            ) : !isComplete ? (
+              "Not Available"
+            ) : (
+              "Select for Compare"
+            )}
+          </Button>
+        ) : (
+          <Button asChild variant="ghost" className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+            <Link to={`/report/${report.id}`}>
+              View Full Report
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Link>
+          </Button>
+        )}
       </CardFooter>
     </Card>
   );
