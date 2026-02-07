@@ -7,6 +7,7 @@ type VehicleReport = Tables<"vehicle_reports">;
 
 interface ComparisonPDFData {
   vehicles: VehicleReport[];
+  annualMiles?: number;
   generatedDate?: Date;
 }
 
@@ -17,10 +18,10 @@ export async function generateComparisonPDF(data: ComparisonPDFData): Promise<vo
   const margin = 15;
   let yPosition = margin;
 
-  const { vehicles, generatedDate = new Date() } = data;
+  const { vehicles, annualMiles = 12000, generatedDate = new Date() } = data;
 
-  // Score vehicles
-  const scoredVehicles = scoreAndRankVehicles(vehicles);
+  // Score vehicles with mileage config
+  const scoredVehicles = scoreAndRankVehicles(vehicles, { annualMiles });
   const winner = scoredVehicles[0];
 
   // Helper functions
@@ -161,11 +162,16 @@ export async function generateComparisonPDF(data: ComparisonPDFData): Promise<vo
   yPosition += 10;
 
   // TCO Comparison
-  addSection("5-Year Total Cost of Ownership");
+  addSection(`5-Year Total Cost of Ownership (${annualMiles.toLocaleString()} mi/yr)`);
   
   const tcoTableY = yPosition;
-  const tcoCols = ["Vehicle", "Purchase", "Fuel", "Repairs", "Total TCO"];
-  const tcoColWidths = [55, 35, 30, 30, 35];
+  const hasMileageDepreciation = scoredVehicles.some(s => (s.tco?.mileageDepreciation ?? 0) > 0);
+  const tcoCols = hasMileageDepreciation 
+    ? ["Vehicle", "Purchase", "Fuel", "Repairs", "Mile Dep.", "Total TCO"]
+    : ["Vehicle", "Purchase", "Fuel", "Repairs", "Total TCO"];
+  const tcoColWidths = hasMileageDepreciation
+    ? [45, 30, 25, 25, 25, 30]
+    : [55, 35, 30, 30, 35];
   xPos = margin;
   
   pdf.setFillColor(59, 130, 246);
@@ -202,18 +208,32 @@ export async function generateComparisonPDF(data: ComparisonPDFData): Promise<vo
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(9);
     
-    const tcoData = [
-      `${v.year} ${v.make} ${v.model}`.substring(0, 28),
-      formatCurrency(Number(v.asking_price)),
-      scored.tco ? formatCurrency(scored.tco.fuelCost5Year) : "—",
-      scored.tco ? formatCurrency(scored.tco.repairCost5Year) : "—",
-      scored.tco ? formatCurrency(scored.tco.totalTCO) : "—",
-    ];
+    const tcoData = hasMileageDepreciation
+      ? [
+          `${v.year} ${v.make} ${v.model}`.substring(0, 22),
+          formatCurrency(Number(v.asking_price)),
+          scored.tco ? formatCurrency(scored.tco.fuelCost5Year) : "—",
+          scored.tco ? formatCurrency(scored.tco.repairCost5Year) : "—",
+          scored.tco?.mileageDepreciation ? `+${formatCurrency(scored.tco.mileageDepreciation)}` : "—",
+          scored.tco ? formatCurrency(scored.tco.totalTCO) : "—",
+        ]
+      : [
+          `${v.year} ${v.make} ${v.model}`.substring(0, 28),
+          formatCurrency(Number(v.asking_price)),
+          scored.tco ? formatCurrency(scored.tco.fuelCost5Year) : "—",
+          scored.tco ? formatCurrency(scored.tco.repairCost5Year) : "—",
+          scored.tco ? formatCurrency(scored.tco.totalTCO) : "—",
+        ];
+    
+    const totalColIndex = hasMileageDepreciation ? 5 : 4;
+    const mileageDepColIndex = 4;
     
     tcoData.forEach((cell, i) => {
-      if (i === 4 && isLowestTCO) {
+      if (i === totalColIndex && isLowestTCO) {
         pdf.setTextColor(34, 197, 94);
         pdf.setFont("helvetica", "bold");
+      } else if (hasMileageDepreciation && i === mileageDepColIndex && cell !== "—") {
+        pdf.setTextColor(234, 179, 8); // Warning color for mileage depreciation
       }
       pdf.text(cell, xPos + 2, yPosition + 2);
       xPos += tcoColWidths[i];
