@@ -389,6 +389,7 @@ export function calculateTCOScore(
 
 export interface TCOConfig {
   annualMiles?: number;
+  gasPricePerGallon?: number;
 }
 
 /**
@@ -423,7 +424,10 @@ export function calculateVehicleScore(
     vehicleWithMpg.mpg_combined || null,
     vehicle.fuel_type || null,
     vehicle.depreciation_table,
-    { annualMiles: config.annualMiles || 12000 },
+    { 
+      annualMiles: config.annualMiles || 12000,
+      gasPricePerGallon: config.gasPricePerGallon || 3.25,
+    },
     { make: vehicle.make, year: vehicle.year }
   );
   

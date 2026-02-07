@@ -14,14 +14,15 @@ type VehicleReport = Tables<"vehicle_reports">;
 interface ComparisonSummaryProps {
   vehicles: VehicleReport[];
   annualMiles?: number;
+  gasPricePerGallon?: number;
 }
 
-export function ComparisonSummary({ vehicles, annualMiles = 12000 }: ComparisonSummaryProps) {
+export function ComparisonSummary({ vehicles, annualMiles = 12000, gasPricePerGallon = 3.25 }: ComparisonSummaryProps) {
   const analysis = useMemo(() => {
     if (vehicles.length === 0) return null;
 
-    // Use the new research-backed scoring algorithm with mileage config
-    const scoredVehicles = scoreAndRankVehicles(vehicles, { annualMiles });
+    // Use the new research-backed scoring algorithm with mileage and gas price config
+    const scoredVehicles = scoreAndRankVehicles(vehicles, { annualMiles, gasPricePerGallon });
     
     const bestBuy = scoredVehicles[0];
     const others = scoredVehicles.slice(1);
@@ -108,7 +109,7 @@ export function ComparisonSummary({ vehicles, annualMiles = 12000 }: ComparisonS
       lowestTCO,
       recommendation,
     };
-  }, [vehicles, annualMiles]);
+  }, [vehicles, annualMiles, gasPricePerGallon]);
 
   if (!analysis || vehicles.length < 2) {
     return (
@@ -234,7 +235,7 @@ export function ComparisonSummary({ vehicles, annualMiles = 12000 }: ComparisonS
         {scoredVehicles.some(s => s.tco) && (
           <div className="space-y-2">
             <h4 className="font-semibold text-sm flex items-center gap-2">
-              ⛽ Total Cost of Ownership (5 Years @ {annualMiles.toLocaleString()} mi/yr)
+              ⛽ Total Cost of Ownership (5 Years @ {annualMiles.toLocaleString()} mi/yr, ${gasPricePerGallon.toFixed(2)}/gal)
             </h4>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

@@ -11,6 +11,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
+import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { SEO } from "@/components/seo/SEO";
 import { 
   Plus, 
@@ -22,6 +24,8 @@ import {
   Download,
   Loader2,
   Gauge,
+  Fuel,
+  HelpCircle,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -45,6 +49,8 @@ function CompareContent() {
   const { tier, subscribed, isLoading: isSubscriptionLoading } = useSubscription();
   const [isDownloading, setIsDownloading] = useState(false);
   const [annualMiles, setAnnualMiles] = useState(12000);
+  const [gasPricePerGallon, setGasPricePerGallon] = useState(3.25);
+  const [gasPriceInput, setGasPriceInput] = useState("3.25");
   
   // Get vehicle IDs from URL
   const vehicleIds = useMemo(() => {
@@ -336,41 +342,95 @@ function CompareContent() {
           {/* Comparison content */}
           {!isLoading && !error && vehicles && vehicleCount > 0 && (
             <div className="space-y-8">
-              {/* Mileage Adjustment Slider */}
+              {/* Cost Assumptions Card */}
               <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
-                <CardContent className="py-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <CardContent className="py-4 space-y-4">
+                  {/* Annual Mileage Slider */}
+                  <div>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                      <div className="flex items-center gap-2 min-w-fit">
+                        <Gauge className="h-5 w-5 text-primary" />
+                        <span className="font-medium">Expected Annual Mileage</span>
+                      </div>
+                      <div className="flex-1 flex items-center gap-4">
+                        <Slider
+                          value={[annualMiles]}
+                          onValueChange={(value) => setAnnualMiles(value[0])}
+                          min={5000}
+                          max={19000}
+                          step={1000}
+                          className="flex-1"
+                        />
+                        <Badge variant="secondary" className="text-sm font-bold min-w-[100px] justify-center">
+                          {annualMiles.toLocaleString()} mi/yr
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="flex justify-between text-xs text-muted-foreground mt-2 px-1">
+                      <span>5,000 mi</span>
+                      <span>12,000 mi (avg)</span>
+                      <span>19,000 mi</span>
+                    </div>
+                  </div>
+
+                  {/* Gas Price Input */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4 pt-2 border-t">
                     <div className="flex items-center gap-2 min-w-fit">
-                      <Gauge className="h-5 w-5 text-primary" />
-                      <span className="font-medium">Expected Annual Mileage</span>
+                      <Fuel className="h-5 w-5 text-primary" />
+                      <span className="font-medium">Gas Price (89 octane)</span>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            <p className="text-sm">
+                              National average price for 89 octane (mid-grade) gasoline.
+                              Adjust to match your local fuel prices for more accurate TCO estimates.
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
-                    <div className="flex-1 flex items-center gap-4">
-                      <Slider
-                        value={[annualMiles]}
-                        onValueChange={(value) => setAnnualMiles(value[0])}
-                        min={5000}
-                        max={19000}
-                        step={1000}
-                        className="flex-1"
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">$</span>
+                      <Input
+                        type="number"
+                        value={gasPriceInput}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setGasPriceInput(value);
+                          const parsed = parseFloat(value);
+                          if (!isNaN(parsed) && parsed > 0 && parsed <= 10) {
+                            setGasPricePerGallon(parsed);
+                          }
+                        }}
+                        onBlur={() => {
+                          const parsed = parseFloat(gasPriceInput);
+                          if (isNaN(parsed) || parsed <= 0 || parsed > 10) {
+                            setGasPriceInput(gasPricePerGallon.toFixed(2));
+                          } else {
+                            setGasPriceInput(parsed.toFixed(2));
+                            setGasPricePerGallon(parsed);
+                          }
+                        }}
+                        step="0.01"
+                        min="1"
+                        max="10"
+                        className="w-20 h-8 text-right font-medium"
                       />
-                      <Badge variant="secondary" className="text-sm font-bold min-w-[100px] justify-center">
-                        {annualMiles.toLocaleString()} mi/yr
-                      </Badge>
+                      <span className="text-sm text-muted-foreground">/gal</span>
                     </div>
                   </div>
-                  <div className="flex justify-between text-xs text-muted-foreground mt-2 px-1">
-                    <span>5,000 mi</span>
-                    <span>12,000 mi (avg)</span>
-                    <span>19,000 mi</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Adjust to see how driving habits affect fuel costs, maintenance, and depreciation across all vehicles.
+
+                  <p className="text-xs text-muted-foreground">
+                    Adjust to see how driving habits and fuel prices affect ownership costs across all vehicles.
                   </p>
                 </CardContent>
               </Card>
 
               {/* Comparison Summary */}
-              <ComparisonSummary vehicles={vehicles} annualMiles={annualMiles} />
+              <ComparisonSummary vehicles={vehicles} annualMiles={annualMiles} gasPricePerGallon={gasPricePerGallon} />
 
               {/* Vehicle Cards Grid */}
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
