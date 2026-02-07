@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Crown, TrendingUp, Shield, DollarSign, Info } from "lucide-react";
+import { Crown, TrendingUp, Shield, DollarSign, Info, Fuel } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScoreBreakdown } from "./ScoreBreakdown";
 import { scoreAndRankVehicles, type VehicleScoreResult } from "./scoring-utils";
@@ -35,6 +35,12 @@ export function ComparisonSummary({ vehicles }: ComparisonSummaryProps) {
       return aRisk - bRisk;
     })[0];
 
+    // Find lowest TCO vehicle
+    const lowestTCO = scoredVehicles.reduce((best, current) => {
+      if (!current.tco || !best.tco) return best;
+      return current.tco.totalTCO < best.tco.totalTCO ? current : best;
+    }, scoredVehicles[0]);
+
     // Generate recommendation text
     let recommendation = "";
     if (bestBuy) {
@@ -59,7 +65,7 @@ export function ComparisonSummary({ vehicles }: ComparisonSummaryProps) {
       if (strengths.length > 0) {
         recommendation += `, excelling in ${strengths.slice(0, 3).join(", ")}`;
       }
-      recommendation += `. Our algorithm weighs deal quality (20%), title status (20%), accident history (15%), 5-year depreciation (15%), age/warranty (15%), and reliability (15%) based on industry research.`;
+      recommendation += `. Our algorithm weighs deal quality (15%), title status (20%), accident history (20%), 5-year depreciation (12%), age/warranty (13%), reliability (12%), and mileage (8%) based on industry research.`;
     }
 
     return {
@@ -69,6 +75,7 @@ export function ComparisonSummary({ vehicles }: ComparisonSummaryProps) {
       lowestPrice,
       lowestMileage,
       lowestRisk,
+      lowestTCO,
       recommendation,
     };
   }, [vehicles]);
@@ -92,6 +99,7 @@ export function ComparisonSummary({ vehicles }: ComparisonSummaryProps) {
     lowestPrice,
     lowestMileage,
     lowestRisk,
+    lowestTCO,
     recommendation,
   } = analysis;
 
@@ -118,7 +126,7 @@ export function ComparisonSummary({ vehicles }: ComparisonSummaryProps) {
         )}
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="p-3 rounded-lg bg-background border">
             <div className="flex items-center gap-2 mb-1">
               <DollarSign className="h-4 w-4 text-success" />
@@ -167,10 +175,97 @@ export function ComparisonSummary({ vehicles }: ComparisonSummaryProps) {
               {lowestRisk.risk_level || "Unknown"} risk
             </Badge>
           </div>
+
+          {/* Lowest TCO - NEW */}
+          {lowestTCO?.tco && (
+            <div className="p-3 rounded-lg bg-background border">
+              <div className="flex items-center gap-2 mb-1">
+                <Fuel className="h-4 w-4 text-blue-500" />
+                <span className="text-xs text-muted-foreground">Lowest TCO</span>
+              </div>
+              <p className="font-semibold text-sm truncate">
+                {lowestTCO.vehicle.year} {lowestTCO.vehicle.make} {lowestTCO.vehicle.model}
+              </p>
+              <p className="text-primary font-bold">
+                ${lowestTCO.tco.totalTCO.toLocaleString()}
+              </p>
+              <p className="text-xs text-muted-foreground">5-year total</p>
+            </div>
+          )}
         </div>
 
-        {/* Score Breakdown - NEW */}
+        {/* Score Breakdown */}
         <ScoreBreakdown scoredVehicles={scoredVehicles} />
+
+        {/* TCO Comparison Table - NEW */}
+        {scoredVehicles.some(s => s.tco) && (
+          <div className="space-y-2">
+            <h4 className="font-semibold text-sm flex items-center gap-2">
+              ⛽ Total Cost of Ownership (5 Years)
+            </h4>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2 px-1 font-medium text-muted-foreground">Vehicle</th>
+                    <th className="text-right py-2 px-1 font-medium text-muted-foreground">Purchase</th>
+                    <th className="text-right py-2 px-1 font-medium text-muted-foreground">Fuel</th>
+                    <th className="text-right py-2 px-1 font-medium text-muted-foreground">Repairs</th>
+                    <th className="text-right py-2 px-1 font-medium text-muted-foreground">Total TCO</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {scoredVehicles.map((scored, index) => {
+                    const isLowestTCO = lowestTCO?.vehicle.id === scored.vehicle.id;
+                    return (
+                      <tr 
+                        key={scored.vehicle.id} 
+                        className={cn(
+                          "border-b last:border-0",
+                          isLowestTCO && "bg-success/5"
+                        )}
+                      >
+                        <td className="py-2 px-1">
+                          <div className="flex items-center gap-2">
+                            {isLowestTCO && <span className="text-success">✓</span>}
+                            <span className="truncate max-w-[120px]">
+                              {scored.vehicle.year} {scored.vehicle.make} {scored.vehicle.model}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="text-right py-2 px-1">
+                          ${Number(scored.vehicle.asking_price).toLocaleString()}
+                        </td>
+                        <td className="text-right py-2 px-1">
+                          {scored.tco ? `$${scored.tco.fuelCost5Year.toLocaleString()}` : "—"}
+                        </td>
+                        <td className="text-right py-2 px-1">
+                          {scored.tco ? `$${scored.tco.repairCost5Year.toLocaleString()}` : "—"}
+                        </td>
+                        <td className={cn(
+                          "text-right py-2 px-1 font-bold",
+                          isLowestTCO ? "text-success" : ""
+                        )}>
+                          {scored.tco ? `$${scored.tco.totalTCO.toLocaleString()}` : "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {lowestTCO?.tco && scoredVehicles.length > 1 && (
+              <p className="text-xs text-muted-foreground">
+                💡 <strong>{lowestTCO.vehicle.year} {lowestTCO.vehicle.make} {lowestTCO.vehicle.model}</strong> has the lowest 5-year ownership cost.
+                {(() => {
+                  const highestTCO = Math.max(...scoredVehicles.map(s => s.tco?.totalTCO || 0));
+                  const savings = highestTCO - lowestTCO.tco.totalTCO;
+                  return savings > 0 ? ` Saves $${savings.toLocaleString()} vs the most expensive option.` : "";
+                })()}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Price Comparison Table */}
         <div className="space-y-2">
