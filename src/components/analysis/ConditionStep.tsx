@@ -21,6 +21,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { VehicleCondition } from "@/types/vehicle";
+import { useSubscription } from "@/hooks/useSubscription";
+import { DealerTrustPreview } from "./DealerTrustPreview";
 
 const conditionSchema = z.object({
   mileage: z.coerce.number().min(0, "Mileage must be positive").max(500000),
@@ -39,6 +41,9 @@ interface ConditionStepProps {
 }
 
 export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary }: ConditionStepProps) {
+  const { tier } = useSubscription();
+  const isPro = tier === "pro";
+  
   const form = useForm<z.infer<typeof conditionSchema>>({
     resolver: zodResolver(conditionSchema),
     defaultValues: {
@@ -52,6 +57,7 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
   });
 
   const watchSellerType = form.watch("sellerType");
+  const watchSellerName = form.watch("sellerName");
 
   const handleSubmit = (data: z.infer<typeof conditionSchema>) => {
     onComplete({
@@ -187,25 +193,31 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
 
               {/* Dealer Name field - shows when seller type is dealer */}
               {watchSellerType === "dealer" && (
-                <FormField
-                  control={form.control}
-                  name="sellerName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Dealership Name (Optional)</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="e.g., ABC Motors, CarMax, AutoNation..." 
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Enter the dealer name for trust analysis (Pro feature).
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="space-y-3">
+                  <FormField
+                    control={form.control}
+                    name="sellerName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Dealership Name (Optional)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="e.g., ABC Motors, CarMax, AutoNation..." 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Enter the dealer name for trust analysis (Pro feature).
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <DealerTrustPreview 
+                    dealerName={watchSellerName || ""} 
+                    isPro={isPro} 
+                  />
+                </div>
               )}
 
               <FormField
