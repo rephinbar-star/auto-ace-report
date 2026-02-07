@@ -34,7 +34,8 @@ const realWorldCases = [
     issue: "Bought from a private seller who claimed 'perfect condition.' Within 2 months, the transmission failed completely.",
     cost: "$8,200",
     whatWentWrong: "No pre-purchase inspection, didn't check for transmission service records, ignored slight shudder during test drive.",
-    lesson: "A $150 pre-purchase inspection would have revealed the failing transmission before purchase.",
+    lesson: "A CarWise report flags missing service records in the History Issues section and includes BMW X3 transmission problems in the Reliability Concerns warning. The Risk Assessment would have been 'High' due to lack of maintenance documentation.",
+    carwiseFeature: "History Issues • Reliability Concerns • Risk Assessment",
   },
   {
     title: "Flood Damage Cover-Up",
@@ -43,7 +44,8 @@ const realWorldCases = [
     issue: "Dealer sold a flood-damaged vehicle with a 'clean' title. Electrical problems started within weeks.",
     cost: "$12,000+ in repairs",
     whatWentWrong: "Didn't check the VIN for flood damage history, dealer had washed the title through another state.",
-    lesson: "Always run a comprehensive vehicle history report and inspect for signs of water damage (musty smell, water lines, corrosion).",
+    lesson: "CarWise analyzes vehicle history and displays Title Status prominently in the report. Flood damage, salvage, or rebuilt titles trigger a 'High Risk' assessment and appear as critical History Issues with warnings in the Expert Opinion section.",
+    carwiseFeature: "Title Status • Risk Assessment • Expert Opinion",
   },
   {
     title: "The Salvage Title Surprise",
@@ -52,7 +54,8 @@ const realWorldCases = [
     issue: "Purchased at a 'great deal' price, only to discover during insurance registration it had a rebuilt title from a major accident.",
     cost: "Lost $6,000 in resale value",
     whatWentWrong: "Dealer didn't disclose title status, buyer didn't run VIN check before purchase.",
-    lesson: "Always verify title status before buying. Rebuilt/salvage titles significantly reduce resale value and may affect insurance.",
+    lesson: "CarWise shows Title Status (Clean/Salvage/Rebuilt/Lemon) at the top of every report. The Deal Rating algorithm factors in title status—a 'great price' on a rebuilt title would show as 'Fair' or 'Overpriced' when adjusted for reduced resale value in the 5-Year Depreciation Table.",
+    carwiseFeature: "Title Status • Deal Rating • Depreciation Table",
   },
   {
     title: "Engine Swap Deception",
@@ -61,7 +64,8 @@ const realWorldCases = [
     issue: "Odometer showed 45,000 miles but engine was actually from a different vehicle with 180,000 miles.",
     cost: "$5,500 for new engine",
     whatWentWrong: "Didn't verify engine VIN matched vehicle VIN, trusted dealer's word on maintenance history.",
-    lesson: "Check that engine VIN stamps match the vehicle VIN. Request maintenance records directly from authorized service centers.",
+    lesson: "CarWise extracts VIN data to verify year, make, model, and engine specifications. Mismatched mileage vs. wear patterns appear in History Issues. The Health Score would reflect inconsistencies, and the Expert Opinion highlights when service records don't match claimed mileage.",
+    carwiseFeature: "VIN Decode • Health Score • History Issues",
   },
   {
     title: "The Dealer Review Ignored",
@@ -70,7 +74,8 @@ const realWorldCases = [
     issue: "Bought from a dealer with dozens of complaints online. Car had undisclosed frame damage affecting safety.",
     cost: "$4,800 + unsafe vehicle",
     whatWentWrong: "Didn't research dealer reputation, ignored warning signs like pressure tactics and 'today only' pricing.",
-    lesson: "Always check dealer reviews on Google, BBB, and automotive forums before purchasing. Red flags are usually consistent.",
+    lesson: "CarWise Pro includes a Dealer Trust Score that aggregates reviews from Google, AutoTrader, and CarGurus. A low trust score with 'Watch Out' items about hidden damage complaints would have warned Amanda. The report also checks for accident history that could indicate frame damage.",
+    carwiseFeature: "Dealer Trust Score (Pro) • Watch Out Items • Accident History",
   },
 ];
 
@@ -321,10 +326,15 @@ export default function HelpCenterPage() {
                               <p className="text-destructive/80">{caseStudy.whatWentWrong}</p>
                             </div>
                             <div className="p-4 bg-primary/10 rounded-lg border border-primary/20">
-                              <p className="text-sm font-medium text-primary mb-1 flex items-center gap-1">
-                                <CheckCircle2 className="h-4 w-4" />
-                                Lesson Learned
-                              </p>
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                                <p className="text-sm font-medium text-primary flex items-center gap-1">
+                                  <CheckCircle2 className="h-4 w-4" />
+                                  How CarWise Would Have Helped
+                                </p>
+                                <Badge variant="outline" className="text-xs w-fit border-primary/30 text-primary">
+                                  {caseStudy.carwiseFeature}
+                                </Badge>
+                              </div>
                               <p className="text-sm">{caseStudy.lesson}</p>
                             </div>
                           </CardContent>
