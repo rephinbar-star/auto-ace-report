@@ -41,6 +41,7 @@ import {
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { VehicleImageGallery } from "@/components/report/VehicleImageGallery";
 
 interface DepreciationYear {
   year: number;
@@ -439,6 +440,15 @@ export default function ReportPage() {
 
             {/* Right Column - Sidebar */}
             <div className="space-y-6">
+              {/* Vehicle Images Gallery */}
+              {condition?.images && condition.images.length > 0 && (
+                <VehicleImageGallery 
+                  images={condition.images}
+                  vehicleName={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
+                  listingUrl={condition.listingUrl}
+                />
+              )}
+
               {/* Vehicle Health Score */}
               <Card>
                 <CardHeader>
