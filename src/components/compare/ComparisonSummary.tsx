@@ -58,6 +58,7 @@ export function ComparisonSummary({ vehicles }: ComparisonSummaryProps) {
           else if (item.category === "5-Year Equity") strengths.push("strong long-term equity");
           else if (item.category === "Age & Warranty") strengths.push("newer with warranty protection");
           else if (item.category === "Reliability & Risk") strengths.push("low ownership risk");
+          else if (item.category === "5-Year TCO") strengths.push("lowest total ownership cost");
         }
       });
       
@@ -65,7 +66,7 @@ export function ComparisonSummary({ vehicles }: ComparisonSummaryProps) {
       if (strengths.length > 0) {
         recommendation += `, excelling in ${strengths.slice(0, 3).join(", ")}`;
       }
-      recommendation += `. Our algorithm weighs deal quality (15%), title status (20%), accident history (20%), 5-year depreciation (12%), age/warranty (13%), reliability (12%), and mileage (8%) based on industry research.`;
+      recommendation += `. Our algorithm evaluates title status, accident history, deal quality, total cost of ownership, age/warranty, reliability, mileage, and 5-year equity position.`;
     }
 
     return {
