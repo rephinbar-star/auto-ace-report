@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Progress } from "@/components/ui/progress";
 import {
   Tooltip,
@@ -5,7 +6,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { HelpCircle } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { HelpCircle, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { VehicleScoreResult } from "./scoring-utils";
 
@@ -86,10 +92,24 @@ const categoryTooltips: Record<string, { title: string; details: string[] }> = {
 };
 
 export function ScoreBreakdown({ scoredVehicles }: ScoreBreakdownProps) {
+  const [expandedVehicles, setExpandedVehicles] = useState<Set<string>>(new Set());
+
   if (scoredVehicles.length === 0) return null;
 
   // Get all category names from the first vehicle's breakdown
   const categories = scoredVehicles[0]?.breakdown.map((b) => b.category) || [];
+
+  const toggleExpanded = (vehicleId: string) => {
+    setExpandedVehicles((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(vehicleId)) {
+        newSet.delete(vehicleId);
+      } else {
+        newSet.add(vehicleId);
+      }
+      return newSet;
+    });
+  };
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -105,93 +125,139 @@ export function ScoreBreakdown({ scoredVehicles }: ScoreBreakdownProps) {
           {scoredVehicles.map((scored, vehicleIndex) => {
             const v = scored.vehicle;
             const isWinner = vehicleIndex === 0;
+            const isExpanded = expandedVehicles.has(v.id);
 
             return (
-              <div
+              <Collapsible
                 key={v.id}
-                className={cn(
-                  "p-4 rounded-lg border",
-                  isWinner ? "bg-primary/5 border-primary/30" : "bg-muted/30"
-                )}
+                open={isExpanded}
+                onOpenChange={() => toggleExpanded(v.id)}
               >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    {isWinner && <span className="text-lg">🏆</span>}
-                    <span className="font-semibold text-sm">
-                      {v.year} {v.make} {v.model}
-                    </span>
+                <div
+                  className={cn(
+                    "p-4 rounded-lg border",
+                    isWinner ? "bg-primary/5 border-primary/30" : "bg-muted/30"
+                  )}
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      {isWinner && <span className="text-lg">🏆</span>}
+                      <span className="font-semibold text-sm">
+                        {v.year} {v.make} {v.model}
+                      </span>
+                    </div>
+                    <div
+                      className={cn(
+                        "text-lg font-bold",
+                        isWinner ? "text-primary" : "text-muted-foreground"
+                      )}
+                    >
+                      {scored.totalScore}/100
+                    </div>
                   </div>
-                  <div
-                    className={cn(
-                      "text-lg font-bold",
-                      isWinner ? "text-primary" : "text-muted-foreground"
-                    )}
-                  >
-                    {scored.totalScore}/100
-                  </div>
-                </div>
 
-                <div className="space-y-2">
-                  {scored.breakdown.map((item) => {
-                    const tooltip = categoryTooltips[item.category];
-                    return (
-                      <div key={item.category} className="space-y-1">
-                        <div className="flex justify-between text-xs">
-                          <div className="flex items-center gap-1">
-                            <span className="text-muted-foreground">
-                              {item.category}
+                  <div className="space-y-2">
+                    {scored.breakdown.map((item) => {
+                      const tooltip = categoryTooltips[item.category];
+                      return (
+                        <div key={item.category} className="space-y-1">
+                          <div className="flex justify-between text-xs">
+                            <div className="flex items-center gap-1">
+                              <span className="text-muted-foreground">
+                                {item.category}
+                              </span>
+                              {tooltip && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <HelpCircle className="h-3 w-3 text-muted-foreground/60 cursor-help" />
+                                  </TooltipTrigger>
+                                  <TooltipContent
+                                    side="top"
+                                    className="max-w-[280px] p-3"
+                                  >
+                                    <p className="font-semibold text-sm mb-2">
+                                      {tooltip.title}
+                                    </p>
+                                    <ul className="space-y-1">
+                                      {tooltip.details.map((detail, i) => (
+                                        <li
+                                          key={i}
+                                          className="text-xs text-muted-foreground"
+                                        >
+                                          {detail}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                            </div>
+                            <span className="font-medium">
+                              {item.score}/{item.maxScore}
                             </span>
-                            {tooltip && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <HelpCircle className="h-3 w-3 text-muted-foreground/60 cursor-help" />
-                                </TooltipTrigger>
-                                <TooltipContent
-                                  side="top"
-                                  className="max-w-[280px] p-3"
-                                >
-                                  <p className="font-semibold text-sm mb-2">
-                                    {tooltip.title}
-                                  </p>
-                                  <ul className="space-y-1">
-                                    {tooltip.details.map((detail, i) => (
-                                      <li
-                                        key={i}
-                                        className="text-xs text-muted-foreground"
-                                      >
-                                        {detail}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
                           </div>
-                          <span className="font-medium">
-                            {item.score}/{item.maxScore}
-                          </span>
+                          <div className="relative">
+                            <Progress
+                              value={(item.score / item.maxScore) * 100}
+                              className="h-2"
+                            />
+                            <div
+                              className={cn(
+                                "absolute inset-0 rounded-full opacity-80",
+                                categoryColors[item.category] || "bg-primary"
+                              )}
+                              style={{
+                                width: `${(item.score / item.maxScore) * 100}%`,
+                                height: "100%",
+                              }}
+                            />
+                          </div>
                         </div>
-                        <div className="relative">
-                          <Progress
-                            value={(item.score / item.maxScore) * 100}
-                            className="h-2"
-                          />
+                      );
+                    })}
+                  </div>
+
+                  {/* Collapsible trigger button */}
+                  <CollapsibleTrigger asChild>
+                    <button
+                      className="w-full mt-3 pt-2 border-t flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <span>{isExpanded ? "Hide details" : "Show details"}</span>
+                      <ChevronDown
+                        className={cn(
+                          "h-3.5 w-3.5 transition-transform",
+                          isExpanded && "rotate-180"
+                        )}
+                      />
+                    </button>
+                  </CollapsibleTrigger>
+
+                  {/* Collapsible content with vehicle-specific details */}
+                  <CollapsibleContent className="mt-3">
+                    <div className="space-y-2 pt-2 border-t">
+                      {scored.breakdown.map((item) => (
+                        <div
+                          key={item.category}
+                          className="flex items-start gap-2 text-xs"
+                        >
                           <div
                             className={cn(
-                              "absolute inset-0 rounded-full opacity-80",
+                              "w-2 h-2 rounded-full mt-1 flex-shrink-0",
                               categoryColors[item.category] || "bg-primary"
                             )}
-                            style={{
-                              width: `${(item.score / item.maxScore) * 100}%`,
-                              height: "100%",
-                            }}
                           />
+                          <div className="flex-1 min-w-0">
+                            <span className="font-medium">{item.category}:</span>{" "}
+                            <span className="text-muted-foreground">
+                              {item.description}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      ))}
+                    </div>
+                  </CollapsibleContent>
                 </div>
-              </div>
+              </Collapsible>
             );
           })}
         </div>
