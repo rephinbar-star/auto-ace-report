@@ -17,6 +17,15 @@ function generateOTP(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+// Hash OTP code using SHA-256 for secure storage
+async function hashOTP(code: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(code);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -72,12 +81,16 @@ serve(async (req) => {
     const otp = generateOTP();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-    // Store OTP
+    // Hash OTP before storing (plaintext OTP is only sent via email, never stored)
+    const hashedOTP = await hashOTP(otp);
+    logStep("OTP generated and hashed");
+
+    // Store hashed OTP
     const { error: insertError } = await supabaseClient
       .from("admin_otp")
       .insert({
         user_id: user.id,
-        code: otp,
+        code: hashedOTP,
         expires_at: expiresAt.toISOString(),
       });
 
