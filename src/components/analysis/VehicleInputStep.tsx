@@ -21,10 +21,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Search, Car, Link as LinkIcon, CheckCircle, AlertCircle, ArrowRight, ExternalLink, AlertTriangle, ChevronLeft, ChevronRight, ImageIcon } from "lucide-react";
+import { Loader2, Search, Car, Link as LinkIcon, CheckCircle, AlertCircle, ArrowRight, ExternalLink, AlertTriangle, ChevronLeft, ChevronRight, ImageIcon, HelpCircle } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { decodeVIN, isValidVIN, getMakes, getModels } from "@/lib/nhtsa";
 import { VehicleInfo, VehicleCondition } from "@/types/vehicle";
@@ -68,6 +69,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
   const [importedListing, setImportedListing] = useState<ImportedListingData | null>(null);
   const [importFailed, setImportFailed] = useState<{ url: string; error: string } | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showHelpVideo, setShowHelpVideo] = useState(false);
   const { toast } = useToast();
 
   // State for NHTSA data
@@ -598,6 +600,30 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
 
   return (
     <div className="space-y-6">
+      {/* Help Video Dialog */}
+      <Dialog open={showHelpVideo} onOpenChange={setShowHelpVideo}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>How to Copy & Paste URL</DialogTitle>
+          </DialogHeader>
+          <div className="aspect-video w-full">
+            <iframe
+              width="100%"
+              height="100%"
+              src="https://www.youtube.com/embed/YOUR_VIDEO_ID"
+              title="How to Copy & Paste URL"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              className="rounded-lg"
+            />
+          </div>
+          <div className="flex justify-center pt-2">
+            <DialogClose asChild>
+              <Button variant="outline">Close</Button>
+            </DialogClose>
+          </div>
+        </DialogContent>
+      </Dialog>
       <div>
         <h2 className="text-2xl font-bold">Vehicle Information</h2>
         <p className="text-muted-foreground">
@@ -613,8 +639,16 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
               <LinkIcon className="h-5 w-5 text-primary" />
               <CardTitle className="text-lg">Quick Import from Listing</CardTitle>
             </div>
-            <CardDescription>
-              Paste a car listing URL to automatically extract vehicle details, VIN, price, and mileage.
+            <CardDescription className="flex items-center gap-2 flex-wrap">
+              <span>Paste a car listing URL to automatically extract vehicle details, VIN, price, and mileage.</span>
+              <button
+                type="button"
+                onClick={() => setShowHelpVideo(true)}
+                className="inline-flex items-center gap-1 text-primary hover:text-primary/80 hover:underline text-sm font-medium transition-colors"
+              >
+                <HelpCircle className="h-3.5 w-3.5" />
+                How to Copy & Paste URL
+              </button>
             </CardDescription>
           </CardHeader>
           <CardContent>
