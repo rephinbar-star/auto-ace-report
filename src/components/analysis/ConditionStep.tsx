@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -50,9 +51,22 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
       askingPrice: initialData?.askingPrice || 0,
       condition: initialData?.condition || "good",
       sellerType: initialData?.sellerType || "dealer",
-      sellerName: initialData?.sellerName || "",
+      sellerName: initialData?.sellerName ?? "",
     },
   });
+
+  // Sync form when initialData changes (e.g., from scraped listing)
+  useEffect(() => {
+    if (initialData) {
+      form.reset({
+        mileage: initialData.mileage || 0,
+        askingPrice: initialData.askingPrice || 0,
+        condition: initialData.condition || "good",
+        sellerType: initialData.sellerType || "dealer",
+        sellerName: initialData.sellerName ?? "",
+      });
+    }
+  }, [initialData, form]);
 
   const watchSellerType = form.watch("sellerType");
   const watchSellerName = form.watch("sellerName");
