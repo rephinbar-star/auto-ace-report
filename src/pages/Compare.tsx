@@ -52,11 +52,11 @@ function CompareContent() {
   const [gasPricePerGallon, setGasPricePerGallon] = useState(3.25);
   const [gasPriceInput, setGasPriceInput] = useState("3.25");
   
-  // Get vehicle IDs from URL
+  // Get vehicle IDs from URL - use the raw string to avoid unnecessary recalculations
+  const idsParam = searchParams.get("ids") || "";
   const vehicleIds = useMemo(() => {
-    const ids = searchParams.get("ids");
-    return ids ? ids.split(",").filter(Boolean) : [];
-  }, [searchParams]);
+    return idsParam ? idsParam.split(",").filter(Boolean) : [];
+  }, [idsParam]);
 
   // Fetch selected vehicles
   const { data: vehicles, isLoading, error } = useQuery({
@@ -366,10 +366,12 @@ function CompareContent() {
                         </Badge>
                       </div>
                     </div>
-                    <div className="flex justify-between text-xs text-muted-foreground mt-2 px-1">
-                      <span>5,000 mi</span>
-                      <span>12,000 mi (avg)</span>
-                      <span>19,000 mi</span>
+                    <div className="relative text-xs text-muted-foreground mt-2 px-1">
+                      <div className="flex justify-between">
+                        <span>5,000 mi</span>
+                        <span>19,000 mi</span>
+                      </div>
+                      <span className="absolute left-1/2 -translate-x-1/2 top-0">12,000 mi (avg)</span>
                     </div>
                   </div>
 
