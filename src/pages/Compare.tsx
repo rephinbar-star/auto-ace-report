@@ -26,6 +26,7 @@ import {
   Gauge,
   Fuel,
   HelpCircle,
+  Zap,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -51,6 +52,8 @@ function CompareContent() {
   const [annualMiles, setAnnualMiles] = useState(12000);
   const [gasPricePerGallon, setGasPricePerGallon] = useState(3.25);
   const [gasPriceInput, setGasPriceInput] = useState("3.25");
+  const [electricityPrice, setElectricityPrice] = useState(0.15);
+  const [electricityPriceInput, setElectricityPriceInput] = useState("0.15");
   
   // Get vehicle IDs from URL - use the raw string to avoid unnecessary recalculations
   const idsParam = searchParams.get("ids") || "";
@@ -376,64 +379,122 @@ function CompareContent() {
                     </div>
                   </div>
 
-                  {/* Gas Price Input */}
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-4 pt-2 border-t">
-                    <div className="flex items-center gap-2 min-w-fit">
-                      <Fuel className="h-5 w-5 text-primary" />
-                      <span className="font-medium">Gas Price (89 octane)</span>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
-                          </TooltipTrigger>
-                          <TooltipContent className="max-w-xs">
-                            <p className="text-sm">
-                              National average price for 89 octane (mid-grade) gasoline.
-                              Adjust to match your local fuel prices for more accurate TCO estimates.
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                  {/* Energy Price Inputs */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t">
+                    {/* Gas Price Input */}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                      <div className="flex items-center gap-2 min-w-fit">
+                        <Fuel className="h-5 w-5 text-primary" />
+                        <span className="font-medium text-sm">Gas Price</span>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              <p className="text-sm">
+                                National average price for 89 octane (mid-grade) gasoline.
+                                Adjust to match your local fuel prices for gas vehicles.
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm font-medium">$</span>
+                        <Input
+                          type="number"
+                          value={gasPriceInput}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setGasPriceInput(value);
+                            const parsed = parseFloat(value);
+                            if (!isNaN(parsed) && parsed > 0 && parsed <= 10) {
+                              setGasPricePerGallon(parsed);
+                            }
+                          }}
+                          onBlur={() => {
+                            const parsed = parseFloat(gasPriceInput);
+                            if (isNaN(parsed) || parsed <= 0 || parsed > 10) {
+                              setGasPriceInput(gasPricePerGallon.toFixed(2));
+                            } else {
+                              setGasPriceInput(parsed.toFixed(2));
+                              setGasPricePerGallon(parsed);
+                            }
+                          }}
+                          step="0.01"
+                          min="1"
+                          max="10"
+                          className="w-16 h-8 text-right font-medium"
+                        />
+                        <span className="text-sm text-muted-foreground">/gal</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">$</span>
-                      <Input
-                        type="number"
-                        value={gasPriceInput}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          setGasPriceInput(value);
-                          const parsed = parseFloat(value);
-                          if (!isNaN(parsed) && parsed > 0 && parsed <= 10) {
-                            setGasPricePerGallon(parsed);
-                          }
-                        }}
-                        onBlur={() => {
-                          const parsed = parseFloat(gasPriceInput);
-                          if (isNaN(parsed) || parsed <= 0 || parsed > 10) {
-                            setGasPriceInput(gasPricePerGallon.toFixed(2));
-                          } else {
-                            setGasPriceInput(parsed.toFixed(2));
-                            setGasPricePerGallon(parsed);
-                          }
-                        }}
-                        step="0.01"
-                        min="1"
-                        max="10"
-                        className="w-20 h-8 text-right font-medium"
-                      />
-                      <span className="text-sm text-muted-foreground">/gal</span>
+
+                    {/* Electricity Price Input */}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                      <div className="flex items-center gap-2 min-w-fit">
+                        <Zap className="h-5 w-5 text-primary" />
+                        <span className="font-medium text-sm">Electricity Price</span>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              <p className="text-sm">
+                                National average residential electricity rate.
+                                Home charging is typically $0.10-0.20/kWh; public charging can be $0.30-0.50/kWh.
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm font-medium">$</span>
+                        <Input
+                          type="number"
+                          value={electricityPriceInput}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setElectricityPriceInput(value);
+                            const parsed = parseFloat(value);
+                            if (!isNaN(parsed) && parsed > 0 && parsed <= 1) {
+                              setElectricityPrice(parsed);
+                            }
+                          }}
+                          onBlur={() => {
+                            const parsed = parseFloat(electricityPriceInput);
+                            if (isNaN(parsed) || parsed <= 0 || parsed > 1) {
+                              setElectricityPriceInput(electricityPrice.toFixed(2));
+                            } else {
+                              setElectricityPriceInput(parsed.toFixed(2));
+                              setElectricityPrice(parsed);
+                            }
+                          }}
+                          step="0.01"
+                          min="0.05"
+                          max="1"
+                          className="w-16 h-8 text-right font-medium"
+                        />
+                        <span className="text-sm text-muted-foreground">/kWh</span>
+                      </div>
                     </div>
                   </div>
 
                   <p className="text-xs text-muted-foreground">
-                    Adjust to see how driving habits and fuel prices affect ownership costs across all vehicles.
+                    Adjust to see how driving habits and energy prices affect ownership costs across all vehicles.
                   </p>
                 </CardContent>
               </Card>
 
               {/* Comparison Summary */}
-              <ComparisonSummary vehicles={vehicles} annualMiles={annualMiles} gasPricePerGallon={gasPricePerGallon} />
+              <ComparisonSummary 
+                vehicles={vehicles} 
+                annualMiles={annualMiles} 
+                gasPricePerGallon={gasPricePerGallon} 
+                electricityPricePerKwh={electricityPrice}
+              />
 
               {/* Vehicle Cards Grid */}
               <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
