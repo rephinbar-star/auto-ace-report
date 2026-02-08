@@ -633,8 +633,44 @@ export function scoreAndRankVehicles(
     }
   });
   
-  // Sort by total score descending (now includes TCO)
-  scored.sort((a, b) => b.totalScore - a.totalScore);
+  // Sort by total score descending, with tie-breakers:
+  // 1. Total score (primary)
+  // 2. Lower mileage (less wear)
+  // 3. Newer year (more modern)
+  // 4. Lower TCO (cheaper to own)
+  // 5. Lower asking price
+  scored.sort((a, b) => {
+    // Primary: total score
+    if (b.totalScore !== a.totalScore) {
+      return b.totalScore - a.totalScore;
+    }
+    
+    // Tie-breaker 1: Lower mileage wins
+    const mileageA = a.vehicle.mileage || 0;
+    const mileageB = b.vehicle.mileage || 0;
+    if (mileageA !== mileageB) {
+      return mileageA - mileageB;
+    }
+    
+    // Tie-breaker 2: Newer year wins
+    const yearA = a.vehicle.year || 0;
+    const yearB = b.vehicle.year || 0;
+    if (yearA !== yearB) {
+      return yearB - yearA;
+    }
+    
+    // Tie-breaker 3: Lower TCO wins
+    const tcoA = a.tco?.totalTCO || 0;
+    const tcoB = b.tco?.totalTCO || 0;
+    if (tcoA !== tcoB) {
+      return tcoA - tcoB;
+    }
+    
+    // Tie-breaker 4: Lower asking price wins
+    const priceA = Number(a.vehicle.asking_price) || 0;
+    const priceB = Number(b.vehicle.asking_price) || 0;
+    return priceA - priceB;
+  });
   
   // Generate "why not" reasons for non-winners
   if (scored.length > 1) {
