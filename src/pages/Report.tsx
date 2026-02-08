@@ -44,6 +44,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getWithExpiry, removeExpirableItem } from "@/lib/storage-utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -310,14 +311,15 @@ export default function ReportPage() {
       // For new analysis, check localStorage first (for cross-tab email verification), then sessionStorage
       let stored = sessionStorage.getItem("analysisData");
       
-      // If not in sessionStorage, check localStorage (email verification opens in new tab)
+      // If not in sessionStorage, check localStorage with expiry (email verification opens in new tab)
       if (!stored) {
-        stored = localStorage.getItem("pendingAnalysisData");
-        if (stored) {
+        const pendingData = getWithExpiry<any>("pendingAnalysisData");
+        if (pendingData) {
           console.log("Loading analysis data from localStorage (cross-tab)");
+          stored = JSON.stringify(pendingData);
           // Move to sessionStorage and clean up localStorage
           sessionStorage.setItem("analysisData", stored);
-          localStorage.removeItem("pendingAnalysisData");
+          removeExpirableItem("pendingAnalysisData");
           localStorage.removeItem("pendingReport");
         }
       }

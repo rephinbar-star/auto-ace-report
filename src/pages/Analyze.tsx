@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { VehicleInfo, VehicleCondition, VehicleHistory, FinancingInfo } from "@/types/vehicle";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { setWithExpiry } from "@/lib/storage-utils";
 
 const steps = [
   { id: 1, name: "Vehicle Info" },
@@ -79,8 +80,8 @@ export default function AnalyzePage() {
       financing: f,
     };
     
-    // Use localStorage so data persists when user verifies email in new tab
-    localStorage.setItem("pendingAnalysisData", JSON.stringify(analysisData));
+    // Use localStorage with expiry so data auto-cleans after 24 hours
+    setWithExpiry("pendingAnalysisData", analysisData);
     // Also keep in sessionStorage for same-tab flows
     sessionStorage.setItem("analysisData", JSON.stringify(analysisData));
     
