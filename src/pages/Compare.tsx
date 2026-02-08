@@ -353,25 +353,26 @@ function CompareContent() {
                         <span className="font-medium">Expected Annual Mileage</span>
                       </div>
                       <div className="flex-1 flex items-center gap-4">
-                        <Slider
-                          value={[annualMiles]}
-                          onValueChange={(value) => setAnnualMiles(value[0])}
-                          min={5000}
-                          max={19000}
-                          step={1000}
-                          className="flex-1"
-                        />
+                        <div className="flex-1 space-y-2">
+                          <Slider
+                            value={[annualMiles]}
+                            onValueChange={(value) => setAnnualMiles(value[0])}
+                            min={5000}
+                            max={19000}
+                            step={1000}
+                          />
+                          <div className="relative text-xs text-muted-foreground">
+                            <div className="flex justify-between">
+                              <span>5,000 mi</span>
+                              <span>19,000 mi</span>
+                            </div>
+                            <span className="absolute left-1/2 -translate-x-1/2 top-0">12,000 mi (avg)</span>
+                          </div>
+                        </div>
                         <Badge variant="secondary" className="text-sm font-bold min-w-[100px] justify-center">
                           {annualMiles.toLocaleString()} mi/yr
                         </Badge>
                       </div>
-                    </div>
-                    <div className="relative text-xs text-muted-foreground mt-2 px-1">
-                      <div className="flex justify-between">
-                        <span>5,000 mi</span>
-                        <span>19,000 mi</span>
-                      </div>
-                      <span className="absolute left-1/2 -translate-x-1/2 top-0">12,000 mi (avg)</span>
                     </div>
                   </div>
 
