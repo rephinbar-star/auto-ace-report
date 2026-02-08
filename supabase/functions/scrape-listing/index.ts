@@ -24,6 +24,9 @@ interface ScrapedVehicle {
   drivetrain?: string;
   exteriorColor?: string;
   interiorColor?: string;
+  bodyStyle?: string;
+  fuelType?: string;
+  titleStatus?: "clean" | "salvage" | "rebuilt";
 }
 
 serve(async (req) => {
@@ -379,27 +382,40 @@ Title format is usually: "Year Make Model Trim" (e.g., "2019 Porsche 911 GT3 RS"
       
       if (isEbayMotors) {
         return `
-This is an eBay Motors listing. CRITICAL extraction patterns:
+This is an eBay Motors listing. CRITICAL: Look for the "Item specifics" section which contains structured key-value pairs.
 
-TITLE: The listing title contains Year Make Model Trim (e.g., "2020 Toyota Camry XSE")
+ITEM SPECIFICS FORMAT: The page contains a structured table with fields like:
+- Year: 2018
+- Make: Tesla  
+- Model: Model S
+- Submodel: P100D (this is often the trim)
+- Trim: 100D Sedan 4D
+- Mileage: 53063
+- VIN (Vehicle Identification Number): 5YJSA1E20JF261623
+- Body Type: Sedan
+- Drive Type: All Wheel Drive (extract as drivetrain: AWD, FWD, RWD, 4WD)
+- Engine: Electric (or specific engine like "3.5L V6")
+- Fuel Type: Electric, Gasoline, Diesel, Hybrid
+- Transmission: Single-Speed Fixed Gear, Automatic, Manual, CVT
+- Exterior Color: Black
+- Interior Color: Black
+- Vehicle Title: Clean, Salvage, Rebuilt (extract as titleStatus)
+- For Sale By: Dealer or Private (extract as sellerType)
+- Condition: Used, New, Certified Pre-Owned
 
-MILEAGE: Look for "Mileage:" or "Odometer:" fields. Values like "45,000 mi" = 45000.
+PRICE: Look for "Price:", "Buy It Now:", or dollar amount near the title.
 
-PRICE: Look for "Price:", "Buy It Now:", or "Current bid:" followed by dollar amount.
+CRITICAL MAPPINGS:
+- "Drive Type: All Wheel Drive" → drivetrain: "AWD"
+- "Drive Type: Front Wheel Drive" → drivetrain: "FWD"  
+- "Drive Type: Rear Wheel Drive" → drivetrain: "RWD"
+- "Vehicle Title: Clean" → condition: "good" or "excellent"
+- "Vehicle Title: Salvage" → condition: "poor"
+- "Submodel" often contains the trim/variant (e.g., "P100D", "GT", "Limited")
+- "For Sale By: Dealer" → sellerType: "dealer"
+- "For Sale By: Private" → sellerType: "private"
 
-VIN: Look for "VIN:" or "Vehicle Identification Number:" followed by 17-character code.
-
-CONDITION: Look for "Condition:" field (Used, New, Certified Pre-Owned).
-
-SELLER: Look for "Seller information" section. If business name shown = dealer, if private seller = private.
-
-FEATURES: Look for "Item specifics" or "Features and Specs" sections:
-- Exterior Color, Interior Color
-- Transmission, Drivetrain, Engine
-- Body Type, Number of Doors
-- Fuel Type, MPG
-
-LOCATION: Note the seller's location if visible.
+Extract ALL fields from Item specifics. This is the most reliable data source on eBay.
 `;
       }
       
@@ -426,10 +442,13 @@ VIN: Look for VIN in vehicle details section.
 
     const extractionPrompt = `Extract vehicle listing information from this car listing content. Return ONLY the structured data, no explanations.
 ${getExtractionHint()}
-IMPORTANT: Extract the MILEAGE - it is critical data. Look for patterns like "119k Miles", "45,000 Miles", "~30k Miles" in listings.
+CRITICAL - MILEAGE EXTRACTION:
+- For eBay: Look for "Mileage" followed by a number like "53063" or "45,000" in Item specifics section
+- For BaT: Look for "XXXk Miles" pattern like "119k Miles" = 119000
+- MILEAGE MUST BE EXTRACTED. If you see "Mileage: 53063", extract 53063. If "Mileage: 45,000", extract 45000.
 
 Content:
-${markdown.slice(0, 12000)}
+${markdown.slice(0, 15000)}
 
 Page Title: ${metadata.title || "Unknown"}
 Source URL: ${formattedUrl}`;
@@ -445,7 +464,16 @@ Source URL: ${formattedUrl}`;
         messages: [
           {
             role: "system",
-            content: `You are a vehicle listing data extractor. Extract structured vehicle information from car listing pages. Be precise with numbers - MILEAGE IS CRITICAL. For "119k Miles" extract 119000, for "45,000 Miles" extract 45000. Identify the seller type based on context. For Bring a Trailer: extract ALL bullet points from "Listing Details" section as features. Parse the title for year, make, model.`
+            content: `You are a vehicle listing data extractor. Extract ALL structured vehicle information from car listing pages.
+
+MILEAGE IS THE MOST CRITICAL FIELD - YOU MUST EXTRACT IT:
+- eBay format: "Mileage" row shows number like "53063" or "45,000" - extract as integer (53063 or 45000)
+- BaT format: "119k Miles" = 119000, "45,000 Miles" = 45000
+
+For eBay Motors: The "Item specifics" section is a table with key-value pairs. Extract EVERY field:
+Year, Make, Model, Submodel (as trim), Mileage, VIN, Body Type, Drive Type (as drivetrain), Engine, Fuel Type, Transmission, Exterior Color, Interior Color, Vehicle Title (as titleStatus), For Sale By (as sellerType).
+
+NEVER return mileage as 0 if you can find it in the content. Search the entire document for mileage data.`
           },
           { role: "user", content: extractionPrompt }
         ],
@@ -459,22 +487,25 @@ Source URL: ${formattedUrl}`;
                 type: "object",
                 properties: {
                   year: { type: "number", description: "Model year of the vehicle (4 digit year like 2019)" },
-                  make: { type: "string", description: "Vehicle manufacturer (e.g., Toyota, Honda, Porsche, BMW, Land Rover, Jaguar)" },
-                  model: { type: "string", description: "Vehicle model name (e.g., Camry, Civic, 911, Range Rover)" },
-                  trim: { type: "string", description: "Trim level (e.g., XLE, Sport, GT3 RS, Supercharged)" },
-                  mileage: { type: "number", description: "CRITICAL: Odometer reading in miles as a number. Convert '119k Miles' to 119000, '45,000 Miles' to 45000. Look in Listing Details bullets." },
-                  askingPrice: { type: "number", description: "Listed price, current bid, or sold price in dollars (just the number)" },
-                  vin: { type: "string", description: "17-character VIN/Chassis number if visible (e.g., SALMF1D49AA316875)" },
-                  sellerType: { type: "string", enum: ["dealer", "private"], description: "Check 'Private Party or Dealer:' field. 'Private Party' = private, dealer name = dealer" },
-                  sellerName: { type: "string", description: "Name of the dealership if it's a dealer listing" },
-                  condition: { type: "string", enum: ["excellent", "good", "fair", "poor"], description: "Overall condition assessment based on description" },
+                  make: { type: "string", description: "Vehicle manufacturer (e.g., Toyota, Honda, Porsche, BMW, Tesla)" },
+                  model: { type: "string", description: "Vehicle model name (e.g., Camry, Civic, 911, Model S)" },
+                  trim: { type: "string", description: "Trim level or submodel (e.g., XLE, P100D, GT3 RS, Limited). Check 'Submodel' field on eBay." },
+                  mileage: { type: "number", description: "CRITICAL: Odometer reading in miles as a number. Extract from 'Mileage:' field. 53063 stays as 53063." },
+                  askingPrice: { type: "number", description: "Listed price, current bid, or Buy It Now price in dollars (just the number)" },
+                  vin: { type: "string", description: "17-character VIN from 'VIN (Vehicle Identification Number):' field" },
+                  sellerType: { type: "string", enum: ["dealer", "private"], description: "From 'For Sale By:' - Dealer = dealer, Private = private" },
+                  sellerName: { type: "string", description: "Name of the dealership if dealer listing" },
+                  condition: { type: "string", enum: ["excellent", "good", "fair", "poor"], description: "Based on Vehicle Title and Condition fields. Clean title + Used = good, Salvage = poor" },
                   description: { type: "string", description: "Brief summary of the listing (max 200 chars)" },
-                  engine: { type: "string", description: "Engine specification (e.g., '5.0-Liter AJ133 V8', '3.0L Twin-Turbo I6')" },
-                  transmission: { type: "string", description: "Transmission type (e.g., 'Six-Speed Automatic', '7-Speed PDK', 'Manual')" },
-                  drivetrain: { type: "string", description: "Drivetrain type (e.g., 'AWD', '4WD', 'RWD', 'Dual-Range Transfer Case')" },
-                  exteriorColor: { type: "string", description: "Exterior paint color (e.g., 'Ipanema Sand', 'Guards Red')" },
-                  interiorColor: { type: "string", description: "Interior color/material (e.g., 'Sand Oxford Leather w/Jet Piping', 'Black Leather')" },
-                  features: { type: "array", items: { type: "string" }, description: "ALL notable features from Listing Details: packages, wheels, audio, seats, cameras, navigation, etc." },
+                  engine: { type: "string", description: "From 'Engine:' field (e.g., 'Electric', '3.5L V6', '2.0L Turbo')" },
+                  transmission: { type: "string", description: "From 'Transmission:' field (e.g., 'Single-Speed Fixed Gear', 'Automatic', '6-Speed Manual')" },
+                  drivetrain: { type: "string", description: "From 'Drive Type:' field. Map: 'All Wheel Drive'→'AWD', 'Front Wheel Drive'→'FWD', 'Rear Wheel Drive'→'RWD'" },
+                  exteriorColor: { type: "string", description: "From 'Exterior Color:' field" },
+                  interiorColor: { type: "string", description: "From 'Interior Color:' field" },
+                  bodyStyle: { type: "string", description: "From 'Body Type:' field (e.g., 'Sedan', 'SUV', 'Coupe', 'Truck')" },
+                  fuelType: { type: "string", description: "From 'Fuel Type:' field (e.g., 'Electric', 'Gasoline', 'Diesel', 'Hybrid')" },
+                  titleStatus: { type: "string", enum: ["clean", "salvage", "rebuilt"], description: "From 'Vehicle Title:' field. 'Clean'→clean, 'Salvage'→salvage, 'Rebuilt'→rebuilt" },
+                  features: { type: "array", items: { type: "string" }, description: "Notable features and options from the listing" },
                 },
                 required: ["year", "make", "model", "mileage"],
               },
