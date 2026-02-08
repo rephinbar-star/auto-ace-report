@@ -99,6 +99,10 @@ serve(async (req) => {
     const isBringATrailer = formattedUrl.includes("bringatrailer.com");
     const isEbayMotors = formattedUrl.includes("ebay.com/motors") || formattedUrl.includes("ebay.com/itm");
     const isCarMax = formattedUrl.includes("carmax.com");
+    
+    // Detect dealer websites (franchise dealer sites typically use common platforms)
+    const isDealerSite = /\.(com|net)\/used\/|\/new\/|\/inventory\/|\/vehicle\//i.test(formattedUrl) ||
+      /(bmw|mercedes|audi|porsche|lexus|acura|infiniti|volvo|jaguar|landrover|honda|toyota|ford|chevrolet|gmc|buick|cadillac|dodge|jeep|ram|chrysler|nissan|hyundai|kia|mazda|subaru|volkswagen|mini)/i.test(formattedUrl);
 
     // Configure Firecrawl options based on site
     const getFirecrawlOptions = () => {
@@ -128,6 +132,15 @@ serve(async (req) => {
         return {
           ...baseOptions,
           waitFor: 3000,
+        };
+      }
+      
+      if (isDealerSite) {
+        // Dealer sites often use heavy JS for pricing - need longer wait
+        return {
+          ...baseOptions,
+          waitFor: 6000, // Longer wait for dealer pricing to load
+          timeout: 45000,
         };
       }
       
@@ -370,6 +383,90 @@ serve(async (req) => {
     const extractedImages = extractVehicleImages(html, formattedUrl, isBringATrailer, isEbayMotors);
     console.log(`Extracted ${extractedImages.length} vehicle images`);
 
+    // Extract price from HTML (JSON-LD, data attributes, structured data)
+    const extractPriceFromHtml = (htmlContent: string): number | null => {
+      // Try JSON-LD structured data first (most reliable)
+      const jsonLdMatches = htmlContent.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
+      if (jsonLdMatches) {
+        for (const match of jsonLdMatches) {
+          try {
+            const jsonContent = match.replace(/<script[^>]*>|<\/script>/gi, '').trim();
+            const parsed = JSON.parse(jsonContent);
+            // Handle both single objects and arrays
+            const items = Array.isArray(parsed) ? parsed : [parsed];
+            for (const item of items) {
+              // Vehicle/Product schema
+              if (item.offers?.price) {
+                const price = parseFloat(String(item.offers.price).replace(/[^0-9.]/g, ''));
+                if (price > 0) {
+                  console.log(`Found price in JSON-LD offers: ${price}`);
+                  return price;
+                }
+              }
+              if (item.price) {
+                const price = parseFloat(String(item.price).replace(/[^0-9.]/g, ''));
+                if (price > 0) {
+                  console.log(`Found price in JSON-LD: ${price}`);
+                  return price;
+                }
+              }
+            }
+          } catch {
+            // Invalid JSON, continue
+          }
+        }
+      }
+      
+      // Try data attributes common on dealer sites
+      const dataAttrPatterns = [
+        /data-price=["']([0-9,.]+)["']/gi,
+        /data-vehicle-price=["']([0-9,.]+)["']/gi,
+        /data-asking-price=["']([0-9,.]+)["']/gi,
+        /data-internetprice=["']([0-9,.]+)["']/gi,
+        /data-msrp=["']([0-9,.]+)["']/gi,
+        /itemprop=["']price["'][^>]*content=["']([0-9,.]+)["']/gi,
+        /content=["']([0-9,.]+)["'][^>]*itemprop=["']price["']/gi,
+      ];
+      
+      for (const pattern of dataAttrPatterns) {
+        const match = pattern.exec(htmlContent);
+        if (match) {
+          const price = parseFloat(match[1].replace(/,/g, ''));
+          if (price > 1000 && price < 10000000) { // Reasonable car price range
+            console.log(`Found price in data attribute: ${price}`);
+            return price;
+          }
+        }
+      }
+      
+      // Try common HTML patterns for price display
+      const pricePatterns = [
+        // Class-based patterns for dealer sites
+        /class=["'][^"']*(?:price|pricing|cost)[^"']*["'][^>]*>\s*\$?\s*([0-9,]+(?:\.\d{2})?)/gi,
+        /class=["'][^"']*internet-price[^"']*["'][^>]*>\s*\$?\s*([0-9,]+)/gi,
+        /class=["'][^"']*sale-price[^"']*["'][^>]*>\s*\$?\s*([0-9,]+)/gi,
+        /class=["'][^"']*final-price[^"']*["'][^>]*>\s*\$?\s*([0-9,]+)/gi,
+      ];
+      
+      for (const pattern of pricePatterns) {
+        let match;
+        while ((match = pattern.exec(htmlContent)) !== null) {
+          const price = parseFloat(match[1].replace(/,/g, ''));
+          if (price > 1000 && price < 10000000) {
+            console.log(`Found price in HTML class pattern: ${price}`);
+            return price;
+          }
+        }
+      }
+      
+      return null;
+    };
+
+    const htmlPrice = extractPriceFromHtml(html);
+    if (htmlPrice) {
+      console.log(`Pre-extracted price from HTML: ${htmlPrice}`);
+    }
+
     // Now use AI to extract structured vehicle data from the scraped content
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -484,6 +581,44 @@ VIN: Look for VIN in vehicle details section.
 `;
       }
       
+      if (isDealerSite) {
+        return `
+This is a DEALERSHIP WEBSITE listing. CRITICAL extraction patterns:
+
+PRICE IS CRITICAL - Look for these patterns:
+- "Price: $XX,XXX" or "Sale Price: $XX,XXX" or "Our Price: $XX,XXX"
+- "Internet Price", "Special Price", "Your Price", "Selling Price"
+- "$XX,XXX" displayed prominently near the vehicle title
+- "MSRP", "Retail Price", "List Price" followed by dollar amount
+- Numbers with dollar signs and commas like "$45,995" or "$32,500"
+- Look in structured data, metadata, or near "Buy Now", "Get Quote" buttons
+- Dealer sites often show price in headers, sidebars, or price sections
+- Common formats: "$45,995", "45995", "$45,995.00", "Price $45,995"
+
+MILEAGE: Look for:
+- "Mileage: XX,XXX" or "Odometer: XX,XXX"
+- "XX,XXX miles" or "XXk miles"
+- Often displayed near the vehicle title or in specifications table
+
+VIN: Look for:
+- "VIN: XXXXXXXXXXXXXXXXX" (17 characters)
+- "Stock #" or "Stock Number" is NOT the VIN
+- VIN is always 17 alphanumeric characters
+
+VEHICLE DETAILS: Look for:
+- "Vehicle Details", "Specifications", "Features" sections
+- Structured tables with Engine, Transmission, Drivetrain, Color info
+- Body style, fuel type, exterior/interior colors
+
+SELLER INFO:
+- sellerType is ALWAYS "dealer" for dealership websites
+- sellerName should be the dealership name (e.g., "Long Beach BMW", "Holman Audi")
+- Extract from page header, footer, or "About" section
+
+TITLE FORMAT: Usually "Year Make Model Trim" (e.g., "2018 BMW 650i Gran Coupe")
+`;
+      }
+      
       return '';
     };
 
@@ -519,20 +654,31 @@ Source URL: ${formattedUrl}`;
             role: "system",
             content: `You are a vehicle listing data extractor. Extract ALL structured vehicle information from car listing pages.
 
-MILEAGE IS THE MOST CRITICAL FIELD - YOU MUST EXTRACT IT:
+PRICE IS CRITICAL - YOU MUST EXTRACT IT:
+- Look for: "Price:", "Sale Price:", "Our Price:", "Internet Price:", "$XX,XXX"
+- Dealer sites often show price prominently near title or in sidebar
+- Common formats: "$45,995", "45,995", "$45,995.00"
+- Extract as number only (45995 not "$45,995")
+- NEVER return askingPrice as null or 0 if any price is shown
+
+MILEAGE IS CRITICAL - YOU MUST EXTRACT IT:
 - eBay format: Look for "Mileage" field with value like "35,950" or "53063" - extract as integer (35950 or 53063)
 - BaT format: "119k Miles" = 119000, "45,000 Miles" = 45000
+- Dealer sites: "Mileage: XX,XXX" or "XX,XXX miles"
 - Search patterns: "Mileage 35,950", "35950 mi", "35,950 miles"
 - NEVER return mileage as 0 or null if ANY mileage number exists in the content.
 
 SELLER NAME IS CRITICAL FOR DEALER LISTINGS:
 - eBay: Look for seller/store name in "Seller information" section, or business name near "Visit store"
+- Dealer sites: Extract dealership name from page header, footer, or title
 - Common patterns: store URL username, business name, or dealer name
-- For dealers, the sellerName should be the dealership name (e.g., "Holman Audi San Diego", "Clovis Auto Imports")
+- For dealers, the sellerName should be the dealership name (e.g., "Long Beach BMW", "Holman Audi San Diego")
 - For private sellers, sellerName can be omitted or set to the username
 
 For eBay Motors: The "Item specifics" or "About this item" section contains key-value pairs. Extract EVERY field:
 Year, Make, Model, Submodel (as trim), Mileage, VIN, Body Type, Drive Type (as drivetrain), Engine, Fuel Type, Transmission, Exterior Color, Interior Color, Vehicle Title (as titleStatus), For Sale By (as sellerType).
+
+For Dealer Websites: Look for vehicle details/specifications section with structured data. Price is often shown prominently. sellerType is ALWAYS "dealer".
 
 Search the ENTIRE content for data. Do not give up if data isn't in the expected location.`
           },
@@ -623,6 +769,12 @@ Search the ENTIRE content for data. Do not give up if data isn't in the expected
     // Add extracted images to vehicle data
     if (extractedImages.length > 0) {
       extractedVehicle.images = extractedImages;
+    }
+    
+    // Use HTML-extracted price as fallback if AI didn't find one
+    if ((!extractedVehicle.askingPrice || extractedVehicle.askingPrice === 0) && htmlPrice) {
+      console.log(`Using HTML-extracted price as fallback: ${htmlPrice}`);
+      extractedVehicle.askingPrice = htmlPrice;
     }
 
     console.log("Successfully extracted vehicle data:", extractedVehicle);
