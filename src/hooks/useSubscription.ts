@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 
@@ -38,11 +38,16 @@ export function useSubscription() {
     tier: "free",
     productId: null,
     subscriptionEnd: null,
-    isLoading: false,
+    isLoading: true, // Start with loading true to prevent flash
     error: null,
   });
+  
+  // Track if initial load is complete to prevent flashing
+  const hasLoadedRef = useRef(false);
+  // Track user ID to detect actual user changes
+  const lastUserIdRef = useRef<string | null>(null);
 
-  const checkSubscription = useCallback(async () => {
+  const checkSubscription = useCallback(async (showLoading = false) => {
     if (!user) {
       setState({
         subscribed: false,
@@ -52,10 +57,15 @@ export function useSubscription() {
         isLoading: false,
         error: null,
       });
+      hasLoadedRef.current = true;
+      lastUserIdRef.current = null;
       return;
     }
 
-    setState((prev) => ({ ...prev, isLoading: true, error: null }));
+    // Only show loading on initial load, not on background refreshes
+    if (showLoading && !hasLoadedRef.current) {
+      setState((prev) => ({ ...prev, isLoading: true, error: null }));
+    }
 
     try {
       const { data, error } = await supabase.functions.invoke("check-subscription");
@@ -70,6 +80,8 @@ export function useSubscription() {
         isLoading: false,
         error: null,
       });
+      hasLoadedRef.current = true;
+      lastUserIdRef.current = user.id;
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to check subscription";
       setState((prev) => ({
@@ -77,6 +89,7 @@ export function useSubscription() {
         isLoading: false,
         error: errorMessage,
       }));
+      hasLoadedRef.current = true;
     }
   }, [user]);
 
@@ -110,20 +123,25 @@ export function useSubscription() {
 
   // Check subscription on mount and when user changes
   useEffect(() => {
-    checkSubscription();
-  }, [checkSubscription]);
+    const userId = user?.id || null;
+    
+    // Only refetch if user actually changed
+    if (userId !== lastUserIdRef.current) {
+      checkSubscription(true);
+    }
+  }, [user?.id, checkSubscription]);
 
-  // Periodic refresh every 60 seconds
+  // Periodic refresh every 60 seconds - silent refresh, no loading state
   useEffect(() => {
     if (!user) return;
     
-    const interval = setInterval(checkSubscription, 60000);
+    const interval = setInterval(() => checkSubscription(false), 60000);
     return () => clearInterval(interval);
   }, [user, checkSubscription]);
 
   return {
     ...state,
-    checkSubscription,
+    checkSubscription: () => checkSubscription(true),
     createCheckout,
     openCustomerPortal,
   };
