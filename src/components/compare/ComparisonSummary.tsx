@@ -15,14 +15,20 @@ interface ComparisonSummaryProps {
   vehicles: VehicleReport[];
   annualMiles?: number;
   gasPricePerGallon?: number;
+  electricityPricePerKwh?: number;
 }
 
-export function ComparisonSummary({ vehicles, annualMiles = 12000, gasPricePerGallon = 3.25 }: ComparisonSummaryProps) {
+export function ComparisonSummary({ 
+  vehicles, 
+  annualMiles = 12000, 
+  gasPricePerGallon = 3.25,
+  electricityPricePerKwh = 0.15 
+}: ComparisonSummaryProps) {
   const analysis = useMemo(() => {
     if (vehicles.length === 0) return null;
 
-    // Use the new research-backed scoring algorithm with mileage and gas price config
-    const scoredVehicles = scoreAndRankVehicles(vehicles, { annualMiles, gasPricePerGallon });
+    // Use the new research-backed scoring algorithm with mileage and energy price config
+    const scoredVehicles = scoreAndRankVehicles(vehicles, { annualMiles, gasPricePerGallon, electricityPricePerKwh });
     
     const bestBuy = scoredVehicles[0];
     const others = scoredVehicles.slice(1);
@@ -109,7 +115,7 @@ export function ComparisonSummary({ vehicles, annualMiles = 12000, gasPricePerGa
       lowestTCO,
       recommendation,
     };
-  }, [vehicles, annualMiles, gasPricePerGallon]);
+  }, [vehicles, annualMiles, gasPricePerGallon, electricityPricePerKwh]);
 
   if (!analysis || vehicles.length < 2) {
     return (
@@ -235,7 +241,7 @@ export function ComparisonSummary({ vehicles, annualMiles = 12000, gasPricePerGa
         {scoredVehicles.some(s => s.tco) && (
           <div className="space-y-2">
             <h4 className="font-semibold text-sm flex items-center gap-2">
-              ⛽ Total Cost of Ownership (5 Years @ {annualMiles.toLocaleString()} mi/yr, ${gasPricePerGallon.toFixed(2)}/gal)
+              ⛽ Total Cost of Ownership (5 Years @ {annualMiles.toLocaleString()} mi/yr • Gas ${gasPricePerGallon.toFixed(2)}/gal • Electricity ${electricityPricePerKwh.toFixed(2)}/kWh)
             </h4>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">

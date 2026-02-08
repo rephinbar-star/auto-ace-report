@@ -390,6 +390,7 @@ export function calculateTCOScore(
 export interface TCOConfig {
   annualMiles?: number;
   gasPricePerGallon?: number;
+  electricityPricePerKwh?: number;
 }
 
 /**
@@ -427,6 +428,7 @@ export function calculateVehicleScore(
     { 
       annualMiles: config.annualMiles || 12000,
       gasPricePerGallon: config.gasPricePerGallon || 3.25,
+      electricityPerKwh: config.electricityPricePerKwh || 0.15,
     },
     { make: vehicle.make, year: vehicle.year }
   );
