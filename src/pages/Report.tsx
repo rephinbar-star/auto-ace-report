@@ -395,18 +395,34 @@ export default function ReportPage() {
   }
 
   if (!analysis || !vehicleData) {
+    const isDataExpired = error?.includes("No analysis data found");
+    
     return (
       <div className="flex min-h-screen flex-col">
         <Header />
-        <main className="flex flex-1 items-center justify-center">
+        <main className="flex flex-1 items-center justify-center px-4">
           <Card className="max-w-md text-center">
             <CardHeader>
-              <CardTitle>{error ? "Analysis Error" : "Report Not Found"}</CardTitle>
-              <CardDescription>
-                {error || "We couldn't find this analysis. Start a new one?"}
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                <Car className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <CardTitle>
+                {isDataExpired ? "Session Expired" : error ? "Analysis Error" : "Report Not Found"}
+              </CardTitle>
+              <CardDescription className="text-base">
+                {isDataExpired ? (
+                  <>
+                    Your vehicle analysis data has expired. This can happen if you waited too long 
+                    before verifying your email, or if your browser cleared its storage.
+                  </>
+                ) : error ? (
+                  error
+                ) : (
+                  "We couldn't find this analysis. The report may have been deleted or the link is invalid."
+                )}
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-3">
               {error && vehicleData && (
                 <Button 
                   variant="outline" 
@@ -417,8 +433,17 @@ export default function ReportPage() {
                 </Button>
               )}
               <Button asChild className="w-full">
-                <Link to="/analyze">Start New Analysis</Link>
+                <Link to="/analyze">
+                  <Car className="mr-2 h-4 w-4" />
+                  Start New Analysis
+                </Link>
               </Button>
+              <p className="text-xs text-muted-foreground pt-2">
+                {isDataExpired 
+                  ? "Don't worry — just re-enter your vehicle info and we'll generate a fresh report."
+                  : "Need help? Visit our Help Center for assistance."
+                }
+              </p>
             </CardContent>
           </Card>
         </main>
