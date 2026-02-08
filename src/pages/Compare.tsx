@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -55,13 +55,13 @@ function CompareContent() {
   const [electricityPrice, setElectricityPrice] = useState(0.15);
   const [electricityPriceInput, setElectricityPriceInput] = useState("0.15");
   
-  // Get vehicle IDs from URL - use the raw string to avoid unnecessary recalculations
+  // Get vehicle IDs from URL - memoize to prevent unnecessary recalculations
   const idsParam = searchParams.get("ids") || "";
   const vehicleIds = useMemo(() => {
     return idsParam ? idsParam.split(",").filter(Boolean) : [];
   }, [idsParam]);
 
-  // Fetch selected vehicles
+  // Fetch selected vehicles - with staleTime to prevent unnecessary refetches
   const { data: vehicles, isLoading, error } = useQuery({
     queryKey: ["compare-vehicles", vehicleIds],
     queryFn: async () => {
@@ -77,6 +77,8 @@ function CompareContent() {
       return data as VehicleReport[];
     },
     enabled: vehicleIds.length > 0 && !!user,
+    staleTime: 30000, // Data is fresh for 30 seconds
+    refetchOnWindowFocus: false, // Prevent refetch on tab focus
   });
 
   // Get comparison limit based on tier
@@ -85,15 +87,15 @@ function CompareContent() {
   const vehicleCount = vehicles?.length || 0;
   const canAddMore = vehicleCount < comparisonLimit;
 
-  // Remove vehicle from comparison
-  const removeVehicle = (id: string) => {
+  // Remove vehicle from comparison - memoized to prevent child re-renders
+  const removeVehicle = useCallback((id: string) => {
     const newIds = vehicleIds.filter((vid) => vid !== id);
     if (newIds.length === 0) {
       setSearchParams({});
     } else {
       setSearchParams({ ids: newIds.join(",") });
     }
-  };
+  }, [vehicleIds, setSearchParams]);
 
   // Download comparison as PDF
   const handleDownloadPDF = async () => {
