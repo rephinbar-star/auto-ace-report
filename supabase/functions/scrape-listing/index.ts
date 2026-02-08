@@ -19,6 +19,11 @@ interface ScrapedVehicle {
   images?: string[];
   description?: string;
   features?: string[];
+  engine?: string;
+  transmission?: string;
+  drivetrain?: string;
+  exteriorColor?: string;
+  interiorColor?: string;
 }
 
 serve(async (req) => {
@@ -266,19 +271,36 @@ serve(async (req) => {
 
     // Special extraction prompt for Bring a Trailer
     const batExtractionHint = isBringATrailer ? `
-This is a Bring a Trailer (BaT) auction listing. Key patterns:
-- Title format is usually: "Year Make Model Trim" (e.g., "2019 Porsche 911 GT3 RS")
-- Current bid or "Sold for" price in the sidebar or header
-- Mileage is often listed as "~XX,XXX Miles" in the title or specs
-- VIN is in the vehicle details section
-- Seller type is usually "private" (individual sellers) unless noted as dealer consignment
-- Look for "Current Bid", "Buy Now Price", or "Sold for" for the price
+This is a Bring a Trailer (BaT) auction listing. CRITICAL extraction patterns:
+
+MILEAGE: Look for "XXXk Miles" or "XXX,XXX Miles" in the "Listing Details" bullet list. Example: "119k Miles" = 119000, "45,000 Miles" = 45000. This is REQUIRED - search the entire content carefully.
+
+VIN/CHASSIS: Look for "Chassis:" followed by a 17-character VIN in the Listing Details (e.g., "Chassis: SALMF1D49AA316875")
+
+ENGINE: Look for engine specs like "5.0-Liter AJ133 V8", "3.0L Twin-Turbo", etc. in Listing Details
+
+TRANSMISSION: Look for "Six-Speed Automatic", "Manual", "PDK", etc. in Listing Details
+
+FEATURES: Extract ALL bullet points from "Listing Details" section including:
+- Engine specs, transmission, drivetrain
+- Paint color, interior material/color
+- Packages (Luxury Interior Package, Vision Assist, etc.)
+- Options (Sunroof, Navigation, Adaptive Cruise Control, etc.)
+- Audio system, wheels, seats, cameras, sensors
+
+SELLER TYPE: Look for "Private Party or Dealer:" - if "Private Party" then sellerType is "private", if shows a dealer name then "dealer"
+
+PRICE: Look for "Current Bid", "Sold for", or "Buy Now" price
+
+Title format is usually: "Year Make Model Trim" (e.g., "2019 Porsche 911 GT3 RS")
 ` : '';
 
     const extractionPrompt = `Extract vehicle listing information from this car listing content. Return ONLY the structured data, no explanations.
 ${batExtractionHint}
+IMPORTANT: Extract the MILEAGE - it is critical data. Look for patterns like "119k Miles", "45,000 Miles", "~30k Miles" in bullet lists.
+
 Content:
-${markdown.slice(0, 10000)}
+${markdown.slice(0, 12000)}
 
 Page Title: ${metadata.title || "Unknown"}
 Source URL: ${formattedUrl}`;
@@ -294,7 +316,7 @@ Source URL: ${formattedUrl}`;
         messages: [
           {
             role: "system",
-            content: `You are a vehicle listing data extractor. Extract structured vehicle information from car listing pages. Be precise with numbers and identify the seller type based on context (dealerships mention things like "certified", "warranty", dealer name, etc.). For auction sites like Bring a Trailer, the price is the current bid or final sale price. Parse the title carefully - it usually contains year, make, model in that order.`
+            content: `You are a vehicle listing data extractor. Extract structured vehicle information from car listing pages. Be precise with numbers - MILEAGE IS CRITICAL. For "119k Miles" extract 119000, for "45,000 Miles" extract 45000. Identify the seller type based on context. For Bring a Trailer: extract ALL bullet points from "Listing Details" section as features. Parse the title for year, make, model.`
           },
           { role: "user", content: extractionPrompt }
         ],
@@ -308,19 +330,24 @@ Source URL: ${formattedUrl}`;
                 type: "object",
                 properties: {
                   year: { type: "number", description: "Model year of the vehicle (4 digit year like 2019)" },
-                  make: { type: "string", description: "Vehicle manufacturer (e.g., Toyota, Honda, Porsche, BMW)" },
-                  model: { type: "string", description: "Vehicle model name (e.g., Camry, Civic, 911, M3)" },
-                  trim: { type: "string", description: "Trim level (e.g., XLE, Sport, GT3 RS, Competition)" },
-                  mileage: { type: "number", description: "Odometer reading in miles (just the number, no commas)" },
-                  askingPrice: { type: "number", description: "Listed price, current bid, or sold price in dollars (just the number, no commas or $)" },
-                  vin: { type: "string", description: "17-character VIN if visible" },
-                  sellerType: { type: "string", enum: ["dealer", "private"], description: "Whether seller is a dealership or private party" },
+                  make: { type: "string", description: "Vehicle manufacturer (e.g., Toyota, Honda, Porsche, BMW, Land Rover, Jaguar)" },
+                  model: { type: "string", description: "Vehicle model name (e.g., Camry, Civic, 911, Range Rover)" },
+                  trim: { type: "string", description: "Trim level (e.g., XLE, Sport, GT3 RS, Supercharged)" },
+                  mileage: { type: "number", description: "CRITICAL: Odometer reading in miles as a number. Convert '119k Miles' to 119000, '45,000 Miles' to 45000. Look in Listing Details bullets." },
+                  askingPrice: { type: "number", description: "Listed price, current bid, or sold price in dollars (just the number)" },
+                  vin: { type: "string", description: "17-character VIN/Chassis number if visible (e.g., SALMF1D49AA316875)" },
+                  sellerType: { type: "string", enum: ["dealer", "private"], description: "Check 'Private Party or Dealer:' field. 'Private Party' = private, dealer name = dealer" },
                   sellerName: { type: "string", description: "Name of the dealership if it's a dealer listing" },
-                  condition: { type: "string", enum: ["excellent", "good", "fair", "poor"], description: "Overall condition assessment" },
+                  condition: { type: "string", enum: ["excellent", "good", "fair", "poor"], description: "Overall condition assessment based on description" },
                   description: { type: "string", description: "Brief summary of the listing (max 200 chars)" },
-                  features: { type: "array", items: { type: "string" }, description: "Notable features mentioned" },
+                  engine: { type: "string", description: "Engine specification (e.g., '5.0-Liter AJ133 V8', '3.0L Twin-Turbo I6')" },
+                  transmission: { type: "string", description: "Transmission type (e.g., 'Six-Speed Automatic', '7-Speed PDK', 'Manual')" },
+                  drivetrain: { type: "string", description: "Drivetrain type (e.g., 'AWD', '4WD', 'RWD', 'Dual-Range Transfer Case')" },
+                  exteriorColor: { type: "string", description: "Exterior paint color (e.g., 'Ipanema Sand', 'Guards Red')" },
+                  interiorColor: { type: "string", description: "Interior color/material (e.g., 'Sand Oxford Leather w/Jet Piping', 'Black Leather')" },
+                  features: { type: "array", items: { type: "string" }, description: "ALL notable features from Listing Details: packages, wheels, audio, seats, cameras, navigation, etc." },
                 },
-                required: ["year", "make", "model"],
+                required: ["year", "make", "model", "mileage"],
               },
             },
           },
