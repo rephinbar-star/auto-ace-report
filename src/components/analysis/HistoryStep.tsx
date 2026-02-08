@@ -86,7 +86,7 @@ export function HistoryStep({ onComplete, onBack, onSkip }: HistoryStepProps) {
     if (!uploadedFile && !historyUrl) {
       toast({
         title: "No report provided",
-        description: "Please upload a PDF or enter a Carfax URL.",
+        description: "Please upload a PDF or enter a CarFax/AutoCheck URL.",
         variant: "destructive",
       });
       return;
@@ -165,7 +165,7 @@ export function HistoryStep({ onComplete, onBack, onSkip }: HistoryStepProps) {
       <div>
         <h2 className="text-2xl font-bold">Vehicle History Report</h2>
         <p className="text-muted-foreground">
-          Upload a Carfax or vehicle history report for deeper analysis.
+          Upload a CarFax/AutoCheck or vehicle history report for deeper analysis.
         </p>
       </div>
 
@@ -175,18 +175,18 @@ export function HistoryStep({ onComplete, onBack, onSkip }: HistoryStepProps) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-warning">
               <AlertCircle className="h-5 w-5" />
-              CarFax Data Not Accessible
+              CarFax/AutoCheck Data Not Accessible
             </CardTitle>
             <CardDescription>
-              CarFax data is not accessible through the link. Please upload it in PDF format instead.
+              CarFax/AutoCheck data is not accessible through the link. Please upload it in PDF format instead.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              CarFax reports are protected and cannot be scraped directly. To include your vehicle history in the analysis:
+              CarFax/AutoCheck reports are protected and cannot be scraped directly. To include your vehicle history in the analysis:
             </p>
             <ol className="list-decimal list-inside text-sm text-muted-foreground space-y-1">
-              <li>Open your CarFax report in a browser</li>
+              <li>Open your CarFax/AutoCheck report in a browser</li>
               <li>Print the page as PDF (Ctrl+P / Cmd+P → Save as PDF)</li>
               <li>Upload the PDF file below</li>
             </ol>
@@ -208,7 +208,7 @@ export function HistoryStep({ onComplete, onBack, onSkip }: HistoryStepProps) {
               />
               <div className="flex flex-col items-center gap-2">
                 <Upload className="h-8 w-8 text-muted-foreground" />
-                <p className="font-medium">Upload CarFax PDF</p>
+                <p className="font-medium">Upload CarFax/AutoCheck PDF</p>
                 <p className="text-sm text-muted-foreground">Click to browse</p>
               </div>
             </div>
@@ -293,7 +293,7 @@ export function HistoryStep({ onComplete, onBack, onSkip }: HistoryStepProps) {
                     <Upload className="h-6 w-6 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="font-medium">Drop your Carfax PDF here</p>
+                    <p className="font-medium">Drop your CarFax/AutoCheck PDF here</p>
                     <p className="text-sm text-muted-foreground">or click to browse</p>
                   </div>
                 </div>
@@ -318,9 +318,9 @@ export function HistoryStep({ onComplete, onBack, onSkip }: HistoryStepProps) {
                     name="historyUrl"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="flex items-center gap-2">
+                    <FormLabel className="flex items-center gap-2">
                           <LinkIcon className="h-4 w-4" />
-                          Carfax Link
+                          CarFax/AutoCheck Link
                         </FormLabel>
                         <FormControl>
                           <Input 
@@ -330,7 +330,7 @@ export function HistoryStep({ onComplete, onBack, onSkip }: HistoryStepProps) {
                           />
                         </FormControl>
                         <FormDescription>
-                          If you have a link to the Carfax report, we'll attempt to extract key details.
+                          If you have a link to the CarFax/AutoCheck report, we'll attempt to extract key details.
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
