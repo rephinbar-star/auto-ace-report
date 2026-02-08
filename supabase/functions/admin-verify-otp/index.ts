@@ -11,6 +11,15 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[ADMIN-VERIFY-OTP] ${step}${detailsStr}`);
 };
 
+// Hash OTP code using SHA-256 for comparison with stored hash
+async function hashOTP(code: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(code);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -55,12 +64,16 @@ serve(async (req) => {
       });
     }
 
-    // Find valid OTP
+    // Hash the user-provided code for comparison with stored hash
+    const hashedCode = await hashOTP(code);
+    logStep("OTP hashed for verification");
+
+    // Find valid OTP by comparing hashed values
     const { data: otpData, error: otpError } = await supabaseClient
       .from("admin_otp")
       .select("*")
       .eq("user_id", user.id)
-      .eq("code", code)
+      .eq("code", hashedCode)
       .eq("used", false)
       .gt("expires_at", new Date().toISOString())
       .single();
