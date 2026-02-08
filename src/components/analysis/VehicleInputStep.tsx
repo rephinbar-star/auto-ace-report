@@ -678,6 +678,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                         <Badge variant="outline" className="text-xs">Facebook</Badge>
                         <Badge variant="outline" className="text-xs">Craigslist</Badge>
                         <Badge variant="outline" className="text-xs">BringaTrailer.com</Badge>
+                        <Badge variant="outline" className="text-xs">Most Dealer Sites</Badge>
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
