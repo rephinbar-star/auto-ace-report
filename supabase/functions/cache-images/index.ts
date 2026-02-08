@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, getClientIp, RATE_LIMITS } from "../_shared/rate-limiter.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,12 +17,56 @@ interface CachedImage {
   cached: string;
 }
 
+// Limits to prevent abuse
+const MAX_IMAGES_PER_REQUEST = 20;
+const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Authentication check
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Authentication required" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
+    if (userError || !userData.user) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid authentication" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Rate limiting
+    const clientIp = getClientIp(req);
+    const rateLimit = checkRateLimit(clientIp, { 
+      ...RATE_LIMITS.heavy, 
+      keyPrefix: 'cache-images' 
+    });
+
+    if (!rateLimit.allowed) {
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          error: "Too many requests", 
+          retryAfter: rateLimit.retryAfter 
+        }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { images, reportId } = await req.json() as CacheImagesRequest;
 
     if (!images || !Array.isArray(images) || images.length === 0) {
@@ -31,12 +76,32 @@ serve(async (req) => {
       );
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    // Limit number of images per request
+    if (images.length > MAX_IMAGES_PER_REQUEST) {
+      return new Response(
+        JSON.stringify({ success: false, error: `Maximum ${MAX_IMAGES_PER_REQUEST} images per request` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // If reportId provided, verify user owns the report
+    if (reportId) {
+      const { data: report, error: reportError } = await supabase
+        .from("vehicle_reports")
+        .select("id")
+        .eq("id", reportId)
+        .eq("user_id", userData.user.id)
+        .single();
+
+      if (reportError || !report) {
+        return new Response(
+          JSON.stringify({ success: false, error: "Report not found or access denied" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
 
     const cachedImages: CachedImage[] = [];
-    const errors: string[] = [];
 
     // Generate a unique folder for this batch
     const batchId = reportId || crypto.randomUUID();
@@ -83,6 +148,11 @@ serve(async (req) => {
               throw new Error("Image too small");
             }
 
+            // Skip if too large
+            if (uint8Array.length > MAX_IMAGE_SIZE) {
+              throw new Error("Image too large");
+            }
+
             // Determine file extension
             let ext = "jpg";
             if (contentType.includes("png")) ext = "png";
@@ -90,8 +160,8 @@ serve(async (req) => {
 
             const fileName = `${batchId}/${index}.${ext}`;
 
-            // Upload to storage
-            const { data, error: uploadError } = await supabase.storage
+            // Upload to storage (service role bypasses RLS)
+            const { error: uploadError } = await supabase.storage
               .from("vehicle-images")
               .upload(fileName, uint8Array, {
                 contentType,
@@ -102,14 +172,18 @@ serve(async (req) => {
               throw new Error(`Upload failed: ${uploadError.message}`);
             }
 
-            // Get public URL
-            const { data: publicUrlData } = supabase.storage
+            // Generate signed URL for private bucket (1 hour expiry)
+            const { data: signedUrlData, error: signedUrlError } = await supabase.storage
               .from("vehicle-images")
-              .getPublicUrl(fileName);
+              .createSignedUrl(fileName, 3600);
+
+            if (signedUrlError || !signedUrlData) {
+              throw new Error("Failed to generate signed URL");
+            }
 
             return {
               original: imageUrl,
-              cached: publicUrlData.publicUrl,
+              cached: signedUrlData.signedUrl,
             };
           } catch (error) {
             const message = error instanceof Error ? error.message : "Unknown error";
@@ -132,7 +206,7 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Cached ${cachedImages.filter(img => img.cached !== img.original).length}/${images.length} images`);
+    console.log(`Cached ${cachedImages.filter(img => img.cached !== img.original).length}/${images.length} images for user ${userData.user.id}`);
 
     return new Response(
       JSON.stringify({
