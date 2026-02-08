@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { checkRateLimit, getClientIp, RATE_LIMITS } from "../_shared/rate-limiter.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -88,6 +89,32 @@ serve(async (req) => {
   }
 
   try {
+    // Rate limiting for unauthenticated requests
+    const clientIp = getClientIp(req);
+    const rateLimit = checkRateLimit(clientIp, { 
+      ...RATE_LIMITS.heavy, 
+      keyPrefix: 'analyze-vehicle' 
+    });
+    
+    if (!rateLimit.allowed) {
+      console.log(`Rate limited: ${clientIp}`);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "Too many requests. Please try again later.",
+          retryAfter: rateLimit.retryAfter 
+        }),
+        { 
+          status: 429, 
+          headers: { 
+            ...corsHeaders, 
+            "Content-Type": "application/json",
+            "Retry-After": String(rateLimit.retryAfter || 60)
+          } 
+        }
+      );
+    }
+
     const vehicleData: VehicleData = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
