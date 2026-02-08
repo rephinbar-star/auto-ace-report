@@ -27,10 +27,6 @@ serve(async (req) => {
 
     const resendKey = Deno.env.get("RESEND_API_KEY")?.trim();
     if (!resendKey) throw new Error("RESEND_API_KEY is not set");
-    
-    // Debug: Log key format (first 8 chars only for security)
-    const keyPreview = resendKey.substring(0, 8);
-    logStep("Resend key loaded", { preview: `${keyPreview}...`, length: resendKey.length });
 
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
