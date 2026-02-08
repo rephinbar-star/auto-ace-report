@@ -66,6 +66,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
   const [isDecodingVin, setIsDecodingVin] = useState(false);
   const [decodedVehicle, setDecodedVehicle] = useState<VehicleInfo | null>(null);
   const [importedListing, setImportedListing] = useState<ImportedListingData | null>(null);
+  const [importFailed, setImportFailed] = useState<{ url: string; error: string } | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const { toast } = useToast();
 
@@ -148,6 +149,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
   const handleListingUrlSubmit = async (data: z.infer<typeof listingUrlSchema>) => {
     setIsLoading(true);
     setImportedListing(null);
+    setImportFailed(null);
     
     try {
       const result = await scrapeCarListing(data.listingUrl);
@@ -155,6 +157,25 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
       if (result.success && result.vehicle) {
         const scraped = result.vehicle;
         let decoded: VehicleInfo | undefined;
+        
+        // Check if the scrape returned valid vehicle data
+        const hasValidData = scraped.year && scraped.year > 1900 && 
+          scraped.make && scraped.make !== "Unknown" && 
+          scraped.model && scraped.model !== "Unknown";
+        
+        if (!hasValidData) {
+          // Scrape succeeded but no valid vehicle data extracted
+          setImportFailed({
+            url: data.listingUrl,
+            error: "We couldn't extract vehicle details from this listing. The page may be blocked, expired, or not a vehicle listing.",
+          });
+          toast({
+            title: "Could Not Extract Vehicle Data",
+            description: "Please enter the vehicle details manually below.",
+            variant: "destructive",
+          });
+          return;
+        }
         
         // If VIN was extracted, auto-decode it
         if (scraped.vin && isValidVIN(scraped.vin)) {
@@ -190,13 +211,21 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
           description: `Found: ${scraped.year} ${scraped.make} ${scraped.model}`,
         });
       } else {
+        setImportFailed({
+          url: data.listingUrl,
+          error: result.error || "Could not access or parse this listing URL.",
+        });
         toast({
           title: "Import Failed",
-          description: result.error || "Could not extract vehicle details from this listing.",
+          description: "Please enter the vehicle details manually below.",
           variant: "destructive",
         });
       }
     } catch (error) {
+      setImportFailed({
+        url: data.listingUrl,
+        error: "Network error or the website blocked our request.",
+      });
       toast({
         title: "Error",
         description: "Failed to import listing. Please try VIN or manual entry below.",
@@ -306,6 +335,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
 
   const resetImportedListing = () => {
     setImportedListing(null);
+    setImportFailed(null);
     listingUrlForm.reset();
   };
 
@@ -627,6 +657,43 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
             </Form>
           </CardContent>
         </Card>
+      )}
+
+      {/* Import Failed Fallback Alert */}
+      {importFailed && !importedListing && (
+        <Alert variant="destructive" className="border-destructive/30 bg-destructive/5">
+          <AlertCircle className="h-5 w-5" />
+          <AlertTitle className="font-semibold">Import Unsuccessful</AlertTitle>
+          <AlertDescription className="mt-2 space-y-3">
+            <p className="text-sm">{importFailed.error}</p>
+            <div className="flex flex-col gap-2 text-sm">
+              <p className="font-medium">Please enter the vehicle details manually:</p>
+              <ul className="list-disc list-inside text-muted-foreground space-y-1 ml-2">
+                <li>Use the <strong>VIN lookup</strong> tab if you have the VIN number</li>
+                <li>Or use <strong>Manual entry</strong> to select year, make, and model</li>
+              </ul>
+            </div>
+            <div className="flex gap-2 pt-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => {
+                  setImportFailed(null);
+                  listingUrlForm.reset();
+                }}
+              >
+                Try Another URL
+              </Button>
+              <Button 
+                variant="secondary" 
+                size="sm"
+                onClick={() => setActiveTab("vin")}
+              >
+                Enter VIN Instead
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
       )}
 
       {/* Imported Listing Success Card */}
