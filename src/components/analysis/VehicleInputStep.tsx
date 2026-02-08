@@ -610,7 +610,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
             <iframe
               width="100%"
               height="100%"
-              src="https://www.youtube.com/embed/YOUR_VIDEO_ID"
+              src="https://www.youtube.com/embed/Ng-y9d1pz9w"
               title="How to Copy & Paste URL"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
