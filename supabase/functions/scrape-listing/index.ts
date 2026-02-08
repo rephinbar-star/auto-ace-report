@@ -382,7 +382,7 @@ Title format is usually: "Year Make Model Trim" (e.g., "2019 Porsche 911 GT3 RS"
       
       if (isEbayMotors) {
         return `
-This is an eBay Motors listing. CRITICAL: Look for the "Item specifics" section which contains structured key-value pairs.
+This is an eBay Motors listing. CRITICAL: Look for the "Item specifics" or "About this item" section which contains structured key-value pairs.
 
 ITEM SPECIFICS FORMAT: The page contains a structured table with fields like:
 - Year: 2018
@@ -390,7 +390,7 @@ ITEM SPECIFICS FORMAT: The page contains a structured table with fields like:
 - Model: Model S
 - Submodel: P100D (this is often the trim)
 - Trim: 100D Sedan 4D
-- Mileage: 53063
+- Mileage: 53063 (CRITICAL - extract this number exactly)
 - VIN (Vehicle Identification Number): 5YJSA1E20JF261623
 - Body Type: Sedan
 - Drive Type: All Wheel Drive (extract as drivetrain: AWD, FWD, RWD, 4WD)
@@ -403,17 +403,30 @@ ITEM SPECIFICS FORMAT: The page contains a structured table with fields like:
 - For Sale By: Dealer or Private (extract as sellerType)
 - Condition: Used, New, Certified Pre-Owned
 
-PRICE: Look for "Price:", "Buy It Now:", or dollar amount near the title.
+PRICE: Look for "Price:", "Buy It Now:", "US $XX,XXX.00", or dollar amount near the title.
+
+SELLER/DEALERSHIP NAME: Look for patterns like:
+- "Seller information" section with business/dealer name
+- Store name like "CarFax Certified", "AutoNation", "[Business Name]" 
+- Look for text after "Sold by" or "From" or the store name link
+- On eBay, dealer names often appear near "Visit store" or "See other items"
+- Example: "clovisautoimports" or "Clovis Auto Imports" is the seller/dealer name
 
 CRITICAL MAPPINGS:
 - "Drive Type: All Wheel Drive" → drivetrain: "AWD"
 - "Drive Type: Front Wheel Drive" → drivetrain: "FWD"  
 - "Drive Type: Rear Wheel Drive" → drivetrain: "RWD"
-- "Vehicle Title: Clean" → condition: "good" or "excellent"
-- "Vehicle Title: Salvage" → condition: "poor"
+- "Vehicle Title: Clean" → titleStatus: "clean", condition: "good"
+- "Vehicle Title: Salvage" → titleStatus: "salvage", condition: "poor"
 - "Submodel" often contains the trim/variant (e.g., "P100D", "GT", "Limited")
 - "For Sale By: Dealer" → sellerType: "dealer"
 - "For Sale By: Private" → sellerType: "private"
+
+MILEAGE IS CRITICAL - Look for these exact patterns:
+- "Mileage 35,950" → 35950
+- "Mileage: 53,063" → 53063
+- "35,950 mi" or "35950 miles" → 35950
+- The number MUST be extracted. Search the ENTIRE content.
 
 Extract ALL fields from Item specifics. This is the most reliable data source on eBay.
 `;
@@ -443,12 +456,18 @@ VIN: Look for VIN in vehicle details section.
     const extractionPrompt = `Extract vehicle listing information from this car listing content. Return ONLY the structured data, no explanations.
 ${getExtractionHint()}
 CRITICAL - MILEAGE EXTRACTION:
-- For eBay: Look for "Mileage" followed by a number like "53063" or "45,000" in Item specifics section
+- For eBay: Search for "Mileage" field - it shows the odometer reading like "35,950" or "53063". Extract as integer.
+- Common patterns: "Mileage 35,950", "Mileage: 53,063 mi", "35950 miles"
 - For BaT: Look for "XXXk Miles" pattern like "119k Miles" = 119000
-- MILEAGE MUST BE EXTRACTED. If you see "Mileage: 53063", extract 53063. If "Mileage: 45,000", extract 45000.
+- MILEAGE MUST BE EXTRACTED. Search the ENTIRE content for any mileage indication.
+
+CRITICAL - SELLER/DEALER NAME:
+- For eBay: Look for seller name in "Seller information", store name, or business name
+- Patterns: "Sold by [Name]", store URL like "clovisautoimports", "Visit store: [Name]"
+- The sellerName should be the business/dealer name, not the eBay username (unless private seller)
 
 Content:
-${markdown.slice(0, 15000)}
+${markdown.slice(0, 18000)}
 
 Page Title: ${metadata.title || "Unknown"}
 Source URL: ${formattedUrl}`;
@@ -467,13 +486,21 @@ Source URL: ${formattedUrl}`;
             content: `You are a vehicle listing data extractor. Extract ALL structured vehicle information from car listing pages.
 
 MILEAGE IS THE MOST CRITICAL FIELD - YOU MUST EXTRACT IT:
-- eBay format: "Mileage" row shows number like "53063" or "45,000" - extract as integer (53063 or 45000)
+- eBay format: Look for "Mileage" field with value like "35,950" or "53063" - extract as integer (35950 or 53063)
 - BaT format: "119k Miles" = 119000, "45,000 Miles" = 45000
+- Search patterns: "Mileage 35,950", "35950 mi", "35,950 miles"
+- NEVER return mileage as 0 or null if ANY mileage number exists in the content.
 
-For eBay Motors: The "Item specifics" section is a table with key-value pairs. Extract EVERY field:
+SELLER NAME IS CRITICAL FOR DEALER LISTINGS:
+- eBay: Look for seller/store name in "Seller information" section, or business name near "Visit store"
+- Common patterns: store URL username, business name, or dealer name
+- For dealers, the sellerName should be the dealership name (e.g., "Holman Audi San Diego", "Clovis Auto Imports")
+- For private sellers, sellerName can be omitted or set to the username
+
+For eBay Motors: The "Item specifics" or "About this item" section contains key-value pairs. Extract EVERY field:
 Year, Make, Model, Submodel (as trim), Mileage, VIN, Body Type, Drive Type (as drivetrain), Engine, Fuel Type, Transmission, Exterior Color, Interior Color, Vehicle Title (as titleStatus), For Sale By (as sellerType).
 
-NEVER return mileage as 0 if you can find it in the content. Search the entire document for mileage data.`
+Search the ENTIRE content for data. Do not give up if data isn't in the expected location.`
           },
           { role: "user", content: extractionPrompt }
         ],
