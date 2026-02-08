@@ -1,3 +1,4 @@
+import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,24 +7,35 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import { ThemeProvider } from "next-themes";
+
+// Critical path - load immediately
 import Index from "./pages/Index";
-import AnalyzePage from "./pages/Analyze";
-import ReportPage from "./pages/Report";
-import DashboardPage from "./pages/Dashboard";
-import ComparePage from "./pages/Compare";
-import ProfilePage from "./pages/Profile";
-import HowItWorksPage from "./pages/HowItWorks";
-import SampleReportPage from "./pages/SampleReport";
-import PricingPage from "./pages/Pricing";
-import LoginPage from "./pages/Login";
-import SignupPage from "./pages/Signup";
-import PrivacyPage from "./pages/Privacy";
-import TermsPage from "./pages/Terms";
-import ContactPage from "./pages/Contact";
-import FAQPage from "./pages/FAQ";
-import HelpCenterPage from "./pages/HelpCenter";
-import AdminPage from "./pages/Admin";
-import NotFound from "./pages/NotFound";
+
+// Lazy load non-critical routes to reduce initial bundle size
+const AnalyzePage = lazy(() => import("./pages/Analyze"));
+const ReportPage = lazy(() => import("./pages/Report"));
+const DashboardPage = lazy(() => import("./pages/Dashboard"));
+const ComparePage = lazy(() => import("./pages/Compare"));
+const ProfilePage = lazy(() => import("./pages/Profile"));
+const HowItWorksPage = lazy(() => import("./pages/HowItWorks"));
+const SampleReportPage = lazy(() => import("./pages/SampleReport"));
+const PricingPage = lazy(() => import("./pages/Pricing"));
+const LoginPage = lazy(() => import("./pages/Login"));
+const SignupPage = lazy(() => import("./pages/Signup"));
+const PrivacyPage = lazy(() => import("./pages/Privacy"));
+const TermsPage = lazy(() => import("./pages/Terms"));
+const ContactPage = lazy(() => import("./pages/Contact"));
+const FAQPage = lazy(() => import("./pages/FAQ"));
+const HelpCenterPage = lazy(() => import("./pages/HelpCenter"));
+const AdminPage = lazy(() => import("./pages/Admin"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+
+// Loading fallback component
+const PageLoader = () => (
+  <div className="flex min-h-screen items-center justify-center">
+    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+  </div>
+);
 
 const queryClient = new QueryClient();
 
@@ -36,27 +48,29 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <ScrollToTop />
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/compare" element={<ComparePage />} />
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/how-it-works" element={<HowItWorksPage />} />
-              <Route path="/sample-report" element={<SampleReportPage />} />
-              <Route path="/pricing" element={<PricingPage />} />
-              <Route path="/analyze" element={<AnalyzePage />} />
-              <Route path="/report/:id" element={<ReportPage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/signup" element={<SignupPage />} />
-              <Route path="/privacy" element={<PrivacyPage />} />
-              <Route path="/terms" element={<TermsPage />} />
-              <Route path="/contact" element={<ContactPage />} />
-              <Route path="/faq" element={<FAQPage />} />
-              <Route path="/help" element={<HelpCenterPage />} />
-              <Route path="/admin" element={<AdminPage />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/compare" element={<ComparePage />} />
+                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/how-it-works" element={<HowItWorksPage />} />
+                <Route path="/sample-report" element={<SampleReportPage />} />
+                <Route path="/pricing" element={<PricingPage />} />
+                <Route path="/analyze" element={<AnalyzePage />} />
+                <Route path="/report/:id" element={<ReportPage />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/signup" element={<SignupPage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
+                <Route path="/terms" element={<TermsPage />} />
+                <Route path="/contact" element={<ContactPage />} />
+                <Route path="/faq" element={<FAQPage />} />
+                <Route path="/help" element={<HelpCenterPage />} />
+                <Route path="/admin" element={<AdminPage />} />
+                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
           </BrowserRouter>
         </TooltipProvider>
       </QueryClientProvider>
