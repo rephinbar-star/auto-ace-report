@@ -58,22 +58,56 @@ serve(async (req) => {
 
     console.log("Scraping listing URL:", formattedUrl);
     
-    // Detect if this is a Bring a Trailer listing
+    // Detect site type for optimized scraping
     const isBringATrailer = formattedUrl.includes("bringatrailer.com");
+    const isEbayMotors = formattedUrl.includes("ebay.com/motors") || formattedUrl.includes("ebay.com/itm");
+    const isCarMax = formattedUrl.includes("carmax.com");
 
-    // First, scrape the page with Firecrawl - include links to extract images
+    // Configure Firecrawl options based on site
+    const getFirecrawlOptions = () => {
+      const baseOptions = {
+        url: formattedUrl,
+        formats: ["markdown", "html", "links"],
+        onlyMainContent: false,
+      };
+
+      if (isEbayMotors) {
+        // eBay Motors needs longer wait times and full page rendering
+        return {
+          ...baseOptions,
+          waitFor: 5000, // eBay has heavy JS rendering
+          timeout: 30000,
+        };
+      }
+      
+      if (isBringATrailer) {
+        return {
+          ...baseOptions,
+          waitFor: 3000,
+        };
+      }
+      
+      if (isCarMax) {
+        return {
+          ...baseOptions,
+          waitFor: 3000,
+        };
+      }
+      
+      return {
+        ...baseOptions,
+        waitFor: 2000,
+      };
+    };
+
+    // First, scrape the page with Firecrawl
     const scrapeResponse = await fetch("https://api.firecrawl.dev/v1/scrape", {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${FIRECRAWL_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        url: formattedUrl,
-        formats: ["markdown", "html", "links"],
-        onlyMainContent: false, // Include full page to capture image gallery
-        waitFor: isBringATrailer ? 3000 : 2000, // BAT needs more time to load
-      }),
+      body: JSON.stringify(getFirecrawlOptions()),
     });
 
     const scrapeData = await scrapeResponse.json();
@@ -91,9 +125,54 @@ serve(async (req) => {
     const metadata = scrapeData.data?.metadata || scrapeData.metadata || {};
     
     // Extract vehicle images from the HTML content
-    const extractVehicleImages = (htmlContent: string, pageUrl: string, isBat: boolean): string[] => {
+    const extractVehicleImages = (htmlContent: string, pageUrl: string, isBat: boolean, isEbay: boolean): string[] => {
       const images: string[] = [];
       const seenUrls = new Set<string>();
+      
+      // eBay Motors specific image patterns
+      if (isEbay) {
+        const ebayPatterns = [
+          // eBay's image CDN patterns
+          /https:\/\/i\.ebayimg\.com\/images\/g\/[^"'\s)]+/gi,
+          // eBay Motors photo gallery
+          /https:\/\/i\.ebayimg\.com\/[^"'\s)]+\.(jpg|jpeg|png|webp)/gi,
+          // eBay thumbs (we'll get full size versions)
+          /https:\/\/thumbs\.ebaystatic\.com\/[^"'\s)]+\.(jpg|jpeg|png|webp)/gi,
+        ];
+        
+        for (const pattern of ebayPatterns) {
+          let match;
+          while ((match = pattern.exec(htmlContent)) !== null) {
+            let imgUrl = match[0];
+            
+            // Convert thumbnails to full size
+            // s-l64 -> s-l1600, s-l140 -> s-l1600, s-l225 -> s-l1600, s-l500 -> s-l1600
+            imgUrl = imgUrl.replace(/s-l\d+/g, 's-l1600');
+            
+            // Skip tiny images and icons
+            if (imgUrl.includes('thumbs1.ebaystatic') || imgUrl.includes('icon')) continue;
+            
+            if (!seenUrls.has(imgUrl) && imgUrl.length > 40) {
+              seenUrls.add(imgUrl);
+              images.push(imgUrl);
+            }
+          }
+        }
+        
+        // Also look for data attributes eBay uses
+        const dataSrcPattern = /data-zoom-src=["']([^"']+)["']/gi;
+        let dataMatch;
+        while ((dataMatch = dataSrcPattern.exec(htmlContent)) !== null) {
+          const imgUrl = dataMatch[1];
+          if (!seenUrls.has(imgUrl) && imgUrl.includes('ebayimg')) {
+            seenUrls.add(imgUrl);
+            images.push(imgUrl);
+          }
+        }
+        
+        // Limit eBay to first 12 images
+        return images.slice(0, 12);
+      }
       
       // Bring a Trailer specific image patterns
       if (isBat) {
@@ -251,7 +330,7 @@ serve(async (req) => {
       return images.slice(0, 10);
     };
     
-    const extractedImages = extractVehicleImages(html, formattedUrl, isBringATrailer);
+    const extractedImages = extractVehicleImages(html, formattedUrl, isBringATrailer, isEbayMotors);
     console.log(`Extracted ${extractedImages.length} vehicle images`);
 
     // Now use AI to extract structured vehicle data from the scraped content
@@ -269,8 +348,10 @@ serve(async (req) => {
       );
     }
 
-    // Special extraction prompt for Bring a Trailer
-    const batExtractionHint = isBringATrailer ? `
+    // Site-specific extraction hints
+    const getExtractionHint = () => {
+      if (isBringATrailer) {
+        return `
 This is a Bring a Trailer (BaT) auction listing. CRITICAL extraction patterns:
 
 MILEAGE: Look for "XXXk Miles" or "XXX,XXX Miles" in the "Listing Details" bullet list. Example: "119k Miles" = 119000, "45,000 Miles" = 45000. This is REQUIRED - search the entire content carefully.
@@ -293,11 +374,59 @@ SELLER TYPE: Look for "Private Party or Dealer:" - if "Private Party" then selle
 PRICE: Look for "Current Bid", "Sold for", or "Buy Now" price
 
 Title format is usually: "Year Make Model Trim" (e.g., "2019 Porsche 911 GT3 RS")
-` : '';
+`;
+      }
+      
+      if (isEbayMotors) {
+        return `
+This is an eBay Motors listing. CRITICAL extraction patterns:
+
+TITLE: The listing title contains Year Make Model Trim (e.g., "2020 Toyota Camry XSE")
+
+MILEAGE: Look for "Mileage:" or "Odometer:" fields. Values like "45,000 mi" = 45000.
+
+PRICE: Look for "Price:", "Buy It Now:", or "Current bid:" followed by dollar amount.
+
+VIN: Look for "VIN:" or "Vehicle Identification Number:" followed by 17-character code.
+
+CONDITION: Look for "Condition:" field (Used, New, Certified Pre-Owned).
+
+SELLER: Look for "Seller information" section. If business name shown = dealer, if private seller = private.
+
+FEATURES: Look for "Item specifics" or "Features and Specs" sections:
+- Exterior Color, Interior Color
+- Transmission, Drivetrain, Engine
+- Body Type, Number of Doors
+- Fuel Type, MPG
+
+LOCATION: Note the seller's location if visible.
+`;
+      }
+      
+      if (isCarMax) {
+        return `
+This is a CarMax listing. CRITICAL extraction patterns:
+
+TITLE: Look for vehicle title in format "Year Make Model Trim"
+
+MILEAGE: Look for mileage displayed prominently, usually with "miles" label.
+
+PRICE: Look for the listed price (CarMax has no-haggle pricing).
+
+FEATURES: Look for "Features" or "Highlights" sections.
+
+SELLER TYPE: Always "dealer" for CarMax (they are a dealership).
+
+VIN: Look for VIN in vehicle details section.
+`;
+      }
+      
+      return '';
+    };
 
     const extractionPrompt = `Extract vehicle listing information from this car listing content. Return ONLY the structured data, no explanations.
-${batExtractionHint}
-IMPORTANT: Extract the MILEAGE - it is critical data. Look for patterns like "119k Miles", "45,000 Miles", "~30k Miles" in bullet lists.
+${getExtractionHint()}
+IMPORTANT: Extract the MILEAGE - it is critical data. Look for patterns like "119k Miles", "45,000 Miles", "~30k Miles" in listings.
 
 Content:
 ${markdown.slice(0, 12000)}
