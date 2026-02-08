@@ -14,6 +14,14 @@ export interface ScrapedVehicle {
   description?: string;
   features?: string[];
   images?: string[];
+  engine?: string;
+  transmission?: string;
+  drivetrain?: string;
+  exteriorColor?: string;
+  interiorColor?: string;
+  bodyStyle?: string;
+  fuelType?: string;
+  titleStatus?: "clean" | "salvage" | "rebuilt";
 }
 
 export interface ScrapeListingResponse {
