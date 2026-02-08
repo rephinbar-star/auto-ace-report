@@ -300,69 +300,71 @@ export function HistoryStep({ onComplete, onBack, onSkip }: HistoryStepProps) {
               )}
             </div>
 
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">Or enter URL</span>
-              </div>
-            </div>
-
-            {/* URL input */}
-            <Form {...form}>
-              <div className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="historyUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="flex items-center gap-2">
-                        <LinkIcon className="h-4 w-4" />
-                        Carfax Link
-                      </FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="https://www.carfax.com/VehicleHistory/..." 
-                          {...field}
-                          disabled={isAnalyzing}
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        If you have a link to the Carfax report, we'll attempt to extract key details.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="flex flex-wrap gap-4">
-                  <Button type="button" variant="outline" onClick={onBack} disabled={isAnalyzing}>
-                    Back
-                  </Button>
-                  <Button 
-                    type="button" 
-                    onClick={analyzeReport}
-                    disabled={isAnalyzing || (!uploadedFile && !form.watch("historyUrl"))}
-                  >
-                    {isAnalyzing ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Analyzing...
-                      </>
-                    ) : (
-                      <>
-                        <FileText className="mr-2 h-4 w-4" />
-                        Analyze History
-                      </>
-                    )}
-                  </Button>
-                  <Button type="button" variant="ghost" onClick={onSkip} disabled={isAnalyzing}>
-                    Skip for now
-                  </Button>
+            {/* URL input - hidden when file is uploaded */}
+            {!uploadedFile && (
+              <>
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">Or enter URL</span>
+                  </div>
                 </div>
-              </div>
-            </Form>
+
+                <Form {...form}>
+                  <FormField
+                    control={form.control}
+                    name="historyUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <LinkIcon className="h-4 w-4" />
+                          Carfax Link
+                        </FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="https://www.carfax.com/VehicleHistory/..." 
+                            {...field}
+                            disabled={isAnalyzing}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          If you have a link to the Carfax report, we'll attempt to extract key details.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </Form>
+              </>
+            )}
+
+            <div className="flex flex-wrap gap-4">
+              <Button type="button" variant="outline" onClick={onBack} disabled={isAnalyzing}>
+                Back
+              </Button>
+              <Button 
+                type="button" 
+                onClick={analyzeReport}
+                disabled={isAnalyzing || (!uploadedFile && !form.watch("historyUrl"))}
+              >
+                {isAnalyzing ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <FileText className="mr-2 h-4 w-4" />
+                    Analyze History
+                  </>
+                )}
+              </Button>
+              <Button type="button" variant="ghost" onClick={onSkip} disabled={isAnalyzing}>
+                Skip for now
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : null}
