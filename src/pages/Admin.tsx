@@ -69,8 +69,6 @@ interface Subscriber {
 
 type AuthStep = "password" | "otp" | "authenticated";
 
-const ADMIN_PASSWORD = "CarWise2024!"; // In production, this should be stored securely
-
 export default function AdminPage() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -103,10 +101,10 @@ export default function AdminPage() {
   }, []);
 
   const handlePasswordSubmit = async () => {
-    if (password !== ADMIN_PASSWORD) {
+    if (!password) {
       toast({
-        title: "Invalid password",
-        description: "Please check your password and try again.",
+        title: "Password required",
+        description: "Please enter your admin password.",
         variant: "destructive",
       });
       return;
@@ -114,6 +112,26 @@ export default function AdminPage() {
 
     setIsVerifying(true);
     try {
+      // Validate password server-side
+      const { data: validateData, error: validateError } = await supabase.functions.invoke("admin-validate-password", {
+        body: { password },
+      });
+      
+      if (validateError) throw validateError;
+      
+      if (!validateData?.success) {
+        const remaining = validateData?.remaining;
+        toast({
+          title: "Invalid password",
+          description: remaining !== undefined 
+            ? `Please check your password and try again. ${remaining} attempts remaining.`
+            : "Please check your password and try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Password validated, now send OTP
       const { error } = await supabase.functions.invoke("admin-send-otp");
       
       if (error) throw error;
@@ -124,7 +142,7 @@ export default function AdminPage() {
         description: "Check your email for the 6-digit code.",
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to send verification code";
+      const message = err instanceof Error ? err.message : "Failed to verify password";
       toast({
         title: "Error",
         description: message,

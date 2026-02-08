@@ -1,4 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { validateUrl } from "../_shared/url-validator.ts";
+import { checkRateLimit, getClientIp, RATE_LIMITS } from "../_shared/rate-limiter.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -35,6 +37,32 @@ serve(async (req) => {
   }
 
   try {
+    // Rate limiting for unauthenticated requests
+    const clientIp = getClientIp(req);
+    const rateLimit = checkRateLimit(clientIp, { 
+      ...RATE_LIMITS.heavy, 
+      keyPrefix: 'scrape-listing' 
+    });
+    
+    if (!rateLimit.allowed) {
+      console.log(`Rate limited: ${clientIp}`);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "Too many requests. Please try again later.",
+          retryAfter: rateLimit.retryAfter 
+        }),
+        { 
+          status: 429, 
+          headers: { 
+            ...corsHeaders, 
+            "Content-Type": "application/json",
+            "Retry-After": String(rateLimit.retryAfter || 60)
+          } 
+        }
+      );
+    }
+
     const { url } = await req.json();
 
     if (!url) {
@@ -44,6 +72,18 @@ serve(async (req) => {
       );
     }
 
+    // Validate URL to prevent SSRF attacks
+    const urlValidation = validateUrl(url);
+    if (!urlValidation.valid) {
+      console.log(`URL validation failed: ${urlValidation.error}`);
+      return new Response(
+        JSON.stringify({ success: false, error: urlValidation.error }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const formattedUrl = urlValidation.url!.href;
+
     const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
     if (!FIRECRAWL_API_KEY) {
       console.error("FIRECRAWL_API_KEY not configured");
@@ -51,12 +91,6 @@ serve(async (req) => {
         JSON.stringify({ success: false, error: "Firecrawl is not configured. Please connect Firecrawl in settings." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
-    }
-
-    // Format URL
-    let formattedUrl = url.trim();
-    if (!formattedUrl.startsWith("http://") && !formattedUrl.startsWith("https://")) {
-      formattedUrl = `https://${formattedUrl}`;
     }
 
     console.log("Scraping listing URL:", formattedUrl);

@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { validateUrl } from "../_shared/url-validator.ts";
+import { checkRateLimit, getClientIp, RATE_LIMITS } from "../_shared/rate-limiter.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -23,6 +25,32 @@ serve(async (req) => {
   }
 
   try {
+    // Rate limiting for unauthenticated requests
+    const clientIp = getClientIp(req);
+    const rateLimit = checkRateLimit(clientIp, { 
+      ...RATE_LIMITS.heavy, 
+      keyPrefix: 'parse-history' 
+    });
+    
+    if (!rateLimit.allowed) {
+      console.log(`Rate limited: ${clientIp}`);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "Too many requests. Please try again later.",
+          retryAfter: rateLimit.retryAfter 
+        }),
+        { 
+          status: 429, 
+          headers: { 
+            ...corsHeaders, 
+            "Content-Type": "application/json",
+            "Retry-After": String(rateLimit.retryAfter || 60)
+          } 
+        }
+      );
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
@@ -97,6 +125,17 @@ serve(async (req) => {
 
     // Handle URL scraping
     if (reportUrl && !textContent) {
+      // Validate URL to prevent SSRF attacks
+      const urlValidation = validateUrl(reportUrl);
+      if (!urlValidation.valid) {
+        console.log(`URL validation failed: ${urlValidation.error}`);
+        return new Response(
+          JSON.stringify({ success: false, error: urlValidation.error }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const validatedUrl = urlValidation.url!.href;
       const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
       
       if (FIRECRAWL_API_KEY) {
@@ -108,7 +147,7 @@ serve(async (req) => {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              url: reportUrl,
+              url: validatedUrl,
               formats: ["markdown"],
               onlyMainContent: true,
               waitFor: 3000,
@@ -123,7 +162,7 @@ serve(async (req) => {
       }
 
       if (!textContent) {
-        textContent = `Carfax report URL: ${reportUrl}`;
+        textContent = `Carfax report URL: ${validatedUrl}`;
       }
     }
 
