@@ -37,9 +37,9 @@ export default function LoginPage() {
 
   // Get redirect path from location state, pending report, or default to dashboard
   const getRedirectPath = () => {
-    // Check for pending report first
-    if (sessionStorage.getItem("pendingReport") === "true") {
-      return "/report/demo";
+    // Check for pending report first (check both localStorage and sessionStorage)
+    if (localStorage.getItem("pendingReport") === "true" || sessionStorage.getItem("pendingReport") === "true") {
+      return "/report/new";
     }
     return location.state?.from?.pathname || "/dashboard";
   };
@@ -48,7 +48,9 @@ export default function LoginPage() {
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
       const redirectPath = getRedirectPath();
-      if (sessionStorage.getItem("pendingReport") === "true") {
+      // Clear pending report flags from both storage types
+      if (localStorage.getItem("pendingReport") === "true" || sessionStorage.getItem("pendingReport") === "true") {
+        localStorage.removeItem("pendingReport");
         sessionStorage.removeItem("pendingReport");
       }
       navigate(redirectPath, { replace: true });
@@ -110,9 +112,10 @@ export default function LoginPage() {
           variant: "destructive",
         });
       } else {
-        // Clear pending report flag after successful login
+        // Clear pending report flags after successful login
         const redirectPath = getRedirectPath();
-        if (sessionStorage.getItem("pendingReport") === "true") {
+        if (localStorage.getItem("pendingReport") === "true" || sessionStorage.getItem("pendingReport") === "true") {
+          localStorage.removeItem("pendingReport");
           sessionStorage.removeItem("pendingReport");
         }
         toast({

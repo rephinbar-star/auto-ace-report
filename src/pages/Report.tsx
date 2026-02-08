@@ -307,9 +307,22 @@ export default function ReportPage() {
         }
       }
       
-      // For new analysis, load from sessionStorage
-      const stored = sessionStorage.getItem("analysisData");
-      console.log("Loading analysis data from sessionStorage:", stored ? "found" : "not found");
+      // For new analysis, check localStorage first (for cross-tab email verification), then sessionStorage
+      let stored = sessionStorage.getItem("analysisData");
+      
+      // If not in sessionStorage, check localStorage (email verification opens in new tab)
+      if (!stored) {
+        stored = localStorage.getItem("pendingAnalysisData");
+        if (stored) {
+          console.log("Loading analysis data from localStorage (cross-tab)");
+          // Move to sessionStorage and clean up localStorage
+          sessionStorage.setItem("analysisData", stored);
+          localStorage.removeItem("pendingAnalysisData");
+          localStorage.removeItem("pendingReport");
+        }
+      }
+      
+      console.log("Loading analysis data:", stored ? "found" : "not found");
       
       if (!stored) {
         setError("No analysis data found. Please start a new analysis.");

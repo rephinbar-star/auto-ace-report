@@ -71,7 +71,7 @@ export default function AnalyzePage() {
   const handleFinancingComplete = async (f: FinancingInfo) => {
     setFinancing(f);
     
-    // Store analysis data in sessionStorage
+    // Store analysis data - use localStorage for cross-tab persistence (email verification opens new tab)
     const analysisData = {
       vehicle,
       condition,
@@ -79,17 +79,20 @@ export default function AnalyzePage() {
       financing: f,
     };
     
+    // Use localStorage so data persists when user verifies email in new tab
+    localStorage.setItem("pendingAnalysisData", JSON.stringify(analysisData));
+    // Also keep in sessionStorage for same-tab flows
     sessionStorage.setItem("analysisData", JSON.stringify(analysisData));
     
     // Check if user is authenticated
     if (!isAuthenticated) {
       // Mark that there's a pending report to generate after auth
-      sessionStorage.setItem("pendingReport", "true");
+      localStorage.setItem("pendingReport", "true");
       // Redirect to signup (with option to login)
-      navigate("/signup", { state: { from: { pathname: "/report/demo" } } });
+      navigate("/signup", { state: { from: { pathname: "/report/new" } } });
     } else {
       // User is authenticated, go directly to report
-      navigate("/report/demo");
+      navigate("/report/new");
     }
   };
 

@@ -45,10 +45,13 @@ export default function SignupPage() {
   // Redirect if already authenticated (e.g., after OAuth callback)
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      const hasPendingReport = sessionStorage.getItem("pendingReport") === "true";
+      // Check both localStorage and sessionStorage for pending report
+      const hasPendingReport = localStorage.getItem("pendingReport") === "true" || 
+                               sessionStorage.getItem("pendingReport") === "true";
       if (hasPendingReport) {
+        localStorage.removeItem("pendingReport");
         sessionStorage.removeItem("pendingReport");
-        navigate("/report/demo", { replace: true });
+        navigate("/report/new", { replace: true });
       } else {
         navigate("/dashboard", { replace: true });
       }
@@ -99,10 +102,11 @@ export default function SignupPage() {
   const handleSubmit = async (data: z.infer<typeof signupSchema>) => {
     setIsLoading(true);
     try {
-      // Determine redirect URL based on pending report
-      const hasPendingReport = sessionStorage.getItem("pendingReport") === "true";
+      // Determine redirect URL based on pending report (check both storage types)
+      const hasPendingReport = localStorage.getItem("pendingReport") === "true" || 
+                               sessionStorage.getItem("pendingReport") === "true";
       const redirectUrl = hasPendingReport 
-        ? `${window.location.origin}/report/demo`
+        ? `${window.location.origin}/report/new`
         : `${window.location.origin}/dashboard`;
       
       const { error } = await supabase.auth.signUp({
@@ -148,7 +152,7 @@ export default function SignupPage() {
                 <CardTitle className="text-2xl">Check your email</CardTitle>
                 <CardDescription>
                   We've sent a confirmation link to your email address. 
-                  {sessionStorage.getItem("pendingReport") === "true" 
+                  {(localStorage.getItem("pendingReport") === "true" || sessionStorage.getItem("pendingReport") === "true")
                     ? " Click the link to verify your account and view your vehicle report."
                     : " Please click the link to verify your account."
                   }
@@ -167,13 +171,13 @@ export default function SignupPage() {
                   <Car className="h-6 w-6 text-primary-foreground" />
                 </Link>
                 <CardTitle className="text-2xl">
-                  {sessionStorage.getItem("pendingReport") === "true" 
+                  {(localStorage.getItem("pendingReport") === "true" || sessionStorage.getItem("pendingReport") === "true")
                     ? "Create an account to view your report"
                     : "Create your account"
                   }
                 </CardTitle>
                 <CardDescription>
-                  {sessionStorage.getItem("pendingReport") === "true"
+                  {(localStorage.getItem("pendingReport") === "true" || sessionStorage.getItem("pendingReport") === "true")
                     ? "Sign up to access your personalized vehicle analysis"
                     : plan === "pro" 
                       ? "Start your Pro trial today" 
@@ -289,7 +293,7 @@ export default function SignupPage() {
                   <span className="text-muted-foreground">Already have an account? </span>
                   <Link 
                     to="/login" 
-                    state={{ from: { pathname: sessionStorage.getItem("pendingReport") === "true" ? "/report/demo" : "/dashboard" } }}
+                    state={{ from: { pathname: (localStorage.getItem("pendingReport") === "true" || sessionStorage.getItem("pendingReport") === "true") ? "/report/new" : "/dashboard" } }}
                     className="text-primary hover:underline"
                   >
                     Log in
