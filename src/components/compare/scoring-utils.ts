@@ -342,8 +342,26 @@ export function calculateMileageScore(mileage: number, year: number): ScoreBreak
 }
 
 /**
- * Calculate TCO score based on relative ranking (10 points max)
- * Lower TCO = Higher score
+ * Calculate TCO score based on percentage difference from lowest TCO (10 points max)
+ * 
+ * Methodology: Score based on how much MORE expensive a vehicle is to own
+ * compared to the cheapest option in the comparison, using percentage thresholds.
+ * 
+ * This approach is mathematically sound because:
+ * 1. It accounts for vehicle price segments (a $5K diff matters more on a $30K car)
+ * 2. It uses clear, explainable thresholds
+ * 3. The penalty is proportional to the actual cost difference
+ * 
+ * Scoring thresholds (% more than lowest TCO):
+ * - 0% (lowest)     = 10 points
+ * - 1-5% more       = 9 points
+ * - 5-10% more      = 8 points
+ * - 10-15% more     = 7 points
+ * - 15-20% more     = 6 points
+ * - 20-30% more     = 5 points
+ * - 30-40% more     = 4 points
+ * - 40-50% more     = 3 points
+ * - 50%+ more       = 2 points
  */
 export function calculateTCOScore(
   vehicleTCO: number,
@@ -359,31 +377,51 @@ export function calculateTCOScore(
   }
 
   const minTCO = Math.min(...allVehicleTCOs);
-  const maxTCO = Math.max(...allVehicleTCOs);
-  const range = maxTCO - minTCO;
-
-  // Calculate score: lowest TCO gets 10, highest gets 2
+  
+  // Calculate percentage difference from the lowest TCO
+  const percentageMore = minTCO > 0 ? ((vehicleTCO - minTCO) / minTCO) * 100 : 0;
+  
+  // Score based on percentage thresholds
   let score: number;
   let rating: string;
   
-  if (range === 0) {
+  if (percentageMore === 0) {
+    score = 10;
+    rating = "Lowest cost";
+  } else if (percentageMore <= 5) {
+    score = 9;
+    rating = `${percentageMore.toFixed(1)}% more`;
+  } else if (percentageMore <= 10) {
+    score = 8;
+    rating = `${percentageMore.toFixed(1)}% more`;
+  } else if (percentageMore <= 15) {
+    score = 7;
+    rating = `${percentageMore.toFixed(1)}% more`;
+  } else if (percentageMore <= 20) {
     score = 6;
-    rating = "Equal";
+    rating = `${percentageMore.toFixed(1)}% more`;
+  } else if (percentageMore <= 30) {
+    score = 5;
+    rating = `${percentageMore.toFixed(1)}% more`;
+  } else if (percentageMore <= 40) {
+    score = 4;
+    rating = `${percentageMore.toFixed(1)}% more`;
+  } else if (percentageMore <= 50) {
+    score = 3;
+    rating = `${percentageMore.toFixed(1)}% more`;
   } else {
-    const percentile = ((maxTCO - vehicleTCO) / range);
-    score = Math.round(2 + (percentile * 8)); // Scale from 2-10
-    
-    if (percentile >= 0.75) rating = "Best value";
-    else if (percentile >= 0.5) rating = "Good value";
-    else if (percentile >= 0.25) rating = "Fair value";
-    else rating = "Highest cost";
+    score = 2;
+    rating = `${percentageMore.toFixed(0)}% more`;
   }
+
+  const dollarDiff = vehicleTCO - minTCO;
+  const diffText = dollarDiff > 0 ? ` (+$${dollarDiff.toLocaleString()})` : "";
 
   return {
     category: "5-Year TCO",
     score,
     maxScore: 10,
-    description: `$${vehicleTCO.toLocaleString()} total — ${rating}`,
+    description: `$${vehicleTCO.toLocaleString()}${diffText} — ${rating}`,
   };
 }
 
