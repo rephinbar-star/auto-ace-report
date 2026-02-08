@@ -18,7 +18,7 @@ const features = [
   },
   {
     icon: FileText,
-    title: "Carfax Analysis",
+    title: "CarFax/AutoCheck Analysis",
     description: "Upload a PDF or paste a link to your vehicle history report. Our AI extracts accidents, service records, and red flags.",
     color: "text-warning",
     bgColor: "bg-warning/10",

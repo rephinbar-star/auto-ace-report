@@ -162,7 +162,7 @@ serve(async (req) => {
       }
 
       if (!textContent) {
-        textContent = `Carfax report URL: ${validatedUrl}`;
+        textContent = `CarFax/AutoCheck report URL: ${validatedUrl}`;
       }
     }
 
