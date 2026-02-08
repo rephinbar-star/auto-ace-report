@@ -119,6 +119,7 @@ export default function ReportPage() {
     mpgHighway: number | null;
     mpgCombined: number | null;
     fuelType: string | null;
+    evRange: number | null;
   } | null>(null);
   
   // Check if coming from comparison
@@ -295,6 +296,7 @@ export default function ReportPage() {
             mpgHighway: report.mpg_highway,
             mpgCombined: report.mpg_combined,
             fuelType: report.fuel_type,
+            evRange: null, // Not stored in DB yet, will be looked up if needed
           });
           
           setIsLoading(false);
@@ -341,6 +343,7 @@ export default function ReportPage() {
               mpgHighway: result.mpgData.mpgHighway,
               mpgCombined: result.mpgData.mpgCombined,
               fuelType: result.mpgData.fuelType,
+              evRange: result.mpgData.evRange ?? null,
             });
           }
         } else {
@@ -659,6 +662,7 @@ export default function ReportPage() {
                 make={vehicle.make}
                 year={vehicle.year}
                 depreciationTable={depreciationTable}
+                evRange={mpgData?.evRange ?? null}
               />
 
               {/* Depreciation Chart */}
