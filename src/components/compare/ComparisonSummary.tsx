@@ -159,6 +159,18 @@ export function ComparisonSummary({
             <p className="text-sm text-muted-foreground leading-relaxed">
               {recommendation}
             </p>
+            {/* Tie-breaker explanation */}
+            {bestBuy.tieBreaker?.isTie && bestBuy.tieBreaker.explanation && (
+              <div className="flex items-start gap-2 p-3 mt-2 rounded-lg bg-warning/10 border border-warning/20">
+                <Info className="h-4 w-4 text-warning mt-0.5 flex-shrink-0" />
+                <div className="text-sm">
+                  <span className="font-medium text-warning">Tie-Breaker Applied:</span>{" "}
+                  <span className="text-muted-foreground">
+                    Both vehicles scored {bestBuy.totalScore}/100. {bestBuy.tieBreaker.explanation}.
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

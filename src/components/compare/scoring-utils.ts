@@ -106,12 +106,20 @@ export interface ScoreBreakdownItem {
   description: string;
 }
 
+export interface TieBreakerInfo {
+  isTie: boolean;
+  tiedWithCount: number;
+  decidingFactor: string | null;
+  explanation: string | null;
+}
+
 export interface VehicleScoreResult {
   vehicle: VehicleReport;
   totalScore: number;
   breakdown: ScoreBreakdownItem[];
   whyNotReasons: string[];
   tco?: TCOResult;
+  tieBreaker?: TieBreakerInfo;
 }
 
 interface DepreciationRow {
@@ -671,6 +679,51 @@ export function scoreAndRankVehicles(
     const priceB = Number(b.vehicle.asking_price) || 0;
     return priceA - priceB;
   });
+  
+  // Detect ties and add tie-breaker information
+  if (scored.length > 1) {
+    const winnerScore = scored[0].totalScore;
+    const tiedVehicles = scored.filter(s => s.totalScore === winnerScore);
+    
+    if (tiedVehicles.length > 1) {
+      // There was a tie - determine what broke it
+      const winner = scored[0];
+      const runnerUp = tiedVehicles.find(v => v.vehicle.id !== winner.vehicle.id);
+      
+      if (runnerUp) {
+        let decidingFactor: string | null = null;
+        let explanation: string | null = null;
+        
+        const winnerMileage = winner.vehicle.mileage || 0;
+        const runnerUpMileage = runnerUp.vehicle.mileage || 0;
+        
+        if (winnerMileage < runnerUpMileage) {
+          decidingFactor = "Lower Mileage";
+          const mileageDiff = runnerUpMileage - winnerMileage;
+          explanation = `Won by tie-breaker: ${mileageDiff.toLocaleString()} fewer miles (${winnerMileage.toLocaleString()} vs ${runnerUpMileage.toLocaleString()})`;
+        } else if (winner.vehicle.year > (runnerUp.vehicle.year || 0)) {
+          decidingFactor = "Newer Model Year";
+          const yearDiff = winner.vehicle.year - runnerUp.vehicle.year;
+          explanation = `Won by tie-breaker: ${yearDiff} year${yearDiff > 1 ? 's' : ''} newer (${winner.vehicle.year} vs ${runnerUp.vehicle.year})`;
+        } else if ((winner.tco?.totalTCO || 0) < (runnerUp.tco?.totalTCO || 0)) {
+          decidingFactor = "Lower TCO";
+          const tcoDiff = (runnerUp.tco?.totalTCO || 0) - (winner.tco?.totalTCO || 0);
+          explanation = `Won by tie-breaker: $${tcoDiff.toLocaleString()} lower 5-year ownership cost`;
+        } else {
+          decidingFactor = "Lower Price";
+          const priceDiff = Number(runnerUp.vehicle.asking_price) - Number(winner.vehicle.asking_price);
+          explanation = `Won by tie-breaker: $${priceDiff.toLocaleString()} lower asking price`;
+        }
+        
+        winner.tieBreaker = {
+          isTie: true,
+          tiedWithCount: tiedVehicles.length - 1,
+          decidingFactor,
+          explanation,
+        };
+      }
+    }
+  }
   
   // Generate "why not" reasons for non-winners
   if (scored.length > 1) {
