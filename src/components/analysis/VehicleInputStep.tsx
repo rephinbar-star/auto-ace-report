@@ -605,6 +605,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                       </FormControl>
                       <FormDescription className="flex flex-wrap gap-2 items-center">
                         <span className="text-xs">Supported:</span>
+                        <Badge variant="outline" className="text-xs">BringaTrailer.com</Badge>
                         <Badge variant="outline" className="text-xs">AutoTrader</Badge>
                         <Badge variant="outline" className="text-xs">Cars.com</Badge>
                         <Badge variant="outline" className="text-xs">Carvana</Badge>
