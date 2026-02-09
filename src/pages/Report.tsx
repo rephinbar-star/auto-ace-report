@@ -42,6 +42,7 @@ import {
   Scale,
   Save,
   ArrowLeft,
+  ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getWithExpiry, removeExpirableItem } from "@/lib/storage-utils";
@@ -122,6 +123,7 @@ export default function ReportPage() {
     fuelType: string | null;
     evRange: number | null;
   } | null>(null);
+  const [pricingSources, setPricingSources] = useState<string[]>([]);
   
   // Check if coming from comparison
   const fromComparison = searchParams.get("from") === "compare";
@@ -360,6 +362,10 @@ export default function ReportPage() {
               fuelType: result.mpgData.fuelType,
               evRange: result.mpgData.evRange ?? null,
             });
+          }
+          // Store pricing sources/citations
+          if (result.pricingSources?.length) {
+            setPricingSources(result.pricingSources);
           }
         } else {
           throw new Error(result?.error || "Analysis returned no data");
@@ -689,6 +695,36 @@ export default function ReportPage() {
                         <p className="text-xl font-semibold">${priceAssessment.fairMarketTradeIn.toLocaleString()}</p>
                       </div>
                     </div>
+
+                    {/* Pricing Sources */}
+                    {pricingSources.length > 0 && (
+                      <div className="mt-4 rounded-lg border border-dashed p-3">
+                        <p className="text-xs font-medium text-muted-foreground mb-2">Pricing Sources</p>
+                        <div className="flex flex-wrap gap-2">
+                          {pricingSources.map((url, i) => {
+                            let displayName: string;
+                            try {
+                              const hostname = new URL(url).hostname.replace("www.", "");
+                              displayName = hostname.split(".")[0].charAt(0).toUpperCase() + hostname.split(".")[0].slice(1);
+                            } catch {
+                              displayName = `Source ${i + 1}`;
+                            }
+                            return (
+                              <a
+                                key={i}
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                                {displayName}
+                              </a>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>

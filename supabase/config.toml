@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.lookup-mpg]
 verify_jwt = false
+
+[functions.lookup-pricing]
+verify_jwt = false
