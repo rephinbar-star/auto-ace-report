@@ -26,6 +26,16 @@ export async function cacheImages(
     return { success: true, images: [], cached: 0, total: 0 };
   }
 
+  // Skip caching if user is not authenticated (edge function requires auth)
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (!sessionData.session) {
+    return {
+      success: false,
+      error: "Not authenticated",
+      images: images.map((url) => ({ original: url, cached: url })),
+    };
+  }
+
   const { data, error } = await supabase.functions.invoke<CacheImagesResponse>(
     "cache-images",
     {
