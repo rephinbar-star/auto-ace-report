@@ -43,6 +43,8 @@ import {
   Save,
   ArrowLeft,
   ExternalLink,
+  BadgeCheck,
+  Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getWithExpiry, removeExpirableItem } from "@/lib/storage-utils";
@@ -664,6 +666,17 @@ export default function ReportPage() {
                   <CardTitle className="flex items-center gap-2">
                     <DollarSign className="h-5 w-5 text-primary" />
                     Price Assessment
+                    {pricingSources.length > 0 ? (
+                      <Badge variant="outline" className="ml-auto gap-1 border-success/30 bg-success/10 text-success text-xs font-medium">
+                        <BadgeCheck className="h-3 w-3" />
+                        Market Verified
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="ml-auto gap-1 border-muted-foreground/30 bg-muted text-muted-foreground text-xs font-medium">
+                        <Bot className="h-3 w-3" />
+                        AI Estimated
+                      </Badge>
+                    )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
