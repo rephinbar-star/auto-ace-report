@@ -284,10 +284,21 @@ serve(async (req) => {
         }
 
         if (vehicleOptions && vehicleOptions.length > 0) {
-          // Get the first option's vehicle ID
-          const vehicleId = vehicleOptions[0]?.value;
+          // Try to find the best matching option by checking the description text
+          // The EPA often returns multiple trims; pick the one whose text best matches
+          let bestOption = vehicleOptions[0];
+          if (vehicleOptions.length > 1) {
+            const modelLower = model.toLowerCase();
+            // Prefer an option whose description text contains the model name
+            const matched = vehicleOptions.find((opt: any) => 
+              opt.text?.toLowerCase().includes(modelLower)
+            );
+            if (matched) bestOption = matched;
+          }
+          const vehicleId = bestOption?.value;
           
           if (vehicleId) {
+            console.log(`Selected EPA option: "${bestOption.text}" (id: ${vehicleId}) from ${vehicleOptions.length} options`);
             // Fetch detailed MPG data
             const detailUrl = `https://www.fueleconomy.gov/ws/rest/vehicle/${vehicleId}`;
             const detailResponse = await fetch(detailUrl, {
