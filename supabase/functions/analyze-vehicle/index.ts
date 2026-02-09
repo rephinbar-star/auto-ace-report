@@ -45,6 +45,11 @@ interface MPGData {
   isEstimate: boolean;
 }
 
+interface PricingData {
+  pricingContext: string;
+  citations: string[];
+}
+
 async function lookupMPG(year: number, make: string, model: string): Promise<MPGData> {
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -73,7 +78,6 @@ async function lookupMPG(year: number, make: string, model: string): Promise<MPG
     console.error("MPG lookup failed:", error);
   }
 
-  // Default fallback
   return {
     mpgCity: 24,
     mpgHighway: 32,
@@ -81,6 +85,37 @@ async function lookupMPG(year: number, make: string, model: string): Promise<MPG
     fuelType: "Gasoline",
     isEstimate: true,
   };
+}
+
+async function lookupPricing(year: number, make: string, model: string, trim: string | undefined, mileage: number, condition: string): Promise<PricingData | null> {
+  try {
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+    
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      throw new Error("Supabase configuration missing");
+    }
+
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/lookup-pricing`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({ year, make, model, trim, mileage, condition }),
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      if (result.success && result.data) {
+        return result.data;
+      }
+    }
+  } catch (error) {
+    console.error("Pricing lookup failed:", error);
+  }
+
+  return null;
 }
 
 serve(async (req) => {
@@ -124,9 +159,19 @@ serve(async (req) => {
 
     const { vehicle, condition, financing, history } = vehicleData;
 
-    // Fetch MPG data in parallel with AI analysis
+    // Fetch MPG and pricing data in parallel
     const mpgPromise = lookupMPG(vehicle.year, vehicle.make, vehicle.model);
-    console.log(`Looking up MPG for ${vehicle.year} ${vehicle.make} ${vehicle.model}`);
+    const pricingPromise = lookupPricing(vehicle.year, vehicle.make, vehicle.model, vehicle.trim, condition.mileage, condition.condition);
+    console.log(`Looking up MPG and pricing for ${vehicle.year} ${vehicle.make} ${vehicle.model}`);
+
+    // Wait for pricing data before building prompt (it grounds the AI)
+    const pricingData = await pricingPromise;
+    const hasPricing = pricingData && pricingData.pricingContext;
+    if (hasPricing) {
+      console.log(`Pricing data received with ${pricingData.citations.length} citations`);
+    } else {
+      console.log("No pricing data available, falling back to AI-only estimates");
+    }
 
     const systemPrompt = `You are an expert automotive analyst combining the knowledge of a professional mechanic with 30+ years experience and a seasoned used car buyer. You provide comprehensive, honest, and actionable vehicle purchase analysis.
 
@@ -136,6 +181,7 @@ Your analysis must be data-driven and consider:
 - Common mechanical issues and repair costs for this vehicle
 - The impact of mileage, condition, and ownership history on value
 - Realistic repair and maintenance costs based on the vehicle's age and mileage
+${hasPricing ? "\nIMPORTANT: You have been provided with REAL-TIME MARKET PRICING DATA from authoritative sources. You MUST use these values as your primary reference for fairMarketPrivate, fairMarketTradeIn, and fairOfferPrice. Do not deviate significantly from the sourced pricing data." : ""}
 
 Always provide specific dollar amounts, not ranges. Be direct and honest about risks.`;
 
@@ -164,6 +210,9 @@ ${history ? `VEHICLE HISTORY:
 - Previous Owners: ${history.ownerCount || "Unknown"}
 - Title Status: ${history.titleStatus || "Unknown"}
 ${history.issues?.length ? `- Known Issues: ${history.issues.join(", ")}` : ""}` : "No vehicle history report provided."}
+
+${hasPricing ? `REAL-TIME MARKET PRICING DATA (use these as your primary pricing reference):
+${pricingData.pricingContext}` : ""}
 
 Provide your expert analysis.`;
 
@@ -292,7 +341,8 @@ Provide your expert analysis.`;
           mpgCombined: mpgData.mpgCombined,
           fuelType: mpgData.fuelType,
           isEstimate: mpgData.isEstimate,
-        }
+        },
+        pricingSources: hasPricing ? pricingData.citations : [],
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
