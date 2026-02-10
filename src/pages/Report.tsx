@@ -1278,15 +1278,23 @@ export default function ReportPage() {
               {/* Recommendation */}
               <Card className={cn(
                 "border-2",
-                riskAssessment.level === "low" 
-                  ? "border-success bg-success/5" 
-                  : riskAssessment.level === "medium"
-                  ? "border-warning bg-warning/5"
-                  : "border-danger bg-danger/5"
+                uvprsResult
+                  ? uvprsResult.riskLevel === "low" ? "border-success bg-success/5"
+                    : uvprsResult.riskLevel === "moderate" ? "border-warning bg-warning/5"
+                    : "border-danger bg-danger/5"
+                  : riskAssessment.level === "low" ? "border-success bg-success/5"
+                    : riskAssessment.level === "medium" ? "border-warning bg-warning/5"
+                    : "border-danger bg-danger/5"
               )}>
                 <CardContent className="p-6 text-center">
-                  <Badge className={cn("mb-4", riskLevelColors[riskAssessment.level])}>
-                    {riskAssessment.level.toUpperCase()} RISK
+                  <Badge className={cn("mb-4",
+                    uvprsResult
+                      ? uvprsResult.riskLevel === "low" ? "bg-success text-success-foreground"
+                        : uvprsResult.riskLevel === "moderate" ? "bg-warning text-warning-foreground"
+                        : "bg-danger text-danger-foreground"
+                      : riskLevelColors[riskAssessment.level]
+                  )}>
+                    {uvprsResult ? uvprsResult.riskLabel.toUpperCase() : `${riskAssessment.level.toUpperCase()} RISK`}
                   </Badge>
                   <p className="mb-2 text-lg font-semibold">Fair Offer Price</p>
                   <p className="text-3xl font-bold">${riskAssessment.fairOfferPrice.toLocaleString()}</p>
