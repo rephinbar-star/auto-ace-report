@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { calculateAnnualFuelCost } from "@/lib/tco-calculations";
+import { calculateUVPRS, getRiskLevel } from "@/lib/uvprs-scoring";
 import type { Tables } from "@/integrations/supabase/types";
 
 type VehicleReport = Tables<"vehicle_reports"> & {
@@ -57,6 +58,29 @@ export function CompareVehicleCard({ report, onRemove, isBestBuy, rank }: Compar
   const dealRating = report.deal_rating ? dealRatingConfig[report.deal_rating] : null;
   const risk = report.risk_level ? riskConfig[report.risk_level] : null;
   const RiskIcon = risk?.icon || AlertTriangle;
+
+  // Compute UVPRS
+  const uvprs = useMemo(() => calculateUVPRS({
+    year: report.year,
+    make: report.make,
+    mileage: report.mileage,
+    askingPrice: Number(report.asking_price),
+    titleStatus: report.title_status as "clean" | "salvage" | "rebuilt" | "lemon" | null,
+    accidentCount: report.accident_count,
+    ownerCount: report.owner_count,
+    hasServiceRecords: report.has_service_records,
+    healthScore: report.health_score,
+    historyIssues: report.history_issues,
+    historyPositives: report.history_positives,
+    fairMarketPrivate: report.fair_market_private ? Number(report.fair_market_private) : null,
+    fairMarketDealer: report.fair_market_dealer ? Number(report.fair_market_dealer) : null,
+    openRecallCount: null,
+  }), [report]);
+
+  const uvprsColor = uvprs.riskLevel === "low" ? "text-green-600 bg-green-500/10 border-green-500/20"
+    : uvprs.riskLevel === "moderate" ? "text-yellow-600 bg-yellow-500/10 border-yellow-500/20"
+    : uvprs.riskLevel === "high" ? "text-orange-600 bg-orange-500/10 border-orange-500/20"
+    : "text-red-600 bg-red-500/10 border-red-500/20";
 
   const vehicleTitle = `${report.year} ${report.make} ${report.model}${report.trim ? ` ${report.trim}` : ""}`;
   
@@ -108,12 +132,10 @@ export function CompareVehicleCard({ report, onRemove, isBestBuy, rank }: Compar
                   {dealRating.label}
                 </Badge>
               )}
-              {risk && (
-                <Badge variant="outline" className={risk.className}>
-                  <RiskIcon className="h-3 w-3 mr-1" />
-                  {risk.label}
-                </Badge>
-              )}
+              <Badge variant="outline" className={uvprsColor}>
+                <Shield className="h-3 w-3 mr-1" />
+                Risk: {uvprs.totalScore}/100
+              </Badge>
             </div>
           </div>
         </CardHeader>
