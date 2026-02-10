@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom"
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -754,16 +755,31 @@ export default function ReportPage() {
                           AI Estimated
                         </Badge>
                       )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={refreshPricing}
-                        disabled={isRefreshingPricing}
-                        title="Refresh pricing data"
-                      >
-                        <RefreshCw className={cn("h-3.5 w-3.5", isRefreshingPricing && "animate-spin")} />
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            disabled={isRefreshingPricing}
+                            title="Refresh pricing data"
+                          >
+                            <RefreshCw className={cn("h-3.5 w-3.5", isRefreshingPricing && "animate-spin")} />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Refresh Market Data?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will re-run the full AI analysis with the latest market pricing data. This uses credits and may take 10–20 seconds.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={refreshPricing}>Refresh</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </CardTitle>
                 </CardHeader>
