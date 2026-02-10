@@ -194,6 +194,8 @@ export type Database = {
           mpg_highway: number | null
           owner_count: number | null
           price_difference: number | null
+          pricing_last_updated: string | null
+          pricing_sources: string[] | null
           reliability_concerns: string[] | null
           residual_value: number | null
           risk_level: Database["public"]["Enums"]["risk_level"] | null
@@ -246,6 +248,8 @@ export type Database = {
           mpg_highway?: number | null
           owner_count?: number | null
           price_difference?: number | null
+          pricing_last_updated?: string | null
+          pricing_sources?: string[] | null
           reliability_concerns?: string[] | null
           residual_value?: number | null
           risk_level?: Database["public"]["Enums"]["risk_level"] | null
@@ -298,6 +302,8 @@ export type Database = {
           mpg_highway?: number | null
           owner_count?: number | null
           price_difference?: number | null
+          pricing_last_updated?: string | null
+          pricing_sources?: string[] | null
           reliability_concerns?: string[] | null
           residual_value?: number | null
           risk_level?: Database["public"]["Enums"]["risk_level"] | null

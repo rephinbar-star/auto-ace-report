@@ -194,6 +194,8 @@ export default function ReportPage() {
         mpg_highway: mpgData?.mpgHighway || null,
         mpg_combined: mpgData?.mpgCombined || null,
         fuel_type: mpgData?.fuelType || null,
+        pricing_sources: pricingSources.length > 0 ? pricingSources : null,
+        pricing_last_updated: pricingLastUpdated?.toISOString() || null,
         status: "complete",
       });
 
@@ -304,8 +306,16 @@ export default function ReportPage() {
             mpgHighway: report.mpg_highway,
             mpgCombined: report.mpg_combined,
             fuelType: report.fuel_type,
-            evRange: null, // Not stored in DB yet, will be looked up if needed
+            evRange: null,
           });
+
+          // Load persisted pricing metadata
+          if (report.pricing_sources?.length) {
+            setPricingSources(report.pricing_sources);
+          }
+          if (report.pricing_last_updated) {
+            setPricingLastUpdated(new Date(report.pricing_last_updated));
+          }
           
           setIsLoading(false);
           return;
@@ -416,8 +426,30 @@ export default function ReportPage() {
         if (result.pricingSources?.length) {
           setPricingSources(result.pricingSources);
         }
-        setPricingLastUpdated(new Date());
+        const now = new Date();
+        setPricingLastUpdated(now);
         sonnerToast.success("Analysis refreshed with latest market data");
+
+        // Persist to DB if this is a saved report
+        if (isSavedReport && id) {
+          const { priceAssessment, depreciationTable, riskAssessment, historyAnalysis } = result.analysis;
+          await supabase.from("vehicle_reports").update({
+            fair_market_private: priceAssessment.fairMarketPrivate,
+            fair_market_trade_in: priceAssessment.fairMarketTradeIn,
+            deal_rating: priceAssessment.dealRating,
+            price_difference: priceAssessment.priceDifference,
+            risk_level: riskAssessment.level,
+            depreciation_risk: riskAssessment.depreciationRisk,
+            reliability_concerns: riskAssessment.reliabilityConcerns,
+            value_proposition: riskAssessment.valueProposition,
+            fair_offer_price: riskAssessment.fairOfferPrice,
+            expert_opinion: riskAssessment.expertOpinion,
+            health_score: historyAnalysis.healthScore,
+            depreciation_table: depreciationTable as any,
+            pricing_sources: result.pricingSources || [],
+            pricing_last_updated: now.toISOString(),
+          }).eq("id", id);
+        }
       } else {
         throw new Error(result?.error || "Refresh failed");
       }
