@@ -523,6 +523,8 @@ export default function ReportPage() {
             fair_offer_price: riskAssessment.fairOfferPrice,
             expert_opinion: riskAssessment.expertOpinion,
             health_score: historyAnalysis.healthScore,
+            history_issues: historyAnalysis.concerns || [],
+            history_positives: historyAnalysis.positives || [],
             depreciation_table: depreciationTable as any,
             pricing_sources: result.pricingSources || [],
             pricing_last_updated: now.toISOString(),
