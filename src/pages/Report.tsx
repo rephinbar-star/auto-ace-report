@@ -122,6 +122,7 @@ export default function ReportPage() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [excludeRepairs, setExcludeRepairs] = useState(false);
+  const [userAnnualMiles, setUserAnnualMiles] = useState(12000);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [vehicleData, setVehicleData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -664,7 +665,7 @@ export default function ReportPage() {
         },
         uvprsResult: uvprsResult ?? undefined,
         tcoData: (() => {
-          const annualMiles = 12000;
+          const annualMiles = userAnnualMiles;
           const tco = calculateTCO(
             condition.askingPrice,
             mpgData?.mpgCombined ?? null,
@@ -982,6 +983,7 @@ export default function ReportPage() {
                 year={vehicle.year}
                 depreciationTable={depreciationTable}
                 evRange={mpgData?.evRange ?? null}
+                onAnnualMilesChange={setUserAnnualMiles}
               />
 
               {/* Depreciation Chart */}
