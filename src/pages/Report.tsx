@@ -437,15 +437,17 @@ export default function ReportPage() {
     const { priceAssessment, historyAnalysis } = analysis;
     
     const computeUVPRS = async () => {
-      // Prefer CarFax/AutoCheck recall data (per-VIN, open only) over NHTSA API (all recalls for year/make/model)
-      let openRecallCount: number | null = history?.openRecallCount ?? null;
-      if (openRecallCount == null) {
-        try {
-          const recallResult = await lookupRecalls(vehicle.year, vehicle.make, vehicle.model);
-          openRecallCount = recallResult.count;
-        } catch {
-          // Fall back to unknown
-        }
+      // Cross-reference NHTSA (primary, all recalls for year/make/model) with CarFax (resolved count for this VIN)
+      let openRecallCount: number | null = null;
+      try {
+        const recallResult = await lookupRecalls(vehicle.year, vehicle.make, vehicle.model);
+        const nhtsaTotal = recallResult.count;
+        const resolvedFromCarfax = history?.resolvedRecallCount ?? 0;
+        // Open = NHTSA total minus CarFax-confirmed resolved (floor at 0)
+        openRecallCount = Math.max(0, nhtsaTotal - resolvedFromCarfax);
+      } catch {
+        // If NHTSA fails, fall back to CarFax-only data
+        openRecallCount = history?.openRecallCount ?? null;
       }
 
       const result = calculateUVPRS({
