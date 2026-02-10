@@ -104,11 +104,11 @@ export function FinancingStep({ onComplete, onBack, askingPrice }: FinancingStep
   const downPayment = loanForm.watch("downPayment");
 
   // Calculate sales tax amount from rate (rounded to 2 decimal places)
-  const salesTaxAmount = Math.round((salesPrice || 0) * ((salesTaxRate || 0) / 100) * 100) / 100;
+  const salesTaxAmount = parseFloat(((salesPrice || 0) * ((salesTaxRate || 0) / 100)).toFixed(2));
 
   // Auto-calculate amount financed when inputs change
   useEffect(() => {
-    const calculated = Math.round(((salesPrice || 0) + salesTaxAmount + (fees || 0) - (downPayment || 0)) * 100) / 100;
+    const calculated = parseFloat(((salesPrice || 0) + salesTaxAmount + (fees || 0) - (downPayment || 0)).toFixed(2));
     const currentAmountFinanced = loanForm.getValues("amountFinanced");
     // Only update if the calculated value differs significantly (user hasn't manually edited)
     if (Math.abs(calculated - currentAmountFinanced) > 0.01) {
