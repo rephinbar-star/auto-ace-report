@@ -617,7 +617,7 @@ export async function generateComparisonPDF(data: ComparisonPDFData): Promise<vo
 
     pdf.setFontSize(10);
     pdf.setFont("helvetica", "bold");
-    pdf.setTextColor(0, 0, 0);
+    pdf.setTextColor(239, 68, 68);
     pdf.text(formatCurrency(tco.totalTCO), margin + 3, yPosition + 13);
     pdf.text(`$${tco.costPerMile.toFixed(2)}`, margin + tcoColW + 3, yPosition + 13);
     pdf.text(`${formatCurrency(monthlyCost)}/mo`, margin + tcoColW * 2 + 3, yPosition + 13);
