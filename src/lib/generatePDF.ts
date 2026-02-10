@@ -1,5 +1,6 @@
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import type { UVPRSResult } from "@/lib/uvprs-scoring";
 
 interface VehicleData {
   year: number;
@@ -65,6 +66,7 @@ interface ReportData {
   images?: string[];
   dealerReview?: DealerReview;
   serviceHistory?: ServiceHistory;
+  uvprsResult?: UVPRSResult;
 }
 
 // Helper to load image as base64 for PDF
@@ -109,7 +111,7 @@ export async function generateReportPDF(
   const margin = 15;
   let yPosition = margin;
 
-  const { vehicle, priceAssessment, riskAssessment, historyAnalysis, depreciationTable, images, dealerReview, serviceHistory } = data;
+  const { vehicle, priceAssessment, riskAssessment, historyAnalysis, depreciationTable, images, dealerReview, serviceHistory, uvprsResult } = data;
 
   // Helper functions
   const addText = (text: string, fontSize: number, isBold = false, color: [number, number, number] = [0, 0, 0]) => {
@@ -327,6 +329,105 @@ export async function generateReportPDF(
     if (chronicItems.length > 0) {
       addText("Chronic Repair Systems:", 10, true, [239, 68, 68]);
       chronicItems.forEach((s) => addText(`⚠ ${s}`, 9));
+    }
+  }
+
+  // UVPRS Risk Score Breakdown
+  if (uvprsResult) {
+    addSection("UVPRS Risk Score");
+
+    // Score header with color
+    const uvprsColor: [number, number, number] =
+      uvprsResult.totalScore <= 20 ? [34, 197, 94] :
+      uvprsResult.totalScore <= 40 ? [234, 179, 8] :
+      uvprsResult.totalScore <= 60 ? [249, 115, 22] :
+      [239, 68, 68];
+
+    // Score box
+    pdf.setFillColor(245, 247, 250);
+    const scoreBoxY = yPosition;
+    pdf.roundedRect(margin, scoreBoxY, pageWidth - 2 * margin, 16, 3, 3, "F");
+    pdf.setFontSize(13);
+    pdf.setFont("helvetica", "bold");
+    pdf.setTextColor(...uvprsColor);
+    pdf.text(`${uvprsResult.totalScore} / 100`, margin + 5, scoreBoxY + 7);
+    pdf.setFontSize(10);
+    pdf.setTextColor(100, 100, 100);
+    pdf.text(`— ${uvprsResult.riskLabel}`, margin + 35, scoreBoxY + 7);
+    pdf.setFontSize(8);
+    pdf.text(`${uvprsResult.knownFactorCount} of ${uvprsResult.factors.length} factors verified`, margin + 5, scoreBoxY + 13);
+    yPosition = scoreBoxY + 22;
+
+    // Factor breakdown table
+    const factorColWidths = [55, 18, 18, pageWidth - 2 * margin - 91];
+    const factorHeaders = ["Factor", "Weight", "Score", "Detail"];
+    let fxPos = margin;
+
+    // Table header
+    pdf.setFillColor(59, 130, 246);
+    pdf.rect(margin, yPosition, pageWidth - 2 * margin, 7, "F");
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(8);
+    pdf.setFont("helvetica", "bold");
+    factorHeaders.forEach((h, i) => {
+      pdf.text(h, fxPos + 2, yPosition + 5);
+      fxPos += factorColWidths[i];
+    });
+    yPosition += 9;
+
+    // Factor rows
+    uvprsResult.factors.forEach((factor, idx) => {
+      if (yPosition > pageHeight - margin - 10) {
+        pdf.addPage();
+        yPosition = margin;
+      }
+
+      if (idx % 2 === 0) {
+        pdf.setFillColor(245, 247, 250);
+        pdf.rect(margin, yPosition - 3, pageWidth - 2 * margin, 7, "F");
+      }
+
+      fxPos = margin;
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(8);
+
+      // Label
+      pdf.setTextColor(0, 0, 0);
+      pdf.text(factor.label + (factor.known ? "" : " *"), fxPos + 2, yPosition);
+      fxPos += factorColWidths[0];
+
+      // Weight
+      pdf.setTextColor(100, 100, 100);
+      pdf.text(`${Math.round(factor.weight * 100)}%`, fxPos + 2, yPosition);
+      fxPos += factorColWidths[1];
+
+      // Score with color
+      const fColor: [number, number, number] =
+        factor.score <= 20 ? [34, 197, 94] :
+        factor.score <= 40 ? [234, 179, 8] :
+        factor.score <= 60 ? [249, 115, 22] :
+        [239, 68, 68];
+      pdf.setTextColor(...fColor);
+      pdf.setFont("helvetica", "bold");
+      pdf.text(`${Math.round(factor.score)}`, fxPos + 2, yPosition);
+      fxPos += factorColWidths[2];
+
+      // Description
+      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(80, 80, 80);
+      const descLines = pdf.splitTextToSize(factor.description, factorColWidths[3] - 4);
+      pdf.text(descLines[0] || "", fxPos + 2, yPosition);
+
+      yPosition += 7;
+    });
+
+    // Unknown factor footnote
+    if (uvprsResult.knownFactorCount < uvprsResult.factors.length) {
+      yPosition += 2;
+      pdf.setFontSize(7);
+      pdf.setTextColor(150, 150, 150);
+      pdf.text("* Unknown factors use neutral score; weight redistributed to known factors.", margin, yPosition);
+      yPosition += 5;
     }
   }
 
