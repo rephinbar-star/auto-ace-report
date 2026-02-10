@@ -1,6 +1,7 @@
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import type { UVPRSResult } from "@/lib/uvprs-scoring";
+import type { TCOResult } from "@/lib/tco-calculations";
 
 interface VehicleData {
   year: number;
@@ -57,6 +58,13 @@ interface ServiceHistory {
   chronicRepairSystems?: string[] | null;
 }
 
+interface TCOData {
+  tco: TCOResult;
+  annualMiles: number;
+  gasPricePerGallon?: number;
+  electricityPerKwh?: number;
+}
+
 interface ReportData {
   vehicle: VehicleData;
   priceAssessment: PriceAssessment;
@@ -67,6 +75,7 @@ interface ReportData {
   dealerReview?: DealerReview;
   serviceHistory?: ServiceHistory;
   uvprsResult?: UVPRSResult;
+  tcoData?: TCOData;
 }
 
 // Helper to load image as base64 for PDF
@@ -111,7 +120,7 @@ export async function generateReportPDF(
   const margin = 15;
   let yPosition = margin;
 
-  const { vehicle, priceAssessment, riskAssessment, historyAnalysis, depreciationTable, images, dealerReview, serviceHistory, uvprsResult } = data;
+  const { vehicle, priceAssessment, riskAssessment, historyAnalysis, depreciationTable, images, dealerReview, serviceHistory, uvprsResult, tcoData } = data;
 
   // Helper functions
   const addText = (text: string, fontSize: number, isBold = false, color: [number, number, number] = [0, 0, 0]) => {
@@ -429,6 +438,101 @@ export async function generateReportPDF(
       pdf.text("* Unknown factors use neutral score; weight redistributed to known factors.", margin, yPosition);
       yPosition += 5;
     }
+  }
+
+  // Total Cost of Ownership
+  if (tcoData) {
+    addSection(`5-Year Total Cost of Ownership (${tcoData.annualMiles.toLocaleString()} mi/yr)`);
+
+    const { tco } = tcoData;
+
+    // TCO summary box
+    pdf.setFillColor(245, 247, 250);
+    const tcoBoxY = yPosition;
+    const tcoBoxH = 20;
+    if (tcoBoxY + tcoBoxH > pageHeight - margin) {
+      pdf.addPage();
+      yPosition = margin;
+    }
+    pdf.roundedRect(margin, yPosition, pageWidth - 2 * margin, tcoBoxH, 3, 3, "F");
+
+    const tcoColW = (pageWidth - 2 * margin) / 3;
+    pdf.setFontSize(9);
+    pdf.setTextColor(100, 100, 100);
+    pdf.text("Total 5-Year Cost", margin + 5, yPosition + 6);
+    pdf.text("Cost Per Mile", margin + tcoColW + 5, yPosition + 6);
+    pdf.text("Monthly Ownership", margin + tcoColW * 2 + 5, yPosition + 6);
+
+    pdf.setFontSize(13);
+    pdf.setFont("helvetica", "bold");
+    pdf.setTextColor(0, 0, 0);
+    pdf.text(formatCurrency(tco.totalTCO), margin + 5, yPosition + 15);
+    pdf.text(`$${tco.costPerMile.toFixed(2)}`, margin + tcoColW + 5, yPosition + 15);
+    const monthlyOwnership = Math.round((tco.annualFuelCost / 12) + (tco.repairCost5Year / 60));
+    pdf.text(`${formatCurrency(monthlyOwnership)}/mo`, margin + tcoColW * 2 + 5, yPosition + 15);
+
+    yPosition += tcoBoxH + 8;
+
+    // Breakdown table
+    const breakdownItems: [string, number, [number, number, number]][] = [
+      ["Purchase Price", tco.purchasePrice, [0, 0, 0]],
+      ["5-Year Fuel Cost", tco.fuelCost5Year, [59, 130, 246]],
+      ["5-Year Maintenance", tco.repairCost5Year, [234, 179, 8]],
+    ];
+    if (tco.mileageDepreciation && tco.mileageDepreciation > 0) {
+      breakdownItems.push(["Excess Mileage Depreciation", tco.mileageDepreciation, [249, 115, 22]]);
+    }
+
+    // Table header
+    const brkColWidths = [90, pageWidth - 2 * margin - 90];
+    pdf.setFillColor(59, 130, 246);
+    pdf.rect(margin, yPosition, pageWidth - 2 * margin, 7, "F");
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(8);
+    pdf.setFont("helvetica", "bold");
+    pdf.text("Category", margin + 2, yPosition + 5);
+    pdf.text("Amount", margin + brkColWidths[0] + 2, yPosition + 5);
+    yPosition += 9;
+
+    breakdownItems.forEach(([label, amount, color], idx) => {
+      if (yPosition > pageHeight - margin - 10) {
+        pdf.addPage();
+        yPosition = margin;
+      }
+      if (idx % 2 === 0) {
+        pdf.setFillColor(245, 247, 250);
+        pdf.rect(margin, yPosition - 3, pageWidth - 2 * margin, 7, "F");
+      }
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(9);
+      pdf.setTextColor(0, 0, 0);
+      pdf.text(label, margin + 2, yPosition);
+      pdf.setTextColor(...color);
+      pdf.setFont("helvetica", "bold");
+      pdf.text(formatCurrency(amount), margin + brkColWidths[0] + 2, yPosition);
+      yPosition += 7;
+    });
+
+    // Total row
+    pdf.setFillColor(59, 130, 246);
+    pdf.rect(margin, yPosition - 3, pageWidth - 2 * margin, 8, "F");
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(10);
+    pdf.setFont("helvetica", "bold");
+    pdf.text("Total Cost of Ownership", margin + 2, yPosition + 1);
+    pdf.text(formatCurrency(tco.totalTCO), margin + brkColWidths[0] + 2, yPosition + 1);
+    yPosition += 12;
+
+    // Footnotes
+    pdf.setFontSize(7);
+    pdf.setTextColor(150, 150, 150);
+    pdf.text(`Based on ${tcoData.annualMiles.toLocaleString()} miles/year over 5 years.`, margin, yPosition);
+    yPosition += 4;
+    if (tco.mileageDepreciation && tco.mileageDepreciation > 0) {
+      pdf.text(`Excess mileage depreciation: ~$0.18/mile above 12,000 mi/yr baseline.`, margin, yPosition);
+      yPosition += 4;
+    }
+    yPosition += 3;
   }
 
   // Risk Assessment
