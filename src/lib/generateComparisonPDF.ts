@@ -411,6 +411,136 @@ export async function generateComparisonPDF(data: ComparisonPDFData): Promise<vo
 
   yPosition += 10;
 
+  // Depreciation Curve Chart
+  interface DepRow { year: number; privateValue: number; tradeInValue?: number }
+  const vehiclesWithDepData = vehicles.filter(v => {
+    if (!v.depreciation_table || !Array.isArray(v.depreciation_table)) return false;
+    return (v.depreciation_table as unknown as DepRow[]).some(r => r.year && r.privateValue);
+  });
+
+  if (vehiclesWithDepData.length >= 2) {
+    if (yPosition > pageHeight - margin - 90) {
+      pdf.addPage();
+      yPosition = margin;
+    }
+
+    addSection("5-Year Depreciation Curve");
+
+    const chartX = margin + 25;
+    const chartW = pageWidth - 2 * margin - 35;
+    const chartH = 55;
+    const chartY = yPosition;
+
+    // Gather all data points
+    const vehicleLines: { label: string; points: { year: number; value: number }[] }[] = [];
+    let globalMax = 0;
+    let globalMin = Infinity;
+
+    vehiclesWithDepData.forEach(v => {
+      const rows = (v.depreciation_table as unknown as DepRow[])
+        .filter(r => r.year >= 0 && r.year <= 5 && r.privateValue != null)
+        .sort((a, b) => a.year - b.year);
+      // Add year 0 = asking price if not present
+      const points = rows.map(r => ({ year: r.year, value: r.privateValue }));
+      if (!points.find(p => p.year === 0)) {
+        points.unshift({ year: 0, value: Number(v.asking_price) });
+      }
+      points.forEach(p => {
+        if (p.value > globalMax) globalMax = p.value;
+        if (p.value < globalMin) globalMin = p.value;
+      });
+      vehicleLines.push({
+        label: `${v.year} ${v.make} ${v.model}`.substring(0, 22),
+        points,
+      });
+    });
+
+    // Add padding to range
+    const valueRange = globalMax - globalMin || 1;
+    const padded = valueRange * 0.1;
+    const yMin = Math.max(0, globalMin - padded);
+    const yMax = globalMax + padded;
+    const yRange = yMax - yMin;
+
+    // Draw axes
+    pdf.setDrawColor(200, 200, 200);
+    pdf.setLineWidth(0.3);
+    // Y axis
+    pdf.line(chartX, chartY, chartX, chartY + chartH);
+    // X axis
+    pdf.line(chartX, chartY + chartH, chartX + chartW, chartY + chartH);
+
+    // Y axis labels (4 ticks)
+    pdf.setFontSize(6);
+    pdf.setTextColor(120, 120, 120);
+    pdf.setFont("helvetica", "normal");
+    for (let i = 0; i <= 3; i++) {
+      const val = yMax - (yRange * i) / 3;
+      const tickY = chartY + (chartH * i) / 3;
+      pdf.setDrawColor(230, 230, 230);
+      pdf.line(chartX, tickY, chartX + chartW, tickY); // grid line
+      pdf.setDrawColor(200, 200, 200);
+      const label = val >= 1000 ? `$${Math.round(val / 1000)}k` : `$${Math.round(val)}`;
+      pdf.text(label, chartX - 2, tickY + 1.5, { align: "right" });
+    }
+
+    // X axis labels
+    for (let yr = 0; yr <= 5; yr++) {
+      const xPt = chartX + (yr / 5) * chartW;
+      pdf.text(yr === 0 ? "Now" : `Yr ${yr}`, xPt, chartY + chartH + 4, { align: "center" });
+    }
+
+    // Line colors per vehicle
+    const lineColors: [number, number, number][] = [
+      [59, 130, 246],   // blue
+      [239, 68, 68],    // red
+      [16, 185, 129],   // green
+      [168, 85, 247],   // purple
+      [234, 179, 8],    // yellow
+    ];
+
+    // Draw lines
+    vehicleLines.forEach((vLine, vIdx) => {
+      const color = lineColors[vIdx % lineColors.length];
+      pdf.setDrawColor(...color);
+      pdf.setLineWidth(0.6);
+
+      for (let i = 0; i < vLine.points.length - 1; i++) {
+        const p1 = vLine.points[i];
+        const p2 = vLine.points[i + 1];
+        const x1 = chartX + (p1.year / 5) * chartW;
+        const y1 = chartY + ((yMax - p1.value) / yRange) * chartH;
+        const x2 = chartX + (p2.year / 5) * chartW;
+        const y2 = chartY + ((yMax - p2.value) / yRange) * chartH;
+        pdf.line(x1, y1, x2, y2);
+      }
+
+      // Draw dots
+      vLine.points.forEach(p => {
+        const px = chartX + (p.year / 5) * chartW;
+        const py = chartY + ((yMax - p.value) / yRange) * chartH;
+        pdf.setFillColor(...color);
+        pdf.circle(px, py, 0.8, "F");
+      });
+    });
+
+    // Legend below chart
+    yPosition = chartY + chartH + 10;
+    let legendX = margin;
+    pdf.setFontSize(7);
+    vehicleLines.forEach((vLine, vIdx) => {
+      const color = lineColors[vIdx % lineColors.length];
+      pdf.setFillColor(...color);
+      pdf.rect(legendX, yPosition - 2, 6, 2, "F");
+      pdf.setTextColor(60, 60, 60);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(vLine.label, legendX + 8, yPosition);
+      legendX += pdf.getTextWidth(vLine.label) + 16;
+    });
+
+    yPosition += 8;
+  }
+
   // Score Breakdown for winner
   if (winner) {
     addSection("Best Buy Score Breakdown");
