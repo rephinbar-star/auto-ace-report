@@ -52,6 +52,7 @@ import {
 import { cn } from "@/lib/utils";
 import { SEO } from "@/components/seo/SEO";
 import { generateReportPDF } from "@/lib/generatePDF";
+import { calculateTCO } from "@/lib/tco-calculations";
 import { toast } from "sonner";
 import { SampleComparisonReport } from "@/components/sample/SampleComparisonReport";
 import { RiskScoreBreakdown } from "@/components/report/RiskScoreBreakdown";
@@ -261,6 +262,18 @@ export default function SampleReportPage() {
         depreciationTable,
         serviceHistory: sampleServiceHistory,
         uvprsResult: sampleUVPRS,
+        tcoData: (() => {
+          const annualMiles = 12000;
+          const tco = calculateTCO(
+            sampleVehicle.askingPrice,
+            28, // Honda Accord combined MPG
+            "gasoline",
+            depreciationTable,
+            { annualMiles },
+            { make: sampleVehicle.make, year: sampleVehicle.year }
+          );
+          return { tco, annualMiles };
+        })(),
       });
       toast.success("PDF downloaded successfully!");
     } catch (error) {

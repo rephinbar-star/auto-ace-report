@@ -60,6 +60,7 @@ import { FuelEconomyCard } from "@/components/report/FuelEconomyCard";
 import { RiskScoreBreakdown } from "@/components/report/RiskScoreBreakdown";
 import { ServiceHistoryTimeline } from "@/components/report/ServiceHistoryTimeline";
 import { generateReportPDF } from "@/lib/generatePDF";
+import { calculateTCO } from "@/lib/tco-calculations";
 import { toast as sonnerToast } from "sonner";
 import { calculateUVPRS, uvprsToLegacyRiskLevel, type UVPRSResult } from "@/lib/uvprs-scoring";
 import { lookupRecalls } from "@/lib/nhtsa";
@@ -654,6 +655,18 @@ export default function ReportPage() {
           chronicRepairSystems: vehicleData?.history?.chronicRepairSystems,
         },
         uvprsResult: uvprsResult ?? undefined,
+        tcoData: (() => {
+          const annualMiles = 12000;
+          const tco = calculateTCO(
+            condition.askingPrice,
+            mpgData?.mpgCombined ?? null,
+            mpgData?.fuelType ?? null,
+            depreciationTable,
+            { annualMiles },
+            { make: vehicle.make, year: vehicle.year }
+          );
+          return { tco, annualMiles };
+        })(),
       });
       sonnerToast.success("PDF downloaded successfully!");
     } catch (error) {
