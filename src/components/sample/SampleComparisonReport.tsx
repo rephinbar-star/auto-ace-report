@@ -69,6 +69,8 @@ const sampleComparisonVehicles: VehicleReport[] = [
     history_issues: null,
     history_positives: null,
     has_service_records: true,
+    pricing_last_updated: null,
+    pricing_sources: [],
   },
   {
     id: "sample-2",
@@ -127,6 +129,8 @@ const sampleComparisonVehicles: VehicleReport[] = [
     history_issues: null,
     history_positives: null,
     has_service_records: true,
+    pricing_last_updated: null,
+    pricing_sources: [],
   },
   {
     id: "sample-3",
@@ -190,6 +194,8 @@ const sampleComparisonVehicles: VehicleReport[] = [
     history_issues: null,
     history_positives: null,
     has_service_records: false,
+    pricing_last_updated: null,
+    pricing_sources: [],
   },
 ];
 
