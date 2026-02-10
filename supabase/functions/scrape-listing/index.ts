@@ -98,7 +98,7 @@ serve(async (req) => {
           success: false,
           error: `${blockedSite.name} is not supported for Quick Import. To import this vehicle, copy the listing URL directly from the dealer's website instead. You can usually find a link to the dealer's site on the ${blockedSite.name} listing page.`,
         }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
