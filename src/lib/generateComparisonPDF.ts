@@ -2,6 +2,7 @@ import jsPDF from "jspdf";
 import type { Tables } from "@/integrations/supabase/types";
 import { calculateTCO, calculateMonthlyOwnershipCost } from "@/lib/tco-calculations";
 import { scoreAndRankVehicles, getYearFiveEquity } from "@/components/compare/scoring-utils";
+import { calculateUVPRS, type UVPRSResult } from "@/lib/uvprs-scoring";
 
 type VehicleReport = Tables<"vehicle_reports">;
 
@@ -383,6 +384,108 @@ export async function generateComparisonPDF(data: ComparisonPDFData): Promise<vo
       yPosition += 3;
     });
   }
+
+  // UVPRS Risk Score per vehicle
+  addSection("UVPRS Risk Score");
+
+  vehicles.forEach((v) => {
+    if (yPosition > pageHeight - margin - 40) {
+      pdf.addPage();
+      yPosition = margin;
+    }
+
+    const uvprs: UVPRSResult = calculateUVPRS({
+      year: v.year,
+      make: v.make,
+      mileage: v.mileage,
+      askingPrice: Number(v.asking_price),
+      titleStatus: v.title_status,
+      accidentCount: v.accident_count,
+      ownerCount: v.owner_count,
+      hasServiceRecords: v.has_service_records,
+      healthScore: v.health_score,
+      historyIssues: v.history_issues,
+      historyPositives: v.history_positives,
+      serviceGapMiles: v.service_gap_miles,
+      majorServicesDue: v.major_services_due,
+      majorServicesDone: v.major_services_done,
+      chronicRepairSystems: v.chronic_repair_systems,
+      fairMarketPrivate: v.fair_market_private ? Number(v.fair_market_private) : null,
+      fairMarketDealer: v.fair_market_dealer ? Number(v.fair_market_dealer) : null,
+    });
+
+    const uvColor: [number, number, number] =
+      uvprs.totalScore <= 20 ? [34, 197, 94] :
+      uvprs.totalScore <= 40 ? [234, 179, 8] :
+      uvprs.totalScore <= 60 ? [249, 115, 22] :
+      [239, 68, 68];
+
+    // Vehicle header with score
+    pdf.setFontSize(10);
+    pdf.setFont("helvetica", "bold");
+    pdf.setTextColor(0, 0, 0);
+    pdf.text(`${v.year} ${v.make} ${v.model}`, margin, yPosition);
+    pdf.setTextColor(...uvColor);
+    pdf.text(`${uvprs.totalScore}/100 — ${uvprs.riskLabel}`, margin + 80, yPosition);
+    yPosition += 6;
+
+    // Factor table header
+    const fColWidths = [50, 16, 16, pageWidth - 2 * margin - 82];
+    pdf.setFillColor(59, 130, 246);
+    pdf.rect(margin, yPosition, pageWidth - 2 * margin, 6, "F");
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(7);
+    pdf.setFont("helvetica", "bold");
+    let fxPos = margin;
+    ["Factor", "Wt", "Score", "Detail"].forEach((h, i) => {
+      pdf.text(h, fxPos + 2, yPosition + 4);
+      fxPos += fColWidths[i];
+    });
+    yPosition += 8;
+
+    // Factor rows
+    uvprs.factors.forEach((factor, idx) => {
+      if (yPosition > pageHeight - margin - 8) {
+        pdf.addPage();
+        yPosition = margin;
+      }
+
+      if (idx % 2 === 0) {
+        pdf.setFillColor(245, 247, 250);
+        pdf.rect(margin, yPosition - 3, pageWidth - 2 * margin, 6, "F");
+      }
+
+      fxPos = margin;
+      pdf.setFontSize(7);
+      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(0, 0, 0);
+      pdf.text(factor.label + (factor.known ? "" : " *"), fxPos + 2, yPosition);
+      fxPos += fColWidths[0];
+
+      pdf.setTextColor(100, 100, 100);
+      pdf.text(`${Math.round(factor.weight * 100)}%`, fxPos + 2, yPosition);
+      fxPos += fColWidths[1];
+
+      const fColor: [number, number, number] =
+        factor.score <= 20 ? [34, 197, 94] :
+        factor.score <= 40 ? [234, 179, 8] :
+        factor.score <= 60 ? [249, 115, 22] :
+        [239, 68, 68];
+      pdf.setTextColor(...fColor);
+      pdf.setFont("helvetica", "bold");
+      pdf.text(`${Math.round(factor.score)}`, fxPos + 2, yPosition);
+      fxPos += fColWidths[2];
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(80, 80, 80);
+      const descLines = pdf.splitTextToSize(factor.description, fColWidths[3] - 4);
+      pdf.text(descLines[0] || "", fxPos + 2, yPosition);
+
+      yPosition += 6;
+    });
+
+    yPosition += 5;
+  });
 
   // Footnotes section
   yPosition += 5;
