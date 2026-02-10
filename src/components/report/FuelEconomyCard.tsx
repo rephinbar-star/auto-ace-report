@@ -362,7 +362,7 @@ export function FuelEconomyCard({
             <TrendingUp className="h-4 w-4 text-primary" />
             <span className="text-sm font-medium">Cost Per Mile</span>
           </div>
-          <span className="text-lg font-bold text-primary">${tco.costPerMile.toFixed(2)}</span>
+          <span className="text-lg font-bold text-danger">${tco.costPerMile.toFixed(2)}</span>
         </div>
 
         <p className="text-xs text-muted-foreground">
