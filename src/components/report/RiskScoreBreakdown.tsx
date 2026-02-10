@@ -52,17 +52,13 @@ interface RiskScoreBreakdownProps {
 const riskColors: Record<string, string> = {
   low: "bg-success text-success-foreground",
   moderate: "bg-warning text-warning-foreground",
-  high: "bg-orange-500 text-white",
-  very_high: "bg-danger text-danger-foreground",
-  extreme: "bg-red-900 text-white",
+  high: "bg-danger text-danger-foreground",
 };
 
 const riskProgressColors: Record<string, string> = {
   low: "[&>div]:bg-success",
   moderate: "[&>div]:bg-warning",
-  high: "[&>div]:bg-orange-500",
-  very_high: "[&>div]:bg-danger",
-  extreme: "[&>div]:bg-red-900",
+  high: "[&>div]:bg-danger",
 };
 
 function getFactorBarColor(score: number): string {
