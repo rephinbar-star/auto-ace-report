@@ -26,6 +26,7 @@ interface FuelEconomyCardProps {
   year: number;
   depreciationTable?: unknown;
   evRange?: number | null; // EV range in miles when new
+  onAnnualMilesChange?: (miles: number) => void;
 }
 
 export function FuelEconomyCard({
@@ -38,6 +39,7 @@ export function FuelEconomyCard({
   year,
   depreciationTable,
   evRange,
+  onAnnualMilesChange,
 }: FuelEconomyCardProps) {
   const [annualMiles, setAnnualMiles] = useState(12000);
   const [gasPricePerGallon, setGasPricePerGallon] = useState(NATIONAL_AVG_GAS_PRICE);
@@ -87,6 +89,7 @@ export function FuelEconomyCard({
 
   const handleMileageChange = (value: number[]) => {
     setAnnualMiles(value[0]);
+    onAnnualMilesChange?.(value[0]);
   };
 
   const handleGasPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
