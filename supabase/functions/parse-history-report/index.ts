@@ -17,6 +17,11 @@ interface VehicleHistory {
   issues: string[];
   positives: string[];
   healthScore: number;
+  // Granular service fields for UVPRS
+  serviceGapMiles?: number | null;
+  majorServicesDue?: string[] | null;
+  majorServicesDone?: string[] | null;
+  chronicRepairSystems?: string[] | null;
 }
 
 serve(async (req) => {
@@ -193,7 +198,13 @@ Extract structured information about accidents, ownership, title status, and ser
         messages: [
           {
             role: "system",
-            content: `You are an expert vehicle history analyst. Extract and analyze vehicle history report data. Be thorough but realistic. If information is missing, indicate "unknown" rather than guessing. Assess overall vehicle health on a 0-100 scale based on available data.`
+            content: `You are an expert vehicle history analyst. Extract and analyze vehicle history report data. Be thorough but realistic. If information is missing, indicate "unknown" rather than guessing. Assess overall vehicle health on a 0-100 scale based on available data.
+
+For service history analysis:
+- Estimate the largest mileage gap between documented services (in miles). If no service records exist, return null.
+- Identify major scheduled maintenance items (timing belt, transmission service, coolant flush, spark plugs, brake fluid flush) that should have been completed based on the vehicle's age/mileage but have no documentation.
+- Identify major services that ARE documented as completed.
+- Flag any vehicle systems that show repeated repairs (2+ repairs to the same system like transmission, cooling, electrical, engine, suspension).`
           },
           { role: "user", content: analysisPrompt }
         ],
@@ -244,6 +255,25 @@ Extract structured information about accidents, ownership, title status, and ser
                   summary: {
                     type: "string",
                     description: "Brief 2-3 sentence summary of the vehicle's history"
+                  },
+                  serviceGapMiles: {
+                    type: ["number", "null"],
+                    description: "Largest mileage gap (in miles) between consecutive documented services. null if no service records exist or gap can't be determined."
+                  },
+                  majorServicesDue: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "Major scheduled maintenance items that should have been completed by now based on age/mileage but have NO documentation (e.g., 'Timing belt replacement', 'Transmission fluid change', 'Coolant flush'). Empty array if all are documented or unknown."
+                  },
+                  majorServicesDone: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "Major scheduled maintenance items that ARE documented as completed (e.g., 'Timing belt replaced at 95k', 'Transmission service at 60k'). Empty array if none documented."
+                  },
+                  chronicRepairSystems: {
+                    type: "array",
+                    items: { type: "string" },
+                    description: "Vehicle systems showing repeated/chronic repair patterns (2+ repairs to same system). Use system names like 'transmission', 'cooling', 'electrical', 'engine', 'suspension', 'brakes'. Empty array if none."
                   }
                 },
                 required: ["accidentCount", "ownerCount", "titleStatus", "serviceRecords", "issues", "positives", "healthScore", "summary"],

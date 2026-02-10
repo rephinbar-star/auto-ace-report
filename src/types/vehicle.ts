@@ -32,6 +32,11 @@ export interface VehicleHistory {
   issues: string[];
   positives: string[];
   healthScore?: number; // 0-100
+  // Granular service history fields for UVPRS S_svc scoring
+  serviceGapMiles?: number | null;         // Largest mileage gap between documented services
+  majorServicesDue?: string[] | null;       // Major services that should have been done but aren't documented
+  majorServicesDone?: string[] | null;      // Major services documented as completed
+  chronicRepairSystems?: string[] | null;   // Systems with repeated repairs (e.g., "transmission", "cooling")
 }
 
 export interface FinancingInfo {

@@ -73,6 +73,10 @@ const sampleComparisonVehicles: VehicleReport[] = [
     pricing_sources: [],
     fair_market_dealer: 27500,
     risk_score: null,
+    service_gap_miles: null,
+    major_services_due: [],
+    major_services_done: [],
+    chronic_repair_systems: [],
   },
   {
     id: "sample-2",
@@ -135,6 +139,10 @@ const sampleComparisonVehicles: VehicleReport[] = [
     pricing_sources: [],
     fair_market_dealer: 28200,
     risk_score: null,
+    service_gap_miles: null,
+    major_services_due: [],
+    major_services_done: [],
+    chronic_repair_systems: [],
   },
   {
     id: "sample-3",
@@ -202,6 +210,10 @@ const sampleComparisonVehicles: VehicleReport[] = [
     pricing_sources: [],
     fair_market_dealer: 30500,
     risk_score: null,
+    service_gap_miles: null,
+    major_services_due: [],
+    major_services_done: [],
+    chronic_repair_systems: [],
   },
 ];
 

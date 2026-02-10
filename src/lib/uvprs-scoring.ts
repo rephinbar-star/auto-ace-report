@@ -32,6 +32,12 @@ export interface UVPRSInput {
   historyIssues?: string[] | null;
   historyPositives?: string[] | null;
 
+  // Granular service data (from enhanced parser)
+  serviceGapMiles?: number | null;
+  majorServicesDue?: string[] | null;
+  majorServicesDone?: string[] | null;
+  chronicRepairSystems?: string[] | null;
+
   // Pricing
   fairMarketPrivate?: number | null;
   fairMarketDealer?: number | null;
@@ -166,56 +172,80 @@ export function scoreVehicleAge(year: number): number {
   return Math.min(95, 80 + (age - 18) * 2);
 }
 
-/** H) Service & repair history (simplified) */
+/** H) Service & repair history — uses granular data when available, falls back to proxies */
 export function scoreServiceHistory(
   hasServiceRecords: boolean | null | undefined,
   healthScore: number | null | undefined,
   issues: string[] | null | undefined,
-  positives: string[] | null | undefined
+  positives: string[] | null | undefined,
+  serviceGapMiles?: number | null,
+  majorServicesDue?: string[] | null,
+  majorServicesDone?: string[] | null,
+  chronicRepairSystems?: string[] | null
 ): { score: number; known: boolean } {
   if (hasServiceRecords == null && healthScore == null) {
     return { score: 50, known: false };
   }
 
-  // Build S_svc from available proxies
-  let gapScore = 50;  // S_gaps — default unknown
-  let dueScore = 50;  // S_due — default unknown
-  let consistencyScore = 50; // S_consistency — default unknown
+  let gapScore = 50;
+  let dueScore = 50;
+  let consistencyScore = 50;
 
   const issueTexts = (issues || []).map(s => s.toLowerCase());
   const positiveTexts = (positives || []).map(s => s.toLowerCase());
 
-  // Use hasServiceRecords as a proxy for gaps
-  if (hasServiceRecords === true) {
-    gapScore = 20; // Has records → likely smaller gaps
-    // Check positives for regular maintenance signals
+  // ── S_gaps: Use granular serviceGapMiles if available ──
+  if (serviceGapMiles != null) {
+    if (serviceGapMiles <= 10000) gapScore = 10;
+    else if (serviceGapMiles <= 20000) gapScore = 40;
+    else if (serviceGapMiles <= 30000) gapScore = 70;
+    else gapScore = 90;
+  } else if (hasServiceRecords === true) {
+    gapScore = 20;
     if (positiveTexts.some(p => p.includes("regular") || p.includes("service") || p.includes("maintenance"))) {
       gapScore = 10;
     }
   } else if (hasServiceRecords === false) {
-    gapScore = 70; // No records → likely larger gaps
+    gapScore = 70;
   }
 
-  // Use health score as proxy for maintenance due
-  if (healthScore != null) {
+  // ── S_due: Use granular majorServicesDue/Done if available ──
+  if (majorServicesDue != null && majorServicesDone != null) {
+    const dueCount = majorServicesDue.length;
+    const doneCount = majorServicesDone.length;
+    // Each overdue major service adds +15, each completed subtracts -10
+    dueScore = Math.max(0, Math.min(100, 30 + dueCount * 15 - doneCount * 10));
+  } else if (healthScore != null) {
     if (healthScore >= 80) dueScore = 15;
     else if (healthScore >= 60) dueScore = 35;
     else if (healthScore >= 40) dueScore = 55;
     else dueScore = 75;
   }
 
-  // Check issues for chronic/repeated repair patterns
-  const chronicKeywords = ["recurring", "repeat", "transmission", "engine", "overheating", "leak"];
-  const hasChronicIssues = issueTexts.some(issue => 
-    chronicKeywords.some(kw => issue.includes(kw))
-  );
-  const hasGoodMaintenance = positiveTexts.some(p => 
-    p.includes("oil change") || p.includes("routine") || p.includes("well-maintained") || p.includes("dealer service")
-  );
+  // ── S_consistency: Use granular chronicRepairSystems if available ──
+  if (chronicRepairSystems != null && chronicRepairSystems.length > 0) {
+    // Severity by system type
+    const criticalSystems = ["transmission", "engine", "cooling"];
+    const hasCritical = chronicRepairSystems.some(s => 
+      criticalSystems.some(cs => s.toLowerCase().includes(cs))
+    );
+    consistencyScore = hasCritical
+      ? Math.min(100, 60 + (chronicRepairSystems.length - 1) * 10)
+      : Math.min(80, 40 + (chronicRepairSystems.length - 1) * 10);
+  } else {
+    // Fallback to text-based analysis
+    const chronicKeywords = ["recurring", "repeat", "transmission", "engine", "overheating", "leak"];
+    const hasChronicIssues = issueTexts.some(issue => 
+      chronicKeywords.some(kw => issue.includes(kw))
+    );
+    const hasGoodMaintenance = positiveTexts.some(p => 
+      p.includes("oil change") || p.includes("routine") || p.includes("well-maintained") || p.includes("dealer service")
+    );
 
-  if (hasChronicIssues) consistencyScore = 70;
-  else if (hasGoodMaintenance) consistencyScore = 20;
-  else if (hasServiceRecords) consistencyScore = 35;
+    if (hasChronicIssues) consistencyScore = 70;
+    else if (hasGoodMaintenance) consistencyScore = 20;
+    else if (hasServiceRecords) consistencyScore = 35;
+  }
 
   const score = 0.45 * gapScore + 0.35 * dueScore + 0.20 * consistencyScore;
   return { score: Math.round(score), known: true };
@@ -275,7 +305,7 @@ export function calculateUVPRS(input: UVPRSInput): UVPRSResult {
   });
 
   // 3. Service History
-  const svc = scoreServiceHistory(input.hasServiceRecords, input.healthScore, input.historyIssues, input.historyPositives);
+  const svc = scoreServiceHistory(input.hasServiceRecords, input.healthScore, input.historyIssues, input.historyPositives, input.serviceGapMiles, input.majorServicesDue, input.majorServicesDone, input.chronicRepairSystems);
   factorResults.push({
     key: "service", label: "Service History",
     score: svc.score, weight: WEIGHTS.service, weighted: 0,

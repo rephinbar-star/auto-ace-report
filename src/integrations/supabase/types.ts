@@ -161,6 +161,7 @@ export type Database = {
           apr: number | null
           asking_price: number
           body_style: string | null
+          chronic_repair_systems: string[] | null
           condition: Database["public"]["Enums"]["vehicle_condition"]
           created_at: string
           deal_rating: Database["public"]["Enums"]["deal_rating"] | null
@@ -185,6 +186,8 @@ export type Database = {
           listing_url: string | null
           loan_amount: number | null
           loan_term: number | null
+          major_services_done: string[] | null
+          major_services_due: string[] | null
           make: string
           mileage: number
           mileage_allowance: number | null
@@ -202,6 +205,7 @@ export type Database = {
           risk_level: Database["public"]["Enums"]["risk_level"] | null
           risk_score: number | null
           seller_type: string | null
+          service_gap_miles: number | null
           status: Database["public"]["Enums"]["report_status"]
           title_status: Database["public"]["Enums"]["title_status"] | null
           transmission: string | null
@@ -217,6 +221,7 @@ export type Database = {
           apr?: number | null
           asking_price: number
           body_style?: string | null
+          chronic_repair_systems?: string[] | null
           condition?: Database["public"]["Enums"]["vehicle_condition"]
           created_at?: string
           deal_rating?: Database["public"]["Enums"]["deal_rating"] | null
@@ -241,6 +246,8 @@ export type Database = {
           listing_url?: string | null
           loan_amount?: number | null
           loan_term?: number | null
+          major_services_done?: string[] | null
+          major_services_due?: string[] | null
           make: string
           mileage: number
           mileage_allowance?: number | null
@@ -258,6 +265,7 @@ export type Database = {
           risk_level?: Database["public"]["Enums"]["risk_level"] | null
           risk_score?: number | null
           seller_type?: string | null
+          service_gap_miles?: number | null
           status?: Database["public"]["Enums"]["report_status"]
           title_status?: Database["public"]["Enums"]["title_status"] | null
           transmission?: string | null
@@ -273,6 +281,7 @@ export type Database = {
           apr?: number | null
           asking_price?: number
           body_style?: string | null
+          chronic_repair_systems?: string[] | null
           condition?: Database["public"]["Enums"]["vehicle_condition"]
           created_at?: string
           deal_rating?: Database["public"]["Enums"]["deal_rating"] | null
@@ -297,6 +306,8 @@ export type Database = {
           listing_url?: string | null
           loan_amount?: number | null
           loan_term?: number | null
+          major_services_done?: string[] | null
+          major_services_due?: string[] | null
           make?: string
           mileage?: number
           mileage_allowance?: number | null
@@ -314,6 +325,7 @@ export type Database = {
           risk_level?: Database["public"]["Enums"]["risk_level"] | null
           risk_score?: number | null
           seller_type?: string | null
+          service_gap_miles?: number | null
           status?: Database["public"]["Enums"]["report_status"]
           title_status?: Database["public"]["Enums"]["title_status"] | null
           transmission?: string | null
