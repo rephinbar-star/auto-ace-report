@@ -325,7 +325,7 @@ export function FuelEconomyCard({
             )}
             <div className="border-t pt-3 flex items-center justify-between">
               <span className="font-semibold">Total 5-Year Cost</span>
-              <span className="text-lg font-bold text-primary">${tco.totalTCO.toLocaleString()}</span>
+              <span className="text-lg font-bold text-danger">${tco.totalTCO.toLocaleString()}</span>
             </div>
           </div>
         </div>
