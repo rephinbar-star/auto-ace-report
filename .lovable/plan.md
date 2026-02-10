@@ -1,49 +1,53 @@
 
 
-# Integrate Real-Time Vehicle Pricing via Perplexity
+# Fix Deal Rating to Compare Against Dealer Retail Price
 
 ## Problem
-Currently, Fair Market Value, Private Sale Value, and Trade-in Value are generated purely by the AI model (Gemini) based on its training data. This can produce inaccurate or outdated pricing estimates.
+Currently, the deal rating always compares the asking price against the **private sale value**, regardless of seller type. When buying from a dealership, this is misleading — dealer prices are naturally higher than private party prices because they include overhead, reconditioning, and sometimes warranties. The correct comparison for a dealer listing is against the **dealer retail value**.
 
 ## Solution
-Use the Perplexity API to perform a real-time web search for current market pricing of the specific vehicle being analyzed, then inject those search results into the Gemini prompt so the AI produces grounded, accurate valuations.
+Add a `fairMarketDealer` value to the analysis, and use the seller type to determine which fair market value the deal rating and price difference are calculated against.
 
-## How It Works
+## Changes
 
-1. When a user submits a vehicle for analysis, the backend will first query Perplexity for current market pricing data
-2. Perplexity searches the web (KBB, Edmunds, CarGurus, Autotrader, etc.) and returns pricing with citations
-3. Those real-world pricing data points are injected into the Gemini prompt as reference material
-4. Gemini then uses the real data to produce its structured analysis, resulting in far more accurate valuations
+### 1. Update the AI Analysis Tool Schema (`supabase/functions/analyze-vehicle/index.ts`)
+- Add `fairMarketDealer` property to the `priceAssessment` tool schema (description: "Fair dealer retail value in dollars")
+- Update the system prompt to instruct the AI to also provide dealer retail pricing
+- Pass the `sellerType` to the AI so it knows the context
+- Update the prompt to instruct the AI: when sellerType is "dealer", calculate `priceDifference` and `dealRating` relative to `fairMarketDealer`; when "private", use `fairMarketPrivate`
 
-## Implementation Steps
+### 2. Update the Pricing Lookup (`supabase/functions/lookup-pricing/index.ts`)
+- Modify the Perplexity query to also request **dealer retail value** alongside private party and trade-in values
 
-### Step 1: Connect Perplexity
-- Use the Perplexity connector to link credentials to this project
-- This makes `PERPLEXITY_API_KEY` available as an environment variable in backend functions
+### 3. Update TypeScript Types (`src/types/vehicle.ts`)
+- Add `fairMarketDealer?: number` to the `PriceAssessment` interface
 
-### Step 2: Create a `lookup-pricing` backend function
-- New edge function: `supabase/functions/lookup-pricing/index.ts`
-- Accepts year, make, model, trim, mileage, and condition
-- Calls Perplexity `sonar` model with a targeted query like:  
-  *"What is the current fair market value, private party sale price, and trade-in value for a [year] [make] [model] [trim] with [mileage] miles in [condition] condition? Include KBB, Edmunds, and NADA values."*
-- Returns the Perplexity response text and citations
-- Add to `supabase/config.toml` with `verify_jwt = false`
+### 4. Update the Database Schema
+- Add `fair_market_dealer` column (integer, nullable) to `vehicle_reports` table
 
-### Step 3: Update `analyze-vehicle` to use real pricing
-- Call `lookup-pricing` in parallel alongside the existing MPG lookup
-- Inject the Perplexity pricing results into the Gemini system/user prompt as grounding context, e.g.:  
-  *"REAL-TIME MARKET DATA (use these as your primary pricing reference): [Perplexity results]"*
-- The AI will then base its `fairMarketPrivate`, `fairMarketTradeIn`, and `fairOfferPrice` on actual current market data
+### 5. Update the Report Page (`src/pages/Report.tsx`)
+- Display the appropriate "Fair Market Price" in the quick stats card based on seller type:
+  - Dealer: show `fairMarketDealer` (labeled "Dealer Retail Value")
+  - Private: show `fairMarketPrivate` (labeled "Private Sale Value")
+- Show all three values (Dealer Retail, Private Sale, Trade-In) in the Price Assessment breakdown so users have full context
+- Update the save logic and refresh logic to persist/load `fairMarketDealer`
+- Update the `percentDifference` reconstruction from DB to use the correct base value
 
-### Step 4: Surface data sources on the report
-- Add a "Pricing Sources" section or footnote on the report page showing Perplexity citations (e.g., KBB, Edmunds links)
-- Return the citations array from the backend alongside the existing analysis response
-- Display as small linked references under the Price Assessment card
+### 6. Update Comparison Components
+- Update `src/components/compare/scoring-utils.ts` and related comparison components if they reference `fairMarketPrivate` for deal scoring, to also account for seller type
 
 ## Technical Details
 
-- Perplexity `sonar` model is used (fast, grounded search -- ideal for factual lookups)
-- The pricing lookup runs in parallel with the MPG lookup, so it adds no extra wait time
-- If Perplexity fails or is rate-limited, the system falls back to the current AI-only estimates (graceful degradation)
-- Citations are passed through to the frontend so users can verify pricing sources
+The key change in the AI prompt will be:
 
+```
+IMPORTANT: The seller type is "${condition.sellerType}". 
+- If "dealer": calculate priceDifference and dealRating by comparing askingPrice to fairMarketDealer (dealer retail value)
+- If "private": calculate priceDifference and dealRating by comparing askingPrice to fairMarketPrivate (private sale value)
+```
+
+The UI will dynamically label the "Fair Market Price" card:
+- Dealer listing: "Dealer Retail Value" with the `fairMarketDealer` amount
+- Private listing: "Private Sale Value" with the `fairMarketPrivate` amount
+
+All three reference values (Dealer Retail, Private Sale, Trade-In) will remain visible in the detailed breakdown for transparency.
