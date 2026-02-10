@@ -45,6 +45,7 @@ import {
   Loader2,
   Building2,
   ShieldCheck,
+  ShieldAlert,
   Star,
   Scale,
 } from "lucide-react";
@@ -53,6 +54,8 @@ import { SEO } from "@/components/seo/SEO";
 import { generateReportPDF } from "@/lib/generatePDF";
 import { toast } from "sonner";
 import { SampleComparisonReport } from "@/components/sample/SampleComparisonReport";
+import { RiskScoreBreakdown } from "@/components/report/RiskScoreBreakdown";
+import { calculateUVPRS } from "@/lib/uvprs-scoring";
 import type { Variants } from "framer-motion";
 
 // Animation variants
@@ -179,6 +182,24 @@ export default function SampleReportPage() {
   const [includeRepairs, setIncludeRepairs] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
   const [activeTab, setActiveTab] = useState("vehicle");
+
+  // Compute UVPRS from sample data
+  const sampleUVPRS = calculateUVPRS({
+    year: sampleVehicle.year,
+    make: sampleVehicle.make,
+    mileage: sampleVehicle.mileage,
+    askingPrice: sampleVehicle.askingPrice,
+    titleStatus: "clean",
+    accidentCount: 0,
+    ownerCount: 1,
+    hasServiceRecords: true,
+    healthScore: historyAnalysis.healthScore,
+    historyIssues: historyAnalysis.concerns,
+    historyPositives: historyAnalysis.positives,
+    fairMarketPrivate: priceAssessment.fairMarketPrivate,
+    fairMarketDealer: undefined,
+    openRecallCount: 0,
+  });
 
   const chartData = depreciationTable.map((row) => ({
     name: `Year ${row.year}`,
@@ -341,11 +362,12 @@ export default function SampleReportPage() {
                 capitalize: true,
               },
               {
-                icon: AlertTriangle,
-                label: "Risk Level",
-                value: riskAssessment.level,
-                iconClass: riskLevelColors[riskAssessment.level],
-                capitalize: true,
+                icon: ShieldAlert,
+                label: "Risk Score",
+                value: `${sampleUVPRS.totalScore} / 100`,
+                iconClass: sampleUVPRS.totalScore <= 20 ? "bg-green-500 text-white"
+                  : sampleUVPRS.totalScore <= 40 ? "bg-yellow-500 text-white"
+                  : "bg-red-500 text-white",
               },
               {
                 icon: TrendingDown,
@@ -695,6 +717,11 @@ export default function SampleReportPage() {
                     </div>
                   </CardContent>
                 </Card>
+              </motion.div>
+
+              {/* UVPRS Risk Score Breakdown */}
+              <motion.div variants={itemVariants} whileHover={{ y: -5 }} transition={{ duration: 0.2 }}>
+                <RiskScoreBreakdown result={sampleUVPRS} />
               </motion.div>
 
               {/* Risk Assessment */}

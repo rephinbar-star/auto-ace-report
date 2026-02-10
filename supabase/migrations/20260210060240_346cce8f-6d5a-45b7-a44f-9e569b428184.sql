@@ -1,0 +1,1 @@
+ALTER TABLE public.vehicle_reports ADD COLUMN risk_score integer;
