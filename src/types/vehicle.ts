@@ -61,6 +61,7 @@ export interface DepreciationYear {
 
 export interface PriceAssessment {
   fairMarketPrivate: number;
+  fairMarketDealer?: number;
   fairMarketTradeIn: number;
   askingPrice: number;
   dealRating: "excellent" | "good" | "fair" | "poor" | "overpriced";

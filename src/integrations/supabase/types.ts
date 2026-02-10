@@ -169,6 +169,7 @@ export type Database = {
           drivetrain: string | null
           engine_size: string | null
           expert_opinion: string | null
+          fair_market_dealer: number | null
           fair_market_private: number | null
           fair_market_trade_in: number | null
           fair_offer_price: number | null
@@ -223,6 +224,7 @@ export type Database = {
           drivetrain?: string | null
           engine_size?: string | null
           expert_opinion?: string | null
+          fair_market_dealer?: number | null
           fair_market_private?: number | null
           fair_market_trade_in?: number | null
           fair_offer_price?: number | null
@@ -277,6 +279,7 @@ export type Database = {
           drivetrain?: string | null
           engine_size?: string | null
           expert_opinion?: string | null
+          fair_market_dealer?: number | null
           fair_market_private?: number | null
           fair_market_trade_in?: number | null
           fair_offer_price?: number | null
