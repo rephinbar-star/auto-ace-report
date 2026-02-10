@@ -47,6 +47,7 @@ import {
   BadgeCheck,
   Bot,
   RefreshCw,
+  ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getWithExpiry, removeExpirableItem } from "@/lib/storage-utils";
@@ -56,8 +57,11 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { VehicleImageGallery } from "@/components/report/VehicleImageGallery";
 import { DealerReview } from "@/components/report/DealerReview";
 import { FuelEconomyCard } from "@/components/report/FuelEconomyCard";
+import { RiskScoreBreakdown } from "@/components/report/RiskScoreBreakdown";
 import { generateReportPDF } from "@/lib/generatePDF";
 import { toast as sonnerToast } from "sonner";
+import { calculateUVPRS, uvprsToLegacyRiskLevel, type UVPRSResult } from "@/lib/uvprs-scoring";
+import { lookupRecalls } from "@/lib/nhtsa";
 
 interface DepreciationYear {
   year: number;
@@ -131,6 +135,7 @@ export default function ReportPage() {
   const [pricingSources, setPricingSources] = useState<string[]>([]);
   const [pricingLastUpdated, setPricingLastUpdated] = useState<Date | null>(null);
   const [isRefreshingPricing, setIsRefreshingPricing] = useState(false);
+  const [uvprsResult, setUvprsResult] = useState<UVPRSResult | null>(null);
   
   // Check if coming from comparison
   const fromComparison = searchParams.get("from") === "compare";
@@ -199,6 +204,7 @@ export default function ReportPage() {
         fuel_type: mpgData?.fuelType || null,
         pricing_sources: pricingSources.length > 0 ? pricingSources : null,
         pricing_last_updated: pricingLastUpdated?.toISOString() || null,
+        risk_score: uvprsResult?.totalScore ?? null,
         status: "complete",
       });
 
@@ -411,6 +417,43 @@ export default function ReportPage() {
     loadAnalysis();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Compute UVPRS when analysis data is available
+  useEffect(() => {
+    if (!analysis || !vehicleData) return;
+    const { vehicle, condition, history } = vehicleData;
+    const { priceAssessment, historyAnalysis } = analysis;
+    
+    const computeUVPRS = async () => {
+      // Try to fetch recall data
+      let openRecallCount: number | null = null;
+      try {
+        const recallResult = await lookupRecalls(vehicle.year, vehicle.make, vehicle.model);
+        openRecallCount = recallResult.count;
+      } catch {
+        // Fall back to unknown
+      }
+
+      const result = calculateUVPRS({
+        year: vehicle.year,
+        make: vehicle.make,
+        mileage: condition.mileage,
+        askingPrice: condition.askingPrice,
+        titleStatus: history?.titleStatus || null,
+        accidentCount: history?.accidentCount ?? null,
+        ownerCount: history?.ownerCount ?? null,
+        hasServiceRecords: history?.serviceRecords ?? null,
+        healthScore: historyAnalysis?.healthScore ?? null,
+        historyIssues: historyAnalysis?.concerns ?? history?.issues ?? null,
+        historyPositives: historyAnalysis?.positives ?? null,
+        fairMarketPrivate: priceAssessment?.fairMarketPrivate ?? null,
+        fairMarketDealer: priceAssessment?.fairMarketDealer ?? null,
+        openRecallCount,
+      });
+      setUvprsResult(result);
+    };
+    computeUVPRS();
+  }, [analysis, vehicleData]);
 
   const refreshPricing = async () => {
     if (!vehicleData || isRefreshingPricing) return;
@@ -719,12 +762,21 @@ export default function ReportPage() {
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className={cn("flex h-10 w-10 items-center justify-center rounded-full", riskLevelColors[riskAssessment.level])}>
-                    <AlertTriangle className="h-5 w-5" />
+                  <div className={cn("flex h-10 w-10 items-center justify-center rounded-full", 
+                    uvprsResult 
+                      ? uvprsResult.totalScore <= 20 ? "bg-success text-success-foreground"
+                        : uvprsResult.totalScore <= 40 ? "bg-warning text-warning-foreground"
+                        : uvprsResult.totalScore <= 60 ? "bg-orange-500 text-white"
+                        : "bg-danger text-danger-foreground"
+                      : riskLevelColors[riskAssessment.level]
+                  )}>
+                    <ShieldAlert className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Risk Level</p>
-                    <p className="text-xl font-bold capitalize">{riskAssessment.level}</p>
+                    <p className="text-sm text-muted-foreground">Risk Score</p>
+                    <p className="text-xl font-bold">
+                      {uvprsResult ? `${uvprsResult.totalScore} / 100` : riskAssessment.level}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -1127,6 +1179,11 @@ export default function ReportPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* UVPRS Risk Score Breakdown */}
+              {uvprsResult && (
+                <RiskScoreBreakdown result={uvprsResult} />
+              )}
 
               {/* Risk Factors */}
               <Card>

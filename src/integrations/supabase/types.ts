@@ -200,6 +200,7 @@ export type Database = {
           reliability_concerns: string[] | null
           residual_value: number | null
           risk_level: Database["public"]["Enums"]["risk_level"] | null
+          risk_score: number | null
           seller_type: string | null
           status: Database["public"]["Enums"]["report_status"]
           title_status: Database["public"]["Enums"]["title_status"] | null
@@ -255,6 +256,7 @@ export type Database = {
           reliability_concerns?: string[] | null
           residual_value?: number | null
           risk_level?: Database["public"]["Enums"]["risk_level"] | null
+          risk_score?: number | null
           seller_type?: string | null
           status?: Database["public"]["Enums"]["report_status"]
           title_status?: Database["public"]["Enums"]["title_status"] | null
@@ -310,6 +312,7 @@ export type Database = {
           reliability_concerns?: string[] | null
           residual_value?: number | null
           risk_level?: Database["public"]["Enums"]["risk_level"] | null
+          risk_score?: number | null
           seller_type?: string | null
           status?: Database["public"]["Enums"]["report_status"]
           title_status?: Database["public"]["Enums"]["title_status"] | null

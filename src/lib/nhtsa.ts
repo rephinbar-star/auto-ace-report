@@ -149,6 +149,36 @@ export async function getModels(make: string, year: number): Promise<string[]> {
   }
 }
 
+// Look up open recalls by year/make/model via NHTSA Recalls API
+export interface RecallResult {
+  count: number;
+  recalls: { component: string; summary: string }[];
+}
+
+export async function lookupRecalls(year: number, make: string, model: string): Promise<RecallResult> {
+  try {
+    const response = await fetch(
+      `https://api.nhtsa.gov/recalls/recallsByVehicle?make=${encodeURIComponent(make)}&model=${encodeURIComponent(model)}&modelYear=${year}`
+    );
+    if (!response.ok) {
+      console.warn("NHTSA Recalls API returned non-OK status:", response.status);
+      return { count: 0, recalls: [] };
+    }
+    const data = await response.json();
+    const results = data.results || [];
+    return {
+      count: results.length,
+      recalls: results.map((r: any) => ({
+        component: r.Component || "",
+        summary: r.Summary || "",
+      })),
+    };
+  } catch (error) {
+    console.error("Error looking up recalls:", error);
+    return { count: 0, recalls: [] };
+  }
+}
+
 // Validate VIN format
 export function isValidVIN(vin: string): boolean {
   // VIN must be exactly 17 characters

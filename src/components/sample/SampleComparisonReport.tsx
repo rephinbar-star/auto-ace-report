@@ -72,6 +72,7 @@ const sampleComparisonVehicles: VehicleReport[] = [
     pricing_last_updated: null,
     pricing_sources: [],
     fair_market_dealer: 27500,
+    risk_score: null,
   },
   {
     id: "sample-2",
@@ -133,6 +134,7 @@ const sampleComparisonVehicles: VehicleReport[] = [
     pricing_last_updated: null,
     pricing_sources: [],
     fair_market_dealer: 28200,
+    risk_score: null,
   },
   {
     id: "sample-3",
@@ -199,6 +201,7 @@ const sampleComparisonVehicles: VehicleReport[] = [
     pricing_last_updated: null,
     pricing_sources: [],
     fair_market_dealer: 30500,
+    risk_score: null,
   },
 ];
 
