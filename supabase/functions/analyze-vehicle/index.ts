@@ -181,6 +181,8 @@ Your analysis must be data-driven and consider:
 - Common mechanical issues and repair costs for this vehicle
 - The impact of mileage, condition, and ownership history on value
 - Realistic repair and maintenance costs based on the vehicle's age and mileage
+
+CRITICAL MILEAGE CONSTRAINT: The vehicle's current odometer reading is ${condition.mileage.toLocaleString()} miles. All reliability concerns, service history references, and mileage-based assessments MUST be consistent with this mileage. Do NOT reference services completed at mileages higher than the vehicle's current odometer reading.
 ${hasPricing ? "\nIMPORTANT: You have been provided with REAL-TIME MARKET PRICING DATA from authoritative sources. You MUST use these values as your primary reference for fairMarketPrivate, fairMarketDealer, fairMarketTradeIn, and fairOfferPrice. Do not deviate significantly from the sourced pricing data." : ""}
 
 IMPORTANT: The seller type is "${condition.sellerType}".

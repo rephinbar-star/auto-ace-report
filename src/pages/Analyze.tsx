@@ -148,6 +148,7 @@ export default function AnalyzePage() {
               onComplete={handleHistoryComplete}
               onBack={() => setCurrentStep(2)}
               onSkip={handleHistorySkip}
+              mileage={condition?.mileage}
             />
           )}
 
