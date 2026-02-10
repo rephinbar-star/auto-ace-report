@@ -10,7 +10,8 @@ export interface ParseHistoryResponse {
 
 export async function parseHistoryReport(
   file?: File,
-  url?: string
+  url?: string,
+  mileage?: number
 ): Promise<ParseHistoryResponse> {
   const { data: { session } } = await supabase.auth.getSession();
   
@@ -30,6 +31,10 @@ export async function parseHistoryReport(
   
   // Add flag for unauthenticated analysis
   formData.append("allowUnauthenticated", session ? "false" : "true");
+  
+  if (mileage != null) {
+    formData.append("mileage", String(mileage));
+  }
 
   const response = await fetch(
     `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-history-report`,

@@ -79,6 +79,8 @@ serve(async (req) => {
     const file = formData.get("file") as File | null;
     const reportUrl = formData.get("url") as string | null;
     const allowUnauthenticated = formData.get("allowUnauthenticated") === "true";
+    const mileageRaw = formData.get("mileage") as string | null;
+    const vehicleMileage = mileageRaw ? parseInt(mileageRaw, 10) : null;
 
     // If no auth and not explicitly allowing unauthenticated, reject
     if (!user && !allowUnauthenticated) {
@@ -202,11 +204,11 @@ Extract structured information about accidents, ownership, title status, and ser
           {
             role: "system",
             content: `You are an expert vehicle history analyst. Extract and analyze vehicle history report data. Be thorough but realistic. If information is missing, indicate "unknown" rather than guessing. Assess overall vehicle health on a 0-100 scale based on available data.
-
+${vehicleMileage ? `\nCRITICAL MILEAGE CONSTRAINT: The vehicle's current odometer reading is ${vehicleMileage.toLocaleString()} miles. You MUST NOT report any service as completed at a mileage higher than ${vehicleMileage.toLocaleString()} miles. All service entries, gap calculations, and maintenance references must be consistent with this odometer reading. Only flag services as "due" if they would normally be required at or below ${vehicleMileage.toLocaleString()} miles.\n` : ''}
 For service history analysis:
 - Estimate the largest mileage gap between documented services (in miles). If no service records exist, return null.
 - Identify major scheduled maintenance items (timing belt, transmission service, coolant flush, spark plugs, brake fluid flush) that should have been completed based on the vehicle's age/mileage but have no documentation.
-- Identify major services that ARE documented as completed.
+- Identify major services that ARE documented as completed. Each entry MUST reference only mileages that the vehicle has actually reached.
 - Flag any vehicle systems that show repeated repairs (2+ repairs to the same system like transmission, cooling, electrical, engine, suspension).`
           },
           { role: "user", content: analysisPrompt }
@@ -271,7 +273,7 @@ For service history analysis:
                   majorServicesDone: {
                     type: "array",
                     items: { type: "string" },
-                    description: "Major scheduled maintenance items that ARE documented as completed (e.g., 'Timing belt replaced at 95k', 'Transmission service at 60k'). Empty array if none documented."
+                    description: `Major scheduled maintenance items that ARE documented as completed.${vehicleMileage ? ` All referenced mileages must be at or below the vehicle's current ${vehicleMileage.toLocaleString()} miles.` : ''} Empty array if none documented.`
                   },
                   chronicRepairSystems: {
                     type: "array",

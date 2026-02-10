@@ -29,9 +29,10 @@ interface HistoryStepProps {
   onComplete: (history?: VehicleHistory) => void;
   onBack: () => void;
   onSkip: () => void;
+  mileage?: number;
 }
 
-export function HistoryStep({ onComplete, onBack, onSkip }: HistoryStepProps) {
+export function HistoryStep({ onComplete, onBack, onSkip, mileage }: HistoryStepProps) {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -97,7 +98,7 @@ export function HistoryStep({ onComplete, onBack, onSkip }: HistoryStepProps) {
     setUrlAccessError(false);
 
     try {
-      const result = await parseHistoryReport(uploadedFile || undefined, historyUrl || undefined);
+      const result = await parseHistoryReport(uploadedFile || undefined, historyUrl || undefined, mileage);
 
       if (result.success && result.history) {
         setAnalysisResult(result.history);
