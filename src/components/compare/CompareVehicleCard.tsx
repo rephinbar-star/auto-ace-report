@@ -140,15 +140,23 @@ export function CompareVehicleCard({ report, onRemove, isBestBuy, rank }: Compar
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <Gauge className="h-3 w-3" /> Mileage
+                <DollarSign className="h-3 w-3" />
+                {report.seller_type === "dealer" ? "Dealer Retail" : "Private Sale"}
               </p>
-              <p className="font-semibold">{report.mileage.toLocaleString()} mi</p>
+              <p className="font-semibold">
+                {report.seller_type === "dealer" && report.fair_market_dealer
+                  ? `$${Number(report.fair_market_dealer).toLocaleString()}`
+                  : report.fair_market_private
+                    ? `$${Number(report.fair_market_private).toLocaleString()}`
+                    : "—"
+                }
+              </p>
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <Car className="h-3 w-3" /> Condition
+                <Gauge className="h-3 w-3" /> Mileage
               </p>
-              <p className="font-semibold capitalize">{report.condition}</p>
+              <p className="font-semibold">{report.mileage.toLocaleString()} mi</p>
             </div>
           </div>
 
@@ -160,7 +168,9 @@ export function CompareVehicleCard({ report, onRemove, isBestBuy, rank }: Compar
                 ? "bg-red-500/10 text-red-600" 
                 : "bg-green-500/10 text-green-600"
             )}>
-              <span className="text-sm font-medium">Price vs Market</span>
+              <span className="text-sm font-medium">
+                vs {report.seller_type === "dealer" ? "Dealer Retail" : "Market"}
+              </span>
               <span className="font-bold">
                 {Number(report.price_difference) > 0 ? "+" : ""}
                 ${Number(report.price_difference).toLocaleString()}
