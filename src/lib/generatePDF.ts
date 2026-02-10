@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import type { UVPRSResult } from "@/lib/uvprs-scoring";
 import type { TCOResult } from "@/lib/tco-calculations";
+import logoIcon from "@/assets/logo-icon.png";
 
 interface VehicleData {
   year: number;
@@ -80,10 +81,8 @@ interface ReportData {
   sellerType?: string;
 }
 
-// ── Color palette matching the website ──
-// Primary teal: hsl(174, 72%, 40%) ≈ rgb(28, 175, 154)
+// ── Color palette matching the website (teal primary) ──
 const TEAL: [number, number, number] = [28, 175, 154];
-const TEAL_LIGHT: [number, number, number] = [232, 248, 245]; // bg tint
 const GREEN: [number, number, number] = [34, 197, 94];
 const AMBER: [number, number, number] = [234, 179, 8];
 const RED: [number, number, number] = [220, 38, 38];
@@ -122,11 +121,32 @@ function fitImageToBox(
 
 const fmt = (v: number) => `$${v.toLocaleString()}`;
 
+// Load logo as base64 at module level
+let logoBase64: string | null = null;
+async function getLogoBase64(): Promise<string | null> {
+  if (logoBase64) return logoBase64;
+  try {
+    const response = await fetch(logoIcon);
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        logoBase64 = reader.result as string;
+        resolve(logoBase64);
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
 export async function generateReportPDF(data: ReportData): Promise<void> {
   const pdf = new jsPDF("p", "mm", "a4");
   const W = pdf.internal.pageSize.getWidth();
   const H = pdf.internal.pageSize.getHeight();
-  const M = 14; // margin
+  const M = 14;
   const contentW = W - 2 * M;
   let y = 0;
 
@@ -134,7 +154,7 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
 
   // ── Helpers ──
   const ensureSpace = (needed: number) => {
-    if (y + needed > H - 12) {
+    if (y + needed > H - 14) {
       addFooter();
       pdf.addPage();
       y = M;
@@ -148,13 +168,16 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
     pdf.text("www.carwise.com", W - M - 28, H - 6);
   };
 
-  const sectionTitle = (icon: string, title: string) => {
+  const sectionTitle = (title: string) => {
     ensureSpace(14);
-    y += 6;
-    pdf.setFontSize(12);
+    y += 7;
+    // Teal left accent bar
+    pdf.setFillColor(...TEAL);
+    pdf.rect(M, y - 4, 2.5, 6, "F");
+    pdf.setFontSize(11);
     pdf.setFont("helvetica", "bold");
-    pdf.setTextColor(...TEAL);
-    pdf.text(`${icon}  ${title}`, M, y);
+    pdf.setTextColor(...BLACK);
+    pdf.text(title, M + 6, y);
     y += 6;
   };
 
@@ -169,46 +192,60 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
     y += lines.length * lh + 1.5;
   };
 
+  const bulletItem = (text: string, color: [number, number, number] = SLATE) => {
+    wrappedText(`\u2022  ${text}`, 9, color, false, 4);
+  };
+
   // ══════════════════════════════════════════════
-  // HEADER — Teal banner with CarWise branding
+  // HEADER — Teal banner with logo
   // ══════════════════════════════════════════════
   pdf.setFillColor(...TEAL);
-  pdf.rect(0, 0, W, 28, "F");
+  pdf.rect(0, 0, W, 26, "F");
 
-  // Car icon (unicode car)
+  // Logo image
+  const logo = await getLogoBase64();
+  if (logo) {
+    try {
+      pdf.addImage(logo, "PNG", M, 4, 18, 18);
+    } catch { /* skip */ }
+  }
+
+  // Brand name
   pdf.setTextColor(...WHITE);
-  pdf.setFontSize(20);
+  pdf.setFontSize(18);
   pdf.setFont("helvetica", "bold");
-  pdf.text("CarWise", M, 14);
+  pdf.text("CarWise", M + (logo ? 21 : 0), 14);
+
   // Subtitle
-  pdf.setFontSize(9);
+  pdf.setFontSize(8);
   pdf.setFont("helvetica", "normal");
-  pdf.text("Vehicle Analysis Report", M, 21);
+  pdf.text("Vehicle Analysis Report", M + (logo ? 21 : 0), 20);
+
   // Date on right
   pdf.setFontSize(8);
-  pdf.text(new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }), W - M - 40, 14);
+  pdf.text(new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }), W - M - 42, 14);
 
-  y = 36;
+  y = 34;
 
   // ══════════════════════════════════════════════
   // VEHICLE TITLE
   // ══════════════════════════════════════════════
-  pdf.setFontSize(18);
+  pdf.setFontSize(16);
   pdf.setFont("helvetica", "bold");
   pdf.setTextColor(...BLACK);
   pdf.text(`${vehicle.year} ${vehicle.make} ${vehicle.model}${vehicle.trim ? ` ${vehicle.trim}` : ""}`, M, y);
   y += 6;
-  pdf.setFontSize(10);
+  pdf.setFontSize(9);
   pdf.setFont("helvetica", "normal");
   pdf.setTextColor(...SLATE);
-  pdf.text(`${vehicle.mileage.toLocaleString()} miles  •  Asking ${fmt(vehicle.askingPrice)}`, M, y);
+  pdf.text(`${vehicle.mileage.toLocaleString()} miles  |  Asking ${fmt(vehicle.askingPrice)}`, M, y);
   y += 8;
 
   // ══════════════════════════════════════════════
-  // QUICK STATS (4 cards in a row matching the website)
+  // QUICK STATS (4 cards)
   // ══════════════════════════════════════════════
   const cardW = (contentW - 9) / 4;
-  const cardH = 22;
+  const cardH = 20;
 
   const referenceValue = sellerType === "dealer" && priceAssessment.fairMarketDealer
     ? priceAssessment.fairMarketDealer
@@ -226,33 +263,33 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
     return uvprsResult.riskLevel === "low" ? GREEN : uvprsResult.riskLevel === "moderate" ? AMBER : RED;
   };
 
-  const cards = [
+  const statCards = [
     { label: sellerType === "dealer" ? "Dealer Retail Value" : "Private Sale Value", value: fmt(referenceValue), color: TEAL },
     { label: "Deal Rating", value: priceAssessment.dealRating.charAt(0).toUpperCase() + priceAssessment.dealRating.slice(1), color: ratingColor(priceAssessment.dealRating) },
     { label: "Risk Score", value: uvprsResult ? `${uvprsResult.totalScore} / 100` : riskAssessment.level, color: uvprsColor() },
     { label: "Fair Offer", value: fmt(riskAssessment.fairOfferPrice), color: GREEN },
   ];
 
-  cards.forEach((card, i) => {
+  statCards.forEach((card, i) => {
     const x = M + i * (cardW + 3);
     pdf.setFillColor(...BG_MUTED);
     pdf.roundedRect(x, y, cardW, cardH, 2, 2, "F");
-    // Color dot
+    // Color left accent
     pdf.setFillColor(...card.color);
-    pdf.circle(x + 6, y + cardH / 2, 3, "F");
+    pdf.rect(x, y, 2, cardH, "F");
     // Label
     pdf.setFontSize(7);
     pdf.setTextColor(...SLATE);
-    pdf.text(card.label, x + 12, y + 8);
+    pdf.text(card.label, x + 5, y + 7);
     // Value
-    pdf.setFontSize(12);
+    pdf.setFontSize(11);
     pdf.setFont("helvetica", "bold");
     pdf.setTextColor(...card.color);
-    pdf.text(card.value, x + 12, y + 16);
+    pdf.text(card.value, x + 5, y + 15);
     pdf.setFont("helvetica", "normal");
   });
 
-  y += cardH + 8;
+  y += cardH + 6;
 
   // ══════════════════════════════════════════════
   // VEHICLE IMAGES (2x2 grid)
@@ -310,86 +347,88 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   // ══════════════════════════════════════════════
   // PRICE ASSESSMENT
   // ══════════════════════════════════════════════
-  sectionTitle("$", "Price Assessment");
+  sectionTitle("Price Assessment");
 
   // Asking vs Fair Market highlight box
-  ensureSpace(22);
+  ensureSpace(20);
   pdf.setFillColor(...BG_MUTED);
-  pdf.roundedRect(M, y, contentW, 18, 3, 3, "F");
+  pdf.roundedRect(M, y, contentW, 16, 3, 3, "F");
+
   pdf.setFontSize(8);
   pdf.setTextColor(...SLATE);
-  pdf.text("Asking Price", M + 5, y + 6);
-  pdf.setFontSize(13);
+  pdf.text("Asking Price", M + 5, y + 5);
+  pdf.setFontSize(12);
   pdf.setFont("helvetica", "bold");
   pdf.setTextColor(...BLACK);
-  pdf.text(fmt(vehicle.askingPrice), M + 5, y + 13);
+  pdf.text(fmt(vehicle.askingPrice), M + 5, y + 12);
 
   pdf.setFontSize(8);
   pdf.setFont("helvetica", "normal");
   pdf.setTextColor(...SLATE);
-  pdf.text("vs Fair Market", W - M - 45, y + 6);
+  pdf.text("vs Fair Market", W - M - 45, y + 5);
   const diffColor: [number, number, number] = priceAssessment.priceDifference > 0 ? RED : GREEN;
-  pdf.setFontSize(13);
+  pdf.setFontSize(12);
   pdf.setFont("helvetica", "bold");
   pdf.setTextColor(...diffColor);
-  pdf.text(`${priceAssessment.priceDifference > 0 ? "+" : ""}${fmt(Math.abs(priceAssessment.priceDifference))}`, W - M - 45, y + 13);
-  y += 22;
+  pdf.text(`${priceAssessment.priceDifference > 0 ? "+" : ""}${fmt(Math.abs(priceAssessment.priceDifference))}`, W - M - 45, y + 12);
+  y += 20;
 
   // Price breakdown cards
-  const priceCards = [
+  const priceCards: { label: string; value: string }[] = [];
+  if (priceAssessment.fairMarketDealer) {
+    priceCards.push({ label: "Dealer Retail", value: fmt(priceAssessment.fairMarketDealer) });
+  }
+  priceCards.push(
     { label: "Private Sale", value: fmt(priceAssessment.fairMarketPrivate) },
     { label: "Trade-In Value", value: fmt(priceAssessment.fairMarketTradeIn) },
-  ];
-  if (priceAssessment.fairMarketDealer) {
-    priceCards.unshift({ label: "Dealer Retail", value: fmt(priceAssessment.fairMarketDealer) });
-  }
+  );
   const pcW = (contentW - (priceCards.length - 1) * 3) / priceCards.length;
-  ensureSpace(18);
+  ensureSpace(16);
   priceCards.forEach((pc, i) => {
     const x = M + i * (pcW + 3);
     pdf.setDrawColor(200, 210, 220);
-    pdf.roundedRect(x, y, pcW, 14, 2, 2, "S");
+    pdf.roundedRect(x, y, pcW, 13, 2, 2, "S");
     pdf.setFontSize(7);
     pdf.setTextColor(...SLATE);
     pdf.text(pc.label, x + 4, y + 5);
-    pdf.setFontSize(11);
+    pdf.setFontSize(10);
     pdf.setFont("helvetica", "bold");
     pdf.setTextColor(...BLACK);
     pdf.text(pc.value, x + 4, y + 11);
     pdf.setFont("helvetica", "normal");
   });
-  y += 18;
+  y += 17;
 
   // ══════════════════════════════════════════════
   // FUEL ECONOMY & TOTAL COST OF OWNERSHIP
   // ══════════════════════════════════════════════
   if (tcoData) {
     const { tco, annualMiles } = tcoData;
-    sectionTitle("⛽", `Fuel Economy & Ownership Cost (${annualMiles.toLocaleString()} mi/yr)`);
+    sectionTitle(`Fuel Economy & Ownership Cost (${annualMiles.toLocaleString()} mi/yr)`);
 
     // TCO summary box
-    ensureSpace(24);
+    ensureSpace(22);
     pdf.setFillColor(...BG_MUTED);
-    pdf.roundedRect(M, y, contentW, 20, 3, 3, "F");
+    pdf.roundedRect(M, y, contentW, 18, 3, 3, "F");
 
     const tcoColW = contentW / 3;
-    const items = [
+    const tcoItems = [
       { label: "Total 5-Year Cost", value: fmt(tco.totalTCO), color: RED },
       { label: "Cost Per Mile", value: `$${tco.costPerMile.toFixed(2)}`, color: RED },
       { label: "Monthly Ownership", value: `${fmt(Math.round((tco.annualFuelCost / 12) + (tco.repairCost5Year / 60)))}/mo`, color: BLACK },
     ];
-    items.forEach((item, i) => {
+    tcoItems.forEach((item, i) => {
       const x = M + i * tcoColW + 5;
       pdf.setFontSize(7);
       pdf.setTextColor(...SLATE);
-      pdf.text(item.label, x, y + 7);
-      pdf.setFontSize(12);
+      pdf.text(item.label, x, y + 6);
+      pdf.setFontSize(11);
       pdf.setFont("helvetica", "bold");
       pdf.setTextColor(...item.color);
-      pdf.text(item.value, x, y + 15);
+      pdf.text(item.value, x, y + 13);
       pdf.setFont("helvetica", "normal");
     });
-    y += 24;
+    y += 22;
 
     // TCO Breakdown table
     const breakdownItems: [string, number][] = [
@@ -402,7 +441,7 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
     }
 
     ensureSpace(breakdownItems.length * 7 + 14);
-    // Header
+    // Header row
     pdf.setFillColor(...TEAL);
     pdf.rect(M, y, contentW, 7, "F");
     pdf.setTextColor(...WHITE);
@@ -430,7 +469,7 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
     pdf.setFillColor(...TEAL);
     pdf.rect(M, y - 3, contentW, 8, "F");
     pdf.setTextColor(...WHITE);
-    pdf.setFontSize(10);
+    pdf.setFontSize(9);
     pdf.setFont("helvetica", "bold");
     pdf.text("Total Cost of Ownership", M + 3, y + 1);
     pdf.text(fmt(tco.totalTCO), M + contentW - 35, y + 1);
@@ -439,6 +478,7 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
     // Footnotes
     pdf.setFontSize(7);
     pdf.setTextColor(...SLATE);
+    pdf.setFont("helvetica", "normal");
     pdf.text(`Based on ${annualMiles.toLocaleString()} miles/year over 5 years.`, M, y);
     y += 4;
     if (tco.mileageDepreciation && tco.mileageDepreciation > 0) {
@@ -451,35 +491,39 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   // UVPRS RISK SCORE BREAKDOWN
   // ══════════════════════════════════════════════
   if (uvprsResult) {
-    sectionTitle("🛡", "Purchase Risk Score (UVPRS)");
+    sectionTitle("Purchase Risk Score (UVPRS)");
 
     // Score header box
-    ensureSpace(20);
+    ensureSpace(18);
     pdf.setFillColor(...BG_MUTED);
-    pdf.roundedRect(M, y, contentW, 16, 3, 3, "F");
+    pdf.roundedRect(M, y, contentW, 14, 3, 3, "F");
 
     const scoreColor = uvprsResult.riskLevel === "low" ? GREEN : uvprsResult.riskLevel === "moderate" ? AMBER : RED;
-    pdf.setFontSize(18);
+    pdf.setFontSize(16);
     pdf.setFont("helvetica", "bold");
     pdf.setTextColor(...scoreColor);
-    pdf.text(`${uvprsResult.totalScore}`, M + 5, y + 10);
+    pdf.text(`${uvprsResult.totalScore}`, M + 5, y + 9);
     pdf.setFontSize(9);
     pdf.setTextColor(...SLATE);
-    pdf.text("/ 100", M + 22, y + 10);
+    pdf.text("/ 100", M + 20, y + 9);
+
     // Risk label badge
     pdf.setFillColor(...scoreColor);
-    pdf.roundedRect(M + 38, y + 4, 30, 8, 2, 2, "F");
+    pdf.roundedRect(M + 36, y + 3, 28, 8, 2, 2, "F");
     pdf.setFontSize(7);
+    pdf.setFont("helvetica", "bold");
     pdf.setTextColor(...WHITE);
-    pdf.text(uvprsResult.riskLabel, M + 41, y + 9);
+    pdf.text(uvprsResult.riskLabel, M + 39, y + 8);
+
     // Known factors
     pdf.setTextColor(...SLATE);
     pdf.setFontSize(7);
-    pdf.text(`${uvprsResult.knownFactorCount} of ${uvprsResult.factors.length} factors verified`, M + 75, y + 10);
-    y += 20;
+    pdf.setFont("helvetica", "normal");
+    pdf.text(`${uvprsResult.knownFactorCount} of ${uvprsResult.factors.length} factors verified`, M + 70, y + 9);
+    y += 18;
 
     // Factor breakdown table
-    const factorColWidths = [52, 18, 18, contentW - 88];
+    const factorColWidths = [50, 18, 18, contentW - 86];
     const factorHeaders = ["Factor", "Weight", "Score", "Detail"];
 
     ensureSpace(uvprsResult.factors.length * 7 + 12);
@@ -546,17 +590,16 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   // ══════════════════════════════════════════════
   // VEHICLE HEALTH SCORE
   // ══════════════════════════════════════════════
-  sectionTitle("🚗", "Vehicle Health");
+  sectionTitle("Vehicle Health");
 
-  // Health score
-  ensureSpace(12);
-  pdf.setFontSize(20);
+  ensureSpace(14);
+  pdf.setFontSize(18);
   pdf.setFont("helvetica", "bold");
   pdf.setTextColor(...BLACK);
   pdf.text(`${historyAnalysis.healthScore}`, M + 5, y + 2);
   pdf.setFontSize(9);
   pdf.setTextColor(...SLATE);
-  pdf.text("/ 100", M + 22, y + 2);
+  pdf.text("/ 100", M + 20, y + 2);
 
   // Progress bar
   const barY = y + 5;
@@ -570,17 +613,13 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   // Positives
   if (historyAnalysis.positives.length > 0) {
     wrappedText("Positives:", 9, GREEN, true);
-    historyAnalysis.positives.forEach((item) => {
-      wrappedText(`• ${item}`, 8, SLATE, false, 3);
-    });
+    historyAnalysis.positives.forEach((item) => bulletItem(item, SLATE));
   }
 
   // Concerns
   if (historyAnalysis.concerns.length > 0) {
     wrappedText("Concerns:", 9, RED, true);
-    historyAnalysis.concerns.forEach((item) => {
-      wrappedText(`• ${item}`, 8, SLATE, false, 3);
-    });
+    historyAnalysis.concerns.forEach((item) => bulletItem(item, SLATE));
   }
 
   // ══════════════════════════════════════════════
@@ -593,9 +632,8 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
     serviceHistory?.serviceGapMiles != null;
 
   if (hasSvcData) {
-    sectionTitle("🔧", "Service History");
+    sectionTitle("Service History");
 
-    // Service gap
     if (serviceHistory?.serviceGapMiles != null) {
       const gap = serviceHistory.serviceGapMiles;
       const gapColor = gap <= 10000 ? GREEN : gap <= 20000 ? AMBER : RED;
@@ -613,33 +651,137 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
     // Done items
     if (serviceHistory?.majorServicesDone?.length) {
       serviceHistory.majorServicesDone.forEach((s) => {
-        wrappedText(`✓ ${s}  [Completed]`, 8, GREEN, false, 3);
+        wrappedText(`${s}  [Completed]`, 8, GREEN, false, 4);
       });
     }
     // Due items
     if (serviceHistory?.majorServicesDue?.length) {
       serviceHistory.majorServicesDue.forEach((s) => {
-        wrappedText(`⚠ ${s}  [Overdue]`, 8, AMBER, false, 3);
+        wrappedText(`${s}  [Overdue]`, 8, AMBER, false, 4);
       });
     }
     // Chronic items
     if (serviceHistory?.chronicRepairSystems?.length) {
       serviceHistory.chronicRepairSystems.forEach((s) => {
-        wrappedText(`⚠ Chronic: ${s}  [Repeat Issue]`, 8, RED, false, 3);
+        wrappedText(`Chronic: ${s}  [Repeat Issue]`, 8, RED, false, 4);
       });
     }
   }
 
   // ══════════════════════════════════════════════
-  // 5-YEAR DEPRECIATION & EQUITY
+  // 5-YEAR DEPRECIATION & EQUITY — CHART + TABLE
   // ══════════════════════════════════════════════
-  sectionTitle("📉", "5-Year Depreciation & Equity");
+  sectionTitle("5-Year Depreciation & Equity");
+
+  // ── LINE CHART (drawn with jsPDF primitives) ──
+  if (depreciationTable.length > 0) {
+    const chartH = 55;
+    const chartW = contentW;
+    const chartM = { left: 25, right: 8, top: 8, bottom: 14 };
+    const plotW = chartW - chartM.left - chartM.right;
+    const plotH = chartH - chartM.top - chartM.bottom;
+
+    ensureSpace(chartH + 6);
+
+    const chartX = M;
+    const chartY = y;
+
+    // Background
+    pdf.setFillColor(250, 251, 252);
+    pdf.roundedRect(chartX, chartY, chartW, chartH, 2, 2, "F");
+
+    // Gather data series
+    const privateVals = depreciationTable.map(r => r.privateValue);
+    const tradeInVals = depreciationTable.map(r => r.tradeInValue);
+    const loanVals = depreciationTable.map(r => r.loanBalance);
+    const allVals = [...privateVals, ...tradeInVals, ...loanVals];
+    const maxVal = Math.max(...allVals);
+    const minVal = Math.min(0, Math.min(...allVals));
+    const range = maxVal - minVal || 1;
+
+    const toPlotX = (i: number) => chartX + chartM.left + (i / Math.max(1, depreciationTable.length - 1)) * plotW;
+    const toPlotY = (v: number) => chartY + chartM.top + plotH - ((v - minVal) / range) * plotH;
+
+    // Grid lines & Y-axis labels
+    pdf.setDrawColor(220, 225, 230);
+    pdf.setLineWidth(0.2);
+    const yTicks = 5;
+    for (let i = 0; i <= yTicks; i++) {
+      const val = minVal + (range * i) / yTicks;
+      const py = toPlotY(val);
+      pdf.line(chartX + chartM.left, py, chartX + chartM.left + plotW, py);
+      pdf.setFontSize(6);
+      pdf.setTextColor(...SLATE);
+      pdf.text(`$${(val / 1000).toFixed(0)}k`, chartX + 2, py + 1);
+    }
+
+    // X-axis labels
+    depreciationTable.forEach((row, i) => {
+      const px = toPlotX(i);
+      pdf.setFontSize(6);
+      pdf.setTextColor(...SLATE);
+      pdf.text(`Yr ${row.year}`, px - 4, chartY + chartH - 3);
+    });
+
+    // Draw lines
+    const drawLine = (values: number[], color: [number, number, number], dashed = false) => {
+      pdf.setDrawColor(...color);
+      pdf.setLineWidth(0.6);
+      for (let i = 0; i < values.length - 1; i++) {
+        const x1 = toPlotX(i), y1 = toPlotY(values[i]);
+        const x2 = toPlotX(i + 1), y2 = toPlotY(values[i + 1]);
+        if (dashed) {
+          // Draw dashed line manually
+          const dx = x2 - x1, dy = y2 - y1;
+          const len = Math.sqrt(dx * dx + dy * dy);
+          const dashLen = 1.5, gapLen = 1;
+          let d = 0;
+          while (d < len) {
+            const start = d / len;
+            const end = Math.min((d + dashLen) / len, 1);
+            pdf.line(x1 + dx * start, y1 + dy * start, x1 + dx * end, y1 + dy * end);
+            d += dashLen + gapLen;
+          }
+        } else {
+          pdf.line(x1, y1, x2, y2);
+        }
+      }
+      // Draw dots
+      values.forEach((v, i) => {
+        pdf.setFillColor(...color);
+        pdf.circle(toPlotX(i), toPlotY(v), 0.8, "F");
+      });
+    };
+
+    drawLine(privateVals, GREEN);
+    drawLine(tradeInVals, AMBER);
+    drawLine(loanVals, TEAL, true);
+
+    // Legend
+    const legendY = chartY + chartH - 3;
+    const legends = [
+      { label: "Private Value", color: GREEN },
+      { label: "Trade-In Value", color: AMBER },
+      { label: "Loan Balance", color: TEAL },
+    ];
+    let legendX = chartX + chartM.left + 10;
+    legends.forEach((lg) => {
+      pdf.setFillColor(...lg.color);
+      pdf.rect(legendX, legendY - 2, 4, 2, "F");
+      pdf.setFontSize(6);
+      pdf.setTextColor(...SLATE);
+      pdf.text(lg.label, legendX + 6, legendY);
+      legendX += 35;
+    });
+
+    y += chartH + 6;
+  }
 
   // Depreciation table
   const cols = ["Year", "Private Value", "Trade-In", "Loan Balance", "Repairs", "Net Equity"];
   const colWidths = [20, 32, 30, 32, 28, 30];
 
-  ensureSpace(depreciationTable.length * 7 + 14);
+  ensureSpace(depreciationTable.length * 7 + 12);
   pdf.setFillColor(...TEAL);
   pdf.rect(M, y, contentW, 7, "F");
   pdf.setTextColor(...WHITE);
@@ -692,62 +834,61 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   // ══════════════════════════════════════════════
   // RISK FACTORS
   // ══════════════════════════════════════════════
-  sectionTitle("⚠", "Risk Factors");
+  sectionTitle("Risk Factors");
 
   wrappedText("Depreciation Risk:", 9, BLACK, true);
-  wrappedText(riskAssessment.depreciationRisk, 8, SLATE);
+  wrappedText(riskAssessment.depreciationRisk, 9, SLATE);
 
   if (riskAssessment.reliabilityConcerns.length > 0) {
     wrappedText("Reliability Concerns:", 9, BLACK, true);
-    riskAssessment.reliabilityConcerns.forEach((concern) => {
-      wrappedText(`• ${concern}`, 8, SLATE, false, 3);
-    });
+    riskAssessment.reliabilityConcerns.forEach((concern) => bulletItem(concern, SLATE));
   }
 
   if (riskAssessment.valueProposition) {
-    ensureSpace(14);
+    ensureSpace(16);
     pdf.setFillColor(...BG_MUTED);
-    pdf.roundedRect(M, y, contentW, 12, 2, 2, "F");
+    const vpLines = pdf.splitTextToSize(riskAssessment.valueProposition, contentW - 8);
+    const vpH = Math.max(12, vpLines.length * 3.5 + 8);
+    pdf.roundedRect(M, y, contentW, vpH, 2, 2, "F");
     pdf.setFontSize(8);
     pdf.setFont("helvetica", "bold");
     pdf.setTextColor(...BLACK);
     pdf.text("Value Proposition", M + 4, y + 5);
     pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(8);
     pdf.setTextColor(...SLATE);
-    const vpLines = pdf.splitTextToSize(riskAssessment.valueProposition, contentW - 8);
-    pdf.text(vpLines[0] || "", M + 4, y + 9);
-    y += 14;
+    pdf.text(vpLines, M + 4, y + 10);
+    y += vpH + 4;
   }
 
   // ══════════════════════════════════════════════
   // EXPERT OPINION
   // ══════════════════════════════════════════════
-  sectionTitle("📋", "Expert Opinion");
+  sectionTitle("Expert Opinion");
   wrappedText(riskAssessment.expertOpinion, 9, SLATE);
 
   // ══════════════════════════════════════════════
   // DEALER REVIEW (Pro only)
   // ══════════════════════════════════════════════
   if (dealerReview) {
-    sectionTitle("🏪", "Dealership Review");
+    sectionTitle("Dealership Review");
 
-    wrappedText(dealerReview.dealerName, 11, BLACK, true);
+    wrappedText(dealerReview.dealerName, 10, BLACK, true);
 
-    // Trust score box
-    ensureSpace(20);
+    ensureSpace(18);
     const dsColor: [number, number, number] =
       dealerReview.trustScore >= 70 ? GREEN :
       dealerReview.trustScore >= 50 ? AMBER : RED;
 
     pdf.setFillColor(...BG_MUTED);
-    pdf.roundedRect(M, y, 55, 16, 2, 2, "F");
+    pdf.roundedRect(M, y, 55, 14, 2, 2, "F");
     pdf.setFontSize(7);
     pdf.setTextColor(...SLATE);
     pdf.text("Trust Score", M + 4, y + 5);
-    pdf.setFontSize(13);
+    pdf.setFontSize(12);
     pdf.setFont("helvetica", "bold");
     pdf.setTextColor(...dsColor);
-    pdf.text(`${dealerReview.trustScore}/100`, M + 4, y + 13);
+    pdf.text(`${dealerReview.trustScore}/100`, M + 4, y + 12);
 
     // Sentiment badge
     const sentimentText = dealerReview.sentiment.charAt(0).toUpperCase() + dealerReview.sentiment.slice(1);
@@ -756,21 +897,21 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
       dealerReview.sentiment === "mixed" ? AMBER :
       dealerReview.sentiment === "negative" ? RED : SLATE;
     pdf.setFillColor(...sentimentColor);
-    pdf.roundedRect(M + 60, y + 4, 26, 8, 2, 2, "F");
+    pdf.roundedRect(M + 60, y + 3, 26, 8, 2, 2, "F");
     pdf.setFontSize(7);
     pdf.setTextColor(...WHITE);
-    pdf.text(sentimentText, M + 63, y + 9);
-    y += 20;
+    pdf.text(sentimentText, M + 63, y + 8);
+    y += 18;
 
-    wrappedText(dealerReview.summary, 8, SLATE);
+    wrappedText(dealerReview.summary, 9, SLATE);
 
     if (dealerReview.positives.length > 0) {
       wrappedText("Positives:", 9, GREEN, true);
-      dealerReview.positives.forEach((item) => wrappedText(`• ${item}`, 8, SLATE, false, 3));
+      dealerReview.positives.forEach((item) => bulletItem(item, SLATE));
     }
     if (dealerReview.watchOuts.length > 0) {
       wrappedText("Watch Out:", 9, RED, true);
-      dealerReview.watchOuts.forEach((item) => wrappedText(`• ${item}`, 8, SLATE, false, 3));
+      dealerReview.watchOuts.forEach((item) => bulletItem(item, SLATE));
     }
     if (dealerReview.sources.length > 0) {
       y += 2;
@@ -782,10 +923,10 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   }
 
   // ══════════════════════════════════════════════
-  // RECOMMENDATION CARD (matching the website bottom card)
+  // RECOMMENDATION CARD
   // ══════════════════════════════════════════════
-  ensureSpace(30);
-  y += 4;
+  ensureSpace(32);
+  y += 5;
   const recColor = uvprsResult
     ? (uvprsResult.riskLevel === "low" ? GREEN : uvprsResult.riskLevel === "moderate" ? AMBER : RED)
     : (riskAssessment.level === "low" ? GREEN : riskAssessment.level === "medium" ? AMBER : RED);
@@ -795,28 +936,31 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
 
   pdf.setDrawColor(...recColor);
   pdf.setLineWidth(0.8);
-  pdf.roundedRect(M, y, contentW, 28, 3, 3, "S");
+  pdf.roundedRect(M, y, contentW, 26, 3, 3, "S");
 
   // Badge
   pdf.setFillColor(...recColor);
-  const badgeW = pdf.getTextWidth(recLabel) * 0.35 + 10;
+  const badgeTextW = pdf.getStringUnitWidth(recLabel) * 7 / pdf.internal.scaleFactor;
+  const badgeW = badgeTextW + 8;
   pdf.roundedRect(M + (contentW - badgeW) / 2, y + 3, badgeW, 7, 2, 2, "F");
   pdf.setFontSize(7);
   pdf.setFont("helvetica", "bold");
   pdf.setTextColor(...WHITE);
-  pdf.text(recLabel, M + (contentW - badgeW) / 2 + 3, y + 8);
+  pdf.text(recLabel, M + (contentW - badgeW) / 2 + 4, y + 8);
 
-  // Fair offer
+  // Fair offer text
   pdf.setFontSize(9);
+  pdf.setFont("helvetica", "normal");
   pdf.setTextColor(...SLATE);
-  pdf.text("Fair Offer Price", M + contentW / 2 - 12, y + 15);
-  pdf.setFontSize(16);
+  const foLabel = "Fair Offer Price";
+  pdf.text(foLabel, M + (contentW - pdf.getStringUnitWidth(foLabel) * 9 / pdf.internal.scaleFactor) / 2, y + 15);
+  pdf.setFontSize(14);
   pdf.setFont("helvetica", "bold");
   pdf.setTextColor(...BLACK);
   const fairOfferStr = fmt(riskAssessment.fairOfferPrice);
-  pdf.text(fairOfferStr, M + contentW / 2 - pdf.getTextWidth(fairOfferStr) / 2, y + 23);
+  pdf.text(fairOfferStr, M + (contentW - pdf.getStringUnitWidth(fairOfferStr) * 14 / pdf.internal.scaleFactor) / 2, y + 22);
 
-  y += 32;
+  y += 30;
 
   // ── Footer on last page ──
   addFooter();
