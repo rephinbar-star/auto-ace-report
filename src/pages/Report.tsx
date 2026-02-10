@@ -1180,6 +1180,11 @@ export default function ReportPage() {
                 onAnalysisComplete={setDealerAnalysis}
               />
 
+              {/* UVPRS Risk Score Breakdown */}
+              {uvprsResult && (
+                <RiskScoreBreakdown result={uvprsResult} />
+              )}
+
               {/* Vehicle Health Score */}
               <Card>
                 <CardHeader>
@@ -1222,11 +1227,6 @@ export default function ReportPage() {
                   </div>
                 </CardContent>
               </Card>
-
-              {/* UVPRS Risk Score Breakdown */}
-              {uvprsResult && (
-                <RiskScoreBreakdown result={uvprsResult} />
-              )}
 
               {/* Service History Timeline */}
               <ServiceHistoryTimeline
