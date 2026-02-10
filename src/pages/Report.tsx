@@ -653,6 +653,7 @@ export default function ReportPage() {
           majorServicesDone: vehicleData?.history?.majorServicesDone,
           chronicRepairSystems: vehicleData?.history?.chronicRepairSystems,
         },
+        uvprsResult: uvprsResult ?? undefined,
       });
       sonnerToast.success("PDF downloaded successfully!");
     } catch (error) {

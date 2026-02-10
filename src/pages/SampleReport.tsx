@@ -260,6 +260,7 @@ export default function SampleReportPage() {
         historyAnalysis,
         depreciationTable,
         serviceHistory: sampleServiceHistory,
+        uvprsResult: sampleUVPRS,
       });
       toast.success("PDF downloaded successfully!");
     } catch (error) {
