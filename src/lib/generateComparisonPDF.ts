@@ -385,8 +385,8 @@ export async function generateComparisonPDF(data: ComparisonPDFData): Promise<vo
     });
   }
 
-  // UVPRS Risk Score per vehicle
-  addSection("UVPRS Risk Score");
+  // UVPRS Risk Score & TCO per vehicle
+  addSection("UVPRS Risk Score & Ownership Cost");
 
   vehicles.forEach((v) => {
     if (yPosition > pageHeight - margin - 40) {
@@ -484,7 +484,46 @@ export async function generateComparisonPDF(data: ComparisonPDFData): Promise<vo
       yPosition += 6;
     });
 
-    yPosition += 5;
+    yPosition += 4;
+
+    // Per-vehicle TCO summary
+    const tco = calculateTCO(
+      Number(v.asking_price),
+      v.mpg_combined,
+      v.fuel_type,
+      v.depreciation_table,
+      { annualMiles },
+      { make: v.make, year: v.year }
+    );
+    const monthlyCost = calculateMonthlyOwnershipCost(tco);
+
+    if (yPosition > pageHeight - margin - 22) {
+      pdf.addPage();
+      yPosition = margin;
+    }
+
+    // TCO box
+    pdf.setFillColor(245, 247, 250);
+    pdf.roundedRect(margin, yPosition, pageWidth - 2 * margin, 18, 2, 2, "F");
+
+    const tcoColW = (pageWidth - 2 * margin) / 4;
+    pdf.setFontSize(7);
+    pdf.setTextColor(100, 100, 100);
+    pdf.text("5-Year TCO", margin + 3, yPosition + 5);
+    pdf.text("Cost/Mile", margin + tcoColW + 3, yPosition + 5);
+    pdf.text("Monthly", margin + tcoColW * 2 + 3, yPosition + 5);
+    pdf.text("Fuel (5yr)", margin + tcoColW * 3 + 3, yPosition + 5);
+
+    pdf.setFontSize(10);
+    pdf.setFont("helvetica", "bold");
+    pdf.setTextColor(0, 0, 0);
+    pdf.text(formatCurrency(tco.totalTCO), margin + 3, yPosition + 13);
+    pdf.text(`$${tco.costPerMile.toFixed(2)}`, margin + tcoColW + 3, yPosition + 13);
+    pdf.text(`${formatCurrency(monthlyCost)}/mo`, margin + tcoColW * 2 + 3, yPosition + 13);
+    pdf.setTextColor(59, 130, 246);
+    pdf.text(formatCurrency(tco.fuelCost5Year), margin + tcoColW * 3 + 3, yPosition + 13);
+
+    yPosition += 24;
   });
 
   // Footnotes section
