@@ -24,6 +24,7 @@ interface VehicleHistory {
   chronicRepairSystems?: string[] | null;
   // Recall data from CarFax/AutoCheck
   openRecallCount?: number | null;
+  resolvedRecallCount?: number | null;
 }
 
 serve(async (req) => {
@@ -280,6 +281,10 @@ For service history analysis:
                   openRecallCount: {
                     type: ["number", "null"],
                     description: "Number of OPEN/unresolved manufacturer recalls. If the report says 'No Recalls Reported', 'No open recalls', or similar, return 0. If recall status is not mentioned, return null. Only count recalls explicitly marked as open/unresolved — do NOT count completed/resolved recalls."
+                  },
+                  resolvedRecallCount: {
+                    type: ["number", "null"],
+                    description: "Number of manufacturer recalls that have been COMPLETED/RESOLVED for this specific vehicle. If the report shows recalls were remedied/fixed, count those here. Return 0 if no resolved recalls mentioned. Return null if recall information is not present in the report."
                   }
                 },
                 required: ["accidentCount", "ownerCount", "titleStatus", "serviceRecords", "issues", "positives", "healthScore", "summary"],

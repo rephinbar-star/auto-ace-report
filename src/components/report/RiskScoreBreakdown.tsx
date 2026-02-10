@@ -40,8 +40,8 @@ const factorTooltips: Record<string, { meaning: string; advice: string }> = {
     advice: "For 8+ year old vehicles, inspect rubber components, undercarriage rust, and electrical systems carefully.",
   },
   recalls: {
-    meaning: "Counts unresolved safety recalls from NHTSA. Open recalls represent active safety hazards that may also void insurance coverage.",
-    advice: "Check NHTSA.gov with the VIN. All recall repairs are free at any authorized dealer — complete them before driving.",
+    meaning: "Uses NHTSA (the official federal database) as the primary source for all recalls issued for this year/make/model, then subtracts any recalls confirmed as resolved by your CarFax/AutoCheck report. This cross-reference gives the most accurate open recall count, though minor discrepancies can occur if CarFax hasn't recorded a recent repair.",
+    advice: "Check NHTSA.gov with the VIN for the definitive list. All recall repairs are free at any authorized dealer — complete them before driving.",
   },
 };
 
