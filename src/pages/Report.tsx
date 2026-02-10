@@ -807,9 +807,8 @@ export default function ReportPage() {
                 <div className="flex items-center gap-3">
                   <div className={cn("flex h-10 w-10 items-center justify-center rounded-full", 
                     uvprsResult 
-                      ? uvprsResult.totalScore <= 20 ? "bg-success text-success-foreground"
-                        : uvprsResult.totalScore <= 40 ? "bg-warning text-warning-foreground"
-                        : uvprsResult.totalScore <= 60 ? "bg-orange-500 text-white"
+                      ? uvprsResult.riskLevel === "low" ? "bg-success text-success-foreground"
+                        : uvprsResult.riskLevel === "moderate" ? "bg-warning text-warning-foreground"
                         : "bg-danger text-danger-foreground"
                       : riskLevelColors[riskAssessment.level]
                   )}>
