@@ -84,6 +84,24 @@ serve(async (req) => {
 
     const formattedUrl = urlValidation.url!.href;
 
+    // Block aggregator sites not supported by our scraper — direct users to dealer sites
+    const UNSUPPORTED_DOMAINS: { pattern: RegExp; name: string }[] = [
+      { pattern: /autotrader\.com/i, name: "AutoTrader" },
+      { pattern: /truecar\.com/i, name: "TrueCar" },
+    ];
+
+    const blockedSite = UNSUPPORTED_DOMAINS.find(d => d.pattern.test(formattedUrl));
+    if (blockedSite) {
+      console.log(`Blocked unsupported site: ${blockedSite.name}`);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `${blockedSite.name} is not supported for Quick Import. To import this vehicle, copy the listing URL directly from the dealer's website instead. You can usually find a link to the dealer's site on the ${blockedSite.name} listing page.`,
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
     if (!FIRECRAWL_API_KEY) {
       console.error("FIRECRAWL_API_KEY not configured");
