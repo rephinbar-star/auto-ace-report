@@ -647,6 +647,12 @@ export default function ReportPage() {
         depreciationTable,
         images: condition.images,
         dealerReview: dealerReviewForPDF,
+        serviceHistory: {
+          serviceGapMiles: vehicleData?.history?.serviceGapMiles,
+          majorServicesDue: vehicleData?.history?.majorServicesDue,
+          majorServicesDone: vehicleData?.history?.majorServicesDone,
+          chronicRepairSystems: vehicleData?.history?.chronicRepairSystems,
+        },
       });
       sonnerToast.success("PDF downloaded successfully!");
     } catch (error) {
