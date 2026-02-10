@@ -22,6 +22,8 @@ interface VehicleHistory {
   majorServicesDue?: string[] | null;
   majorServicesDone?: string[] | null;
   chronicRepairSystems?: string[] | null;
+  // Recall data from CarFax/AutoCheck
+  openRecallCount?: number | null;
 }
 
 serve(async (req) => {
@@ -274,6 +276,10 @@ For service history analysis:
                     type: "array",
                     items: { type: "string" },
                     description: "Vehicle systems showing repeated/chronic repair patterns (2+ repairs to same system). Use system names like 'transmission', 'cooling', 'electrical', 'engine', 'suspension', 'brakes'. Empty array if none."
+                  },
+                  openRecallCount: {
+                    type: ["number", "null"],
+                    description: "Number of OPEN/unresolved manufacturer recalls. If the report says 'No Recalls Reported', 'No open recalls', or similar, return 0. If recall status is not mentioned, return null. Only count recalls explicitly marked as open/unresolved — do NOT count completed/resolved recalls."
                   }
                 },
                 required: ["accidentCount", "ownerCount", "titleStatus", "serviceRecords", "issues", "positives", "healthScore", "summary"],
