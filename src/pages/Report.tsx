@@ -394,24 +394,32 @@ export default function ReportPage() {
   }, [id]);
 
   const refreshPricing = async () => {
-    if (!vehicleData?.vehicle || !vehicleData?.condition || isRefreshingPricing) return;
+    if (!vehicleData || isRefreshingPricing) return;
     setIsRefreshingPricing(true);
     try {
-      const { data: result, error: invokeError } = await supabase.functions.invoke("lookup-pricing", {
-        body: {
-          year: vehicleData.vehicle.year,
-          make: vehicleData.vehicle.make,
-          model: vehicleData.vehicle.model,
-          trim: vehicleData.vehicle.trim,
-          mileage: vehicleData.condition.mileage,
-          condition: vehicleData.condition.condition,
-        },
+      // Re-run the full analysis which includes fresh pricing lookup
+      const { data: result, error: invokeError } = await supabase.functions.invoke("analyze-vehicle", {
+        body: vehicleData,
       });
       if (invokeError) throw invokeError;
-      if (result?.success && result.data) {
-        setPricingSources(result.data.citations || []);
+      if (result?.success) {
+        setAnalysis(result.analysis);
+        if (result.mpgData) {
+          setMpgData({
+            mpgCity: result.mpgData.mpgCity,
+            mpgHighway: result.mpgData.mpgHighway,
+            mpgCombined: result.mpgData.mpgCombined,
+            fuelType: result.mpgData.fuelType,
+            evRange: result.mpgData.evRange ?? null,
+          });
+        }
+        if (result.pricingSources?.length) {
+          setPricingSources(result.pricingSources);
+        }
         setPricingLastUpdated(new Date());
-        sonnerToast.success("Pricing data refreshed");
+        sonnerToast.success("Analysis refreshed with latest market data");
+      } else {
+        throw new Error(result?.error || "Refresh failed");
       }
     } catch (err) {
       console.error("Pricing refresh error:", err);
