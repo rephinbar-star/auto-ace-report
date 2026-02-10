@@ -45,6 +45,7 @@ import {
   ExternalLink,
   BadgeCheck,
   Bot,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getWithExpiry, removeExpirableItem } from "@/lib/storage-utils";
@@ -126,6 +127,8 @@ export default function ReportPage() {
     evRange: number | null;
   } | null>(null);
   const [pricingSources, setPricingSources] = useState<string[]>([]);
+  const [pricingLastUpdated, setPricingLastUpdated] = useState<Date | null>(null);
+  const [isRefreshingPricing, setIsRefreshingPricing] = useState(false);
   
   // Check if coming from comparison
   const fromComparison = searchParams.get("from") === "compare";
@@ -368,6 +371,7 @@ export default function ReportPage() {
           // Store pricing sources/citations
           if (result.pricingSources?.length) {
             setPricingSources(result.pricingSources);
+            setPricingLastUpdated(new Date());
           }
         } else {
           throw new Error(result?.error || "Analysis returned no data");
@@ -388,6 +392,33 @@ export default function ReportPage() {
     loadAnalysis();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  const refreshPricing = async () => {
+    if (!vehicleData?.vehicle || !vehicleData?.condition || isRefreshingPricing) return;
+    setIsRefreshingPricing(true);
+    try {
+      const { data: result, error: invokeError } = await supabase.functions.invoke("lookup-pricing", {
+        body: {
+          year: vehicleData.vehicle.year,
+          make: vehicleData.vehicle.make,
+          model: vehicleData.vehicle.model,
+          trim: vehicleData.vehicle.trim,
+          mileage: vehicleData.condition.mileage,
+          condition: vehicleData.condition.condition,
+        },
+      });
+      if (invokeError) throw invokeError;
+      if (result?.success && result.data) {
+        setPricingSources(result.data.citations || []);
+        setPricingLastUpdated(new Date());
+        sonnerToast.success("Pricing data refreshed");
+      }
+    } catch (err) {
+      console.error("Pricing refresh error:", err);
+      sonnerToast.error("Failed to refresh pricing data");
+    }
+    setIsRefreshingPricing(false);
+  };
 
   if (isLoading) {
     return (
@@ -663,20 +694,37 @@ export default function ReportPage() {
               {/* Price Assessment */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex flex-wrap items-center gap-2">
                     <DollarSign className="h-5 w-5 text-primary" />
                     Price Assessment
-                    {pricingSources.length > 0 ? (
-                      <Badge variant="outline" className="ml-auto gap-1 border-success/30 bg-success/10 text-success text-xs font-medium">
-                        <BadgeCheck className="h-3 w-3" />
-                        Market Verified
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="ml-auto gap-1 border-muted-foreground/30 bg-muted text-muted-foreground text-xs font-medium">
-                        <Bot className="h-3 w-3" />
-                        AI Estimated
-                      </Badge>
+                    {pricingLastUpdated && (
+                      <span className="text-xs font-normal text-muted-foreground">
+                        (last updated {pricingLastUpdated.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "2-digit" })})
+                      </span>
                     )}
+                    <div className="ml-auto flex items-center gap-2">
+                      {pricingSources.length > 0 ? (
+                        <Badge variant="outline" className="gap-1 border-success/30 bg-success/10 text-success text-xs font-medium">
+                          <BadgeCheck className="h-3 w-3" />
+                          Market Verified
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="gap-1 border-muted-foreground/30 bg-muted text-muted-foreground text-xs font-medium">
+                          <Bot className="h-3 w-3" />
+                          AI Estimated
+                        </Badge>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={refreshPricing}
+                        disabled={isRefreshingPricing}
+                        title="Refresh pricing data"
+                      >
+                        <RefreshCw className={cn("h-3.5 w-3.5", isRefreshingPricing && "animate-spin")} />
+                      </Button>
+                    </div>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
