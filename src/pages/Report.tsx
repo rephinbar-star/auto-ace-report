@@ -58,6 +58,7 @@ import { VehicleImageGallery } from "@/components/report/VehicleImageGallery";
 import { DealerReview } from "@/components/report/DealerReview";
 import { FuelEconomyCard } from "@/components/report/FuelEconomyCard";
 import { RiskScoreBreakdown } from "@/components/report/RiskScoreBreakdown";
+import { ServiceHistoryTimeline } from "@/components/report/ServiceHistoryTimeline";
 import { generateReportPDF } from "@/lib/generatePDF";
 import { toast as sonnerToast } from "sonner";
 import { calculateUVPRS, uvprsToLegacyRiskLevel, type UVPRSResult } from "@/lib/uvprs-scoring";
@@ -284,6 +285,11 @@ export default function ReportPage() {
               ownerCount: report.owner_count,
               titleStatus: report.title_status,
               issues: report.history_issues,
+              serviceRecords: report.has_service_records,
+              serviceGapMiles: report.service_gap_miles,
+              majorServicesDue: report.major_services_due,
+              majorServicesDone: report.major_services_done,
+              chronicRepairSystems: report.chronic_repair_systems,
             },
           });
           
@@ -1193,6 +1199,16 @@ export default function ReportPage() {
               {uvprsResult && (
                 <RiskScoreBreakdown result={uvprsResult} />
               )}
+
+              {/* Service History Timeline */}
+              <ServiceHistoryTimeline
+                serviceGapMiles={vehicleData?.history?.serviceGapMiles}
+                majorServicesDue={vehicleData?.history?.majorServicesDue}
+                majorServicesDone={vehicleData?.history?.majorServicesDone}
+                chronicRepairSystems={vehicleData?.history?.chronicRepairSystems}
+                hasServiceRecords={vehicleData?.history?.serviceRecords}
+                mileage={condition.mileage}
+              />
 
               {/* Risk Factors */}
               <Card>
