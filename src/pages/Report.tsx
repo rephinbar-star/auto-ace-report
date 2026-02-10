@@ -72,6 +72,7 @@ interface DepreciationYear {
 interface Analysis {
   priceAssessment: {
     fairMarketPrivate: number;
+    fairMarketDealer?: number;
     fairMarketTradeIn: number;
     dealRating: "excellent" | "good" | "fair" | "poor" | "overpriced";
     priceDifference: number;
@@ -179,6 +180,7 @@ export default function ReportPage() {
         history_issues: history?.issues || null,
         deal_rating: priceAssessment.dealRating,
         fair_market_private: priceAssessment.fairMarketPrivate,
+        fair_market_dealer: priceAssessment.fairMarketDealer || null,
         fair_market_trade_in: priceAssessment.fairMarketTradeIn,
         price_difference: priceAssessment.priceDifference,
         risk_level: riskAssessment.level,
@@ -275,14 +277,20 @@ export default function ReportPage() {
           });
           
           // Convert saved report to analysis format
+          const sellerType = report.seller_type || "private";
+          const referencePrice = sellerType === "dealer" 
+            ? (report.fair_market_dealer || report.fair_market_private || 0)
+            : (report.fair_market_private || 0);
+          
           setAnalysis({
             priceAssessment: {
               fairMarketPrivate: report.fair_market_private || 0,
+              fairMarketDealer: report.fair_market_dealer || undefined,
               fairMarketTradeIn: report.fair_market_trade_in || 0,
               dealRating: report.deal_rating || "fair",
               priceDifference: report.price_difference || 0,
-              percentDifference: report.price_difference && report.fair_market_private 
-                ? (report.price_difference / report.fair_market_private) * 100 
+              percentDifference: report.price_difference && referencePrice 
+                ? (report.price_difference / referencePrice) * 100 
                 : 0,
             },
             depreciationTable: (report.depreciation_table as unknown as DepreciationYear[]) || [],
@@ -436,6 +444,7 @@ export default function ReportPage() {
           const { priceAssessment, depreciationTable, riskAssessment, historyAnalysis } = result.analysis;
           await supabase.from("vehicle_reports").update({
             fair_market_private: priceAssessment.fairMarketPrivate,
+            fair_market_dealer: priceAssessment.fairMarketDealer || null,
             fair_market_trade_in: priceAssessment.fairMarketTradeIn,
             deal_rating: priceAssessment.dealRating,
             price_difference: priceAssessment.priceDifference,
@@ -679,8 +688,15 @@ export default function ReportPage() {
                     <DollarSign className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Fair Market Price</p>
-                    <p className="text-xl font-bold">${priceAssessment.fairMarketPrivate.toLocaleString()}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {condition.sellerType === "dealer" ? "Dealer Retail Value" : "Private Sale Value"}
+                    </p>
+                    <p className="text-xl font-bold">
+                      ${(condition.sellerType === "dealer" && priceAssessment.fairMarketDealer 
+                        ? priceAssessment.fairMarketDealer 
+                        : priceAssessment.fairMarketPrivate
+                      ).toLocaleString()}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -802,9 +818,15 @@ export default function ReportPage() {
                       </div>
                     </div>
 
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="rounded-lg border p-4">
-                        <p className="text-sm text-muted-foreground">Private Sale Value</p>
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      {priceAssessment.fairMarketDealer && (
+                        <div className={cn("rounded-lg border p-4", condition.sellerType === "dealer" && "border-primary/30 bg-primary/5")}>
+                          <p className="text-sm text-muted-foreground">Dealer Retail</p>
+                          <p className="text-xl font-semibold">${priceAssessment.fairMarketDealer.toLocaleString()}</p>
+                        </div>
+                      )}
+                      <div className={cn("rounded-lg border p-4", condition.sellerType !== "dealer" && "border-primary/30 bg-primary/5")}>
+                        <p className="text-sm text-muted-foreground">Private Sale</p>
                         <p className="text-xl font-semibold">${priceAssessment.fairMarketPrivate.toLocaleString()}</p>
                       </div>
                       <div className="rounded-lg border p-4">

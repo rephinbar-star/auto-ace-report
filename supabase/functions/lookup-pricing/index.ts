@@ -34,7 +34,7 @@ serve(async (req) => {
 
     const vehicleDesc = `${year} ${make} ${model}${trim ? ` ${trim}` : ""}`;
     
-    const query = `What is the current fair market value, private party sale price, and trade-in value for a ${vehicleDesc} with ${mileage.toLocaleString()} miles in ${condition} condition? Provide specific dollar amounts from KBB (Kelley Blue Book), Edmunds, and NADA guides. Include the price range if available.`;
+    const query = `What is the current dealer retail price, private party sale price, and trade-in value for a ${vehicleDesc} with ${mileage.toLocaleString()} miles in ${condition} condition? Provide specific dollar amounts for all three categories (dealer retail, private party, and trade-in) from KBB (Kelley Blue Book), Edmunds, and NADA guides. Include the price range if available.`;
 
     console.log(`Looking up pricing for: ${vehicleDesc}, ${mileage} miles, ${condition} condition`);
 

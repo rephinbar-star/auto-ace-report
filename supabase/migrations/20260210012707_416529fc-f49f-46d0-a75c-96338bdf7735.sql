@@ -1,0 +1,1 @@
+ALTER TABLE public.vehicle_reports ADD COLUMN fair_market_dealer integer;

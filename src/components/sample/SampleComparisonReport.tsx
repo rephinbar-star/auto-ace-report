@@ -71,6 +71,7 @@ const sampleComparisonVehicles: VehicleReport[] = [
     has_service_records: true,
     pricing_last_updated: null,
     pricing_sources: [],
+    fair_market_dealer: 27500,
   },
   {
     id: "sample-2",
@@ -131,6 +132,7 @@ const sampleComparisonVehicles: VehicleReport[] = [
     has_service_records: true,
     pricing_last_updated: null,
     pricing_sources: [],
+    fair_market_dealer: 28200,
   },
   {
     id: "sample-3",
@@ -196,6 +198,7 @@ const sampleComparisonVehicles: VehicleReport[] = [
     has_service_records: false,
     pricing_last_updated: null,
     pricing_sources: [],
+    fair_market_dealer: 30500,
   },
 ];
 

@@ -181,7 +181,12 @@ Your analysis must be data-driven and consider:
 - Common mechanical issues and repair costs for this vehicle
 - The impact of mileage, condition, and ownership history on value
 - Realistic repair and maintenance costs based on the vehicle's age and mileage
-${hasPricing ? "\nIMPORTANT: You have been provided with REAL-TIME MARKET PRICING DATA from authoritative sources. You MUST use these values as your primary reference for fairMarketPrivate, fairMarketTradeIn, and fairOfferPrice. Do not deviate significantly from the sourced pricing data." : ""}
+${hasPricing ? "\nIMPORTANT: You have been provided with REAL-TIME MARKET PRICING DATA from authoritative sources. You MUST use these values as your primary reference for fairMarketPrivate, fairMarketDealer, fairMarketTradeIn, and fairOfferPrice. Do not deviate significantly from the sourced pricing data." : ""}
+
+IMPORTANT: The seller type is "${condition.sellerType}".
+- If "dealer": calculate priceDifference and dealRating by comparing askingPrice to fairMarketDealer (dealer retail value). Dealers include overhead, reconditioning, and sometimes warranties, so their prices are naturally higher than private party prices.
+- If "private": calculate priceDifference and dealRating by comparing askingPrice to fairMarketPrivate (private party sale value).
+- Always provide ALL three values: fairMarketPrivate, fairMarketDealer, and fairMarketTradeIn regardless of seller type.
 
 Always provide specific dollar amounts, not ranges. Be direct and honest about risks.`;
 
@@ -240,13 +245,14 @@ Provide your expert analysis.`;
                   priceAssessment: {
                     type: "object",
                     properties: {
-                      fairMarketPrivate: { type: "number", description: "Fair private sale value in dollars" },
+                      fairMarketPrivate: { type: "number", description: "Fair private party sale value in dollars" },
+                      fairMarketDealer: { type: "number", description: "Fair dealer retail value in dollars" },
                       fairMarketTradeIn: { type: "number", description: "Fair trade-in value in dollars" },
                       dealRating: { type: "string", enum: ["excellent", "good", "fair", "poor", "overpriced"] },
-                      priceDifference: { type: "number", description: "Difference between asking and fair price" },
-                      percentDifference: { type: "number", description: "Percentage difference from fair price" },
+                      priceDifference: { type: "number", description: "Difference between asking price and the appropriate fair market value (dealer retail for dealer sellers, private sale for private sellers)" },
+                      percentDifference: { type: "number", description: "Percentage difference from the appropriate fair market value" },
                     },
-                    required: ["fairMarketPrivate", "fairMarketTradeIn", "dealRating", "priceDifference", "percentDifference"],
+                    required: ["fairMarketPrivate", "fairMarketDealer", "fairMarketTradeIn", "dealRating", "priceDifference", "percentDifference"],
                   },
                   depreciationTable: {
                     type: "array",
