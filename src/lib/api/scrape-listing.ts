@@ -44,9 +44,23 @@ export async function scrapeCarListing(url: string): Promise<ScrapeListingRespon
 
   if (error) {
     console.error("Error scraping listing:", error);
+    // When edge function returns non-2xx, the response body may be in error.context
+    let friendlyError = "Failed to scrape listing";
+    try {
+      if (error.context && typeof error.context.json === 'function') {
+        const body = await error.context.json();
+        if (body?.error) friendlyError = body.error;
+      } else if (data?.error) {
+        friendlyError = data.error;
+      } else if (error.message) {
+        friendlyError = error.message;
+      }
+    } catch {
+      friendlyError = error.message || "Failed to scrape listing";
+    }
     return { 
       success: false, 
-      error: error.message || "Failed to scrape listing" 
+      error: friendlyError
     };
   }
 
