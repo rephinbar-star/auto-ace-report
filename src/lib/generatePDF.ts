@@ -49,6 +49,13 @@ interface DealerReview {
   sources: string[];
 }
 
+interface ServiceHistory {
+  serviceGapMiles?: number | null;
+  majorServicesDue?: string[] | null;
+  majorServicesDone?: string[] | null;
+  chronicRepairSystems?: string[] | null;
+}
+
 interface ReportData {
   vehicle: VehicleData;
   priceAssessment: PriceAssessment;
@@ -57,6 +64,7 @@ interface ReportData {
   depreciationTable: DepreciationRow[];
   images?: string[];
   dealerReview?: DealerReview;
+  serviceHistory?: ServiceHistory;
 }
 
 // Helper to load image as base64 for PDF
@@ -101,7 +109,7 @@ export async function generateReportPDF(
   const margin = 15;
   let yPosition = margin;
 
-  const { vehicle, priceAssessment, riskAssessment, historyAnalysis, depreciationTable, images, dealerReview } = data;
+  const { vehicle, priceAssessment, riskAssessment, historyAnalysis, depreciationTable, images, dealerReview, serviceHistory } = data;
 
   // Helper functions
   const addText = (text: string, fontSize: number, isBold = false, color: [number, number, number] = [0, 0, 0]) => {
@@ -288,6 +296,39 @@ export async function generateReportPDF(
   historyAnalysis.concerns.forEach((item) => {
     addText(`• ${item}`, 10);
   });
+
+  // Service History Timeline
+  const doneItems = serviceHistory?.majorServicesDone ?? [];
+  const dueItems = serviceHistory?.majorServicesDue ?? [];
+  const chronicItems = serviceHistory?.chronicRepairSystems ?? [];
+  const hasServiceData = doneItems.length > 0 || dueItems.length > 0 || chronicItems.length > 0 || (serviceHistory?.serviceGapMiles != null);
+
+  if (hasServiceData) {
+    addSection("Service History");
+
+    if (serviceHistory?.serviceGapMiles != null) {
+      const gap = serviceHistory.serviceGapMiles;
+      const gapColor: [number, number, number] = gap <= 10000 ? [34, 197, 94] : gap <= 20000 ? [234, 179, 8] : [239, 68, 68];
+      addText(`Largest Service Gap: ${gap.toLocaleString()} miles`, 11, true, gapColor);
+      const gapNote = gap <= 10000 ? "Consistent maintenance schedule" : gap <= 20000 ? "Some gaps — ask seller for full records" : "Significant gaps — budget for deferred maintenance";
+      addText(gapNote, 9, false, [100, 100, 100]);
+    }
+
+    if (doneItems.length > 0) {
+      addText("Completed Services:", 10, true, [34, 197, 94]);
+      doneItems.forEach((s) => addText(`✓ ${s}`, 9));
+    }
+
+    if (dueItems.length > 0) {
+      addText("Overdue Services:", 10, true, [239, 68, 68]);
+      dueItems.forEach((s) => addText(`⚠ ${s}`, 9));
+    }
+
+    if (chronicItems.length > 0) {
+      addText("Chronic Repair Systems:", 10, true, [239, 68, 68]);
+      chronicItems.forEach((s) => addText(`⚠ ${s}`, 9));
+    }
+  }
 
   // Risk Assessment
   addSection("Risk Assessment");
