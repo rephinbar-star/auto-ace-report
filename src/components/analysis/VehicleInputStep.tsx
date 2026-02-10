@@ -662,14 +662,14 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                       <FormLabel>Listing URL</FormLabel>
                       <FormControl>
                         <Input 
-                          placeholder="https://www.autotrader.com/cars-for-sale/..." 
+                          placeholder="https://www.cars.com/vehicledetail/..." 
                           {...field}
                           className="bg-background"
                         />
                       </FormControl>
                       <FormDescription className="flex flex-wrap gap-2 items-center">
                         <span className="text-xs">Supported:</span>
-                        <Badge variant="outline" className="text-xs">AutoTrader</Badge>
+                        <Badge variant="outline" className="text-xs">Cars.com</Badge>
                         <Badge variant="outline" className="text-xs">Cars.com</Badge>
                         <Badge variant="outline" className="text-xs">CarGurus</Badge>
                         <Badge variant="outline" className="text-xs">CarMax</Badge>
