@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
@@ -92,6 +92,7 @@ function DashboardContent() {
   };
 
   // Fetch vehicle reports
+  const queryClient = useQueryClient();
   const { data: reports, isLoading, error } = useQuery({
     queryKey: ["vehicle-reports", user?.id],
     queryFn: async () => {
@@ -105,6 +106,22 @@ function DashboardContent() {
     },
     enabled: !!user,
   });
+
+  const handleDeleteReport = async (reportId: string) => {
+    try {
+      const { error } = await supabase
+        .from("vehicle_reports")
+        .delete()
+        .eq("id", reportId);
+
+      if (error) throw error;
+      toast.success("Report deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ["vehicle-reports", user?.id] });
+    } catch (err) {
+      console.error("Delete error:", err);
+      toast.error("Failed to delete report");
+    }
+  };
 
   // Filter and sort reports
   const filteredReports = useMemo(() => {
@@ -413,6 +430,7 @@ function DashboardContent() {
                   isSelected={selectedIds.has(report.id)}
                   onSelect={handleSelect}
                   selectionDisabled={selectedIds.size >= comparisonLimit && !selectedIds.has(report.id)}
+                  onDelete={handleDeleteReport}
                 />
               ))}
             </div>

@@ -1,9 +1,21 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Car, Calendar, Gauge, DollarSign, ArrowRight, AlertTriangle, CheckCircle, Clock, Check } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Car, Calendar, Gauge, DollarSign, ArrowRight, AlertTriangle, CheckCircle, Clock, Check, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -15,6 +27,7 @@ interface ReportCardProps {
   isSelected?: boolean;
   onSelect?: (id: string, selected: boolean) => void;
   selectionDisabled?: boolean;
+  onDelete?: (id: string) => void;
 }
 
 const dealRatingConfig = {
@@ -38,7 +51,8 @@ const riskConfig = {
   high: { label: "High Risk", className: "text-red-600" },
 };
 
-export function ReportCard({ report, selectionMode, isSelected, onSelect, selectionDisabled }: ReportCardProps) {
+export function ReportCard({ report, selectionMode, isSelected, onSelect, selectionDisabled, onDelete }: ReportCardProps) {
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const dealRating = report.deal_rating ? dealRatingConfig[report.deal_rating] : null;
   const status = statusConfig[report.status];
   const StatusIcon = status.icon;
@@ -57,7 +71,7 @@ export function ReportCard({ report, selectionMode, isSelected, onSelect, select
   return (
     <Card 
       className={cn(
-        "group transition-all duration-200",
+        "group relative transition-all duration-200",
         selectionMode && canSelect && "cursor-pointer",
         selectionMode && isSelected && "ring-2 ring-primary border-primary",
         selectionMode && !canSelect && "opacity-50",
@@ -67,7 +81,6 @@ export function ReportCard({ report, selectionMode, isSelected, onSelect, select
     >
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-4">
-          {/* Selection checkbox */}
           {selectionMode && (
             <div className="shrink-0">
               <Checkbox
@@ -95,7 +108,6 @@ export function ReportCard({ report, selectionMode, isSelected, onSelect, select
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {/* Key stats */}
         <div className="grid grid-cols-2 gap-3 text-sm">
           <div className="flex items-center gap-2 text-muted-foreground">
             <Gauge className="h-4 w-4" />
@@ -115,7 +127,6 @@ export function ReportCard({ report, selectionMode, isSelected, onSelect, select
           </div>
         </div>
 
-        {/* Deal rating and risk */}
         {report.status === "complete" && (
           <div className="flex flex-wrap items-center gap-2">
             {dealRating && (
@@ -131,7 +142,6 @@ export function ReportCard({ report, selectionMode, isSelected, onSelect, select
           </div>
         )}
 
-        {/* Fair offer price */}
         {report.fair_offer_price && report.status === "complete" && (
           <div className="p-3 rounded-lg bg-primary/5 border border-primary/10">
             <p className="text-xs text-muted-foreground mb-1">Fair Offer Price</p>
@@ -142,7 +152,7 @@ export function ReportCard({ report, selectionMode, isSelected, onSelect, select
         )}
       </CardContent>
 
-      <CardFooter>
+      <CardFooter className="flex items-center justify-between gap-2">
         {selectionMode ? (
           <Button 
             variant={isSelected ? "default" : "outline"} 
@@ -165,12 +175,47 @@ export function ReportCard({ report, selectionMode, isSelected, onSelect, select
             )}
           </Button>
         ) : (
-          <Button asChild variant="ghost" className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-            <Link to={`/report/${report.id}`}>
-              View Full Report
-              <ArrowRight className="h-4 w-4 ml-2" />
-            </Link>
-          </Button>
+          <>
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Report</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete the report for{" "}
+                    <span className="font-medium text-foreground">
+                      {report.year} {report.make} {report.model}
+                    </span>
+                    ? This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    onClick={() => onDelete?.(report.id)}
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <Button asChild variant="ghost" className="flex-1 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+              <Link to={`/report/${report.id}`}>
+                View Full Report
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </Link>
+            </Button>
+          </>
         )}
       </CardFooter>
     </Card>
