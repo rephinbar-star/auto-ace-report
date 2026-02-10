@@ -55,6 +55,7 @@ import { generateReportPDF } from "@/lib/generatePDF";
 import { toast } from "sonner";
 import { SampleComparisonReport } from "@/components/sample/SampleComparisonReport";
 import { RiskScoreBreakdown } from "@/components/report/RiskScoreBreakdown";
+import { ServiceHistoryTimeline } from "@/components/report/ServiceHistoryTimeline";
 import { calculateUVPRS } from "@/lib/uvprs-scoring";
 import type { Variants } from "framer-motion";
 
@@ -183,6 +184,20 @@ export default function SampleReportPage() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [activeTab, setActiveTab] = useState("vehicle");
 
+  // Sample granular service data
+  const sampleServiceHistory = {
+    serviceGapMiles: 7500,
+    majorServicesDone: [
+      "Oil changes every 5,000 mi",
+      "Brake fluid flush at 30,000 mi",
+      "Cabin & engine air filters at 35,000 mi",
+    ],
+    majorServicesDue: [
+      "Transmission fluid change (due at 60k)",
+    ],
+    chronicRepairSystems: [] as string[],
+  };
+
   // Compute UVPRS from sample data
   const sampleUVPRS = calculateUVPRS({
     year: sampleVehicle.year,
@@ -196,6 +211,10 @@ export default function SampleReportPage() {
     healthScore: historyAnalysis.healthScore,
     historyIssues: historyAnalysis.concerns,
     historyPositives: historyAnalysis.positives,
+    serviceGapMiles: sampleServiceHistory.serviceGapMiles,
+    majorServicesDue: sampleServiceHistory.majorServicesDue,
+    majorServicesDone: sampleServiceHistory.majorServicesDone,
+    chronicRepairSystems: sampleServiceHistory.chronicRepairSystems,
     fairMarketPrivate: priceAssessment.fairMarketPrivate,
     fairMarketDealer: undefined,
     openRecallCount: 0,
@@ -240,6 +259,7 @@ export default function SampleReportPage() {
         },
         historyAnalysis,
         depreciationTable,
+        serviceHistory: sampleServiceHistory,
       });
       toast.success("PDF downloaded successfully!");
     } catch (error) {
@@ -722,6 +742,18 @@ export default function SampleReportPage() {
               {/* UVPRS Risk Score Breakdown */}
               <motion.div variants={itemVariants} whileHover={{ y: -5 }} transition={{ duration: 0.2 }}>
                 <RiskScoreBreakdown result={sampleUVPRS} />
+              </motion.div>
+
+              {/* Service History Timeline */}
+              <motion.div variants={itemVariants} whileHover={{ y: -5 }} transition={{ duration: 0.2 }}>
+                <ServiceHistoryTimeline
+                  serviceGapMiles={sampleServiceHistory.serviceGapMiles}
+                  majorServicesDue={sampleServiceHistory.majorServicesDue}
+                  majorServicesDone={sampleServiceHistory.majorServicesDone}
+                  chronicRepairSystems={sampleServiceHistory.chronicRepairSystems}
+                  hasServiceRecords={true}
+                  mileage={sampleVehicle.mileage}
+                />
               </motion.div>
 
               {/* Risk Assessment */}
