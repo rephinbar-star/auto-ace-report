@@ -44,6 +44,8 @@ export interface UVPRSInput {
 
   // Recalls (fetched async)
   openRecallCount?: number | null;
+  nhtsaTotalRecalls?: number | null;
+  resolvedRecallCount?: number | null;
 }
 
 export interface UVPRSFactorResult {
@@ -364,13 +366,22 @@ export function calculateUVPRS(input: UVPRSInput): UVPRSResult {
 
   // 9. Open Recalls
   const recall = scoreRecalls(input.openRecallCount);
+  let recallDescription: string;
+  if (!recall.known) {
+    recallDescription = "Unknown — neutral score applied";
+  } else if (input.nhtsaTotalRecalls != null && input.nhtsaTotalRecalls > 0) {
+    const resolved = input.resolvedRecallCount ?? 0;
+    recallDescription = `NHTSA reports ${input.nhtsaTotalRecalls} recall(s) for this year/make/model. CarFax confirms ${resolved} resolved. ${input.openRecallCount} likely still open.`;
+  } else if (input.openRecallCount === 0) {
+    recallDescription = "No open recalls";
+  } else {
+    recallDescription = `${input.openRecallCount} open recall(s)`;
+  }
   factorResults.push({
     key: "recall", label: "Open Recalls",
     score: recall.score, weight: WEIGHTS.recall, weighted: 0,
     known: recall.known,
-    description: recall.known
-      ? (input.openRecallCount === 0 ? "No open recalls" : `${input.openRecallCount} open recall(s)`)
-      : "Unknown — neutral score applied",
+    description: recallDescription,
   });
 
   // Renormalize weights over known factors
