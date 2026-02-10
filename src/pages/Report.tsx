@@ -818,17 +818,26 @@ export default function ReportPage() {
                       <div className="mt-4 rounded-lg border border-dashed p-3">
                         <p className="text-xs font-medium text-muted-foreground mb-2">Pricing Sources</p>
                         <div className="flex flex-wrap gap-2">
-                          {pricingSources.map((url, i) => {
-                            let displayName: string;
-                            try {
-                              const hostname = new URL(url).hostname.replace("www.", "");
-                              displayName = hostname.split(".")[0].charAt(0).toUpperCase() + hostname.split(".")[0].slice(1);
-                            } catch {
-                              displayName = `Source ${i + 1}`;
+                          {(() => {
+                            // Deduplicate by domain, keeping the first URL per domain
+                            const seen = new Map<string, { displayName: string; url: string }>();
+                            for (const url of pricingSources) {
+                              try {
+                                const hostname = new URL(url).hostname.replace("www.", "");
+                                const domain = hostname.split(".")[0];
+                                if (!seen.has(domain)) {
+                                  seen.set(domain, {
+                                    displayName: domain.charAt(0).toUpperCase() + domain.slice(1),
+                                    url,
+                                  });
+                                }
+                              } catch {
+                                // skip malformed URLs
+                              }
                             }
-                            return (
+                            return Array.from(seen.values()).map(({ displayName, url }) => (
                               <a
-                                key={i}
+                                key={displayName}
                                 href={url}
                                 target="_blank"
                                 rel="noopener noreferrer"
@@ -837,8 +846,8 @@ export default function ReportPage() {
                                 <ExternalLink className="h-3 w-3" />
                                 {displayName}
                               </a>
-                            );
-                          })}
+                            ));
+                          })()}
                         </div>
                       </div>
                     )}
