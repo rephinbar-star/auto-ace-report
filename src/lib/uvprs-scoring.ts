@@ -58,7 +58,7 @@ export interface UVPRSFactorResult {
 
 export interface UVPRSResult {
   totalScore: number;
-  riskLevel: "low" | "moderate" | "high" | "very_high" | "extreme";
+  riskLevel: "low" | "moderate" | "high";
   riskLabel: string;
   factors: UVPRSFactorResult[];
   knownFactorCount: number;
@@ -265,17 +265,15 @@ export function scoreRecalls(openRecallCount: number | null | undefined): { scor
 // ============================================================================
 
 export function getRiskLevel(score: number): { level: UVPRSResult["riskLevel"]; label: string } {
-  if (score <= 20) return { level: "low", label: "Low Risk" };
-  if (score <= 40) return { level: "moderate", label: "Moderate Risk" };
-  if (score <= 60) return { level: "high", label: "High Risk" };
-  if (score <= 80) return { level: "very_high", label: "Very High Risk" };
-  return { level: "extreme", label: "Extreme Risk" };
+  if (score <= 33) return { level: "low", label: "Low Risk" };
+  if (score <= 67) return { level: "moderate", label: "Moderate Risk" };
+  return { level: "high", label: "High Risk" };
 }
 
 /** Map UVPRS to legacy risk_level enum */
 export function uvprsToLegacyRiskLevel(score: number): "low" | "medium" | "high" {
-  if (score <= 20) return "low";
-  if (score <= 60) return "medium";
+  if (score <= 33) return "low";
+  if (score <= 67) return "medium";
   return "high";
 }
 
