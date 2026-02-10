@@ -340,6 +340,50 @@ export async function generateComparisonPDF(data: ComparisonPDFData): Promise<vo
     });
   }
 
+  // Service History per vehicle
+  const vehiclesWithHistory = vehicles.filter(v =>
+    (v.major_services_done?.length ?? 0) > 0 ||
+    (v.major_services_due?.length ?? 0) > 0 ||
+    (v.chronic_repair_systems?.length ?? 0) > 0 ||
+    v.service_gap_miles != null
+  );
+
+  if (vehiclesWithHistory.length > 0) {
+    addSection("Service History");
+
+    vehiclesWithHistory.forEach((v) => {
+      if (yPosition > pageHeight - margin - 30) {
+        pdf.addPage();
+        yPosition = margin;
+      }
+
+      addText(`${v.year} ${v.make} ${v.model}`, 11, true);
+
+      if (v.service_gap_miles != null) {
+        const gap = v.service_gap_miles;
+        const gapColor: [number, number, number] = gap <= 10000 ? [34, 197, 94] : gap <= 20000 ? [234, 179, 8] : [239, 68, 68];
+        addText(`Largest Service Gap: ${gap.toLocaleString()} miles`, 9, true, gapColor);
+      }
+
+      if (v.major_services_done && v.major_services_done.length > 0) {
+        addText("Completed:", 9, true, [34, 197, 94]);
+        v.major_services_done.forEach((s) => addText(`  ✓ ${s}`, 8));
+      }
+
+      if (v.major_services_due && v.major_services_due.length > 0) {
+        addText("Overdue:", 9, true, [239, 68, 68]);
+        v.major_services_due.forEach((s) => addText(`  ⚠ ${s}`, 8));
+      }
+
+      if (v.chronic_repair_systems && v.chronic_repair_systems.length > 0) {
+        addText("Chronic Issues:", 9, true, [239, 68, 68]);
+        v.chronic_repair_systems.forEach((s) => addText(`  ⚠ ${s}`, 8));
+      }
+
+      yPosition += 3;
+    });
+  }
+
   // Footnotes section
   yPosition += 5;
   pdf.setFontSize(8);
