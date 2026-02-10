@@ -252,7 +252,7 @@ export async function generateReportPDF(
   pdf.setTextColor(100, 100, 100);
   pdf.text("Fair Market", margin + 5, statsY);
   pdf.text("Deal Rating", margin + colWidth + 5, statsY);
-  pdf.text("Risk Level", margin + colWidth * 2 + 5, statsY);
+  pdf.text("Risk Score", margin + colWidth * 2 + 5, statsY);
   pdf.text("Fair Offer", margin + colWidth * 3 + 5, statsY);
   
   pdf.setFontSize(12);
@@ -271,14 +271,16 @@ export async function generateReportPDF(
   pdf.setTextColor(...(ratingColors[priceAssessment.dealRating] || [0, 0, 0]));
   pdf.text(priceAssessment.dealRating.charAt(0).toUpperCase() + priceAssessment.dealRating.slice(1), margin + colWidth + 5, statsY + 8);
   
-  // Risk level color
-  const riskColors: Record<string, [number, number, number]> = {
-    low: [34, 197, 94],
-    medium: [234, 179, 8],
-    high: [239, 68, 68],
-  };
-  pdf.setTextColor(...(riskColors[riskAssessment.level] || [0, 0, 0]));
-  pdf.text(riskAssessment.level.charAt(0).toUpperCase() + riskAssessment.level.slice(1), margin + colWidth * 2 + 5, statsY + 8);
+  // Risk score - use UVPRS if available
+  const legacyRiskColors: Record<string, [number, number, number]> = { low: [34, 197, 94], medium: [234, 179, 8], high: [239, 68, 68] };
+  const riskScoreColor: [number, number, number] = uvprsResult
+    ? (uvprsResult.riskLevel === "low" ? [34, 197, 94] : uvprsResult.riskLevel === "moderate" ? [234, 179, 8] : [239, 68, 68])
+    : (legacyRiskColors[riskAssessment.level] || [0, 0, 0]);
+  pdf.setTextColor(...riskScoreColor);
+  pdf.text(
+    uvprsResult ? `${uvprsResult.totalScore} / 100` : riskAssessment.level.charAt(0).toUpperCase() + riskAssessment.level.slice(1),
+    margin + colWidth * 2 + 5, statsY + 8
+  );
   
   pdf.setTextColor(34, 197, 94);
   pdf.text(formatCurrency(riskAssessment.fairOfferPrice), margin + colWidth * 3 + 5, statsY + 8);
@@ -294,62 +296,14 @@ export async function generateReportPDF(
   addText(`Private Sale Value: ${formatCurrency(priceAssessment.fairMarketPrivate)}`, 11);
   addText(`Trade-In Value: ${formatCurrency(priceAssessment.fairMarketTradeIn)}`, 11);
 
-  // Vehicle Health
-  addSection("Vehicle Health Score");
-  addText(`Score: ${historyAnalysis.healthScore}/100`, 12, true);
-  
-  addText("Positives:", 11, true, [34, 197, 94]);
-  historyAnalysis.positives.forEach((item) => {
-    addText(`• ${item}`, 10);
-  });
-  
-  addText("Concerns:", 11, true, [239, 68, 68]);
-  historyAnalysis.concerns.forEach((item) => {
-    addText(`• ${item}`, 10);
-  });
-
-  // Service History Timeline
-  const doneItems = serviceHistory?.majorServicesDone ?? [];
-  const dueItems = serviceHistory?.majorServicesDue ?? [];
-  const chronicItems = serviceHistory?.chronicRepairSystems ?? [];
-  const hasServiceData = doneItems.length > 0 || dueItems.length > 0 || chronicItems.length > 0 || (serviceHistory?.serviceGapMiles != null);
-
-  if (hasServiceData) {
-    addSection("Service History");
-
-    if (serviceHistory?.serviceGapMiles != null) {
-      const gap = serviceHistory.serviceGapMiles;
-      const gapColor: [number, number, number] = gap <= 10000 ? [34, 197, 94] : gap <= 20000 ? [234, 179, 8] : [239, 68, 68];
-      addText(`Largest Service Gap: ${gap.toLocaleString()} miles`, 11, true, gapColor);
-      const gapNote = gap <= 10000 ? "Consistent maintenance schedule" : gap <= 20000 ? "Some gaps — ask seller for full records" : "Significant gaps — budget for deferred maintenance";
-      addText(gapNote, 9, false, [100, 100, 100]);
-    }
-
-    if (doneItems.length > 0) {
-      addText("Completed Services:", 10, true, [34, 197, 94]);
-      doneItems.forEach((s) => addText(`✓ ${s}`, 9));
-    }
-
-    if (dueItems.length > 0) {
-      addText("Overdue Services:", 10, true, [239, 68, 68]);
-      dueItems.forEach((s) => addText(`⚠ ${s}`, 9));
-    }
-
-    if (chronicItems.length > 0) {
-      addText("Chronic Repair Systems:", 10, true, [239, 68, 68]);
-      chronicItems.forEach((s) => addText(`⚠ ${s}`, 9));
-    }
-  }
-
-  // UVPRS Risk Score Breakdown
+  // UVPRS Risk Score Breakdown (before Vehicle Health to match report layout)
   if (uvprsResult) {
     addSection("UVPRS Risk Score");
 
     // Score header with color
     const uvprsColor: [number, number, number] =
-      uvprsResult.totalScore <= 20 ? [34, 197, 94] :
-      uvprsResult.totalScore <= 40 ? [234, 179, 8] :
-      uvprsResult.totalScore <= 60 ? [249, 115, 22] :
+      uvprsResult.riskLevel === "low" ? [34, 197, 94] :
+      uvprsResult.riskLevel === "moderate" ? [234, 179, 8] :
       [239, 68, 68];
 
     // Score box
@@ -412,9 +366,8 @@ export async function generateReportPDF(
 
       // Score with color
       const fColor: [number, number, number] =
-        factor.score <= 20 ? [34, 197, 94] :
-        factor.score <= 40 ? [234, 179, 8] :
-        factor.score <= 60 ? [249, 115, 22] :
+        factor.score <= 33 ? [34, 197, 94] :
+        factor.score <= 67 ? [234, 179, 8] :
         [239, 68, 68];
       pdf.setTextColor(...fColor);
       pdf.setFont("helvetica", "bold");
@@ -439,6 +392,20 @@ export async function generateReportPDF(
       yPosition += 5;
     }
   }
+
+  // Vehicle Health
+  addSection("Vehicle Health Score");
+  addText(`Score: ${historyAnalysis.healthScore}/100`, 12, true);
+  
+  addText("Positives:", 11, true, [34, 197, 94]);
+  historyAnalysis.positives.forEach((item) => {
+    addText(`• ${item}`, 10);
+  });
+  
+  addText("Concerns:", 11, true, [239, 68, 68]);
+  historyAnalysis.concerns.forEach((item) => {
+    addText(`• ${item}`, 10);
+  });
 
   // Total Cost of Ownership
   if (tcoData) {
@@ -465,8 +432,9 @@ export async function generateReportPDF(
 
     pdf.setFontSize(13);
     pdf.setFont("helvetica", "bold");
-    pdf.setTextColor(0, 0, 0);
+    pdf.setTextColor(239, 68, 68);
     pdf.text(formatCurrency(tco.totalTCO), margin + 5, yPosition + 15);
+    pdf.setTextColor(239, 68, 68);
     pdf.text(`$${tco.costPerMile.toFixed(2)}`, margin + tcoColW + 5, yPosition + 15);
     const monthlyOwnership = Math.round((tco.annualFuelCost / 12) + (tco.repairCost5Year / 60));
     pdf.text(`${formatCurrency(monthlyOwnership)}/mo`, margin + tcoColW * 2 + 5, yPosition + 15);
