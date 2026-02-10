@@ -439,12 +439,14 @@ export default function ReportPage() {
     const computeUVPRS = async () => {
       // Cross-reference NHTSA (primary, all recalls for year/make/model) with CarFax (resolved count for this VIN)
       let openRecallCount: number | null = null;
+      let nhtsaTotalRecalls: number | null = null;
+      let resolvedRecallCount: number | null = history?.resolvedRecallCount ?? null;
       try {
         const recallResult = await lookupRecalls(vehicle.year, vehicle.make, vehicle.model);
-        const nhtsaTotal = recallResult.count;
-        const resolvedFromCarfax = history?.resolvedRecallCount ?? 0;
+        nhtsaTotalRecalls = recallResult.count;
+        const resolved = resolvedRecallCount ?? 0;
         // Open = NHTSA total minus CarFax-confirmed resolved (floor at 0)
-        openRecallCount = Math.max(0, nhtsaTotal - resolvedFromCarfax);
+        openRecallCount = Math.max(0, nhtsaTotalRecalls - resolved);
       } catch {
         // If NHTSA fails, fall back to CarFax-only data
         openRecallCount = history?.openRecallCount ?? null;
@@ -469,6 +471,8 @@ export default function ReportPage() {
         fairMarketPrivate: priceAssessment?.fairMarketPrivate ?? null,
         fairMarketDealer: priceAssessment?.fairMarketDealer ?? null,
         openRecallCount,
+        nhtsaTotalRecalls,
+        resolvedRecallCount,
       });
       setUvprsResult(result);
     };

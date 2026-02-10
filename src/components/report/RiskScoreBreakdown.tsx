@@ -39,7 +39,7 @@ const factorTooltips: Record<string, { meaning: string; advice: string }> = {
     meaning: "Older vehicles face higher risk from age-related deterioration — rubber seals, hoses, electronics, and rust.",
     advice: "For 8+ year old vehicles, inspect rubber components, undercarriage rust, and electrical systems carefully.",
   },
-  recalls: {
+  recall: {
     meaning: "Uses NHTSA (the official federal database) as the primary source for all recalls issued for this year/make/model, then subtracts any recalls confirmed as resolved by your CarFax/AutoCheck report. This cross-reference gives the most accurate open recall count, though minor discrepancies can occur if CarFax hasn't recorded a recent repair.",
     advice: "Check NHTSA.gov with the VIN for the definitive list. All recall repairs are free at any authorized dealer — complete them before driving.",
   },
