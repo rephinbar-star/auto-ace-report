@@ -245,7 +245,108 @@ export async function generateComparisonPDF(data: ComparisonPDFData): Promise<vo
     yPosition += 8;
   });
 
-  yPosition += 10;
+  yPosition += 8;
+
+  // Visual TCO bar chart
+  if (scoredVehicles.filter(s => s.tco).length >= 2) {
+    if (yPosition > pageHeight - margin - 60) {
+      pdf.addPage();
+      yPosition = margin;
+    }
+
+    const chartVehicles = scoredVehicles.filter(s => s.tco);
+    const maxTCO = Math.max(...chartVehicles.map(s => s.tco!.totalTCO));
+    const chartMinTCO = Math.min(...chartVehicles.map(s => s.tco!.totalTCO));
+    const barMaxWidth = pageWidth - 2 * margin - 55; // leave room for label
+    const barHeight = 10;
+    const barGap = 4;
+
+    addText("TCO Comparison", 10, true, [0, 0, 0]);
+    yPosition += 2;
+
+    chartVehicles.forEach((scored, idx) => {
+      const v = scored.vehicle;
+      const tcoVal = scored.tco!.totalTCO;
+      const barWidth = Math.max(8, (tcoVal / maxTCO) * barMaxWidth);
+      const isLowest = tcoVal === chartMinTCO;
+
+      // Vehicle label
+      pdf.setFontSize(8);
+      pdf.setFont("helvetica", isLowest ? "bold" : "normal");
+      pdf.setTextColor(0, 0, 0);
+      const label = `${v.year} ${v.make} ${v.model}`.substring(0, 25);
+      pdf.text(label, margin, yPosition + barHeight / 2 + 1);
+
+      // Bar background
+      const barX = margin + 52;
+      pdf.setFillColor(230, 230, 230);
+      pdf.roundedRect(barX, yPosition - 1, barMaxWidth, barHeight, 1.5, 1.5, "F");
+
+      // Stacked bar: purchase | fuel | repairs (+ mileage dep)
+      const tco = scored.tco!;
+      const purchaseW = (tco.purchasePrice / tcoVal) * barWidth;
+      const fuelW = (tco.fuelCost5Year / tcoVal) * barWidth;
+      const repairW = (tco.repairCost5Year / tcoVal) * barWidth;
+      const mileDepW = ((tco.mileageDepreciation || 0) / tcoVal) * barWidth;
+
+      let segX = barX;
+      // Purchase segment
+      pdf.setFillColor(59, 130, 246);
+      pdf.roundedRect(segX, yPosition - 1, purchaseW, barHeight, 1.5, 0, "F");
+      pdf.rect(segX + 1.5, yPosition - 1, Math.max(0, purchaseW - 1.5), barHeight, "F");
+      segX += purchaseW;
+
+      // Fuel segment
+      pdf.setFillColor(16, 185, 129);
+      pdf.rect(segX, yPosition - 1, fuelW, barHeight, "F");
+      segX += fuelW;
+
+      // Repairs segment
+      pdf.setFillColor(234, 179, 8);
+      pdf.rect(segX, yPosition - 1, repairW, barHeight, "F");
+      segX += repairW;
+
+      // Mileage depreciation segment
+      if (mileDepW > 0) {
+        pdf.setFillColor(249, 115, 22);
+        pdf.rect(segX, yPosition - 1, mileDepW, barHeight, "F");
+      }
+
+      // Value label at end of bar
+      pdf.setFontSize(8);
+      pdf.setFont("helvetica", "bold");
+      pdf.setTextColor(isLowest ? 34 : 80, isLowest ? 197 : 80, isLowest ? 94 : 80);
+      pdf.text(formatCurrency(tcoVal), barX + barWidth + 3, yPosition + barHeight / 2 + 1);
+
+      yPosition += barHeight + barGap;
+    });
+
+    // Legend
+    yPosition += 2;
+    const legendItems: { label: string; color: [number, number, number] }[] = [
+      { label: "Purchase", color: [59, 130, 246] },
+      { label: "Fuel", color: [16, 185, 129] },
+      { label: "Repairs", color: [234, 179, 8] },
+    ];
+    if (scoredVehicles.some(s => (s.tco?.mileageDepreciation ?? 0) > 0)) {
+      legendItems.push({ label: "Mile Dep.", color: [249, 115, 22] });
+    }
+
+    let legendX = margin;
+    pdf.setFontSize(7);
+    legendItems.forEach(({ label, color }) => {
+      pdf.setFillColor(...color);
+      pdf.rect(legendX, yPosition - 2, 4, 4, "F");
+      pdf.setTextColor(80, 80, 80);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(label, legendX + 5.5, yPosition + 1);
+      legendX += pdf.getTextWidth(label) + 12;
+    });
+
+    yPosition += 8;
+  }
+
+  yPosition += 4;
 
   // Financial Outlook
   addSection(`5-Year Financial Outlook (${annualMiles.toLocaleString()} mi/yr)`);
