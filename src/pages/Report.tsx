@@ -1259,15 +1259,6 @@ export default function ReportPage() {
                 />
               )}
 
-              {/* Dealer Trust Analysis - Pro Feature */}
-              <DealerReview
-                dealerName={condition?.sellerName}
-                listingUrl={condition?.listingUrl}
-                sellerType={condition?.sellerType}
-                isPro={isPro}
-                onAnalysisComplete={setDealerAnalysis}
-              />
-
               {/* UVPRS Risk Score Breakdown */}
               {uvprsResult && (
                 <RiskScoreBreakdown 
@@ -1496,6 +1487,15 @@ export default function ReportPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Dealer Trust Analysis - Pro Feature */}
+              <DealerReview
+                dealerName={condition?.sellerName}
+                listingUrl={condition?.listingUrl}
+                sellerType={condition?.sellerType}
+                isPro={isPro}
+                onAnalysisComplete={setDealerAnalysis}
+              />
 
               {/* Recommendation */}
               <Card className={cn(
