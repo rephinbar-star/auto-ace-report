@@ -61,6 +61,99 @@ interface ImportedListingData {
   sourceUrl: string;
 }
 
+const fbPasteSchema = z.object({
+  year: z.coerce.number().min(1980, "Enter a valid year").max(new Date().getFullYear() + 1),
+  make: z.string().min(1, "Make is required").max(50),
+  model: z.string().min(1, "Model is required").max(50),
+  trim: z.string().max(50).optional(),
+  mileage: z.coerce.number().min(0).max(999999).optional(),
+  askingPrice: z.coerce.number().min(1, "Price is required").max(99999999),
+});
+
+function FacebookPasteForm({ onComplete, onCancel }: { 
+  onComplete: (vehicle: VehicleInfo, listingUrl?: string, scrapedCondition?: Partial<VehicleCondition>) => void; 
+  onCancel: () => void;
+}) {
+  const form = useForm<z.infer<typeof fbPasteSchema>>({
+    resolver: zodResolver(fbPasteSchema),
+    defaultValues: { year: new Date().getFullYear(), make: "", model: "", trim: "", mileage: undefined, askingPrice: undefined },
+  });
+
+  const handleSubmit = (data: z.infer<typeof fbPasteSchema>) => {
+    const vehicle: VehicleInfo = {
+      year: data.year,
+      make: data.make,
+      model: data.model,
+      trim: data.trim,
+    };
+    const scrapedCondition: Partial<VehicleCondition> = {
+      sellerType: "private",
+    };
+    if (data.askingPrice) scrapedCondition.askingPrice = data.askingPrice;
+    if (data.mileage) scrapedCondition.mileage = data.mileage;
+    onComplete(vehicle, undefined, scrapedCondition);
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField control={form.control} name="year" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Year *</FormLabel>
+              <FormControl><Input type="number" placeholder="e.g. 2019" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+          <FormField control={form.control} name="make" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Make *</FormLabel>
+              <FormControl><Input placeholder="e.g. Honda" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+          <FormField control={form.control} name="model" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Model *</FormLabel>
+              <FormControl><Input placeholder="e.g. Civic" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+          <FormField control={form.control} name="trim" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Trim</FormLabel>
+              <FormControl><Input placeholder="e.g. EX-L" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+          <FormField control={form.control} name="askingPrice" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Asking Price *</FormLabel>
+              <FormControl><Input type="number" placeholder="e.g. 15000" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+          <FormField control={form.control} name="mileage" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Mileage</FormLabel>
+              <FormControl><Input type="number" placeholder="e.g. 45000" {...field} /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
+        </div>
+        <div className="flex gap-3 pt-2">
+          <Button type="submit">
+            Continue <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Back
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
+}
+
 export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepProps) {
   const [activeTab, setActiveTab] = useState<string>("vin");
   const [isLoading, setIsLoading] = useState(false);
@@ -68,6 +161,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
   const [decodedVehicle, setDecodedVehicle] = useState<VehicleInfo | null>(null);
   const [importedListing, setImportedListing] = useState<ImportedListingData | null>(null);
   const [importFailed, setImportFailed] = useState<{ url: string; error: string } | null>(null);
+  const [showFacebookHelper, setShowFacebookHelper] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showHelpVideo, setShowHelpVideo] = useState(false);
   const { toast } = useToast();
@@ -149,6 +243,17 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
 
   // Handle listing URL submission
   const handleListingUrlSubmit = async (data: z.infer<typeof listingUrlSchema>) => {
+    // Detect Facebook URLs and show helper instead of scraping
+    const isFacebookUrl = /facebook\.com|fb\.com/i.test(data.listingUrl);
+    if (isFacebookUrl) {
+      setShowFacebookHelper(true);
+      toast({
+        title: "Facebook Marketplace Detected",
+        description: "Please use the helper below to enter details from your Facebook listing.",
+      });
+      return;
+    }
+
     setIsLoading(true);
     setImportedListing(null);
     setImportFailed(null);
@@ -338,6 +443,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
   const resetImportedListing = () => {
     setImportedListing(null);
     setImportFailed(null);
+    setShowFacebookHelper(false);
     listingUrlForm.reset();
   };
 
@@ -670,12 +776,10 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                       <FormDescription className="flex flex-wrap gap-2 items-center">
                         <span className="text-xs">Supported:</span>
                         <Badge variant="outline" className="text-xs">Cars.com</Badge>
-                        <Badge variant="outline" className="text-xs">Cars.com</Badge>
                         <Badge variant="outline" className="text-xs">CarGurus</Badge>
                         <Badge variant="outline" className="text-xs">CarMax</Badge>
                         <Badge variant="outline" className="text-xs">Carvana</Badge>
                         <Badge variant="outline" className="text-xs">eBay Motors</Badge>
-                        <Badge variant="outline" className="text-xs">Facebook</Badge>
                         <Badge variant="outline" className="text-xs">Craigslist</Badge>
                         <Badge variant="outline" className="text-xs">BringaTrailer.com</Badge>
                         <Badge variant="outline" className="text-xs">Most Dealer Sites</Badge>
@@ -731,7 +835,38 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
         </Alert>
       )}
 
-      {/* Imported Listing Success Card */}
+      {/* Facebook Marketplace Paste Helper */}
+      {showFacebookHelper && !importedListing && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-primary" />
+                <CardTitle className="text-lg">Facebook Marketplace</CardTitle>
+              </div>
+              <Badge variant="secondary" className="text-xs">Manual Entry</Badge>
+            </div>
+            <CardDescription>
+              Facebook Marketplace can't be auto-imported. Copy the details from the listing and paste them below.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-lg border bg-muted/30 p-3">
+              <p className="text-xs text-muted-foreground mb-2 font-medium">💡 Quick tip: Open the Facebook listing in another tab and copy each field.</p>
+            </div>
+            <FacebookPasteForm 
+              onComplete={(vehicle) => {
+                onComplete(vehicle);
+              }}
+              onCancel={() => {
+                setShowFacebookHelper(false);
+                listingUrlForm.reset();
+              }}
+            />
+          </CardContent>
+        </Card>
+      )}
+
       {importedListing && displayVehicle && (
         <Card className="border-success/50 bg-success/5">
           <CardHeader className="pb-3">
