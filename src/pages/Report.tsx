@@ -1022,9 +1022,20 @@ export default function ReportPage() {
               {/* Depreciation Chart */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                <CardTitle className="flex items-center gap-2">
                     <TrendingDown className="h-5 w-5 text-primary" />
                     5-Year Depreciation & Equity
+                    {pricingSources.length > 0 ? (
+                      <Badge variant="outline" className="ml-auto gap-1 border-success/30 bg-success/10 text-success text-xs font-medium">
+                        <BadgeCheck className="h-3 w-3" />
+                        Market Verified
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="ml-auto gap-1 border-muted-foreground/30 bg-muted text-muted-foreground text-xs font-medium">
+                        <Bot className="h-3 w-3" />
+                        AI Estimated
+                      </Badge>
+                    )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -1125,6 +1136,44 @@ export default function ReportPage() {
                       </TableBody>
                     </Table>
                     </div>
+
+                    {/* Cost Data Sources */}
+                    {pricingSources.length > 0 && (
+                      <div className="mt-4 rounded-lg border border-dashed p-3">
+                        <p className="text-xs font-medium text-muted-foreground mb-2">Repair & Maintenance Cost Sources</p>
+                        <div className="flex flex-wrap gap-2">
+                          {(() => {
+                            const seen = new Map<string, { displayName: string; url: string }>();
+                            for (const url of pricingSources) {
+                              try {
+                                const hostname = new URL(url).hostname.replace("www.", "");
+                                const domain = hostname.split(".")[0];
+                                if (!seen.has(domain)) {
+                                  seen.set(domain, {
+                                    displayName: domain.charAt(0).toUpperCase() + domain.slice(1),
+                                    url,
+                                  });
+                                }
+                              } catch {
+                                // skip malformed URLs
+                              }
+                            }
+                            return Array.from(seen.values()).map(({ displayName, url }) => (
+                              <a
+                                key={displayName}
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                                {displayName}
+                              </a>
+                            ));
+                          })()}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -1405,6 +1454,44 @@ export default function ReportPage() {
                       <p className="text-sm font-medium">Value Proposition</p>
                       <p className="text-sm text-muted-foreground">{riskAssessment.valueProposition}</p>
                     </div>
+
+                    {/* Reliability Cost Sources */}
+                    {pricingSources.length > 0 && (
+                      <div className="mt-4 rounded-lg border border-dashed p-3">
+                        <p className="text-xs font-medium text-muted-foreground mb-2">Cost Data Sources</p>
+                        <div className="flex flex-wrap gap-2">
+                          {(() => {
+                            const seen = new Map<string, { displayName: string; url: string }>();
+                            for (const url of pricingSources) {
+                              try {
+                                const hostname = new URL(url).hostname.replace("www.", "");
+                                const domain = hostname.split(".")[0];
+                                if (!seen.has(domain)) {
+                                  seen.set(domain, {
+                                    displayName: domain.charAt(0).toUpperCase() + domain.slice(1),
+                                    url,
+                                  });
+                                }
+                              } catch {
+                                // skip
+                              }
+                            }
+                            return Array.from(seen.values()).map(({ displayName, url }) => (
+                              <a
+                                key={displayName}
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                                {displayName}
+                              </a>
+                            ));
+                          })()}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
