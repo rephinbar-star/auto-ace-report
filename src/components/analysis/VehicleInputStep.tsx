@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -346,14 +346,10 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
     }
   };
 
-  const handleScreenshotUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
+  const processScreenshotFiles = useCallback(async (fileList: File[]) => {
     // Validate all files
     const validFiles: File[] = [];
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
+    for (const file of fileList) {
       if (!file.type.startsWith("image/")) {
         toast({ title: "Invalid File", description: `"${file.name}" is not an image. Skipping.`, variant: "destructive" });
         continue;
@@ -367,7 +363,6 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
 
     if (validFiles.length === 0) return;
 
-    // Cap at 5 screenshots
     if (validFiles.length > 5) {
       toast({ title: "Too Many Files", description: "Processing the first 5 screenshots only.", variant: "default" });
       validFiles.splice(5);
@@ -379,10 +374,8 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
     setShowFacebookHelper(false);
 
     try {
-      // Process all screenshots in parallel
       const results = await Promise.all(validFiles.map(f => extractFromScreenshot(f)));
 
-      // Merge extracted data: first valid result is the base, later results fill in blanks
       type VehicleFields = NonNullable<(typeof results)[number]["vehicle"]>;
       let merged: Partial<VehicleFields> = {};
       let foundValid = false;
@@ -393,7 +386,6 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
         if (!foundValid && v.year && v.year > 1900 && v.make && v.model) {
           foundValid = true;
         }
-        // Merge: keep earliest non-null value for each field
         for (const key of Object.keys(v) as (keyof VehicleFields)[]) {
           if (v[key] != null && merged[key] == null) {
             (merged as Record<string, unknown>)[key] = v[key];
@@ -446,9 +438,41 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
       toast({ title: "Error", description: "Failed to process screenshots.", variant: "destructive" });
     } finally {
       setIsExtractingScreenshot(false);
-      e.target.value = "";
     }
+  }, [toast]);
+
+  const handleScreenshotUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    await processScreenshotFiles(Array.from(files));
+    e.target.value = "";
   };
+
+  // Clipboard paste support for screenshots
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      if (isExtractingScreenshot || isLoading || importedListing) return;
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      const imageFiles: File[] = [];
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.startsWith("image/")) {
+          const file = items[i].getAsFile();
+          if (file) imageFiles.push(file);
+        }
+      }
+
+      if (imageFiles.length > 0) {
+        e.preventDefault();
+        toast({ title: "Processing pasted image(s)…", description: `${imageFiles.length} screenshot${imageFiles.length > 1 ? "s" : ""} detected.` });
+        processScreenshotFiles(imageFiles);
+      }
+    };
+
+    document.addEventListener("paste", handlePaste);
+    return () => document.removeEventListener("paste", handlePaste);
+  }, [isExtractingScreenshot, isLoading, importedListing, processScreenshotFiles, toast]);
 
   const handleVINSubmit = async (data: z.infer<typeof vinSchema>) => {
     setIsLoading(true);
@@ -943,7 +967,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                         <><Camera className="mr-2 h-4 w-4" />Upload Listing Screenshots</>
                       )}
                     </Button>
-                    <span className="text-xs text-muted-foreground">or drop images here</span>
+                    <span className="text-xs text-muted-foreground">or drop / paste (Ctrl+V) images here</span>
                     <input
                       id="screenshot-upload"
                       type="file"
