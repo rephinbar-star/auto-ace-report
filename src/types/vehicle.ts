@@ -60,6 +60,7 @@ export interface DepreciationYear {
   tradeInValue: number;
   loanBalance: number;
   repairCosts: number;
+  maintenanceCosts?: number;
   netEquityPrivate: number;
   netEquityTradeIn: number;
 }

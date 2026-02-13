@@ -168,11 +168,11 @@ export async function generateComparisonPDF(data: ComparisonPDFData): Promise<vo
   const tcoTableY = yPosition;
   const hasMileageDepreciation = scoredVehicles.some(s => (s.tco?.mileageDepreciation ?? 0) > 0);
   const tcoCols = hasMileageDepreciation 
-    ? ["Vehicle", "Purchase", "Fuel", "Repairs", "Mile Dep.", "Total TCO"]
-    : ["Vehicle", "Purchase", "Fuel", "Repairs", "Total TCO"];
+    ? ["Vehicle", "Purchase", "Fuel", "Repairs", "Maint.", "Mile Dep.", "Total TCO"]
+    : ["Vehicle", "Purchase", "Fuel", "Repairs", "Maint.", "Total TCO"];
   const tcoColWidths = hasMileageDepreciation
-    ? [45, 30, 25, 25, 25, 30]
-    : [55, 35, 30, 30, 35];
+    ? [40, 25, 22, 22, 22, 22, 27]
+    : [45, 30, 25, 25, 25, 30];
   xPos = margin;
   
   pdf.setFillColor(59, 130, 246);
@@ -211,23 +211,25 @@ export async function generateComparisonPDF(data: ComparisonPDFData): Promise<vo
     
     const tcoData = hasMileageDepreciation
       ? [
-          `${v.year} ${v.make} ${v.model}`.substring(0, 22),
+          `${v.year} ${v.make} ${v.model}`.substring(0, 20),
           formatCurrency(Number(v.asking_price)),
           scored.tco ? formatCurrency(scored.tco.fuelCost5Year) : "—",
           scored.tco ? formatCurrency(scored.tco.repairCost5Year) : "—",
+          scored.tco ? formatCurrency(scored.tco.maintenanceCost5Year) : "—",
           scored.tco?.mileageDepreciation ? `+${formatCurrency(scored.tco.mileageDepreciation)}` : "—",
           scored.tco ? formatCurrency(scored.tco.totalTCO) : "—",
         ]
       : [
-          `${v.year} ${v.make} ${v.model}`.substring(0, 28),
+          `${v.year} ${v.make} ${v.model}`.substring(0, 22),
           formatCurrency(Number(v.asking_price)),
           scored.tco ? formatCurrency(scored.tco.fuelCost5Year) : "—",
           scored.tco ? formatCurrency(scored.tco.repairCost5Year) : "—",
+          scored.tco ? formatCurrency(scored.tco.maintenanceCost5Year) : "—",
           scored.tco ? formatCurrency(scored.tco.totalTCO) : "—",
         ];
     
-    const totalColIndex = hasMileageDepreciation ? 5 : 4;
-    const mileageDepColIndex = 4;
+    const totalColIndex = hasMileageDepreciation ? 6 : 5;
+    const mileageDepColIndex = hasMileageDepreciation ? 5 : -1;
     
     tcoData.forEach((cell, i) => {
       if (i === totalColIndex && isLowestTCO) {
@@ -287,6 +289,7 @@ export async function generateComparisonPDF(data: ComparisonPDFData): Promise<vo
       const purchaseW = (tco.purchasePrice / tcoVal) * barWidth;
       const fuelW = (tco.fuelCost5Year / tcoVal) * barWidth;
       const repairW = (tco.repairCost5Year / tcoVal) * barWidth;
+      const maintW = (tco.maintenanceCost5Year / tcoVal) * barWidth;
       const mileDepW = ((tco.mileageDepreciation || 0) / tcoVal) * barWidth;
 
       let segX = barX;
@@ -301,10 +304,15 @@ export async function generateComparisonPDF(data: ComparisonPDFData): Promise<vo
       pdf.rect(segX, yPosition - 1, fuelW, barHeight, "F");
       segX += fuelW;
 
-      // Repairs segment
-      pdf.setFillColor(234, 179, 8);
+      // Repairs segment (red)
+      pdf.setFillColor(239, 68, 68);
       pdf.rect(segX, yPosition - 1, repairW, barHeight, "F");
       segX += repairW;
+
+      // Maintenance segment (amber)
+      pdf.setFillColor(234, 179, 8);
+      pdf.rect(segX, yPosition - 1, maintW, barHeight, "F");
+      segX += maintW;
 
       // Mileage depreciation segment
       if (mileDepW > 0) {
@@ -326,7 +334,8 @@ export async function generateComparisonPDF(data: ComparisonPDFData): Promise<vo
     const legendItems: { label: string; color: [number, number, number] }[] = [
       { label: "Purchase", color: [59, 130, 246] },
       { label: "Fuel", color: [16, 185, 129] },
-      { label: "Repairs", color: [234, 179, 8] },
+      { label: "Repairs", color: [239, 68, 68] },
+      { label: "Maint.", color: [234, 179, 8] },
     ];
     if (scoredVehicles.some(s => (s.tco?.mileageDepreciation ?? 0) > 0)) {
       legendItems.push({ label: "Mile Dep.", color: [249, 115, 22] });

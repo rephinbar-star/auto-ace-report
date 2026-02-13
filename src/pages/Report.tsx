@@ -85,6 +85,7 @@ interface DepreciationYear {
   tradeInValue: number;
   loanBalance: number;
   repairCosts: number;
+  maintenanceCosts?: number;
   netEquityPrivate: number;
   netEquityTradeIn: number;
 }
@@ -1073,24 +1074,28 @@ export default function ReportPage() {
                           <TableHead className="text-right">Private Value</TableHead>
                           <TableHead className="text-right">Trade-In</TableHead>
                           <TableHead className="text-right">Loan Balance</TableHead>
-                          <TableHead className="text-right">Repair Costs</TableHead>
+                          <TableHead className="text-right">Repairs</TableHead>
+                          <TableHead className="text-right">Maintenance</TableHead>
                           <TableHead className="text-right">Net Equity</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {depreciationTable.map((row) => {
-                          // Net equity = Trade-In Value - Loan Balance - Repair Costs (unless excluded)
+                          const totalCosts = row.repairCosts + (row.maintenanceCosts || 0);
                           const netEquity = excludeRepairs 
                             ? row.tradeInValue - row.loanBalance
-                            : row.tradeInValue - row.loanBalance - row.repairCosts;
+                            : row.tradeInValue - row.loanBalance - totalCosts;
                           return (
                             <TableRow key={row.year}>
                               <TableCell className="font-medium">Year {row.year}</TableCell>
                               <TableCell className="text-right">${row.privateValue.toLocaleString()}</TableCell>
                               <TableCell className="text-right">${row.tradeInValue.toLocaleString()}</TableCell>
                               <TableCell className="text-right">${row.loanBalance.toLocaleString()}</TableCell>
-                              <TableCell className="text-right">
+                              <TableCell className="text-right text-danger">
                                 ${row.repairCosts.toLocaleString()}
+                              </TableCell>
+                              <TableCell className="text-right text-muted-foreground">
+                                ${(row.maintenanceCosts || 0).toLocaleString()}
                               </TableCell>
                               <TableCell className={cn(
                                 "text-right font-semibold",

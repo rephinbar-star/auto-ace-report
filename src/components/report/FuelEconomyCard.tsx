@@ -300,8 +300,12 @@ export function FuelEconomyCard({
               <span className="font-medium">${tco.fuelCost5Year.toLocaleString()}</span>
             </div>
             <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Est. Repairs (5 yr)</span>
+              <span className="font-medium text-danger">${tco.repairCost5Year.toLocaleString()}</span>
+            </div>
+            <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Est. Maintenance (5 yr)</span>
-              <span className="font-medium">${tco.repairCost5Year.toLocaleString()}</span>
+              <span className="font-medium">${tco.maintenanceCost5Year.toLocaleString()}</span>
             </div>
             {(tco.mileageDepreciation ?? 0) > 0 && (
               <div className="flex items-center justify-between">
