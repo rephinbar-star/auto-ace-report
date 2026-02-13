@@ -91,7 +91,7 @@ export function RiskScoreBreakdown({ result, missingHistoryReport, onUploadHisto
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <ShieldAlert className="h-5 w-5 text-primary" />
-          Purchase Risk Score (UVPRS)
+          Purchase Risk Score
         </CardTitle>
         {missingHistoryReport && (
           <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-destructive">
