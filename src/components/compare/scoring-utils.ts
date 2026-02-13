@@ -277,7 +277,7 @@ export function calculateAgeScore(year: number, healthScore: number | null): Sco
  */
 export function calculateReliabilityScore(
   make: string,
-  reliabilityConcerns: string[] | null
+  reliabilityConcerns: unknown
 ): ScoreBreakdownItem {
   // Get brand reliability score (1-10 scale)
   const brandScore = BRAND_RELIABILITY[make] ?? BRAND_RELIABILITY["default"];
@@ -286,7 +286,7 @@ export function calculateReliabilityScore(
   const brandPoints = Math.round((brandScore / 10) * 6);
   
   // Concern-based adjustment (40% of 10 max = 4 points max)
-  const concerns = reliabilityConcerns?.length || 0;
+  const concerns = Array.isArray(reliabilityConcerns) ? reliabilityConcerns.length : 0;
   let concernPoints: number;
   if (concerns === 0) concernPoints = 4;
   else if (concerns <= 2) concernPoints = 2;
@@ -590,8 +590,8 @@ export function generateWhyNotReasons(
   }
   
   // Reliability concerns
-  const concerns = v.reliability_concerns?.length || 0;
-  const bestConcerns = best.reliability_concerns?.length || 0;
+  const concerns = Array.isArray(v.reliability_concerns) ? v.reliability_concerns.length : 0;
+  const bestConcerns = Array.isArray(best.reliability_concerns) ? best.reliability_concerns.length : 0;
   if (concerns > bestConcerns && concerns >= 3) {
     reasons.push(`Has **${concerns} reliability concerns** that could lead to unexpected repair costs.`);
   }

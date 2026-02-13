@@ -285,16 +285,26 @@ export function CompareVehicleCard({ report, onRemove, isBestBuy, rank }: Compar
             )}
 
             {/* Risk Assessment */}
-            {report.reliability_concerns && report.reliability_concerns.length > 0 && (
+            {report.reliability_concerns && Array.isArray(report.reliability_concerns) && (report.reliability_concerns as Array<{ concern: string; costLow?: number | null; costHigh?: number | null }>).length > 0 && (
               <div className="space-y-2">
                 <h4 className="text-sm font-semibold flex items-center gap-2">
                   <Shield className="h-4 w-4" /> Reliability Concerns
                 </h4>
                 <ul className="space-y-1">
-                  {report.reliability_concerns.map((concern, i) => (
+                  {(report.reliability_concerns as Array<{ concern: string; costLow?: number | null; costHigh?: number | null }>).map((item, i) => (
                     <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
                       <AlertTriangle className="h-3 w-3 mt-0.5 text-yellow-600 shrink-0" />
-                      {concern}
+                      <span>
+                        {typeof item === "string" ? item : item.concern}
+                        {typeof item !== "string" && (item.costLow || item.costHigh) && (
+                          <span className="ml-1 font-medium text-destructive">
+                            — Est. {item.costLow && item.costHigh
+                              ? `$${item.costLow.toLocaleString()}–$${item.costHigh.toLocaleString()}`
+                              : item.costLow ? `$${item.costLow.toLocaleString()}+`
+                              : `Up to $${item.costHigh!.toLocaleString()}`}
+                          </span>
+                        )}
+                      </span>
                     </li>
                   ))}
                 </ul>
