@@ -25,13 +25,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Search, Car, Link as LinkIcon, CheckCircle, AlertCircle, ArrowRight, ExternalLink, AlertTriangle, ChevronLeft, ChevronRight, ImageIcon, HelpCircle } from "lucide-react";
+import { Loader2, Search, Car, Link as LinkIcon, CheckCircle, AlertCircle, ArrowRight, ExternalLink, AlertTriangle, ChevronLeft, ChevronRight, ImageIcon, HelpCircle, Camera } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { decodeVIN, isValidVIN, getMakes, getModels } from "@/lib/nhtsa";
 import { VehicleInfo, VehicleCondition } from "@/types/vehicle";
 import { useToast } from "@/hooks/use-toast";
 import { scrapeCarListing, ScrapedVehicle } from "@/lib/api/scrape-listing";
 import { cacheImages, getCachedUrls } from "@/lib/api/cache-images";
+import { extractFromScreenshot } from "@/lib/api/extract-screenshot";
 
 const vinSchema = z.object({
   vin: z.string()
@@ -164,6 +165,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
   const [showFacebookHelper, setShowFacebookHelper] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showHelpVideo, setShowHelpVideo] = useState(false);
+  const [isExtractingScreenshot, setIsExtractingScreenshot] = useState(false);
   const { toast } = useToast();
 
   // State for NHTSA data
@@ -340,6 +342,90 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleScreenshotUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Invalid File", description: "Please upload an image file (JPG, PNG, etc.)", variant: "destructive" });
+      return;
+    }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: "File Too Large", description: "Please use an image under 10MB.", variant: "destructive" });
+      return;
+    }
+
+    setIsExtractingScreenshot(true);
+    setImportedListing(null);
+    setImportFailed(null);
+    setShowFacebookHelper(false);
+
+    try {
+      const result = await extractFromScreenshot(file);
+
+      if (result.success && result.vehicle) {
+        const v = result.vehicle;
+        const hasValidData = v.year && v.year > 1900 && v.make && v.model;
+
+        if (!hasValidData) {
+          setImportFailed({
+            url: "screenshot",
+            error: "Couldn't extract vehicle details from this screenshot. Try a clearer image or enter details manually.",
+          });
+          toast({ title: "Extraction Failed", description: "Please enter details manually.", variant: "destructive" });
+          return;
+        }
+
+        setImportedListing({
+          vehicle: {
+            year: v.year,
+            make: v.make,
+            model: v.model,
+            trim: v.trim,
+            askingPrice: v.askingPrice,
+            mileage: v.mileage,
+            vin: v.vin,
+            sellerType: v.sellerType,
+            sellerName: v.sellerName,
+            condition: v.condition,
+            engine: v.engine,
+            transmission: v.transmission,
+            drivetrain: v.drivetrain,
+            exteriorColor: v.exteriorColor,
+            fuelType: v.fuelType,
+            titleStatus: v.titleStatus,
+          },
+          sourceUrl: "",
+        });
+
+        toast({
+          title: "Screenshot Imported!",
+          description: `Found: ${v.year} ${v.make} ${v.model}`,
+        });
+      } else {
+        setImportFailed({
+          url: "screenshot",
+          error: result.error || "Could not extract vehicle details from screenshot.",
+        });
+        toast({ title: "Extraction Failed", description: "Please enter details manually.", variant: "destructive" });
+      }
+    } catch (error) {
+      console.error("Screenshot extraction error:", error);
+      setImportFailed({
+        url: "screenshot",
+        error: "Failed to process screenshot. Please try again or enter details manually.",
+      });
+      toast({ title: "Error", description: "Failed to process screenshot.", variant: "destructive" });
+    } finally {
+      setIsExtractingScreenshot(false);
+      // Reset file input
+      e.target.value = "";
     }
   };
 
@@ -788,10 +874,32 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                     </FormItem>
                   )}
                 />
-                <Button type="submit" disabled={isLoading || isDecodingVin}>
-                  {(isLoading || isDecodingVin) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isDecodingVin ? "Decoding VIN..." : isLoading ? "Importing..." : "Import Listing"}
-                </Button>
+                <div className="flex gap-3 items-center flex-wrap">
+                  <Button type="submit" disabled={isLoading || isDecodingVin || isExtractingScreenshot}>
+                    {(isLoading || isDecodingVin) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {isDecodingVin ? "Decoding VIN..." : isLoading ? "Importing..." : "Import Listing"}
+                  </Button>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">or</div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isLoading || isDecodingVin || isExtractingScreenshot}
+                    onClick={() => document.getElementById("screenshot-upload")?.click()}
+                  >
+                    {isExtractingScreenshot ? (
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Extracting...</>
+                    ) : (
+                      <><Camera className="mr-2 h-4 w-4" />Upload Screenshot</>
+                    )}
+                  </Button>
+                  <input
+                    id="screenshot-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleScreenshotUpload}
+                  />
+                </div>
               </form>
             </Form>
           </CardContent>
