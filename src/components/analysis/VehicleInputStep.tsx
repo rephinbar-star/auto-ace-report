@@ -166,6 +166,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showHelpVideo, setShowHelpVideo] = useState(false);
   const [isExtractingScreenshot, setIsExtractingScreenshot] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const { toast } = useToast();
 
   // State for NHTSA data
@@ -900,26 +901,58 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                     {isDecodingVin ? "Decoding VIN..." : isLoading ? "Importing..." : "Import from Listing URL"}
                   </Button>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">or</div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={isLoading || isDecodingVin || isExtractingScreenshot}
-                    onClick={() => document.getElementById("screenshot-upload")?.click()}
+                  <div
+                    className={`relative flex items-center gap-3 rounded-lg border-2 border-dashed px-4 py-3 transition-colors ${
+                      isDragging
+                        ? "border-primary bg-primary/10"
+                        : "border-muted-foreground/25 hover:border-primary/50"
+                    }`}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDragging(true);
+                    }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDragging(false);
+                      const dt = e.dataTransfer;
+                      if (dt.files.length > 0) {
+                        // Create a synthetic event to reuse the existing handler
+                        const input = document.getElementById("screenshot-upload") as HTMLInputElement;
+                        if (input) {
+                          const dataTransfer = new DataTransfer();
+                          for (let i = 0; i < dt.files.length; i++) {
+                            dataTransfer.items.add(dt.files[i]);
+                          }
+                          input.files = dataTransfer.files;
+                          input.dispatchEvent(new Event("change", { bubbles: true }));
+                        }
+                      }
+                    }}
                   >
-                    {isExtractingScreenshot ? (
-                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Extracting...</>
-                    ) : (
-                      <><Camera className="mr-2 h-4 w-4" />Upload Listing Screenshots</>
-                    )}
-                  </Button>
-                  <input
-                    id="screenshot-upload"
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="hidden"
-                    onChange={handleScreenshotUpload}
-                  />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={isLoading || isDecodingVin || isExtractingScreenshot}
+                      onClick={() => document.getElementById("screenshot-upload")?.click()}
+                    >
+                      {isExtractingScreenshot ? (
+                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Extracting...</>
+                      ) : (
+                        <><Camera className="mr-2 h-4 w-4" />Upload Listing Screenshots</>
+                      )}
+                    </Button>
+                    <span className="text-xs text-muted-foreground">or drop images here</span>
+                    <input
+                      id="screenshot-upload"
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={handleScreenshotUpload}
+                    />
+                  </div>
                 </div>
               </form>
             </Form>
