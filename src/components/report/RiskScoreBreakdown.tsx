@@ -1,8 +1,10 @@
+import { useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ShieldAlert, Info, HelpCircle } from "lucide-react";
+import { ShieldAlert, Info, HelpCircle, Upload, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { UVPRSResult } from "@/lib/uvprs-scoring";
 
@@ -48,6 +50,8 @@ const factorTooltips: Record<string, { meaning: string; advice: string }> = {
 interface RiskScoreBreakdownProps {
   result: UVPRSResult;
   missingHistoryReport?: boolean;
+  onUploadHistory?: (file: File) => void;
+  isUploadingHistory?: boolean;
 }
 
 const riskColors: Record<string, string> = {
@@ -69,8 +73,18 @@ function getFactorBarColor(score: number): string {
   return "[&>div]:bg-danger";
 }
 
-export function RiskScoreBreakdown({ result, missingHistoryReport }: RiskScoreBreakdownProps) {
+export function RiskScoreBreakdown({ result, missingHistoryReport, onUploadHistory, isUploadingHistory }: RiskScoreBreakdownProps) {
   const { totalScore, riskLevel, riskLabel, factors, knownFactorCount } = result;
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && onUploadHistory) {
+      onUploadHistory(file);
+    }
+    // Reset so the same file can be re-selected
+    e.target.value = "";
+  };
 
   return (
     <Card>
@@ -80,9 +94,30 @@ export function RiskScoreBreakdown({ result, missingHistoryReport }: RiskScoreBr
           Purchase Risk Score (UVPRS)
         </CardTitle>
         {missingHistoryReport && (
-          <p className="text-sm font-medium text-destructive">
-            ⚠ Risk Score adversely affected because no available CarFax/AutoCheck was provided by user
-          </p>
+          <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-destructive">
+            <span>⚠ Risk Score adversely affected because no available CarFax/AutoCheck was provided by user</span>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploadingHistory}
+            >
+              {isUploadingHistory ? (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Upload className="mr-1.5 h-3.5 w-3.5" />
+              )}
+              {isUploadingHistory ? "Processing..." : "Upload CarFax/AutoCheck"}
+            </Button>
+          </div>
         )}
       </CardHeader>
       <CardContent className="space-y-6">

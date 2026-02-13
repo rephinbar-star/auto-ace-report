@@ -64,6 +64,7 @@ import { calculateTCO } from "@/lib/tco-calculations";
 import { toast as sonnerToast } from "sonner";
 import { calculateUVPRS, uvprsToLegacyRiskLevel, type UVPRSResult } from "@/lib/uvprs-scoring";
 import { lookupRecalls } from "@/lib/nhtsa";
+import { parseHistoryReport } from "@/lib/api/parse-history";
 
 // Parse reliability_concerns from DB (jsonb) into typed array
 function parseReliabilityConcerns(raw: unknown): Array<{ concern: string; costLow?: number | null; costHigh?: number | null }> {
@@ -154,6 +155,7 @@ export default function ReportPage() {
   const [pricingLastUpdated, setPricingLastUpdated] = useState<Date | null>(null);
   const [isRefreshingPricing, setIsRefreshingPricing] = useState(false);
   const [uvprsResult, setUvprsResult] = useState<UVPRSResult | null>(null);
+  const [isUploadingHistory, setIsUploadingHistory] = useState(false);
   
   // Check if coming from comparison
   const fromComparison = searchParams.get("from") === "compare";
@@ -1221,6 +1223,91 @@ export default function ReportPage() {
                 <RiskScoreBreakdown 
                   result={uvprsResult} 
                   missingHistoryReport={!vehicleData?.history?.serviceRecords}
+                  isUploadingHistory={isUploadingHistory}
+                  onUploadHistory={async (file: File) => {
+                    setIsUploadingHistory(true);
+                    try {
+                      const mileage = vehicleData?.condition?.mileage;
+                      const result = await parseHistoryReport(file, undefined, mileage);
+                      if (!result.success || !result.history) {
+                        sonnerToast.error(result.error || "Failed to parse history report");
+                        return;
+                      }
+                      // Merge parsed history into vehicleData
+                      const updatedVehicleData = {
+                        ...vehicleData,
+                        history: {
+                          ...vehicleData.history,
+                          ...result.history,
+                          serviceRecords: true,
+                        },
+                      };
+                      setVehicleData(updatedVehicleData);
+                      // Update sessionStorage so re-analyze picks it up
+                      sessionStorage.setItem("analysisData", JSON.stringify(updatedVehicleData));
+                      sonnerToast.success("History report uploaded! Re-analyzing...");
+                      // Trigger re-analysis with updated data
+                      const { data: analysisResult, error: invokeError } = await supabase.functions.invoke("analyze-vehicle", {
+                        body: updatedVehicleData,
+                      });
+                      if (invokeError) throw invokeError;
+                      if (analysisResult?.success) {
+                        setAnalysis(analysisResult.analysis);
+                        if (analysisResult.mpgData) {
+                          setMpgData({
+                            mpgCity: analysisResult.mpgData.mpgCity,
+                            mpgHighway: analysisResult.mpgData.mpgHighway,
+                            mpgCombined: analysisResult.mpgData.mpgCombined,
+                            fuelType: analysisResult.mpgData.fuelType,
+                            evRange: analysisResult.mpgData.evRange ?? null,
+                          });
+                        }
+                        if (analysisResult.pricingSources?.length) {
+                          setPricingSources(analysisResult.pricingSources);
+                          setPricingLastUpdated(new Date());
+                        }
+                        // Update saved report if applicable
+                        if (isSavedReport && id) {
+                          const { priceAssessment, depreciationTable, riskAssessment, historyAnalysis } = analysisResult.analysis;
+                          await supabase.from("vehicle_reports").update({
+                            fair_market_private: priceAssessment.fairMarketPrivate,
+                            fair_market_dealer: priceAssessment.fairMarketDealer || null,
+                            fair_market_trade_in: priceAssessment.fairMarketTradeIn,
+                            deal_rating: priceAssessment.dealRating,
+                            price_difference: priceAssessment.priceDifference,
+                            risk_level: riskAssessment.level,
+                            depreciation_risk: riskAssessment.depreciationRisk,
+                            reliability_concerns: riskAssessment.reliabilityConcerns,
+                            value_proposition: riskAssessment.valueProposition,
+                            fair_offer_price: riskAssessment.fairOfferPrice,
+                            expert_opinion: riskAssessment.expertOpinion,
+                            health_score: historyAnalysis.healthScore,
+                            history_issues: historyAnalysis.concerns || [],
+                            history_positives: historyAnalysis.positives || [],
+                            depreciation_table: depreciationTable as any,
+                            has_service_records: true,
+                            accident_count: result.history?.accidentCount ?? null,
+                            owner_count: result.history?.ownerCount ?? null,
+                            title_status: result.history?.titleStatus ?? null,
+                            service_gap_miles: result.history?.serviceGapMiles ?? null,
+                            major_services_due: result.history?.majorServicesDue ?? null,
+                            major_services_done: result.history?.majorServicesDone ?? null,
+                            chronic_repair_systems: result.history?.chronicRepairSystems ?? null,
+                            pricing_sources: analysisResult.pricingSources || [],
+                            pricing_last_updated: new Date().toISOString(),
+                          }).eq("id", id);
+                        }
+                        sonnerToast.success("Report updated with history data!");
+                      } else {
+                        throw new Error(analysisResult?.error || "Re-analysis failed");
+                      }
+                    } catch (err) {
+                      console.error("History upload error:", err);
+                      sonnerToast.error("Failed to process history report");
+                    } finally {
+                      setIsUploadingHistory(false);
+                    }
+                  }}
                 />
               )}
 
