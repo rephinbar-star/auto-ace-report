@@ -80,6 +80,7 @@ interface ReportData {
   uvprsResult?: UVPRSResult;
   tcoData?: TCOData;
   sellerType?: string;
+  pricingSources?: string[];
 }
 
 // ── Color palette matching the website (teal primary) ──
@@ -151,7 +152,26 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   const contentW = W - 2 * M;
   let y = 0;
 
-  const { vehicle, priceAssessment, riskAssessment, historyAnalysis, depreciationTable, images, dealerReview, serviceHistory, uvprsResult, tcoData, sellerType } = data;
+  const { vehicle, priceAssessment, riskAssessment, historyAnalysis, depreciationTable, images, dealerReview, serviceHistory, uvprsResult, tcoData, sellerType, pricingSources } = data;
+
+  // Helper to deduplicate sources by domain
+  const getDeduplicatedSources = (sources: string[]): { displayName: string; url: string }[] => {
+    const seen = new Map<string, { displayName: string; url: string }>();
+    for (const url of sources) {
+      try {
+        const hostname = new URL(url).hostname.replace("www.", "");
+        const domain = hostname.split(".")[0];
+        if (!seen.has(domain)) {
+          seen.set(domain, {
+            displayName: domain.charAt(0).toUpperCase() + domain.slice(1),
+            url,
+          });
+        }
+      } catch { /* skip */ }
+    }
+    return Array.from(seen.values());
+  };
+  const deduplicatedSources = pricingSources?.length ? getDeduplicatedSources(pricingSources) : [];
 
   // ── Helpers ──
   const ensureSpace = (needed: number) => {
@@ -350,6 +370,18 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   // ══════════════════════════════════════════════
   sectionTitle("Price Assessment");
 
+  // Market Verified / AI Estimated badge
+  if (deduplicatedSources.length > 0) {
+    ensureSpace(6);
+    pdf.setFillColor(...GREEN);
+    pdf.roundedRect(M, y - 3, 30, 6, 2, 2, "F");
+    pdf.setFontSize(6);
+    pdf.setFont("helvetica", "bold");
+    pdf.setTextColor(...WHITE);
+    pdf.text("Market Verified", M + 2, y);
+    y += 5;
+  }
+
   // Asking vs Fair Market highlight box
   ensureSpace(20);
   pdf.setFillColor(...BG_MUTED);
@@ -399,6 +431,16 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
     pdf.setFont("helvetica", "normal");
   });
   y += 17;
+
+  // Pricing sources
+  if (deduplicatedSources.length > 0) {
+    ensureSpace(10);
+    pdf.setFontSize(7);
+    pdf.setTextColor(...SLATE);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(`Sources: ${deduplicatedSources.map(s => s.displayName).join(", ")}`, M, y);
+    y += 5;
+  }
 
   // ══════════════════════════════════════════════
   // FUEL ECONOMY & TOTAL COST OF OWNERSHIP
@@ -675,6 +717,18 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   // ══════════════════════════════════════════════
   sectionTitle("5-Year Depreciation & Equity");
 
+  // Market Verified badge for depreciation section
+  if (deduplicatedSources.length > 0) {
+    ensureSpace(6);
+    pdf.setFillColor(...GREEN);
+    pdf.roundedRect(M, y - 3, 30, 6, 2, 2, "F");
+    pdf.setFontSize(6);
+    pdf.setFont("helvetica", "bold");
+    pdf.setTextColor(...WHITE);
+    pdf.text("Market Verified", M + 2, y);
+    y += 5;
+  }
+
   // ── LINE CHART (drawn with jsPDF primitives) ──
   if (depreciationTable.length > 0) {
     const chartH = 55;
@@ -840,6 +894,16 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
     y += 7;
   });
 
+  // Cost data sources after depreciation table
+  if (deduplicatedSources.length > 0) {
+    ensureSpace(10);
+    pdf.setFontSize(7);
+    pdf.setTextColor(...SLATE);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(`Repair & Maintenance Cost Sources: ${deduplicatedSources.map(s => s.displayName).join(", ")}`, M, y);
+    y += 5;
+  }
+
   // ══════════════════════════════════════════════
   // RISK FACTORS
   // ══════════════════════════════════════════════
@@ -877,6 +941,16 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
     pdf.setTextColor(...SLATE);
     pdf.text(vpLines, M + 4, y + 10);
     y += vpH + 4;
+  }
+
+  // Cost data sources after risk factors
+  if (deduplicatedSources.length > 0) {
+    ensureSpace(10);
+    pdf.setFontSize(7);
+    pdf.setTextColor(...SLATE);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(`Cost Data Sources: ${deduplicatedSources.map(s => s.displayName).join(", ")}`, M, y);
+    y += 5;
   }
 
   // ══════════════════════════════════════════════

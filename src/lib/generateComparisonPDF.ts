@@ -766,8 +766,40 @@ export async function generateComparisonPDF(data: ComparisonPDFData): Promise<vo
     yPosition += 24;
   });
 
+  // ══════════════════════════════════════════════
+  // DATA SOURCES
+  // ══════════════════════════════════════════════
+  const allSources = vehicles.flatMap(v => v.pricing_sources || []);
+  if (allSources.length > 0) {
+    const seen = new Map<string, string>();
+    for (const url of allSources) {
+      try {
+        const hostname = new URL(url).hostname.replace("www.", "");
+        const domain = hostname.split(".")[0];
+        if (!seen.has(domain)) {
+          seen.set(domain, domain.charAt(0).toUpperCase() + domain.slice(1));
+        }
+      } catch { /* skip */ }
+    }
+    const sourceNames = Array.from(seen.values());
+
+    if (yPosition + 12 > pageHeight - 15) {
+      pdf.addPage();
+      yPosition = margin;
+    }
+
+    addSection("Data Sources");
+    pdf.setFontSize(8);
+    pdf.setTextColor(100, 100, 100);
+    pdf.setFont("helvetica", "normal");
+    const sourceLine = `Pricing, repair, and maintenance cost data sourced from: ${sourceNames.join(", ")}`;
+    const srcLines = pdf.splitTextToSize(sourceLine, pageWidth - 2 * margin);
+    pdf.text(srcLines, margin, yPosition);
+    yPosition += srcLines.length * 3.5 + 4;
+  }
+
   // Footnotes section
-  yPosition += 5;
+  yPosition += 2;
   pdf.setFontSize(8);
   pdf.setTextColor(100, 100, 100);
   
