@@ -50,6 +50,11 @@ interface PricingData {
   citations: string[];
 }
 
+interface MaintenanceData {
+  maintenanceContext: string;
+  citations: string[];
+}
+
 async function lookupMPG(year: number, make: string, model: string): Promise<MPGData> {
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
@@ -118,6 +123,37 @@ async function lookupPricing(year: number, make: string, model: string, trim: st
   return null;
 }
 
+async function lookupMaintenance(year: number, make: string, model: string, trim: string | undefined, mileage: number): Promise<MaintenanceData | null> {
+  try {
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+    
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      throw new Error("Supabase configuration missing");
+    }
+
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/lookup-maintenance`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify({ year, make, model, trim, mileage }),
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      if (result.success && result.data) {
+        return result.data;
+      }
+    }
+  } catch (error) {
+    console.error("Maintenance lookup failed:", error);
+  }
+
+  return null;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -159,18 +195,25 @@ serve(async (req) => {
 
     const { vehicle, condition, financing, history } = vehicleData;
 
-    // Fetch MPG and pricing data in parallel
+    // Fetch MPG, pricing, and maintenance data in parallel
     const mpgPromise = lookupMPG(vehicle.year, vehicle.make, vehicle.model);
     const pricingPromise = lookupPricing(vehicle.year, vehicle.make, vehicle.model, vehicle.trim, condition.mileage, condition.condition);
-    console.log(`Looking up MPG and pricing for ${vehicle.year} ${vehicle.make} ${vehicle.model}`);
+    const maintenancePromise = lookupMaintenance(vehicle.year, vehicle.make, vehicle.model, vehicle.trim, condition.mileage);
+    console.log(`Looking up MPG, pricing, and maintenance for ${vehicle.year} ${vehicle.make} ${vehicle.model}`);
 
-    // Wait for pricing data before building prompt (it grounds the AI)
-    const pricingData = await pricingPromise;
+    // Wait for pricing and maintenance data before building prompt (they ground the AI)
+    const [pricingData, maintenanceData] = await Promise.all([pricingPromise, maintenancePromise]);
     const hasPricing = pricingData && pricingData.pricingContext;
+    const hasMaintenance = maintenanceData && maintenanceData.maintenanceContext;
     if (hasPricing) {
       console.log(`Pricing data received with ${pricingData.citations.length} citations`);
     } else {
       console.log("No pricing data available, falling back to AI-only estimates");
+    }
+    if (hasMaintenance) {
+      console.log(`Maintenance data received with ${maintenanceData.citations.length} citations`);
+    } else {
+      console.log("No maintenance data available, falling back to AI-only estimates");
     }
 
     const systemPrompt = `You are an expert automotive analyst combining the knowledge of a professional mechanic with 30+ years experience and a seasoned used car buyer. You provide comprehensive, honest, and actionable vehicle purchase analysis.
@@ -184,6 +227,7 @@ Your analysis must be data-driven and consider:
 
 CRITICAL MILEAGE CONSTRAINT: The vehicle's current odometer reading is ${condition.mileage.toLocaleString()} miles. All reliability concerns, service history references, and mileage-based assessments MUST be consistent with this mileage. Do NOT reference services completed at mileages higher than the vehicle's current odometer reading.
 ${hasPricing ? "\nIMPORTANT: You have been provided with REAL-TIME MARKET PRICING DATA from authoritative sources. You MUST use these values as your primary reference for fairMarketPrivate, fairMarketDealer, fairMarketTradeIn, and fairOfferPrice. Do not deviate significantly from the sourced pricing data." : ""}
+${hasMaintenance ? "\nIMPORTANT: You have been provided with REAL-TIME REPAIR AND MAINTENANCE COST DATA from authoritative sources (RepairPal, Edmunds, owner reports). You MUST use these values as your primary reference for:\n- reliabilityConcerns: costLow and costHigh values\n- depreciationTable: repairCosts and maintenanceCosts columns\nDo not deviate significantly from the sourced cost data. Distribute repair costs across the 5-year period based on when issues typically occur at the vehicle's mileage progression." : ""}
 
 IMPORTANT: The seller type is "${condition.sellerType}".
 - If "dealer": calculate priceDifference and dealRating by comparing askingPrice to fairMarketDealer (dealer retail value). Dealers include overhead, reconditioning, and sometimes warranties, so their prices are naturally higher than private party prices.
@@ -220,6 +264,9 @@ ${history.issues?.length ? `- Known Issues: ${history.issues.join(", ")}` : ""}`
 
 ${hasPricing ? `REAL-TIME MARKET PRICING DATA (use these as your primary pricing reference):
 ${pricingData.pricingContext}` : ""}
+
+${hasMaintenance ? `REAL-TIME REPAIR & MAINTENANCE COST DATA (use these as your primary cost reference):
+${maintenanceData.maintenanceContext}` : ""}
 
 Provide your expert analysis.`;
 
@@ -359,7 +406,10 @@ Provide your expert analysis.`;
           fuelType: mpgData.fuelType,
           isEstimate: mpgData.isEstimate,
         },
-        pricingSources: hasPricing ? pricingData.citations : [],
+        pricingSources: [
+          ...(hasPricing ? pricingData.citations : []),
+          ...(hasMaintenance ? maintenanceData.citations : []),
+        ],
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
