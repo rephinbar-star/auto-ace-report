@@ -346,19 +346,30 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
   };
 
   const handleScreenshotUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
-    // Validate file type
-    if (!file.type.startsWith("image/")) {
-      toast({ title: "Invalid File", description: "Please upload an image file (JPG, PNG, etc.)", variant: "destructive" });
-      return;
+    // Validate all files
+    const validFiles: File[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (!file.type.startsWith("image/")) {
+        toast({ title: "Invalid File", description: `"${file.name}" is not an image. Skipping.`, variant: "destructive" });
+        continue;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        toast({ title: "File Too Large", description: `"${file.name}" exceeds 10MB. Skipping.`, variant: "destructive" });
+        continue;
+      }
+      validFiles.push(file);
     }
 
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      toast({ title: "File Too Large", description: "Please use an image under 10MB.", variant: "destructive" });
-      return;
+    if (validFiles.length === 0) return;
+
+    // Cap at 5 screenshots
+    if (validFiles.length > 5) {
+      toast({ title: "Too Many Files", description: "Processing the first 5 screenshots only.", variant: "default" });
+      validFiles.splice(5);
     }
 
     setIsExtractingScreenshot(true);
@@ -367,64 +378,73 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
     setShowFacebookHelper(false);
 
     try {
-      const result = await extractFromScreenshot(file);
+      // Process all screenshots in parallel
+      const results = await Promise.all(validFiles.map(f => extractFromScreenshot(f)));
 
-      if (result.success && result.vehicle) {
+      // Merge extracted data: first valid result is the base, later results fill in blanks
+      type VehicleFields = NonNullable<(typeof results)[number]["vehicle"]>;
+      let merged: Partial<VehicleFields> = {};
+      let foundValid = false;
+
+      for (const result of results) {
+        if (!result.success || !result.vehicle) continue;
         const v = result.vehicle;
-        const hasValidData = v.year && v.year > 1900 && v.make && v.model;
-
-        if (!hasValidData) {
-          setImportFailed({
-            url: "screenshot",
-            error: "Couldn't extract vehicle details from this screenshot. Try a clearer image or enter details manually.",
-          });
-          toast({ title: "Extraction Failed", description: "Please enter details manually.", variant: "destructive" });
-          return;
+        if (!foundValid && v.year && v.year > 1900 && v.make && v.model) {
+          foundValid = true;
         }
+        // Merge: keep earliest non-null value for each field
+        for (const key of Object.keys(v) as (keyof VehicleFields)[]) {
+          if (v[key] != null && merged[key] == null) {
+            (merged as Record<string, unknown>)[key] = v[key];
+          }
+        }
+      }
 
-        setImportedListing({
-          vehicle: {
-            year: v.year,
-            make: v.make,
-            model: v.model,
-            trim: v.trim,
-            askingPrice: v.askingPrice,
-            mileage: v.mileage,
-            vin: v.vin,
-            sellerType: v.sellerType,
-            sellerName: v.sellerName,
-            condition: v.condition,
-            engine: v.engine,
-            transmission: v.transmission,
-            drivetrain: v.drivetrain,
-            exteriorColor: v.exteriorColor,
-            fuelType: v.fuelType,
-            titleStatus: v.titleStatus,
-          },
-          sourceUrl: "",
-        });
-
-        toast({
-          title: "Screenshot Imported!",
-          description: `Found: ${v.year} ${v.make} ${v.model}`,
-        });
-      } else {
+      if (!foundValid || !merged.year || !merged.make || !merged.model) {
         setImportFailed({
           url: "screenshot",
-          error: result.error || "Could not extract vehicle details from screenshot.",
+          error: "Couldn't extract vehicle details from the screenshot(s). Try clearer images or enter details manually.",
         });
         toast({ title: "Extraction Failed", description: "Please enter details manually.", variant: "destructive" });
+        return;
       }
+
+      setImportedListing({
+        vehicle: {
+          year: merged.year,
+          make: merged.make,
+          model: merged.model,
+          trim: merged.trim,
+          askingPrice: merged.askingPrice,
+          mileage: merged.mileage,
+          vin: merged.vin,
+          sellerType: merged.sellerType,
+          sellerName: merged.sellerName,
+          condition: merged.condition,
+          engine: merged.engine,
+          transmission: merged.transmission,
+          drivetrain: merged.drivetrain,
+          exteriorColor: merged.exteriorColor,
+          fuelType: merged.fuelType,
+          titleStatus: merged.titleStatus,
+        },
+        sourceUrl: "",
+      });
+
+      const countSuccess = results.filter(r => r.success && r.vehicle).length;
+      toast({
+        title: "Screenshots Imported!",
+        description: `Extracted from ${countSuccess} image${countSuccess > 1 ? "s" : ""}: ${merged.year} ${merged.make} ${merged.model}`,
+      });
     } catch (error) {
       console.error("Screenshot extraction error:", error);
       setImportFailed({
         url: "screenshot",
-        error: "Failed to process screenshot. Please try again or enter details manually.",
+        error: "Failed to process screenshots. Please try again or enter details manually.",
       });
-      toast({ title: "Error", description: "Failed to process screenshot.", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to process screenshots.", variant: "destructive" });
     } finally {
       setIsExtractingScreenshot(false);
-      // Reset file input
       e.target.value = "";
     }
   };
@@ -889,13 +909,14 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                     {isExtractingScreenshot ? (
                       <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Extracting...</>
                     ) : (
-                      <><Camera className="mr-2 h-4 w-4" />Upload Screenshot</>
+                      <><Camera className="mr-2 h-4 w-4" />Upload Screenshots</>
                     )}
                   </Button>
                   <input
                     id="screenshot-upload"
                     type="file"
                     accept="image/*"
+                    multiple
                     className="hidden"
                     onChange={handleScreenshotUpload}
                   />
