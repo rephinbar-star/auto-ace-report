@@ -909,7 +909,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                     {isExtractingScreenshot ? (
                       <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Extracting...</>
                     ) : (
-                      <><Camera className="mr-2 h-4 w-4" />Upload Screenshots</>
+                      <><Camera className="mr-2 h-4 w-4" />Upload Listing Screenshots</>
                     )}
                   </Button>
                   <input
