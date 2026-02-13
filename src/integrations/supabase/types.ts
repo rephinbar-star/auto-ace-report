@@ -200,7 +200,7 @@ export type Database = {
           price_difference: number | null
           pricing_last_updated: string | null
           pricing_sources: string[] | null
-          reliability_concerns: string[] | null
+          reliability_concerns: Json | null
           residual_value: number | null
           risk_level: Database["public"]["Enums"]["risk_level"] | null
           risk_score: number | null
@@ -260,7 +260,7 @@ export type Database = {
           price_difference?: number | null
           pricing_last_updated?: string | null
           pricing_sources?: string[] | null
-          reliability_concerns?: string[] | null
+          reliability_concerns?: Json | null
           residual_value?: number | null
           risk_level?: Database["public"]["Enums"]["risk_level"] | null
           risk_score?: number | null
@@ -320,7 +320,7 @@ export type Database = {
           price_difference?: number | null
           pricing_last_updated?: string | null
           pricing_sources?: string[] | null
-          reliability_concerns?: string[] | null
+          reliability_concerns?: Json | null
           residual_value?: number | null
           risk_level?: Database["public"]["Enums"]["risk_level"] | null
           risk_score?: number | null

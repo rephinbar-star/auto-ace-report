@@ -74,10 +74,16 @@ export interface PriceAssessment {
   percentDifference: number;
 }
 
+export interface ReliabilityConcern {
+  concern: string;
+  costLow?: number | null;
+  costHigh?: number | null;
+}
+
 export interface RiskAssessment {
   level: "low" | "medium" | "high";
   depreciationRisk: string;
-  reliabilityConcerns: string[];
+  reliabilityConcerns: ReliabilityConcern[];
   valueProposition: string;
   fairOfferPrice: number;
   expertOpinion: string;

@@ -280,8 +280,16 @@ Provide your expert analysis.`;
                       depreciationRisk: { type: "string" },
                       reliabilityConcerns: { 
                         type: "array", 
-                        items: { type: "string" },
-                        description: "List of reliability concerns. Each concern MUST include typical mileage when the issue occurs, e.g. 'Transmission issues (typically 80,000-120,000 miles)' or 'Water pump failure (common around 60,000-90,000 miles)'"
+                        items: { 
+                          type: "object",
+                          properties: {
+                            concern: { type: "string", description: "Description of the reliability concern including typical mileage range, e.g. 'MCU (Media Control Unit) eMMC failure (Common 40,000-60,000 miles)'" },
+                            costLow: { type: "number", description: "Low end of typical repair cost in USD based on RepairPal/owner-reported data. Use null if unknown." },
+                            costHigh: { type: "number", description: "High end of typical repair cost in USD based on RepairPal/owner-reported data. Use null if unknown." },
+                          },
+                          required: ["concern"],
+                        },
+                        description: "List of reliability concerns with estimated repair costs sourced from RepairPal and owner-reported data. Each concern MUST include typical mileage when the issue occurs AND estimated repair cost range."
                       },
                       valueProposition: { type: "string" },
                       fairOfferPrice: { type: "number" },

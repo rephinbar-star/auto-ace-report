@@ -25,7 +25,7 @@ interface RiskAssessment {
   fairOfferPrice: number;
   expertOpinion: string;
   depreciationRisk: string;
-  reliabilityConcerns: string[];
+  reliabilityConcerns: Array<{ concern: string; costLow?: number | null; costHigh?: number | null }>;
   valueProposition?: string;
 }
 
@@ -841,7 +841,16 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
 
   if (riskAssessment.reliabilityConcerns.length > 0) {
     wrappedText("Reliability Concerns:", 9, BLACK, true);
-    riskAssessment.reliabilityConcerns.forEach((concern) => bulletItem(concern, SLATE));
+    riskAssessment.reliabilityConcerns.forEach((item) => {
+      let text = item.concern;
+      if (item.costLow || item.costHigh) {
+        text += ` - Est. ${item.costLow && item.costHigh 
+          ? `$${item.costLow.toLocaleString()}-$${item.costHigh.toLocaleString()}`
+          : item.costLow ? `$${item.costLow.toLocaleString()}+` 
+          : `Up to $${item.costHigh!.toLocaleString()}`}`;
+      }
+      bulletItem(text, SLATE);
+    });
   }
 
   if (riskAssessment.valueProposition) {

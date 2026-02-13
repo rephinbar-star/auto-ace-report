@@ -125,8 +125,8 @@ const sampleAnalysis = {
     level: "low" as const,
     depreciationRisk: "The Honda Accord historically holds its value well, with an average depreciation of 12-15% annually. This specific trim with the 2.0T engine tends to retain value slightly better than the base models due to enthusiast demand.",
     reliabilityConcerns: [
-      "2.0T engines may experience turbo wear after 80k miles",
-      "Infotainment system occasional glitches reported",
+      { concern: "2.0T engines may experience turbo wear after 80k miles", costLow: 1200, costHigh: 2500 },
+      { concern: "Infotainment system occasional glitches reported", costLow: 300, costHigh: 800 },
     ],
     valueProposition: "This Accord represents solid value with its combination of reliability, fuel efficiency, and sporty performance. The asking price is slightly above market, but the clean history and single ownership justify a modest premium.",
     fairOfferPrice: 25500,
@@ -788,7 +788,7 @@ export default function SampleReportPage() {
                     <div>
                       <h4 className="mb-2 text-sm font-medium">Reliability Concerns</h4>
                       <ul className="space-y-1">
-                        {riskAssessment.reliabilityConcerns.map((concern, i) => (
+                        {riskAssessment.reliabilityConcerns.map((item, i) => (
                           <motion.li 
                             key={i} 
                             className="flex items-start gap-2 text-sm text-muted-foreground"
@@ -797,7 +797,17 @@ export default function SampleReportPage() {
                             transition={{ delay: 0.3 + i * 0.1 }}
                           >
                             <Wrench className="mt-0.5 h-3 w-3 flex-shrink-0" />
-                            {concern}
+                            <span>
+                              {item.concern}
+                              {(item.costLow || item.costHigh) && (
+                                <span className="ml-1 font-medium text-destructive">
+                                  — Est. {item.costLow && item.costHigh
+                                    ? `$${item.costLow.toLocaleString()}–$${item.costHigh.toLocaleString()}`
+                                    : item.costLow ? `$${item.costLow.toLocaleString()}+`
+                                    : `Up to $${item.costHigh!.toLocaleString()}`}
+                                </span>
+                              )}
+                            </span>
                           </motion.li>
                         ))}
                       </ul>

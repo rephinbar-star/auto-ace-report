@@ -65,6 +65,20 @@ import { toast as sonnerToast } from "sonner";
 import { calculateUVPRS, uvprsToLegacyRiskLevel, type UVPRSResult } from "@/lib/uvprs-scoring";
 import { lookupRecalls } from "@/lib/nhtsa";
 
+// Parse reliability_concerns from DB (jsonb) into typed array
+function parseReliabilityConcerns(raw: unknown): Array<{ concern: string; costLow?: number | null; costHigh?: number | null }> {
+  if (!raw) return [];
+  if (!Array.isArray(raw)) return [];
+  return raw.map((item: unknown) => {
+    if (typeof item === "string") return { concern: item };
+    if (typeof item === "object" && item !== null && "concern" in item) {
+      const obj = item as { concern: string; costLow?: number | null; costHigh?: number | null };
+      return { concern: obj.concern, costLow: obj.costLow ?? null, costHigh: obj.costHigh ?? null };
+    }
+    return { concern: String(item) };
+  });
+}
+
 interface DepreciationYear {
   year: number;
   privateValue: number;
@@ -88,7 +102,7 @@ interface Analysis {
   riskAssessment: {
     level: "low" | "medium" | "high";
     depreciationRisk: string;
-    reliabilityConcerns: string[];
+    reliabilityConcerns: Array<{ concern: string; costLow?: number | null; costHigh?: number | null }>;
     valueProposition: string;
     fairOfferPrice: number;
     expertOpinion: string;
@@ -316,7 +330,7 @@ export default function ReportPage() {
             riskAssessment: {
               level: report.risk_level || "medium",
               depreciationRisk: report.depreciation_risk || "",
-              reliabilityConcerns: report.reliability_concerns || [],
+              reliabilityConcerns: parseReliabilityConcerns(report.reliability_concerns),
               valueProposition: report.value_proposition || "",
               fairOfferPrice: report.fair_offer_price || 0,
               expertOpinion: report.expert_opinion || "",
@@ -1260,10 +1274,20 @@ export default function ReportPage() {
                     <div>
                       <p className="mb-2 text-sm font-medium">Reliability Concerns</p>
                       <ul className="space-y-2">
-                        {riskAssessment.reliabilityConcerns.map((concern, i) => (
+                        {riskAssessment.reliabilityConcerns.map((item, i) => (
                           <li key={i} className="flex items-start gap-2 text-sm">
                             <Wrench className="mt-0.5 h-3 w-3 shrink-0 text-warning" />
-                            <span className="text-muted-foreground">{concern}</span>
+                            <span className="text-muted-foreground">
+                              {item.concern}
+                              {(item.costLow || item.costHigh) && (
+                                <span className="ml-1 font-medium text-destructive">
+                                  — Est. {item.costLow && item.costHigh 
+                                    ? `$${item.costLow.toLocaleString()}–$${item.costHigh.toLocaleString()}`
+                                    : item.costLow ? `$${item.costLow.toLocaleString()}+` 
+                                    : `Up to $${item.costHigh!.toLocaleString()}`}
+                                </span>
+                              )}
+                            </span>
                           </li>
                         ))}
                       </ul>
