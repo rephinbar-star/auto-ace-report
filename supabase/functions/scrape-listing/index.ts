@@ -85,9 +85,10 @@ serve(async (req) => {
     const formattedUrl = urlValidation.url!.href;
 
     // Block aggregator sites not supported by our scraper — direct users to dealer sites
-    const UNSUPPORTED_DOMAINS: { pattern: RegExp; name: string }[] = [
+    const UNSUPPORTED_DOMAINS: { pattern: RegExp; name: string; message?: string }[] = [
       { pattern: /autotrader\.com/i, name: "AutoTrader" },
       { pattern: /truecar\.com/i, name: "TrueCar" },
+      { pattern: /facebook\.com/i, name: "Facebook Marketplace", message: "Facebook Marketplace is not supported for Quick Import due to platform restrictions. To analyze this vehicle, manually enter the details from the listing on the next screen." },
     ];
 
     const blockedSite = UNSUPPORTED_DOMAINS.find(d => d.pattern.test(formattedUrl));
@@ -96,7 +97,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: false,
-          error: `${blockedSite.name} is not supported for Quick Import. To import this vehicle, copy the listing URL directly from the dealer's website instead. You can usually find a link to the dealer's site on the ${blockedSite.name} listing page.`,
+          error: blockedSite.message || `${blockedSite.name} is not supported for Quick Import. To import this vehicle, copy the listing URL directly from the dealer's website instead. You can usually find a link to the dealer's site on the ${blockedSite.name} listing page.`,
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
