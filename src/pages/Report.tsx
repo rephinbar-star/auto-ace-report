@@ -1218,7 +1218,14 @@ export default function ReportPage() {
 
               {/* UVPRS Risk Score Breakdown */}
               {uvprsResult && (
-                <RiskScoreBreakdown result={uvprsResult} />
+                <div>
+                  <RiskScoreBreakdown result={uvprsResult} />
+                  {!vehicleData?.history?.serviceRecords && (
+                    <p className="mt-2 text-sm font-medium text-destructive">
+                      ⚠ Risk Score adversely affected because no available CarFax/AutoCheck was provided by user
+                    </p>
+                  )}
+                </div>
               )}
 
               {/* Vehicle Health Score */}
