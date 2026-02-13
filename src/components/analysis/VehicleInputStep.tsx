@@ -897,7 +897,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                 <div className="flex gap-3 items-center flex-wrap">
                   <Button type="submit" disabled={isLoading || isDecodingVin || isExtractingScreenshot}>
                     {(isLoading || isDecodingVin) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {isDecodingVin ? "Decoding VIN..." : isLoading ? "Importing..." : "Import Listing"}
+                    {isDecodingVin ? "Decoding VIN..." : isLoading ? "Importing..." : "Import from Listing URL"}
                   </Button>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">or</div>
                   <Button
