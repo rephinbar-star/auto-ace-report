@@ -755,7 +755,7 @@ export default function ReportPage() {
                 {condition.mileage.toLocaleString()} miles • Asking ${condition.askingPrice.toLocaleString()}
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               {!isSavedReport && !backToComparisonUrl && (
                 <Button variant="outline" size="sm" asChild>
                   <Link to="/dashboard">
@@ -764,6 +764,19 @@ export default function ReportPage() {
                   </Link>
                 </Button>
               )}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={refreshPricing}
+                disabled={isRefreshingPricing}
+              >
+                {isRefreshingPricing ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                )}
+                {isRefreshingPricing ? "Re-Analyzing..." : "Re-Analyze"}
+              </Button>
               <Button variant="outline" size="sm">
                 <Share2 className="mr-2 h-4 w-4" />
                 Share
