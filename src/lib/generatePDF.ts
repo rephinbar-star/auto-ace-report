@@ -41,6 +41,7 @@ interface DepreciationRow {
   tradeInValue: number;
   loanBalance: number;
   repairCosts: number;
+  maintenanceCosts?: number;
 }
 
 interface DealerReview {
@@ -415,7 +416,7 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
     const tcoItems = [
       { label: "Total 5-Year Cost", value: fmt(tco.totalTCO), color: RED },
       { label: "Cost Per Mile", value: `$${tco.costPerMile.toFixed(2)}`, color: RED },
-      { label: "Monthly Ownership", value: `${fmt(Math.round((tco.annualFuelCost / 12) + (tco.repairCost5Year / 60)))}/mo`, color: BLACK },
+      { label: "Monthly Ownership", value: `${fmt(Math.round((tco.annualFuelCost / 12) + (tco.repairCost5Year / 60) + (tco.maintenanceCost5Year / 60)))}/mo`, color: BLACK },
     ];
     tcoItems.forEach((item, i) => {
       const x = M + i * tcoColW + 5;
@@ -434,7 +435,8 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
     const breakdownItems: [string, number][] = [
       ["Purchase Price", tco.purchasePrice],
       [`5-Year ${tco.fuelCost5Year > 0 ? "Fuel" : "Energy"} Cost`, tco.fuelCost5Year],
-      ["5-Year Maintenance", tco.repairCost5Year],
+      ["5-Year Repairs", tco.repairCost5Year],
+      ["5-Year Maintenance", tco.maintenanceCost5Year || 0],
     ];
     if (tco.mileageDepreciation && tco.mileageDepreciation > 0) {
       breakdownItems.push(["Excess Mileage Depreciation", tco.mileageDepreciation]);
@@ -778,8 +780,8 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   }
 
   // Depreciation table
-  const cols = ["Year", "Private Value", "Trade-In", "Loan Balance", "Repairs", "Net Equity"];
-  const colWidths = [20, 32, 30, 32, 28, 30];
+  const cols = ["Year", "Private Value", "Trade-In", "Loan Bal.", "Repairs", "Maint.", "Net Equity"];
+  const colWidths = [20, 28, 28, 28, 24, 24, 28];
 
   ensureSpace(depreciationTable.length * 7 + 12);
   pdf.setFillColor(...TEAL);
@@ -795,9 +797,11 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   y += 9;
 
   let cumulativeRepairs = 0;
+  let cumulativeMaintenance = 0;
   depreciationTable.forEach((row, index) => {
     cumulativeRepairs += row.repairCosts;
-    const netEquity = row.tradeInValue - row.loanBalance - cumulativeRepairs;
+    cumulativeMaintenance += (row.maintenanceCosts || 0);
+    const netEquity = row.tradeInValue - row.loanBalance - cumulativeRepairs - cumulativeMaintenance;
 
     ensureSpace(8);
     if (index % 2 === 0) {
@@ -814,12 +818,17 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
       fmt(row.privateValue),
       fmt(row.tradeInValue),
       fmt(row.loanBalance),
-      fmt(cumulativeRepairs),
+      fmt(row.repairCosts),
+      fmt(row.maintenanceCosts || 0),
       `${netEquity >= 0 ? "+" : ""}${fmt(netEquity)}`,
     ];
 
     rowData.forEach((cell, i) => {
-      if (i === 5) {
+      if (i === 4) {
+        pdf.setTextColor(...RED);
+      } else if (i === 5) {
+        pdf.setTextColor(...SLATE);
+      } else if (i === 6) {
         pdf.setTextColor(netEquity >= 0 ? 34 : 220, netEquity >= 0 ? 197 : 38, netEquity >= 0 ? 94 : 38);
         pdf.setFont("helvetica", "bold");
       } else {

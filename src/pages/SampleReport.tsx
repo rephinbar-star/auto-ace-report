@@ -115,11 +115,11 @@ const sampleAnalysis = {
     percentDifference: 4.6,
   },
   depreciationTable: [
-    { year: 1, privateValue: 24500, tradeInValue: 22100, loanBalance: 22000, repairCosts: 200, netEquityPrivate: 2300, netEquityTradeIn: -100 },
-    { year: 2, privateValue: 22800, tradeInValue: 20500, loanBalance: 17500, repairCosts: 450, netEquityPrivate: 4850, netEquityTradeIn: 2550 },
-    { year: 3, privateValue: 20900, tradeInValue: 18800, loanBalance: 12800, repairCosts: 800, netEquityPrivate: 7300, netEquityTradeIn: 5200 },
-    { year: 4, privateValue: 18700, tradeInValue: 16800, loanBalance: 7900, repairCosts: 1200, netEquityPrivate: 9600, netEquityTradeIn: 7700 },
-    { year: 5, privateValue: 16200, tradeInValue: 14600, loanBalance: 2800, repairCosts: 1800, netEquityPrivate: 11600, netEquityTradeIn: 10000 },
+    { year: 1, privateValue: 24500, tradeInValue: 22100, loanBalance: 22000, repairCosts: 0, maintenanceCosts: 200, netEquityPrivate: 2300, netEquityTradeIn: -100 },
+    { year: 2, privateValue: 22800, tradeInValue: 20500, loanBalance: 17500, repairCosts: 0, maintenanceCosts: 250, netEquityPrivate: 4850, netEquityTradeIn: 2550 },
+    { year: 3, privateValue: 20900, tradeInValue: 18800, loanBalance: 12800, repairCosts: 300, maintenanceCosts: 300, netEquityPrivate: 7300, netEquityTradeIn: 5200 },
+    { year: 4, privateValue: 18700, tradeInValue: 16800, loanBalance: 7900, repairCosts: 600, maintenanceCosts: 350, netEquityPrivate: 9600, netEquityTradeIn: 7700 },
+    { year: 5, privateValue: 16200, tradeInValue: 14600, loanBalance: 2800, repairCosts: 1200, maintenanceCosts: 400, netEquityPrivate: 11600, netEquityTradeIn: 10000 },
   ],
   riskAssessment: {
     level: "low" as const,
@@ -228,13 +228,13 @@ export default function SampleReportPage() {
     "Loan Balance": row.loanBalance,
     "Cumulative Repairs": depreciationTable
       .filter((r) => r.year <= row.year)
-      .reduce((sum, r) => sum + r.repairCosts, 0),
+      .reduce((sum, r) => sum + r.repairCosts + (r.maintenanceCosts || 0), 0),
   }));
 
   const calculateNetEquity = (row: typeof depreciationTable[0]) => {
     const cumulativeRepairs = depreciationTable
       .filter((r) => r.year <= row.year)
-      .reduce((sum, r) => sum + r.repairCosts, 0);
+      .reduce((sum, r) => sum + r.repairCosts + (r.maintenanceCosts || 0), 0);
     return includeRepairs 
       ? row.tradeInValue - row.loanBalance - cumulativeRepairs
       : row.tradeInValue - row.loanBalance;
@@ -578,13 +578,14 @@ export default function SampleReportPage() {
                   <div className="mt-6 overflow-x-auto">
                     <Table>
                       <TableHeader>
-                        <TableRow>
+                         <TableRow>
                           <TableHead>Year</TableHead>
                           <TableHead className="text-right">Private Value</TableHead>
                           <TableHead className="text-right">Trade-In</TableHead>
                           <TableHead className="text-right">Loan Balance</TableHead>
-                          {includeRepairs && <TableHead className="text-right">Cumulative Repairs</TableHead>}
-                          <TableHead className="text-right">Net Equity {includeRepairs ? "(w/ repairs)" : "(w/o repairs)"}</TableHead>
+                          {includeRepairs && <TableHead className="text-right">Repairs</TableHead>}
+                          {includeRepairs && <TableHead className="text-right">Maintenance</TableHead>}
+                          <TableHead className="text-right">Net Equity {includeRepairs ? "(w/ costs)" : "(w/o costs)"}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -596,10 +597,12 @@ export default function SampleReportPage() {
                             <TableCell className="text-right">${row.loanBalance.toLocaleString()}</TableCell>
                             {includeRepairs && (
                               <TableCell className="text-right text-destructive">
-                                ${depreciationTable
-                                  .filter((r) => r.year <= row.year)
-                                  .reduce((sum, r) => sum + r.repairCosts, 0)
-                                  .toLocaleString()}
+                                ${row.repairCosts.toLocaleString()}
+                              </TableCell>
+                            )}
+                            {includeRepairs && (
+                              <TableCell className="text-right text-muted-foreground">
+                                ${(row.maintenanceCosts || 0).toLocaleString()}
                               </TableCell>
                             )}
                             <TableCell className={cn(

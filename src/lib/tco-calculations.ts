@@ -12,7 +12,8 @@ export interface TCOResult {
   purchasePrice: number;
   fuelCost5Year: number;
   repairCost5Year: number;
-  mileageDepreciation?: number; // Additional depreciation from excess mileage
+  maintenanceCost5Year: number;
+  mileageDepreciation?: number;
   totalTCO: number;
   annualFuelCost: number;
   costPerMile: number;
@@ -20,6 +21,7 @@ export interface TCOResult {
     purchase: number;
     fuel: number;
     repairs: number;
+    maintenance: number;
     mileageDepreciation?: number;
   };
 }
@@ -70,10 +72,10 @@ export function calculateMileageDepreciationAdjustment(
   return Math.round(totalExcessMiles * DEPRECIATION_PER_EXCESS_MILE);
 }
 
-// Depreciation table row type
 interface DepreciationRow {
   year: number;
   repairCosts: number;
+  maintenanceCosts?: number;
 }
 
 /**
@@ -202,13 +204,13 @@ export function estimate5YearMaintenance(make: string, currentAge: number): numb
 /**
  * Extract 5-year repair costs from depreciation table
  */
-export function get5YearRepairCosts(depreciationTable: unknown): number {
+export function get5YearRepairCosts(depreciationTable: unknown): { repairs: number; maintenance: number } {
   if (!depreciationTable || !Array.isArray(depreciationTable)) {
-    return 0;
+    return { repairs: 0, maintenance: 0 };
   }
 
-  // Sum repair costs from years 1-5
   let totalRepairs = 0;
+  let totalMaintenance = 0;
   for (let year = 1; year <= 5; year++) {
     const row = depreciationTable.find((r) => {
       const typed = r as unknown as DepreciationRow;
@@ -217,10 +219,11 @@ export function get5YearRepairCosts(depreciationTable: unknown): number {
     if (row) {
       const typed = row as unknown as DepreciationRow;
       totalRepairs += typed.repairCosts || 0;
+      totalMaintenance += typed.maintenanceCosts || 0;
     }
   }
 
-  return totalRepairs;
+  return { repairs: totalRepairs, maintenance: totalMaintenance };
 }
 
 /**
@@ -242,25 +245,28 @@ export function calculateTCO(
   const annualFuelCost = calculateAnnualFuelCost(mpgCombined, fuelType, mergedConfig);
   const fuelCost5Year = annualFuelCost * yearsToCalculate;
 
-  // Extract base repair costs from depreciation table, or estimate if missing
-  let baseRepairCost5Year = get5YearRepairCosts(depreciationTable);
+  // Extract base repair/maintenance costs from depreciation table, or estimate if missing
+  const baseCosts = get5YearRepairCosts(depreciationTable);
+  let baseRepairCost5Year = baseCosts.repairs;
+  let baseMaintenanceCost5Year = baseCosts.maintenance;
   
-  // If no repair data in depreciation table, estimate based on make/age
-  if (baseRepairCost5Year === 0 && vehicleInfo) {
+  // If no data in depreciation table, estimate maintenance based on make/age
+  if (baseRepairCost5Year === 0 && baseMaintenanceCost5Year === 0 && vehicleInfo) {
     const currentYear = new Date().getFullYear();
     const vehicleAge = currentYear - vehicleInfo.year;
-    baseRepairCost5Year = estimate5YearMaintenance(vehicleInfo.make, vehicleAge);
+    baseMaintenanceCost5Year = estimate5YearMaintenance(vehicleInfo.make, vehicleAge);
   }
 
   // Apply mileage multiplier to maintenance/repair costs
   const mileageMultiplier = getMileageMaintenanceMultiplier(annualMiles);
   const repairCost5Year = baseRepairCost5Year * mileageMultiplier;
+  const maintenanceCost5Year = baseMaintenanceCost5Year * mileageMultiplier;
 
   // Calculate additional depreciation for excess mileage
   const mileageDepreciation = calculateMileageDepreciationAdjustment(annualMiles, yearsToCalculate);
 
-  // Total TCO includes purchase + fuel + repairs + mileage depreciation
-  const totalTCO = askingPrice + fuelCost5Year + repairCost5Year + mileageDepreciation;
+  // Total TCO includes purchase + fuel + repairs + maintenance + mileage depreciation
+  const totalTCO = askingPrice + fuelCost5Year + repairCost5Year + maintenanceCost5Year + mileageDepreciation;
 
   // Cost per mile (over 5 years)
   const totalMiles = annualMiles * yearsToCalculate;
@@ -270,15 +276,17 @@ export function calculateTCO(
     purchasePrice: askingPrice,
     fuelCost5Year: Math.round(fuelCost5Year),
     repairCost5Year: Math.round(repairCost5Year),
+    maintenanceCost5Year: Math.round(maintenanceCost5Year),
     totalTCO: Math.round(totalTCO),
     annualFuelCost: Math.round(annualFuelCost),
     costPerMile: Math.round(costPerMile * 100) / 100,
-    mileageDepreciation: Math.round(mileageDepreciation), // New field
+    mileageDepreciation: Math.round(mileageDepreciation),
     breakdown: {
       purchase: askingPrice,
       fuel: Math.round(fuelCost5Year),
       repairs: Math.round(repairCost5Year),
-      mileageDepreciation: Math.round(mileageDepreciation), // New field
+      maintenance: Math.round(maintenanceCost5Year),
+      mileageDepreciation: Math.round(mileageDepreciation),
     },
   };
 }
@@ -371,8 +379,9 @@ export function getTCORating(
  */
 export function calculateMonthlyOwnershipCost(tco: TCOResult): number {
   const monthlyFuel = tco.annualFuelCost / 12;
-  const monthlyRepairs = tco.repairCost5Year / 60; // 5 years = 60 months
-  return Math.round(monthlyFuel + monthlyRepairs);
+  const monthlyRepairs = tco.repairCost5Year / 60;
+  const monthlyMaintenance = tco.maintenanceCost5Year / 60;
+  return Math.round(monthlyFuel + monthlyRepairs + monthlyMaintenance);
 }
 
 /**
