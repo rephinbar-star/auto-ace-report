@@ -106,7 +106,7 @@ export function RiskScoreBreakdown({ result, missingHistoryReport, onUploadHisto
             <Button
               variant="outline"
               size="sm"
-              className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+              className="border-success bg-success text-success-foreground hover:bg-success/90"
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploadingHistory}
             >
