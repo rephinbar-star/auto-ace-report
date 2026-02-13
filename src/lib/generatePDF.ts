@@ -81,6 +81,7 @@ interface ReportData {
   tcoData?: TCOData;
   sellerType?: string;
   pricingSources?: string[];
+  hasServiceRecords?: boolean;
 }
 
 // ── Color palette matching the website (teal primary) ──
@@ -152,7 +153,7 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   const contentW = W - 2 * M;
   let y = 0;
 
-  const { vehicle, priceAssessment, riskAssessment, historyAnalysis, depreciationTable, images, dealerReview, serviceHistory, uvprsResult, tcoData, sellerType, pricingSources } = data;
+  const { vehicle, priceAssessment, riskAssessment, historyAnalysis, depreciationTable, images, dealerReview, serviceHistory, uvprsResult, tcoData, sellerType, pricingSources, hasServiceRecords } = data;
 
   // Helper to deduplicate sources by domain
   const getDeduplicatedSources = (sources: string[]): { displayName: string; url: string }[] => {
@@ -628,6 +629,19 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
       pdf.setTextColor(...SLATE);
       pdf.text("* Unknown factors use neutral score; weight redistributed to known factors.", M, y);
       y += 5;
+    }
+
+    // Warning when no history report was provided
+    if (hasServiceRecords === false) {
+      ensureSpace(12);
+      pdf.setFillColor(255, 240, 240);
+      pdf.roundedRect(M, y, contentW, 9, 2, 2, "F");
+      pdf.setFontSize(8);
+      pdf.setFont("helvetica", "bold");
+      pdf.setTextColor(...RED);
+      pdf.text("! Risk Score adversely affected because no available CarFax/AutoCheck was provided by user", M + 4, y + 6);
+      pdf.setFont("helvetica", "normal");
+      y += 12;
     }
   }
 
