@@ -696,6 +696,7 @@ export default function ReportPage() {
           );
           return { tco, annualMiles };
         })(),
+        pricingSources,
       });
       sonnerToast.success("PDF downloaded successfully!");
     } catch (error) {
