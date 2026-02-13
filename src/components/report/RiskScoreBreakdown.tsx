@@ -135,7 +135,7 @@ export function RiskScoreBreakdown({ result }: RiskScoreBreakdownProps) {
                       "text-xs font-medium",
                       !factor.known && "text-muted-foreground italic"
                     )}>
-                      {factor.known ? `${factor.score} / 100` : "N/A"}
+                      {factor.known ? `${Math.round(factor.score)} / 100` : "N/A"}
                     </span>
                   </div>
                   <Progress 
