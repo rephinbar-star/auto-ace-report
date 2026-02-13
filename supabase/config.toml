@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.lookup-pricing]
 verify_jwt = false
+
+[functions.extract-from-screenshot]
+verify_jwt = false
