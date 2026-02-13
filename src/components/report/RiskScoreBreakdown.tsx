@@ -47,6 +47,7 @@ const factorTooltips: Record<string, { meaning: string; advice: string }> = {
 
 interface RiskScoreBreakdownProps {
   result: UVPRSResult;
+  missingHistoryReport?: boolean;
 }
 
 const riskColors: Record<string, string> = {
@@ -68,7 +69,7 @@ function getFactorBarColor(score: number): string {
   return "[&>div]:bg-danger";
 }
 
-export function RiskScoreBreakdown({ result }: RiskScoreBreakdownProps) {
+export function RiskScoreBreakdown({ result, missingHistoryReport }: RiskScoreBreakdownProps) {
   const { totalScore, riskLevel, riskLabel, factors, knownFactorCount } = result;
 
   return (
@@ -78,6 +79,11 @@ export function RiskScoreBreakdown({ result }: RiskScoreBreakdownProps) {
           <ShieldAlert className="h-5 w-5 text-primary" />
           Purchase Risk Score (UVPRS)
         </CardTitle>
+        {missingHistoryReport && (
+          <p className="text-sm font-medium text-destructive">
+            ⚠ Risk Score adversely affected because no available CarFax/AutoCheck was provided by user
+          </p>
+        )}
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Overall Score */}
