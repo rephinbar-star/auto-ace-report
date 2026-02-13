@@ -697,6 +697,7 @@ export default function ReportPage() {
           return { tco, annualMiles };
         })(),
         pricingSources,
+        hasServiceRecords: vehicleData?.history?.serviceRecords ?? false,
       });
       sonnerToast.success("PDF downloaded successfully!");
     } catch (error) {

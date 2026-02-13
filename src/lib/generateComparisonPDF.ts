@@ -724,6 +724,22 @@ export async function generateComparisonPDF(data: ComparisonPDFData): Promise<vo
       yPosition += 6;
     });
 
+    // Warning when no history report was provided
+    if (!v.has_service_records) {
+      if (yPosition + 10 > pageHeight - margin) {
+        pdf.addPage();
+        yPosition = margin;
+      }
+      pdf.setFillColor(255, 240, 240);
+      pdf.roundedRect(margin, yPosition, pageWidth - 2 * margin, 8, 2, 2, "F");
+      pdf.setFontSize(7);
+      pdf.setFont("helvetica", "bold");
+      pdf.setTextColor(239, 68, 68);
+      pdf.text("! Risk Score adversely affected because no available CarFax/AutoCheck was provided by user", margin + 3, yPosition + 5);
+      pdf.setFont("helvetica", "normal");
+      yPosition += 10;
+    }
+
     yPosition += 4;
 
     // Per-vehicle TCO summary
