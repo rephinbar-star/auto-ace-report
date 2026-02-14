@@ -127,15 +127,36 @@ serve(async (req) => {
       // Basic PDF text extraction (simplified - extracts visible text streams)
       textContent = extractTextFromPDF(bytes);
 
-      // Also scan raw PDF bytes for VIN (17-char alphanumeric, excluding I, O, Q)
-      const rawStr = new TextDecoder("latin1").decode(bytes);
-      const vinFromRaw = rawStr.match(/\b([A-HJ-NPR-Z0-9]{17})\b/);
-      if (vinFromRaw) {
-        console.log("VIN found in raw PDF bytes:", vinFromRaw[1]);
-        // Inject VIN into text so AI and regex fallback can find it
-        textContent += `\nVIN: ${vinFromRaw[1]}`;
+      // Decompress FlateDecode streams to find VIN and additional text
+      const decompressedText = await decompressPDFStreams(bytes);
+      if (decompressedText) {
+        console.log(`Decompressed ${decompressedText.length} chars from PDF streams`);
+        const vinFromDecompressed = decompressedText.match(/\b([A-HJ-NPR-Z0-9]{17})\b/);
+        if (vinFromDecompressed) {
+          console.log("VIN found in decompressed PDF stream:", vinFromDecompressed[1]);
+          textContent += `\nVIN: ${vinFromDecompressed[1]}`;
+        }
+        // Use decompressed text if it's richer
+        if (decompressedText.length > textContent.length) {
+          textContent = decompressedText;
+          // Re-add VIN if we found it
+          if (vinFromDecompressed) {
+            textContent += `\nVIN: ${vinFromDecompressed[1]}`;
+          }
+        }
+      }
+
+      // Fallback: scan raw bytes for VIN pattern  
+      if (!textContent.includes("VIN:")) {
+        const rawStr = new TextDecoder("latin1").decode(bytes);
+        const vinFromRaw = rawStr.match(/\b([A-HJ-NPR-Z0-9]{17})\b/);
+        if (vinFromRaw) {
+          console.log("VIN found in raw PDF bytes:", vinFromRaw[1]);
+          textContent += `\nVIN: ${vinFromRaw[1]}`;
+        }
       }
       
+      console.log(`Extracted text length: ${textContent.length} chars`);
       if (!textContent || textContent.length < 100) {
         textContent = `Vehicle History Report: ${file.name}. File uploaded for analysis.`;
       }
@@ -399,6 +420,71 @@ function extractTextFromPDF(bytes: Uint8Array): string {
   const plainTextRegex = /\/T\s*\((.*?)\)/g;
   while ((match = plainTextRegex.exec(content)) !== null) {
     textParts.push(match[1]);
+  }
+  
+  return textParts.join(" ").trim();
+}
+
+// Decompress FlateDecode PDF streams to extract text from compressed content
+async function decompressPDFStreams(bytes: Uint8Array): Promise<string> {
+  const decoder = new TextDecoder("latin1");
+  const content = decoder.decode(bytes);
+  const textParts: string[] = [];
+
+  // Find all stream blocks
+  const streamRegex = /stream\r?\n([\s\S]*?)\r?\nendstream/g;
+  let match;
+  
+  while ((match = streamRegex.exec(content)) !== null) {
+    const streamBytes = new Uint8Array(match[1].length);
+    for (let i = 0; i < match[1].length; i++) {
+      streamBytes[i] = match[1].charCodeAt(i);
+    }
+    
+    try {
+      // Try to decompress as deflate (FlateDecode)
+      const ds = new DecompressionStream("deflate");
+      const writer = ds.writable.getWriter();
+      const reader = ds.readable.getReader();
+      
+      writer.write(streamBytes).catch(() => {});
+      writer.close().catch(() => {});
+      
+      const chunks: Uint8Array[] = [];
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+      }
+      
+      if (chunks.length > 0) {
+        const totalLen = chunks.reduce((sum, c) => sum + c.length, 0);
+        const combined = new Uint8Array(totalLen);
+        let offset = 0;
+        for (const chunk of chunks) {
+          combined.set(chunk, offset);
+          offset += chunk.length;
+        }
+        
+        const decompressed = new TextDecoder("latin1").decode(combined);
+        // Extract text from PDF text operators: (text)Tj, (text)TJ, (text)'
+        const pdfTextRegex = /\(([^)]*)\)/g;
+        let textMatch;
+        while ((textMatch = pdfTextRegex.exec(decompressed)) !== null) {
+          const text = textMatch[1]
+            .replace(/\\n/g, "\n")
+            .replace(/\\r/g, "")
+            .replace(/\\\(/g, "(")
+            .replace(/\\\)/g, ")")
+            .replace(/\\\\/g, "\\");
+          if (text.length >= 1 && /[a-zA-Z0-9]/.test(text)) {
+            textParts.push(text);
+          }
+        }
+      }
+    } catch {
+      // Not a deflate stream, skip
+    }
   }
   
   return textParts.join(" ").trim();
