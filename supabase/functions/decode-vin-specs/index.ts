@@ -93,21 +93,29 @@ serve(async (req) => {
       if (parts.length > 0) engineDetail = parts.join(" ");
     }
 
+    // Helper to safely extract string from potentially object fields
+    const str = (val: any): string | null => {
+      if (!val) return null;
+      if (typeof val === "string") return val;
+      if (typeof val === "object" && val.name) return val.name;
+      return String(val);
+    };
+
     const result = {
       success: true,
       data: {
         year: specs?.year || null,
-        make: specs?.make || null,
-        model: specs?.model || null,
-        trim: specs?.trim || null,
-        bodyStyle: specs?.body_type || null,
-        transmission: specs?.transmission || null,
-        drivetrain: specs?.drivetrain || null,
-        fuelType: specs?.fuel_type || null,
+        make: str(specs?.make),
+        model: str(specs?.model),
+        trim: str(specs?.trim),
+        bodyStyle: str(specs?.body_type),
+        transmission: str(specs?.transmission),
+        drivetrain: str(specs?.drivetrain),
+        fuelType: str(specs?.fuel_type),
         engineSize: specs?.engine_displacement ? `${specs.engine_displacement}L` : null,
         engine: engineDetail,
-        exteriorColor: specs?.exterior_color || null,
-        interiorColor: specs?.interior_color || null,
+        exteriorColor: str(specs?.exterior_color),
+        interiorColor: str(specs?.interior_color),
         installedEquipment,
         optionPackages: packages,
         seatingCapacity: specs?.seating_capacity || null,
