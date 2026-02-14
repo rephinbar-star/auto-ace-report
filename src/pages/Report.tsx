@@ -62,6 +62,7 @@ import { FuelEconomyCard } from "@/components/report/FuelEconomyCard";
 import { RiskScoreBreakdown } from "@/components/report/RiskScoreBreakdown";
 import { ServiceHistoryTimeline } from "@/components/report/ServiceHistoryTimeline";
 import { generateReportPDF } from "@/lib/generatePDF";
+import { cacheImages, getCachedUrls } from "@/lib/api/cache-images";
 import { calculateTCO } from "@/lib/tco-calculations";
 import { toast as sonnerToast } from "sonner";
 import { calculateUVPRS, uvprsToLegacyRiskLevel, type UVPRSResult } from "@/lib/uvprs-scoring";
@@ -678,6 +679,19 @@ export default function ReportPage() {
   const handleDownloadPDF = async () => {
     setIsDownloading(true);
     try {
+      // Cache images through our backend to avoid CORS issues
+      let pdfImages = condition.images as string[] | undefined;
+      if (pdfImages && pdfImages.length > 0) {
+        try {
+          const cacheResult = await cacheImages(pdfImages);
+          if (cacheResult.success && cacheResult.images) {
+            pdfImages = getCachedUrls(cacheResult);
+          }
+        } catch (e) {
+          console.warn("Image caching failed, using original URLs:", e);
+        }
+      }
+
       // Prepare dealer review data for PDF if available (Pro users only)
       const dealerReviewForPDF = isPro && dealerAnalysis ? {
         dealerName: dealerAnalysis.dealerName,
@@ -715,7 +729,7 @@ export default function ReportPage() {
         },
         historyAnalysis,
         depreciationTable,
-        images: condition.images,
+        images: pdfImages,
         dealerReview: dealerReviewForPDF,
         serviceHistory: {
           serviceGapMiles: vehicleData?.history?.serviceGapMiles,
