@@ -285,6 +285,11 @@ export default function ReportPage() {
               model: report.model,
               trim: report.trim,
               vin: report.vin,
+              engineSize: report.engine_size,
+              transmission: report.transmission,
+              drivetrain: report.drivetrain,
+              fuelType: report.fuel_type,
+              bodyStyle: report.body_style,
             },
             condition: {
               mileage: report.mileage,
