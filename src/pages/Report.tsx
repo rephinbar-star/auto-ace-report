@@ -889,7 +889,7 @@ export default function ReportPage() {
               </Button>
               <Button 
                 size="sm"
-                className="bg-[#E8524A] hover:bg-[#D4443C] text-white border-none"
+                className="bg-[#FAA187] hover:bg-[#f08e72] text-white border-none"
                 onClick={handleDownloadPDF}
                 disabled={isDownloading}
               >
