@@ -757,7 +757,7 @@ export default function ReportPage() {
                 {vehicle.year} {vehicle.make} {vehicle.model}
               </h1>
               <p className="text-muted-foreground">
-                {vehicle.vin && <>{vehicle.vin} • </>}{condition.mileage.toLocaleString()} miles • Asking ${condition.askingPrice.toLocaleString()}
+                {vehicle.vin && <>VIN# {vehicle.vin} • </>}{condition.mileage.toLocaleString()} miles • Asking ${condition.askingPrice.toLocaleString()}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
