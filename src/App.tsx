@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import { ThemeProvider } from "next-themes";
+import { FeedbackWidget } from "@/components/feedback/FeedbackWidget";
 
 // Critical path - load immediately
 import Index from "./pages/Index";
@@ -71,6 +72,7 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
+            <FeedbackWidget />
           </BrowserRouter>
         </TooltipProvider>
       </QueryClientProvider>

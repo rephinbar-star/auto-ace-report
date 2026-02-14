@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.decode-vin-specs]
 verify_jwt = false
+
+[functions.send-feedback]
+verify_jwt = false
