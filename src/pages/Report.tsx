@@ -1087,6 +1087,7 @@ export default function ReportPage() {
                               cargurus: "CarGurus",
                               nada: "NADA Guides",
                               truecar: "TrueCar",
+                              marketcheck: "MarketCheck",
                             };
                             const seen = new Map<string, { displayName: string; url: string }>();
                             for (const url of pricingSources) {
