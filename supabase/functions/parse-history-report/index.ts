@@ -156,6 +156,25 @@ serve(async (req) => {
         }
       }
       
+      // Log a snippet around "VIN" or first 500 chars for debugging
+      const vinIdx = textContent.toUpperCase().indexOf("VIN");
+      if (vinIdx >= 0) {
+        console.log("Text near 'VIN':", textContent.substring(Math.max(0, vinIdx - 20), vinIdx + 80));
+      } else {
+        console.log("No 'VIN' keyword found in extracted text. First 300 chars:", textContent.substring(0, 300));
+      }
+      
+      // Try matching VIN with possible spaces/separators between chars
+      if (!textContent.includes("VIN:")) {
+        // Remove spaces and try matching
+        const noSpaces = textContent.replace(/\s+/g, "");
+        const vinNoSpaces = noSpaces.match(/([A-HJ-NPR-Z0-9]{17})/);
+        if (vinNoSpaces) {
+          console.log("VIN found after removing spaces:", vinNoSpaces[1]);
+          textContent += `\nVIN: ${vinNoSpaces[1]}`;
+        }
+      }
+
       console.log(`Extracted text length: ${textContent.length} chars`);
       if (!textContent || textContent.length < 100) {
         textContent = `Vehicle History Report: ${file.name}. File uploaded for analysis.`;
