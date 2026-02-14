@@ -1078,7 +1078,16 @@ export default function ReportPage() {
                         <p className="text-xs font-medium text-muted-foreground mb-2">Pricing Sources</p>
                         <div className="flex flex-wrap gap-2">
                           {(() => {
-                            // Deduplicate by domain, keeping the first URL per domain
+                            const knownSources: Record<string, string> = {
+                              kbb: "Kelley Blue Book",
+                              repairpal: "RepairPal",
+                              edmunds: "Edmunds",
+                              carfax: "CARFAX",
+                              autocheck: "AutoCheck",
+                              cargurus: "CarGurus",
+                              nada: "NADA Guides",
+                              truecar: "TrueCar",
+                            };
                             const seen = new Map<string, { displayName: string; url: string }>();
                             for (const url of pricingSources) {
                               try {
@@ -1086,7 +1095,7 @@ export default function ReportPage() {
                                 const domain = hostname.split(".")[0];
                                 if (!seen.has(domain)) {
                                   seen.set(domain, {
-                                    displayName: domain.charAt(0).toUpperCase() + domain.slice(1),
+                                    displayName: knownSources[domain] || domain.charAt(0).toUpperCase() + domain.slice(1),
                                     url,
                                   });
                                 }
