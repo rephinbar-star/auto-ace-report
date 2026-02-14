@@ -4,7 +4,7 @@ import { VehicleHistory } from "@/types/vehicle";
 export interface ParseHistoryResponse {
   success: boolean;
   error?: string;
-  history?: VehicleHistory & { summary?: string };
+  history?: VehicleHistory & { summary?: string; vin?: string | null };
   storagePath?: string;
 }
 

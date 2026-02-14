@@ -287,6 +287,10 @@ For service history analysis:
                   resolvedRecallCount: {
                     type: ["number", "null"],
                     description: "Number of manufacturer recalls that have been COMPLETED/RESOLVED for this specific vehicle. If the report shows recalls were remedied/fixed, count those here. Return 0 if no resolved recalls mentioned. Return null if recall information is not present in the report."
+                  },
+                  vin: {
+                    type: ["string", "null"],
+                    description: "The 17-character Vehicle Identification Number (VIN) if present in the report. Return null if not found."
                   }
                 },
                 required: ["accidentCount", "ownerCount", "titleStatus", "serviceRecords", "issues", "positives", "healthScore", "summary"],

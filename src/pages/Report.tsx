@@ -1276,8 +1276,14 @@ export default function ReportPage() {
                         return;
                       }
                       // Merge parsed history into vehicleData
+                      const extractedVin = result.history.vin;
                       const updatedVehicleData = {
                         ...vehicleData,
+                        vehicle: {
+                          ...vehicleData.vehicle,
+                          // Set VIN if extracted and not already set
+                          ...(extractedVin && !vehicleData.vehicle.vin ? { vin: extractedVin } : {}),
+                        },
                         history: {
                           ...vehicleData.history,
                           ...result.history,
@@ -1335,6 +1341,7 @@ export default function ReportPage() {
                             major_services_due: result.history?.majorServicesDue ?? null,
                             major_services_done: result.history?.majorServicesDone ?? null,
                             chronic_repair_systems: result.history?.chronicRepairSystems ?? null,
+                            ...(extractedVin ? { vin: extractedVin } : {}),
                             pricing_sources: analysisResult.pricingSources || [],
                             pricing_last_updated: new Date().toISOString(),
                           }).eq("id", id);
