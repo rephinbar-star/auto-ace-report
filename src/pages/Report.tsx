@@ -1001,11 +1001,14 @@ export default function ReportPage() {
                         </CollapsibleTrigger>
                         <CollapsibleContent className="pt-2">
                           <div className="flex flex-wrap gap-1.5">
-                            {vehicle.optionPackages.map((pkg: string, i: number) => (
-                              <Badge key={i} variant="outline" className="text-xs">
-                                {pkg}
-                              </Badge>
-                            ))}
+                            {vehicle.optionPackages.map((pkg: any, i: number) => {
+                              const label = typeof pkg === "string" ? pkg : pkg?.name || String(pkg);
+                              return (
+                                <Badge key={i} variant="outline" className="text-xs">
+                                  {label}
+                                </Badge>
+                              );
+                            })}
                           </div>
                         </CollapsibleContent>
                       </Collapsible>
@@ -1018,11 +1021,14 @@ export default function ReportPage() {
                         </CollapsibleTrigger>
                         <CollapsibleContent className="pt-2">
                           <div className="flex flex-wrap gap-1.5">
-                            {vehicle.installedEquipment.map((item: string, i: number) => (
-                              <Badge key={i} variant="secondary" className="text-xs font-normal">
-                                {item}
-                              </Badge>
-                            ))}
+                            {vehicle.installedEquipment.map((item: any, i: number) => {
+                              const label = typeof item === "string" ? item : item?.name || String(item);
+                              return (
+                                <Badge key={i} variant="secondary" className="text-xs font-normal">
+                                  {label}
+                                </Badge>
+                              );
+                            })}
                           </div>
                         </CollapsibleContent>
                       </Collapsible>
