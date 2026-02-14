@@ -1,52 +1,62 @@
 
 
-# Fix: Service History and Concerns Showing Incorrect Mileage Data
+# Add MarketCheck NeoVIN Decoding for Detailed Vehicle Specs
 
-## Problem
+## Overview
+Integrate MarketCheck's NeoVIN Decoder API to pull detailed vehicle specifications and installed options/equipment when a VIN is available. This replaces or supplements the basic NHTSA decode with richer data including factory options, packages, and installed equipment.
 
-The AI is generating service history items like "Brake fluid flush completed at 45k miles" and "Spark plugs replaced at 60k miles" for a vehicle with only ~15,000 miles. This happens because:
+## What Changes
 
-1. **History Report Parser** (`parse-history-report` edge function) does not receive the vehicle's actual mileage, so the AI fabricates plausible-sounding service entries at mileages the car has never reached.
-2. **Vehicle Analyzer** (`analyze-vehicle` edge function) generates concerns referencing incorrect mileage gaps derived from the hallucinated service data.
+### 1. New Edge Function: `decode-vin-specs`
+Create a new backend function that calls two MarketCheck endpoints:
+- **NeoVIN Specs**: `GET https://api.marketcheck.com/v2/decode/car/neovin/{vin}/specs` -- returns detailed specs (engine, transmission, drivetrain, dimensions, colors, standard features, installed equipment)
+- **Options Packages**: `GET https://api.marketcheck.com/v2/decode/car/neovin/{vin}/options-packages` -- returns all factory option packages available/installed for this VIN
 
-## Solution
+The function falls back to NHTSA data if MarketCheck fails (no extra API key needed -- reuses existing `MARKETCHECK_API_KEY`).
 
-### 1. Pass actual mileage to the History Report Parser
+### 2. Update VehicleInfo Type
+Add new fields to `VehicleInfo` in `src/types/vehicle.ts`:
+- `exteriorColor`, `interiorColor`
+- `engine` (detailed, e.g. "2.0L Turbo I4 248hp")
+- `installedEquipment` (string array of factory-installed features)
+- `optionPackages` (string array of option package names)
 
-- **File**: `src/components/analysis/HistoryStep.tsx` -- extract the current mileage from the analysis form state and pass it to `parseHistoryReport()`.
-- **File**: `src/lib/api/parse-history.ts` -- accept an optional `mileage` parameter and include it in the FormData sent to the edge function.
-- **File**: `supabase/functions/parse-history-report/index.ts` -- read the mileage from FormData and inject it into both the system prompt and user prompt so the AI knows the vehicle's actual odometer reading.
+### 3. Call NeoVIN Decode During VIN Entry
+In `src/components/analysis/VehicleInputStep.tsx`, after the user enters a VIN and NHTSA decode succeeds, also call the new `decode-vin-specs` function to enrich the vehicle data with MarketCheck specs.
 
-### 2. Update AI prompts to enforce mileage constraints
+### 4. Display Vehicle Specs on the Report
+In `src/pages/Report.tsx`, add a "Vehicle Specifications" section near the report header showing:
+- Engine, transmission, drivetrain
+- Exterior/interior colors
+- Installed equipment and option packages (collapsible list)
 
-In `parse-history-report/index.ts`, update the system prompt to include:
-- The vehicle's current odometer reading.
-- An explicit instruction: "Do NOT report any service as completed at a mileage higher than the vehicle's current odometer reading."
-- Guidance to only flag services as "due" if they would normally be required at or below the current mileage.
-
-### 3. Update the Vehicle Analyzer prompt
-
-In `analyze-vehicle/index.ts`, add a similar constraint to the system prompt reminding the AI that concerns and service references must be consistent with the reported mileage of the vehicle.
+### 5. Feed Specs to AI Analyzer
+Pass the enriched vehicle specs (engine, options, equipment) into the `analyze-vehicle` prompt so the AI can give more precise reliability assessments and maintenance estimates based on the exact configuration (e.g., turbo engine vs. naturally aspirated, AWD vs. FWD).
 
 ## Technical Details
 
-### HistoryStep.tsx changes
-- Access the `condition.mileage` value from the parent form/state (it's already collected in the Condition Step which comes before the History Step).
-- Pass it as a new parameter: `parseHistoryReport(file, url, mileage)`.
+### Edge Function: `supabase/functions/decode-vin-specs/index.ts`
+- Accepts `{ vin: string }`
+- Calls `https://api.marketcheck.com/v2/decode/car/neovin/{vin}/specs?api_key=...`
+- Calls `https://api.marketcheck.com/v2/decode/car/neovin/{vin}/options-packages?api_key=...`
+- Returns merged specs object
+- Add to `supabase/config.toml` with `verify_jwt = false`
 
-### parse-history.ts changes
-- Add optional `mileage?: number` parameter.
-- Append `formData.append("mileage", String(mileage))` when provided.
+### VehicleInputStep.tsx changes
+- After NHTSA decode, call `decode-vin-specs` edge function
+- Merge MarketCheck specs into VehicleInfo (MarketCheck takes priority for overlapping fields like trim, engine)
 
-### parse-history-report/index.ts changes
-- Read `const mileage = formData.get("mileage")` and parse it.
-- Update the system prompt to include: "The vehicle's current odometer reading is {mileage} miles. All service entries must be consistent with this mileage -- never reference services completed above this mileage."
-- Update `majorServicesDone` description to emphasize entries must reflect actual documented services within the vehicle's mileage range.
-- Update `majorServicesDue` description to only flag services due at or below current mileage.
+### Report.tsx changes
+- Add a collapsible "Vehicle Specifications" card after the header
+- Show key specs (engine, transmission, drivetrain, colors) as a grid
+- Show installed equipment as a tag/chip list inside a collapsible section
 
 ### analyze-vehicle/index.ts changes
-- Add to system prompt: "All reliability concerns, service history references, and mileage-based assessments must be consistent with the vehicle's reported mileage of {mileage} miles."
+- Include vehicle specs (engine, drivetrain, installed equipment) in the user prompt so the AI factors in the exact configuration
 
-### Refresh existing report
-- After deploying, the user will need to refresh/re-run the analysis on the existing report to get corrected data.
-
+## Sequencing
+1. Update `VehicleInfo` type with new fields
+2. Create `decode-vin-specs` edge function
+3. Update `VehicleInputStep` to call the new function
+4. Update `Report.tsx` to display specs
+5. Update `analyze-vehicle` prompt with specs data
