@@ -753,7 +753,7 @@ export default function ReportPage() {
           )}
           
           {/* Report Header */}
-          <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <h1 className="text-3xl font-bold">
                 {vehicle.year} {vehicle.make} {vehicle.model}
@@ -792,7 +792,6 @@ export default function ReportPage() {
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
-                  // Reset input so same file can be re-selected
                   e.target.value = "";
                   setIsRefreshingPricing(true);
                   try {
@@ -855,26 +854,18 @@ export default function ReportPage() {
                           history_issues: historyAnalysis.concerns || [],
                           history_positives: historyAnalysis.positives || [],
                           depreciation_table: depreciationTable as any,
-                          has_service_records: true,
-                          accident_count: result.history?.accidentCount ?? null,
-                          owner_count: result.history?.ownerCount ?? null,
-                          title_status: result.history?.titleStatus ?? null,
-                          service_gap_miles: result.history?.serviceGapMiles ?? null,
-                          major_services_due: result.history?.majorServicesDue ?? null,
-                          major_services_done: result.history?.majorServicesDone ?? null,
-                          chronic_repair_systems: result.history?.chronicRepairSystems ?? null,
-                          ...(extractedVin ? { vin: extractedVin } : {}),
                           pricing_sources: analysisResult.pricingSources || [],
                           pricing_last_updated: new Date().toISOString(),
+                          vin: extractedVin || vehicleData.vehicle.vin || null,
                         }).eq("id", id);
                       }
-                      sonnerToast.success("Report updated with history data!");
+                      sonnerToast.success("Analysis updated with history data!");
                     } else {
                       throw new Error(analysisResult?.error || "Re-analysis failed");
                     }
                   } catch (err) {
-                    console.error("Header history upload error:", err);
-                    sonnerToast.error("Failed to process history report");
+                    console.error("History upload error:", err);
+                    sonnerToast.error("Failed to re-analyze with history report");
                   } finally {
                     setIsRefreshingPricing(false);
                   }
@@ -910,171 +901,105 @@ export default function ReportPage() {
             </div>
           </div>
 
-          {/* Quick Stats */}
-          <div className="mb-8 grid gap-4 md:grid-cols-4">
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                    <DollarSign className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      {condition.sellerType === "dealer" ? "Dealer Retail Value" : "Private Sale Value"}
-                    </p>
-                    <p className="text-xl font-bold">
-                      ${(condition.sellerType === "dealer" && priceAssessment.fairMarketDealer 
-                        ? priceAssessment.fairMarketDealer 
-                        : priceAssessment.fairMarketPrivate
-                      ).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className={cn("flex h-10 w-10 items-center justify-center rounded-full", dealRatingColors[priceAssessment.dealRating])}>
-                    <Gauge className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Deal Rating</p>
-                    <p className="text-xl font-bold capitalize">{priceAssessment.dealRating}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className={cn("flex h-10 w-10 items-center justify-center rounded-full", 
-                    uvprsResult 
-                      ? uvprsResult.riskLevel === "low" ? "bg-success text-success-foreground"
-                        : uvprsResult.riskLevel === "moderate" ? "bg-warning text-warning-foreground"
-                        : "bg-danger text-danger-foreground"
-                      : riskLevelColors[riskAssessment.level]
-                  )}>
-                    <ShieldAlert className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Risk Score</p>
-                    <p className="text-xl font-bold">
-                      {uvprsResult ? `${uvprsResult.totalScore} / 100` : riskAssessment.level}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-success/10">
-                    <TrendingDown className="h-5 w-5 text-success" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Fair Offer</p>
-                    <p className="text-xl font-bold">${riskAssessment.fairOfferPrice.toLocaleString()}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Vehicle Specifications (shown when enriched data is available) */}
-          {(vehicle.engine || vehicle.exteriorColor || vehicle.interiorColor || 
-            vehicle.installedEquipment?.length || vehicle.optionPackages?.length) && (
-            <Card className="mb-8">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Settings className="h-5 w-5 text-primary" />
-                  Vehicle Specifications
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Key specs grid */}
-                <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-                  {vehicle.engine && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">Engine</p>
-                      <p className="text-sm font-medium">{vehicle.engine}</p>
+          {/* Vehicle Info & Options Card */}
+          <Card className="mb-8">
+            <CardContent className="p-5">
+              <div className="flex flex-col gap-4">
+                {/* Basic specs row */}
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                  {(vehicle.engine || vehicle.engineSize) && (
+                    <div className="flex items-center gap-2">
+                      <Settings className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">{vehicle.engine || vehicle.engineSize}</span>
                     </div>
                   )}
                   {vehicle.transmission && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">Transmission</p>
-                      <p className="text-sm font-medium">{vehicle.transmission}</p>
+                    <div className="flex items-center gap-2">
+                      <Wrench className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">{vehicle.transmission}</span>
                     </div>
                   )}
                   {vehicle.drivetrain && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">Drivetrain</p>
-                      <p className="text-sm font-medium">{vehicle.drivetrain}</p>
-                    </div>
-                  )}
-                  {vehicle.exteriorColor && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">Exterior Color</p>
-                      <p className="text-sm font-medium">{vehicle.exteriorColor}</p>
-                    </div>
-                  )}
-                  {vehicle.interiorColor && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">Interior Color</p>
-                      <p className="text-sm font-medium">{vehicle.interiorColor}</p>
+                    <div className="flex items-center gap-2">
+                      <Car className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">{vehicle.drivetrain}</span>
                     </div>
                   )}
                   {vehicle.fuelType && (
-                    <div>
-                      <p className="text-xs text-muted-foreground">Fuel Type</p>
-                      <p className="text-sm font-medium">{vehicle.fuelType}</p>
+                    <div className="flex items-center gap-2">
+                      <Gauge className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">{vehicle.fuelType}</span>
+                    </div>
+                  )}
+                  {vehicle.exteriorColor && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Ext:</span>{" "}
+                      <span>{vehicle.exteriorColor}</span>
+                    </div>
+                  )}
+                  {vehicle.interiorColor && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Int:</span>{" "}
+                      <span>{vehicle.interiorColor}</span>
+                    </div>
+                  )}
+                  {vehicle.bodyStyle && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Body:</span>{" "}
+                      <span>{vehicle.bodyStyle}</span>
+                    </div>
+                  )}
+                  {vehicle.trim && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Trim:</span>{" "}
+                      <span className="font-medium">{vehicle.trim}</span>
                     </div>
                   )}
                 </div>
 
-                {/* Installed Equipment */}
-                {vehicle.installedEquipment && vehicle.installedEquipment.length > 0 && (
-                  <Collapsible>
-                    <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted/50 transition-colors">
-                      <span>Installed Equipment ({vehicle.installedEquipment.length})</span>
-                      <svg className="h-4 w-4 shrink-0 transition-transform duration-200" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="pt-2">
-                      <div className="flex flex-wrap gap-1.5">
-                        {vehicle.installedEquipment.map((item: string, i: number) => (
-                          <Badge key={i} variant="secondary" className="text-xs font-normal">
-                            {item}
-                          </Badge>
-                        ))}
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
+                {/* Installed Equipment & Option Packages (collapsible) */}
+                {((vehicle.installedEquipment && vehicle.installedEquipment.length > 0) || 
+                  (vehicle.optionPackages && vehicle.optionPackages.length > 0)) && (
+                  <div className="space-y-2 border-t pt-3">
+                    {vehicle.optionPackages && vehicle.optionPackages.length > 0 && (
+                      <Collapsible>
+                        <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted/50 transition-colors">
+                          <span>Option Packages ({vehicle.optionPackages.length})</span>
+                          <svg className="h-4 w-4 shrink-0 transition-transform duration-200" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="pt-2">
+                          <div className="flex flex-wrap gap-1.5">
+                            {vehicle.optionPackages.map((pkg: string, i: number) => (
+                              <Badge key={i} variant="outline" className="text-xs">
+                                {pkg}
+                              </Badge>
+                            ))}
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
+                    {vehicle.installedEquipment && vehicle.installedEquipment.length > 0 && (
+                      <Collapsible>
+                        <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted/50 transition-colors">
+                          <span>Installed Equipment ({vehicle.installedEquipment.length})</span>
+                          <svg className="h-4 w-4 shrink-0 transition-transform duration-200" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="pt-2">
+                          <div className="flex flex-wrap gap-1.5">
+                            {vehicle.installedEquipment.map((item: string, i: number) => (
+                              <Badge key={i} variant="secondary" className="text-xs font-normal">
+                                {item}
+                              </Badge>
+                            ))}
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
+                  </div>
                 )}
-
-                {/* Option Packages */}
-                {vehicle.optionPackages && vehicle.optionPackages.length > 0 && (
-                  <Collapsible>
-                    <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted/50 transition-colors">
-                      <span>Option Packages ({vehicle.optionPackages.length})</span>
-                      <svg className="h-4 w-4 shrink-0 transition-transform duration-200" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="pt-2">
-                      <div className="flex flex-wrap gap-1.5">
-                        {vehicle.optionPackages.map((pkg: string, i: number) => (
-                          <Badge key={i} variant="outline" className="text-xs">
-                            {pkg}
-                          </Badge>
-                        ))}
-                      </div>
-                    </CollapsibleContent>
-                  </Collapsible>
-                )}
-              </CardContent>
-            </Card>
-          )}
+              </div>
+            </CardContent>
+          </Card>
 
           <div className="grid gap-8 lg:grid-cols-3">
             {/* Left Column - Main Content */}
