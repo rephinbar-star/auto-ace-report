@@ -176,6 +176,66 @@ serve(async (req) => {
       }
 
       console.log(`Extracted text length: ${textContent.length} chars`);
+      
+      // If text is garbled (CIDFont encoding), use Gemini vision to read the PDF
+      const hasReadableText = /[a-zA-Z]{5,}/.test(textContent.substring(0, 500));
+      if (!hasReadableText || textContent.length < 100) {
+        console.log("Text appears garbled or too short, using Gemini vision to read PDF");
+        const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+        if (LOVABLE_API_KEY) {
+          try {
+            const base64PDF = btoa(String.fromCharCode(...bytes));
+            const visionResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model: "google/gemini-2.5-flash",
+                messages: [
+                  {
+                    role: "user",
+                    content: [
+                      {
+                        type: "text",
+                        text: "Extract ALL text content from this PDF document. Include every detail: VIN number, vehicle info, accident history, service records, ownership history, title info, recalls. Return the full text content."
+                      },
+                      {
+                        type: "image_url",
+                        image_url: {
+                          url: `data:application/pdf;base64,${base64PDF}`
+                        }
+                      }
+                    ]
+                  }
+                ],
+                max_tokens: 8000,
+              }),
+            });
+
+            if (visionResponse.ok) {
+              const visionData = await visionResponse.json();
+              const extractedText = visionData.choices?.[0]?.message?.content;
+              if (extractedText && extractedText.length > 100) {
+                console.log(`Gemini vision extracted ${extractedText.length} chars`);
+                textContent = extractedText;
+                // Extract VIN from vision text
+                const vinFromVision = extractedText.match(/\b([A-HJ-NPR-Z0-9]{17})\b/);
+                if (vinFromVision) {
+                  console.log("VIN found via Gemini vision:", vinFromVision[1]);
+                  textContent += `\nVIN: ${vinFromVision[1]}`;
+                }
+              }
+            } else {
+              console.error("Gemini vision request failed:", visionResponse.status);
+            }
+          } catch (e) {
+            console.error("Gemini vision error:", e);
+          }
+        }
+      }
+      
       if (!textContent || textContent.length < 100) {
         textContent = `Vehicle History Report: ${file.name}. File uploaded for analysis.`;
       }
