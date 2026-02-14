@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.extract-from-screenshot]
 verify_jwt = false
+
+[functions.decode-vin-specs]
+verify_jwt = false

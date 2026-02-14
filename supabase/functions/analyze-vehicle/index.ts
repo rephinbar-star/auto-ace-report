@@ -237,10 +237,27 @@ IMPORTANT: The seller type is "${condition.sellerType}".
 
 Always provide specific dollar amounts, not ranges. Be direct and honest about risks.`;
 
+    // Build vehicle specs section if enriched data is available
+    const vehicleSpecsLines: string[] = [];
+    if ((vehicleData as any).vehicle?.engine) vehicleSpecsLines.push(`- Engine: ${(vehicleData as any).vehicle.engine}`);
+    if ((vehicleData as any).vehicle?.engineSize) vehicleSpecsLines.push(`- Engine Size: ${(vehicleData as any).vehicle.engineSize}`);
+    if ((vehicleData as any).vehicle?.transmission) vehicleSpecsLines.push(`- Transmission: ${(vehicleData as any).vehicle.transmission}`);
+    if ((vehicleData as any).vehicle?.drivetrain) vehicleSpecsLines.push(`- Drivetrain: ${(vehicleData as any).vehicle.drivetrain}`);
+    if ((vehicleData as any).vehicle?.fuelType) vehicleSpecsLines.push(`- Fuel Type: ${(vehicleData as any).vehicle.fuelType}`);
+    if ((vehicleData as any).vehicle?.exteriorColor) vehicleSpecsLines.push(`- Exterior Color: ${(vehicleData as any).vehicle.exteriorColor}`);
+    if ((vehicleData as any).vehicle?.installedEquipment?.length) {
+      vehicleSpecsLines.push(`- Installed Equipment: ${(vehicleData as any).vehicle.installedEquipment.join(", ")}`);
+    }
+    if ((vehicleData as any).vehicle?.optionPackages?.length) {
+      vehicleSpecsLines.push(`- Option Packages: ${(vehicleData as any).vehicle.optionPackages.join(", ")}`);
+    }
+    const vehicleSpecsBlock = vehicleSpecsLines.length > 0 ? `\nVEHICLE SPECIFICATIONS:\n${vehicleSpecsLines.join("\n")}` : "";
+
     const userPrompt = `Analyze this vehicle purchase:
 
 VEHICLE: ${vehicle.year} ${vehicle.make} ${vehicle.model}${vehicle.trim ? ` ${vehicle.trim}` : ""}
 ${vehicle.vin ? `VIN: ${vehicle.vin}` : ""}
+${vehicleSpecsBlock}
 
 CONDITION:
 - Mileage: ${condition.mileage.toLocaleString()} miles

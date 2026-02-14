@@ -36,6 +36,7 @@ import {
   Car,
   Gauge,
   Wrench,
+  Settings,
   FileText,
   Upload,
   Download,
@@ -50,6 +51,7 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { getWithExpiry, removeExpirableItem } from "@/lib/storage-utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -981,6 +983,98 @@ export default function ReportPage() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Vehicle Specifications (shown when enriched data is available) */}
+          {(vehicle.engine || vehicle.exteriorColor || vehicle.interiorColor || 
+            vehicle.installedEquipment?.length || vehicle.optionPackages?.length) && (
+            <Card className="mb-8">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Settings className="h-5 w-5 text-primary" />
+                  Vehicle Specifications
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Key specs grid */}
+                <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+                  {vehicle.engine && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Engine</p>
+                      <p className="text-sm font-medium">{vehicle.engine}</p>
+                    </div>
+                  )}
+                  {vehicle.transmission && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Transmission</p>
+                      <p className="text-sm font-medium">{vehicle.transmission}</p>
+                    </div>
+                  )}
+                  {vehicle.drivetrain && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Drivetrain</p>
+                      <p className="text-sm font-medium">{vehicle.drivetrain}</p>
+                    </div>
+                  )}
+                  {vehicle.exteriorColor && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Exterior Color</p>
+                      <p className="text-sm font-medium">{vehicle.exteriorColor}</p>
+                    </div>
+                  )}
+                  {vehicle.interiorColor && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Interior Color</p>
+                      <p className="text-sm font-medium">{vehicle.interiorColor}</p>
+                    </div>
+                  )}
+                  {vehicle.fuelType && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Fuel Type</p>
+                      <p className="text-sm font-medium">{vehicle.fuelType}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Installed Equipment */}
+                {vehicle.installedEquipment && vehicle.installedEquipment.length > 0 && (
+                  <Collapsible>
+                    <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted/50 transition-colors">
+                      <span>Installed Equipment ({vehicle.installedEquipment.length})</span>
+                      <svg className="h-4 w-4 shrink-0 transition-transform duration-200" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="pt-2">
+                      <div className="flex flex-wrap gap-1.5">
+                        {vehicle.installedEquipment.map((item: string, i: number) => (
+                          <Badge key={i} variant="secondary" className="text-xs font-normal">
+                            {item}
+                          </Badge>
+                        ))}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
+
+                {/* Option Packages */}
+                {vehicle.optionPackages && vehicle.optionPackages.length > 0 && (
+                  <Collapsible>
+                    <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted/50 transition-colors">
+                      <span>Option Packages ({vehicle.optionPackages.length})</span>
+                      <svg className="h-4 w-4 shrink-0 transition-transform duration-200" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="pt-2">
+                      <div className="flex flex-wrap gap-1.5">
+                        {vehicle.optionPackages.map((pkg: string, i: number) => (
+                          <Badge key={i} variant="outline" className="text-xs">
+                            {pkg}
+                          </Badge>
+                        ))}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           <div className="grid gap-8 lg:grid-cols-3">
             {/* Left Column - Main Content */}

@@ -11,6 +11,11 @@ export interface VehicleInfo {
   fuelType?: string;
   transmission?: string;
   drivetrain?: string;
+  exteriorColor?: string;
+  interiorColor?: string;
+  engine?: string; // Detailed engine string, e.g. "2.0L Turbo I4 248hp"
+  installedEquipment?: string[];
+  optionPackages?: string[];
 }
 
 export interface VehicleCondition {
