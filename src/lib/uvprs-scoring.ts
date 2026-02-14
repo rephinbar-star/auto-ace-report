@@ -95,10 +95,14 @@ export function scoreMileageForAge(mileage: number, year: number): number {
   const expected = EXPECTED_MILES_PER_YEAR * age;
   const r = mileage / expected;
 
+  // Near-average mileage: very low risk
   if (r >= 0.75 && r <= 1.25) return 10;
+  // High mileage: scales up aggressively
   if (r > 1.25) return Math.min(100, 10 + 120 * (r - 1.25));
-  // r < 0.75 — sitting risk
-  return Math.min(60, 10 + 80 * (0.75 - r) / 0.55);
+  // Low mileage: mild "sitting risk" — capped at 30 (not 60)
+  // Very low mileage (garage queen) has some risk from dried seals/fluids
+  // but far less than high-mileage wear
+  return Math.min(30, 10 + 30 * (0.75 - r) / 0.75);
 }
 
 /** B) Accident / Damage history */
