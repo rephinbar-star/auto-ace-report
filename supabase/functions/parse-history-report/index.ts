@@ -126,9 +126,17 @@ serve(async (req) => {
       
       // Basic PDF text extraction (simplified - extracts visible text streams)
       textContent = extractTextFromPDF(bytes);
+
+      // Also scan raw PDF bytes for VIN (17-char alphanumeric, excluding I, O, Q)
+      const rawStr = new TextDecoder("latin1").decode(bytes);
+      const vinFromRaw = rawStr.match(/\b([A-HJ-NPR-Z0-9]{17})\b/);
+      if (vinFromRaw) {
+        console.log("VIN found in raw PDF bytes:", vinFromRaw[1]);
+        // Inject VIN into text so AI and regex fallback can find it
+        textContent += `\nVIN: ${vinFromRaw[1]}`;
+      }
       
       if (!textContent || textContent.length < 100) {
-        // If basic extraction fails, use the file name and any metadata
         textContent = `Vehicle History Report: ${file.name}. File uploaded for analysis.`;
       }
     }
