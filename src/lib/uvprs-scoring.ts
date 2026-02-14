@@ -179,10 +179,17 @@ export function scoreOwnerCount(ownerCount: number | null | undefined): { score:
 export function scoreVehicleAge(year: number): number {
   const age = new Date().getFullYear() - year;
   if (age <= 0) return 0;
-  // Smooth linear interpolation: 0yr → 0, 20yr → 75, 30yr → 95
-  // Eliminates cliff effects at year boundaries
-  if (age <= 20) return Math.round((age / 20) * 75);
-  return Math.min(95, Math.round(75 + (age - 20) * 2));
+  // Warranty-aware curve:
+  // 0-3yr (factory warranty): 5-10 — minimal risk
+  // 4-5yr (extended warranty expiring): 15-25 — rising
+  // 6-10yr (out of warranty, repairs increase): 35-55
+  // 11-15yr: 60-75
+  // 16+yr: 80-95
+  if (age <= 3) return 5 + Math.round((age / 3) * 5);       // 5-10
+  if (age <= 5) return Math.round(10 + (age - 3) * 7.5);     // 10-25
+  if (age <= 10) return Math.round(25 + (age - 5) * 6);      // 25-55
+  if (age <= 15) return Math.round(55 + (age - 10) * 4);     // 55-75
+  return Math.min(95, Math.round(75 + (age - 15) * 3));      // 75-95
 }
 
 /** H) Service & repair history — uses granular data when available, falls back to proxies */
