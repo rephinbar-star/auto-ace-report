@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
@@ -37,7 +37,7 @@ import {
   Gauge,
   Wrench,
   FileText,
-  Share2,
+  Upload,
   Download,
   Loader2,
   Scale,
@@ -136,6 +136,7 @@ export default function ReportPage() {
   const isPaid = tier === "basic" || tier === "pro";
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
+  const headerHistoryInputRef = useRef<HTMLInputElement>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [excludeRepairs, setExcludeRepairs] = useState(false);
   const [userAnnualMiles, setUserAnnualMiles] = useState(12000);
@@ -781,9 +782,110 @@ export default function ReportPage() {
                 )}
                 {isRefreshingPricing ? "Re-Analyzing..." : "Re-Analyze"}
               </Button>
-              <Button variant="outline" size="sm">
-                <Share2 className="mr-2 h-4 w-4" />
-                Share
+              <input
+                type="file"
+                ref={headerHistoryInputRef}
+                accept=".pdf"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  // Reset input so same file can be re-selected
+                  e.target.value = "";
+                  setIsRefreshingPricing(true);
+                  try {
+                    const mileage = vehicleData?.condition?.mileage;
+                    const result = await parseHistoryReport(file, undefined, mileage);
+                    if (!result.success || !result.history) {
+                      sonnerToast.error(result.error || "Failed to parse history report");
+                      return;
+                    }
+                    const extractedVin = result.history.vin;
+                    const updatedVehicleData = {
+                      ...vehicleData,
+                      vehicle: {
+                        ...vehicleData.vehicle,
+                        ...(extractedVin && !vehicleData.vehicle.vin ? { vin: extractedVin } : {}),
+                      },
+                      history: {
+                        ...vehicleData.history,
+                        ...result.history,
+                        serviceRecords: true,
+                      },
+                    };
+                    setVehicleData(updatedVehicleData);
+                    sessionStorage.setItem("analysisData", JSON.stringify(updatedVehicleData));
+                    sonnerToast.success("History report uploaded! Re-analyzing...");
+                    const { data: analysisResult, error: invokeError } = await supabase.functions.invoke("analyze-vehicle", {
+                      body: updatedVehicleData,
+                    });
+                    if (invokeError) throw invokeError;
+                    if (analysisResult?.success) {
+                      setAnalysis(analysisResult.analysis);
+                      if (analysisResult.mpgData) {
+                        setMpgData({
+                          mpgCity: analysisResult.mpgData.mpgCity,
+                          mpgHighway: analysisResult.mpgData.mpgHighway,
+                          mpgCombined: analysisResult.mpgData.mpgCombined,
+                          fuelType: analysisResult.mpgData.fuelType,
+                          evRange: analysisResult.mpgData.evRange ?? null,
+                        });
+                      }
+                      if (analysisResult.pricingSources?.length) {
+                        setPricingSources(analysisResult.pricingSources);
+                        setPricingLastUpdated(new Date());
+                      }
+                      if (isSavedReport && id) {
+                        const { priceAssessment, depreciationTable, riskAssessment, historyAnalysis } = analysisResult.analysis;
+                        await supabase.from("vehicle_reports").update({
+                          fair_market_private: priceAssessment.fairMarketPrivate,
+                          fair_market_dealer: priceAssessment.fairMarketDealer || null,
+                          fair_market_trade_in: priceAssessment.fairMarketTradeIn,
+                          deal_rating: priceAssessment.dealRating,
+                          price_difference: priceAssessment.priceDifference,
+                          risk_level: riskAssessment.level,
+                          depreciation_risk: riskAssessment.depreciationRisk,
+                          reliability_concerns: riskAssessment.reliabilityConcerns,
+                          value_proposition: riskAssessment.valueProposition,
+                          fair_offer_price: riskAssessment.fairOfferPrice,
+                          expert_opinion: riskAssessment.expertOpinion,
+                          health_score: historyAnalysis.healthScore,
+                          history_issues: historyAnalysis.concerns || [],
+                          history_positives: historyAnalysis.positives || [],
+                          depreciation_table: depreciationTable as any,
+                          has_service_records: true,
+                          accident_count: result.history?.accidentCount ?? null,
+                          owner_count: result.history?.ownerCount ?? null,
+                          title_status: result.history?.titleStatus ?? null,
+                          service_gap_miles: result.history?.serviceGapMiles ?? null,
+                          major_services_due: result.history?.majorServicesDue ?? null,
+                          major_services_done: result.history?.majorServicesDone ?? null,
+                          chronic_repair_systems: result.history?.chronicRepairSystems ?? null,
+                          ...(extractedVin ? { vin: extractedVin } : {}),
+                          pricing_sources: analysisResult.pricingSources || [],
+                          pricing_last_updated: new Date().toISOString(),
+                        }).eq("id", id);
+                      }
+                      sonnerToast.success("Report updated with history data!");
+                    } else {
+                      throw new Error(analysisResult?.error || "Re-analysis failed");
+                    }
+                  } catch (err) {
+                    console.error("Header history upload error:", err);
+                    sonnerToast.error("Failed to process history report");
+                  } finally {
+                    setIsRefreshingPricing(false);
+                  }
+                }}
+              />
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => headerHistoryInputRef.current?.click()}
+                disabled={isRefreshingPricing}
+              >
+                <Upload className="mr-2 h-4 w-4" />
+                Upload CarFax/AutoCheck
               </Button>
               <Button 
                 variant="outline" 
