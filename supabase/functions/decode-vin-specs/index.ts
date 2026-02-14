@@ -91,22 +91,46 @@ serve(async (req) => {
       );
     }
 
-    // Extract installed equipment from all available sources and deduplicate
+    // Extract installed equipment from all sources, categorized and deduplicated
     const seen = new Set<string>();
-    const installedEquipment: string[] = [];
+    const categorizedEquipment: Record<string, string[]> = {};
 
-    const addItem = (item: string) => {
+    const addItem = (category: string, item: string) => {
       const key = item.toLowerCase().trim();
       if (key && !seen.has(key)) {
         seen.add(key);
-        installedEquipment.push(item.trim());
+        if (!categorizedEquipment[category]) categorizedEquipment[category] = [];
+        categorizedEquipment[category].push(item.trim());
       }
     };
 
-    // Source 1: installed_options_details
+    // Category classification keywords
+    const classifyItem = (name: string, sourceCategory?: string): string => {
+      const lower = name.toLowerCase();
+      if (sourceCategory) {
+        const cat = sourceCategory.toLowerCase();
+        if (cat.includes("safety") || cat.includes("airbag") || cat.includes("brake") || cat.includes("collision") || cat.includes("security")) return "Safety";
+        if (cat.includes("comfort") || cat.includes("seat") || cat.includes("climate") || cat.includes("air con")) return "Comfort";
+        if (cat.includes("tech") || cat.includes("audio") || cat.includes("entertain") || cat.includes("connect") || cat.includes("infotainment") || cat.includes("multimedia")) return "Technology";
+        if (cat.includes("exterior") || cat.includes("light") || cat.includes("mirror") || cat.includes("wheel") || cat.includes("roof")) return "Exterior";
+        if (cat.includes("interior") || cat.includes("storage") || cat.includes("cargo") || cat.includes("instrument")) return "Interior";
+        if (cat.includes("drive") || cat.includes("engine") || cat.includes("transmission") || cat.includes("performance") || cat.includes("suspension") || cat.includes("steering")) return "Drivetrain & Performance";
+      }
+      // Keyword-based fallback
+      if (/airbag|air bag|abs|brake|collision|stability|traction|blind spot|lane|pretensioner|seat belt|anti.?theft/i.test(lower)) return "Safety";
+      if (/seat|heated|ventilated|climate|air con|lumbar|memory|armrest/i.test(lower)) return "Comfort";
+      if (/bluetooth|radio|audio|usb|touch screen|navigation|app|satellite|speaker|display|camera|sensor|parking assist/i.test(lower)) return "Technology";
+      if (/mirror|light|fog|headl|tail|sunroof|moonroof|roof|wiper|door|window|wheel|tire|bumper|grille|spoiler|color/i.test(lower)) return "Exterior";
+      if (/cargo|trunk|storage|cup|visor|floor mat|gauge|instrument|glove/i.test(lower)) return "Interior";
+      if (/drive|awd|4wd|engine|cylinder|turbo|supercharger|transmission|gear|differential|suspension|cruise|descent|crawl/i.test(lower)) return "Drivetrain & Performance";
+      return "Other";
+    };
+
+    // Source 1: installed_options_details (no category info)
     if (specs?.installed_options_details && Array.isArray(specs.installed_options_details)) {
       for (const opt of specs.installed_options_details) {
-        if (opt.name || opt.description) addItem(opt.name || opt.description);
+        const name = opt.name || opt.description;
+        if (name) addItem(classifyItem(name), name);
       }
     }
 
@@ -116,7 +140,7 @@ serve(async (req) => {
         if (Array.isArray(items)) {
           for (const feat of items as any[]) {
             const desc = feat.description || feat.name || feat;
-            if (typeof desc === "string") addItem(desc);
+            if (typeof desc === "string") addItem(classifyItem(desc, category), desc);
           }
         }
       }
@@ -128,35 +152,39 @@ serve(async (req) => {
         if (Array.isArray(items)) {
           for (const equip of items as any[]) {
             const desc = equip.description || equip.name || equip;
-            if (typeof desc === "string") addItem(desc);
+            if (typeof desc === "string") addItem(classifyItem(desc, category), desc);
           }
         }
       }
     }
 
-    console.log(`Equipment from MarketCheck: ${installedEquipment.length} items`);
+    const totalItems = Object.values(categorizedEquipment).reduce((s, a) => s + a.length, 0);
+    console.log(`Equipment from MarketCheck: ${totalItems} items in ${Object.keys(categorizedEquipment).length} categories`);
+
+    // Flat list for backward compat
+    const installedEquipment = Object.values(categorizedEquipment).flat();
 
     // NHTSA safety/tech fallback if MarketCheck data is thin
-    if (installedEquipment.length < 5 && nhtsaResults.length > 0) {
-      const nhtsaEquipFields = [
-        "Air Bag Loc Front", "Air Bag Loc Side", "Air Bag Loc Curtain", "Air Bag Loc Knee",
-        "Anti-lock Braking System (ABS)", "Electronic Stability Control (ESC)",
-        "Traction Control", "Blind Spot Monitoring", "Lane Departure Warning (LDW)",
-        "Lane Keeping Assistance (LKA)", "Adaptive Cruise Control (ACC)",
-        "Forward Collision Warning", "Automatic Crash Notification / ACN",
-        "Backup Camera", "Parking Assist", "Daytime Running Light (DRL)",
-        "Headlamp Light Source", "Keyless Ignition", "Pretensioner",
+    if (totalItems < 5 && nhtsaResults.length > 0) {
+      const nhtsaEquipFields: [string, string][] = [
+        ["Air Bag Loc Front", "Safety"], ["Air Bag Loc Side", "Safety"], ["Air Bag Loc Curtain", "Safety"], ["Air Bag Loc Knee", "Safety"],
+        ["Anti-lock Braking System (ABS)", "Safety"], ["Electronic Stability Control (ESC)", "Safety"],
+        ["Traction Control", "Safety"], ["Blind Spot Monitoring", "Safety"], ["Lane Departure Warning (LDW)", "Safety"],
+        ["Lane Keeping Assistance (LKA)", "Safety"], ["Adaptive Cruise Control (ACC)", "Technology"],
+        ["Forward Collision Warning", "Safety"], ["Automatic Crash Notification / ACN", "Safety"],
+        ["Backup Camera", "Technology"], ["Parking Assist", "Technology"], ["Daytime Running Light (DRL)", "Exterior"],
+        ["Headlamp Light Source", "Exterior"], ["Keyless Ignition", "Technology"], ["Pretensioner", "Safety"],
       ];
-      for (const field of nhtsaEquipFields) {
+      for (const [field, cat] of nhtsaEquipFields) {
         const r = nhtsaResults.find((x: any) => x.Variable === field);
         const val = r?.Value;
         if (val && val !== "Not Applicable" && val !== "Standard") {
-          addItem(`${field}: ${val}`);
+          addItem(cat, `${field}: ${val}`);
         } else if (val === "Standard") {
-          addItem(field);
+          addItem(cat, field);
         }
       }
-      console.log(`Equipment after NHTSA fallback: ${installedEquipment.length} items`);
+      console.log(`Equipment after NHTSA fallback: ${Object.values(categorizedEquipment).reduce((s, a) => s + a.length, 0)} items`);
     }
 
     // Extract option package names
@@ -216,6 +244,7 @@ serve(async (req) => {
         exteriorColor: str(specs?.exterior_color),
         interiorColor: str(specs?.interior_color),
         installedEquipment,
+        categorizedEquipment,
         optionPackages: packages,
         seatingCapacity: specs?.seating_capacity || null,
       },
