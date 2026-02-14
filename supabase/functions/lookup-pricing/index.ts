@@ -36,7 +36,25 @@ serve(async (req) => {
     const vehicleDesc = `${year} ${make} ${model}${trim ? ` ${trim}` : ""}`;
     const locationClause = zipCode ? ` in ZIP code ${zipCode}` : "";
     
-    const query = `What is the exact Kelley Blue Book (KBB) value for a ${vehicleDesc} with exactly ${mileage.toLocaleString()} miles in ${condition} condition${locationClause}? I need the EXACT dollar amounts (not ranges) for: 1) Private Party Value, 2) Dealer Retail Value (Fair Purchase Price), 3) Trade-In Value. Report the single-point KBB value for each category. Also check Edmunds TMV and NADA for comparison. Provide specific dollar figures only.`;
+    const query = `I need the EXACT current Kelley Blue Book (KBB) values for a ${vehicleDesc} with ${mileage.toLocaleString()} miles in ${condition} condition${locationClause}.
+
+CRITICAL INSTRUCTIONS:
+- Go to kbb.com and find the ACTUAL listed dollar values. Do NOT estimate, interpolate, or approximate.
+- Report ONLY values you can directly confirm from kbb.com, edmunds.com, or nadaguides.com.
+- If you cannot find the exact value from a source, say "Not found on [source]" — do NOT guess.
+- Do NOT round to the nearest thousand. Report the exact figure (e.g., $23,847 not $24,000).
+- Do NOT use phrases like "approximately", "around", "roughly", or "estimated".
+
+I need these specific KBB values:
+1) KBB Private Party Value (exact dollar amount)
+2) KBB Fair Purchase Price / Dealer Retail Value (exact dollar amount)  
+3) KBB Trade-In Value (exact dollar amount)
+
+Also look up:
+4) Edmunds TMV (True Market Value) if available
+5) NADA value if available
+
+For each value, state the EXACT source URL where you found it. If a source gives a range, report both the low and high values, not a midpoint.`;
 
     console.log(`Looking up pricing for: ${vehicleDesc}, ${mileage} miles, ${condition} condition${zipCode ? `, ZIP: ${zipCode}` : ""}`);
 
@@ -51,7 +69,7 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: "You are a vehicle pricing expert. Your job is to find and report EXACT dollar values from KBB, Edmunds, and NADA for specific vehicles. Report single-point values, not ranges. If a source gives a range, report the midpoint. Always clearly label which source each value comes from. Do NOT estimate or approximate — only report values you find from these pricing guides.",
+            content: "You are a vehicle pricing lookup tool. You MUST only report dollar values that you can directly verify from kbb.com, edmunds.com, or nadaguides.com search results. RULES: 1) NEVER estimate, interpolate, or generate pricing values yourself. 2) If you cannot find a specific value from a source, explicitly state 'Value not found on [source]'. 3) Report exact figures — never round to nearest hundred or thousand. 4) Always include the source URL for each value. 5) If a source shows a range, report the full range (low to high), not a midpoint. 6) Clearly separate KBB values from Edmunds and NADA values. 7) Do NOT use words like 'approximately', 'around', 'estimated', or 'typically'. If you're not 100% certain of a value, say so.",
           },
           {
             role: "user",
