@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { SEO } from "@/components/seo/SEO";
-import { Plus, Search, Filter, Car, FileText, TrendingUp, AlertCircle, Scale, X, Check } from "lucide-react";
+import { Plus, Search, Filter, Car, FileText, TrendingUp, AlertCircle, Scale, X, Check, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -261,6 +261,22 @@ function DashboardContent() {
               </div>
             </div>
           )}
+
+          {/* Beta banner */}
+          <div className="mb-6 flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-5 py-3">
+            <div className="flex items-center justify-center rounded-full bg-primary/10 p-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold">
+                Beta Tester — Pro Plan Active
+              </p>
+              <p className="text-xs text-muted-foreground">
+                You have full access to all Pro features during the beta period. Enjoy!
+              </p>
+            </div>
+            <Badge variant="secondary" className="shrink-0">BETA</Badge>
+          </div>
 
           {/* Stats cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
