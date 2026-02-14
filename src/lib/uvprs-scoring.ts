@@ -110,9 +110,9 @@ export function scoreAccident(accidentCount: number | null | undefined): { score
   if (accidentCount == null) return { score: 50, known: false };
   if (accidentCount === 0) return { score: 0, known: true };
 
-  // Use moderate damage as base (55) since we don't have severity detail
-  const base = 55;
-  return { score: Math.min(100, base + 10 * (accidentCount - 1)), known: true };
+  // Without severity detail, first accident = 40 (moderate, not catastrophic)
+  // Each additional accident adds 15
+  return { score: Math.min(100, 40 + 15 * (accidentCount - 1)), known: true };
 }
 
 /** C) Title status */
@@ -132,16 +132,10 @@ export function scoreBrandReliability(make: string): number {
   const brandScore = BRAND_RELIABILITY[make] ?? BRAND_RELIABILITY["default"] ?? 5;
   
   // Convert 1-10 reliability (high=good) → 0-100 risk (high=bad)
-  // 9-10 → PP100 ≤160 → risk 10
-  // 7-8  → PP100 161-190 → risk 25
-  // 5-6  → PP100 191-220 → risk 50
-  // 3-4  → PP100 221-250 → risk 70
-  // 1-2  → PP100 250+ → risk 90
-  if (brandScore >= 9) return 10;
-  if (brandScore >= 7) return 25;
-  if (brandScore >= 5) return 50;
-  if (brandScore >= 3) return 70;
-  return 90;
+  // Smooth linear interpolation: score 10 → risk 0, score 1 → risk 90
+  // Avoids cliff effects between bands
+  const risk = Math.round(Math.max(0, Math.min(100, 100 - (brandScore / 10) * 100)));
+  return risk;
 }
 
 /** E) Selling price vs market */
@@ -153,8 +147,21 @@ export function scorePriceVsMarket(
   const mkt = fairMarketDealer || fairMarketPrivate;
   if (!mkt || mkt <= 0) return { score: 50, known: false };
 
-  const delta = Math.abs(askingPrice - mkt) / mkt;
-  return { score: Math.min(100, 400 * delta), known: true };
+  const pctDiff = (askingPrice - mkt) / mkt; // positive = overpriced, negative = underpriced
+
+  if (pctDiff >= 0) {
+    // Overpriced: bad value but not a safety risk — moderate scaling
+    // 10% over → 30, 25% over → 75, 30%+ → capped at 90
+    return { score: Math.min(90, Math.round(300 * pctDiff)), known: true };
+  } else {
+    // Underpriced: slight discount is great (score ~5), but >20% below market
+    // is suspicious (hidden damage, title issues, scam risk)
+    const absPct = Math.abs(pctDiff);
+    if (absPct <= 0.10) return { score: Math.round(5 + 50 * absPct), known: true }; // 0-10% under → 5-10
+    if (absPct <= 0.20) return { score: Math.round(10 + 150 * (absPct - 0.10)), known: true }; // 10-20% under → 10-25
+    // >20% under market — suspicious
+    return { score: Math.min(80, Math.round(25 + 275 * (absPct - 0.20))), known: true }; // 20%+ → 25-80
+  }
 }
 
 /** F) Owner count */
@@ -171,11 +178,11 @@ export function scoreOwnerCount(ownerCount: number | null | undefined): { score:
 /** G) Vehicle age */
 export function scoreVehicleAge(year: number): number {
   const age = new Date().getFullYear() - year;
-  if (age <= 3) return 5;
-  if (age <= 7) return 15;
-  if (age <= 12) return 35;
-  if (age <= 17) return 60;
-  return Math.min(95, 80 + (age - 18) * 2);
+  if (age <= 0) return 0;
+  // Smooth linear interpolation: 0yr → 0, 20yr → 75, 30yr → 95
+  // Eliminates cliff effects at year boundaries
+  if (age <= 20) return Math.round((age / 20) * 75);
+  return Math.min(95, Math.round(75 + (age - 20) * 2));
 }
 
 /** H) Service & repair history — uses granular data when available, falls back to proxies */
