@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { SEO } from "@/components/seo/SEO";
-import { Plus, Search, Filter, Car, FileText, TrendingUp, AlertCircle, Scale, X, Check, Sparkles } from "lucide-react";
+import { Plus, Search, Filter, Car, FileText, TrendingUp, AlertCircle, Scale, X, Check, Sparkles, HelpCircle } from "lucide-react";
+import { OnboardingTour } from "@/components/dashboard/OnboardingTour";
 import { useAuth } from "@/hooks/useAuth";
 import { useSubscription } from "@/hooks/useSubscription";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -41,6 +42,7 @@ function DashboardContent() {
   const initialSelectMode = searchParams.get("select") === "true";
   const [selectionMode, setSelectionMode] = useState(initialSelectMode);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Get comparison limit based on tier
   const comparisonLimit = TIER_LIMITS[tier] || 0;
@@ -189,6 +191,7 @@ function DashboardContent() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
+      <OnboardingTour externalOpen={showOnboarding} onExternalClose={() => setShowOnboarding(false)} />
       <Header />
 
       <main className="flex-1">
@@ -275,6 +278,10 @@ function DashboardContent() {
                 You have full access to all Pro features during the beta period. Enjoy!
               </p>
             </div>
+            <Button variant="ghost" size="sm" className="shrink-0 gap-1.5 text-xs" onClick={() => setShowOnboarding(true)}>
+              <HelpCircle className="h-3.5 w-3.5" />
+              Take a Tour
+            </Button>
             <Badge variant="secondary" className="shrink-0">BETA</Badge>
           </div>
 
