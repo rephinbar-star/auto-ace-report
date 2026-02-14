@@ -30,7 +30,7 @@ serve(async (req) => {
 
     // Call MarketCheck + NHTSA in parallel
     const [specsRes, optionsRes, nhtsaRes] = await Promise.all([
-      fetch(`https://api.marketcheck.com/v2/decode/car/neovin/${vin}/specs?api_key=${API_KEY}`),
+      fetch(`https://api.marketcheck.com/v2/decode/car/neovin/${vin}/specs?api_key=${API_KEY}&include_generic=true`),
       fetch(`https://api.marketcheck.com/v2/decode/car/neovin/${vin}/options-packages?api_key=${API_KEY}`),
       fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/${vin}?format=json`),
     ]);
@@ -58,12 +58,13 @@ serve(async (req) => {
     }
 
     // Parse NHTSA data for engine fallback
+    let nhtsaResults: any[] = [];
     if (nhtsaRes.ok) {
       try {
         const nhtsaData = await nhtsaRes.json();
-        const results = nhtsaData?.Results || [];
+        nhtsaResults = nhtsaData?.Results || [];
         const getVal = (variable: string): string | null => {
-          const r = results.find((x: any) => x.Variable === variable);
+          const r = nhtsaResults.find((x: any) => x.Variable === variable);
           return r?.Value || null;
         };
         nhtsa = {
@@ -90,23 +91,79 @@ serve(async (req) => {
       );
     }
 
-    // Extract installed equipment from specs
+    // Extract installed equipment from all available sources and deduplicate
+    const seen = new Set<string>();
     const installedEquipment: string[] = [];
+
+    const addItem = (item: string) => {
+      const key = item.toLowerCase().trim();
+      if (key && !seen.has(key)) {
+        seen.add(key);
+        installedEquipment.push(item.trim());
+      }
+    };
+
+    // Source 1: installed_options_details
     if (specs?.installed_options_details && Array.isArray(specs.installed_options_details)) {
       for (const opt of specs.installed_options_details) {
-        if (opt.name || opt.description) {
-          installedEquipment.push(opt.name || opt.description);
+        if (opt.name || opt.description) addItem(opt.name || opt.description);
+      }
+    }
+
+    // Source 2: features (categorized map)
+    if (specs?.features && typeof specs.features === "object") {
+      for (const [category, items] of Object.entries(specs.features)) {
+        if (Array.isArray(items)) {
+          for (const feat of items as any[]) {
+            const desc = feat.description || feat.name || feat;
+            if (typeof desc === "string") addItem(desc);
+          }
         }
       }
+    }
+
+    // Source 3: installed_equipment (categorized map)
+    if (specs?.installed_equipment && typeof specs.installed_equipment === "object") {
+      for (const [category, items] of Object.entries(specs.installed_equipment)) {
+        if (Array.isArray(items)) {
+          for (const equip of items as any[]) {
+            const desc = equip.description || equip.name || equip;
+            if (typeof desc === "string") addItem(desc);
+          }
+        }
+      }
+    }
+
+    console.log(`Equipment from MarketCheck: ${installedEquipment.length} items`);
+
+    // NHTSA safety/tech fallback if MarketCheck data is thin
+    if (installedEquipment.length < 5 && nhtsaResults.length > 0) {
+      const nhtsaEquipFields = [
+        "Air Bag Loc Front", "Air Bag Loc Side", "Air Bag Loc Curtain", "Air Bag Loc Knee",
+        "Anti-lock Braking System (ABS)", "Electronic Stability Control (ESC)",
+        "Traction Control", "Blind Spot Monitoring", "Lane Departure Warning (LDW)",
+        "Lane Keeping Assistance (LKA)", "Adaptive Cruise Control (ACC)",
+        "Forward Collision Warning", "Automatic Crash Notification / ACN",
+        "Backup Camera", "Parking Assist", "Daytime Running Light (DRL)",
+        "Headlamp Light Source", "Keyless Ignition", "Pretensioner",
+      ];
+      for (const field of nhtsaEquipFields) {
+        const r = nhtsaResults.find((x: any) => x.Variable === field);
+        const val = r?.Value;
+        if (val && val !== "Not Applicable" && val !== "Standard") {
+          addItem(`${field}: ${val}`);
+        } else if (val === "Standard") {
+          addItem(field);
+        }
+      }
+      console.log(`Equipment after NHTSA fallback: ${installedEquipment.length} items`);
     }
 
     // Extract option package names
     const packages: string[] = [];
     if (optionsPackages?.options && Array.isArray(optionsPackages.options)) {
       for (const pkg of optionsPackages.options) {
-        if (pkg.name) {
-          packages.push(pkg.name);
-        }
+        if (pkg.name) packages.push(pkg.name);
       }
     }
 
