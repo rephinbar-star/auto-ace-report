@@ -370,6 +370,33 @@ export default function ReportPage() {
             setPricingLastUpdated(new Date(report.pricing_last_updated));
           }
           
+          // Enrich with NeoVIN specs if VIN is available and specs are sparse
+          if (report.vin && !report.engine_size && !report.transmission) {
+            supabase.functions.invoke("decode-vin-specs", {
+              body: { vin: report.vin },
+            }).then(({ data: specsResult }) => {
+              if (specsResult?.success && specsResult.data) {
+                const d = specsResult.data;
+                setVehicleData((prev: any) => ({
+                  ...prev,
+                  vehicle: {
+                    ...prev.vehicle,
+                    engine: d.engine || prev.vehicle.engine,
+                    engineSize: d.engineSize || prev.vehicle.engineSize,
+                    transmission: d.transmission || prev.vehicle.transmission,
+                    drivetrain: d.drivetrain || prev.vehicle.drivetrain,
+                    bodyStyle: d.bodyStyle || prev.vehicle.bodyStyle,
+                    exteriorColor: d.exteriorColor || prev.vehicle.exteriorColor,
+                    interiorColor: d.interiorColor || prev.vehicle.interiorColor,
+                    installedEquipment: d.installedEquipment || [],
+                    optionPackages: d.optionPackages || [],
+                    trim: d.trim || prev.vehicle.trim,
+                  },
+                }));
+              }
+            }).catch(console.error);
+          }
+
           setIsLoading(false);
           return;
         } catch (err) {
