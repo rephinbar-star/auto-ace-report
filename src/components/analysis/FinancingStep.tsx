@@ -98,10 +98,10 @@ export function FinancingStep({ onComplete, onBack, askingPrice }: FinancingStep
   }, [selectedCounty, selectedState]);
 
   // Watch loan fields for auto-calculation
-  const salesPrice = loanForm.watch("salesPrice");
-  const salesTaxRate = loanForm.watch("salesTaxRate");
-  const fees = loanForm.watch("fees");
-  const downPayment = loanForm.watch("downPayment");
+  const salesPrice = Number(loanForm.watch("salesPrice") || 0);
+  const salesTaxRate = Number(loanForm.watch("salesTaxRate") || 0);
+  const fees = Number(loanForm.watch("fees") || 0);
+  const downPayment = Number(loanForm.watch("downPayment") || 0);
 
   // Calculate sales tax amount from rate (rounded to 2 decimal places)
   const salesTaxAmount = parseFloat(((salesPrice || 0) * ((salesTaxRate || 0) / 100)).toFixed(2));
