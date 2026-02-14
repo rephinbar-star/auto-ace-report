@@ -12,6 +12,7 @@ interface PricingRequest {
   trim?: string;
   mileage: number;
   condition: string;
+  zipCode?: string;
 }
 
 interface PricingResult {
@@ -30,13 +31,14 @@ serve(async (req) => {
       throw new Error("PERPLEXITY_API_KEY is not configured");
     }
 
-    const { year, make, model, trim, mileage, condition }: PricingRequest = await req.json();
+    const { year, make, model, trim, mileage, condition, zipCode }: PricingRequest = await req.json();
 
     const vehicleDesc = `${year} ${make} ${model}${trim ? ` ${trim}` : ""}`;
+    const locationClause = zipCode ? ` in ZIP code ${zipCode}` : "";
     
-    const query = `What is the current dealer retail price, private party sale price, and trade-in value for a ${vehicleDesc} with ${mileage.toLocaleString()} miles in ${condition} condition? Provide specific dollar amounts for all three categories (dealer retail, private party, and trade-in) from KBB (Kelley Blue Book), Edmunds, and NADA guides. Include the price range if available.`;
+    const query = `What is the exact Kelley Blue Book (KBB) value for a ${vehicleDesc} with exactly ${mileage.toLocaleString()} miles in ${condition} condition${locationClause}? I need the EXACT dollar amounts (not ranges) for: 1) Private Party Value, 2) Dealer Retail Value (Fair Purchase Price), 3) Trade-In Value. Report the single-point KBB value for each category. Also check Edmunds TMV and NADA for comparison. Provide specific dollar figures only.`;
 
-    console.log(`Looking up pricing for: ${vehicleDesc}, ${mileage} miles, ${condition} condition`);
+    console.log(`Looking up pricing for: ${vehicleDesc}, ${mileage} miles, ${condition} condition${zipCode ? `, ZIP: ${zipCode}` : ""}`);
 
     const response = await fetch("https://api.perplexity.ai/chat/completions", {
       method: "POST",
@@ -49,7 +51,7 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: "You are a vehicle pricing expert. Provide specific dollar amounts for vehicle valuations based on current market data. Be concise and factual. Always cite your sources.",
+            content: "You are a vehicle pricing expert. Your job is to find and report EXACT dollar values from KBB, Edmunds, and NADA for specific vehicles. Report single-point values, not ranges. If a source gives a range, report the midpoint. Always clearly label which source each value comes from. Do NOT estimate or approximate — only report values you find from these pricing guides.",
           },
           {
             role: "user",

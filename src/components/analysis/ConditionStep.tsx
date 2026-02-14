@@ -31,6 +31,7 @@ const conditionSchema = z.object({
   condition: z.enum(["excellent", "good", "fair", "poor"]),
   sellerType: z.enum(["private", "dealer"]),
   sellerName: z.string().max(100).optional().or(z.literal("")),
+  zipCode: z.string().regex(/^\d{5}$/, "Enter a valid 5-digit ZIP code").optional().or(z.literal("")),
 });
 
 interface ConditionStepProps {
@@ -52,6 +53,7 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
       condition: initialData?.condition || "good",
       sellerType: initialData?.sellerType || "dealer",
       sellerName: initialData?.sellerName ?? "",
+      zipCode: initialData?.zipCode ?? "",
     },
   });
 
@@ -64,6 +66,7 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
         condition: initialData.condition || "good",
         sellerType: initialData.sellerType || "dealer",
         sellerName: initialData.sellerName ?? "",
+        zipCode: initialData.zipCode ?? "",
       });
     }
   }, [initialData, form]);
@@ -78,8 +81,9 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
       condition: data.condition,
       sellerType: data.sellerType,
       sellerName: data.sellerType === "dealer" ? data.sellerName || undefined : undefined,
-      listingUrl: initialData?.listingUrl, // Preserve listing URL from scraped listing
-      images: initialData?.images, // Preserve images from scraped listing
+      zipCode: data.zipCode || undefined,
+      listingUrl: initialData?.listingUrl,
+      images: initialData?.images,
     });
   };
 
@@ -202,6 +206,29 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
                   )}
                 />
               </div>
+
+              {/* ZIP Code for regional pricing accuracy */}
+              <FormField
+                control={form.control}
+                name="zipCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>ZIP Code (Optional)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="e.g., 92008" 
+                        maxLength={5}
+                        className="max-w-[200px]"
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Improves pricing accuracy with region-specific market data.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               {/* Dealer Name field - shows when seller type is dealer */}
               {watchSellerType === "dealer" && (

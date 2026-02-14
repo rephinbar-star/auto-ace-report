@@ -20,6 +20,7 @@ export interface VehicleCondition {
   listingUrl?: string;
   sellerType: "private" | "dealer";
   sellerName?: string;
+  zipCode?: string;
   images?: string[];
 }
 

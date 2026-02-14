@@ -19,6 +19,7 @@ interface VehicleData {
     askingPrice: number;
     condition: string;
     sellerType: string;
+    zipCode?: string;
   };
   financing: {
     type: string;
@@ -92,7 +93,7 @@ async function lookupMPG(year: number, make: string, model: string): Promise<MPG
   };
 }
 
-async function lookupPricing(year: number, make: string, model: string, trim: string | undefined, mileage: number, condition: string): Promise<PricingData | null> {
+async function lookupPricing(year: number, make: string, model: string, trim: string | undefined, mileage: number, condition: string, zipCode?: string): Promise<PricingData | null> {
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
@@ -107,7 +108,7 @@ async function lookupPricing(year: number, make: string, model: string, trim: st
         "Content-Type": "application/json",
         "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
       },
-      body: JSON.stringify({ year, make, model, trim, mileage, condition }),
+      body: JSON.stringify({ year, make, model, trim, mileage, condition, zipCode }),
     });
 
     if (response.ok) {
@@ -197,7 +198,7 @@ serve(async (req) => {
 
     // Fetch MPG, pricing, and maintenance data in parallel
     const mpgPromise = lookupMPG(vehicle.year, vehicle.make, vehicle.model);
-    const pricingPromise = lookupPricing(vehicle.year, vehicle.make, vehicle.model, vehicle.trim, condition.mileage, condition.condition);
+    const pricingPromise = lookupPricing(vehicle.year, vehicle.make, vehicle.model, vehicle.trim, condition.mileage, condition.condition, condition.zipCode);
     const maintenancePromise = lookupMaintenance(vehicle.year, vehicle.make, vehicle.model, vehicle.trim, condition.mileage);
     console.log(`Looking up MPG, pricing, and maintenance for ${vehicle.year} ${vehicle.make} ${vehicle.model}`);
 
@@ -226,7 +227,7 @@ Your analysis must be data-driven and consider:
 - Realistic repair and maintenance costs based on the vehicle's age and mileage
 
 CRITICAL MILEAGE CONSTRAINT: The vehicle's current odometer reading is ${condition.mileage.toLocaleString()} miles. All reliability concerns, service history references, and mileage-based assessments MUST be consistent with this mileage. Do NOT reference services completed at mileages higher than the vehicle's current odometer reading.
-${hasPricing ? "\nIMPORTANT: You have been provided with REAL-TIME MARKET PRICING DATA from authoritative sources. You MUST use these values as your primary reference for fairMarketPrivate, fairMarketDealer, fairMarketTradeIn, and fairOfferPrice. Do not deviate significantly from the sourced pricing data." : ""}
+${hasPricing ? "\nCRITICAL PRICING RULE: You have been provided with REAL-TIME MARKET PRICING DATA from KBB, Edmunds, and/or NADA. You MUST copy these exact dollar values for fairMarketPrivate, fairMarketDealer, and fairMarketTradeIn. Do NOT adjust, round, or deviate from the sourced values by more than 2%. If multiple sources disagree, use the KBB value as primary. The sourced data is ground truth — your role is to USE it, not re-estimate it." : ""}
 ${hasMaintenance ? "\nIMPORTANT: You have been provided with REAL-TIME REPAIR AND MAINTENANCE COST DATA from authoritative sources (RepairPal, Edmunds, owner reports). You MUST use these values as your primary reference for:\n- reliabilityConcerns: costLow and costHigh values\n- depreciationTable: repairCosts and maintenanceCosts columns\nDo not deviate significantly from the sourced cost data. Distribute repair costs across the 5-year period based on when issues typically occur at the vehicle's mileage progression." : ""}
 
 IMPORTANT: The seller type is "${condition.sellerType}".
