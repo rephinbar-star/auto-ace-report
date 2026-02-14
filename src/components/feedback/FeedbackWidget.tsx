@@ -92,14 +92,15 @@ export function FeedbackWidget() {
   };
 
   return (
-    <div id="feedback-widget" className="fixed bottom-24 right-0 z-50">
+    <div id="feedback-widget" className="fixed z-50" style={{ bottom: "6rem", right: 0 }}>
       {/* Vertical tab trigger */}
       {!isOpen && (
         <button
           onClick={handleOpen}
-          className="flex items-center gap-1.5 rounded-t-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground shadow-lg origin-bottom-right -rotate-90 translate-x-[calc(100%-2.25rem)] hover:bg-primary/90 transition-colors"
+          className="flex items-center gap-1.5 rounded-l-lg bg-primary px-2.5 py-3 text-xs font-semibold text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors"
+          style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}
         >
-          <MessageSquarePlus className="h-3.5 w-3.5 rotate-90" />
+          <MessageSquarePlus className="h-3.5 w-3.5" />
           Feedback
         </button>
       )}
