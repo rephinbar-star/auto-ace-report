@@ -1,62 +1,51 @@
 
+# Enrich Vehicle Equipment Data from MarketCheck NeoVIN
 
-# Add MarketCheck NeoVIN Decoding for Detailed Vehicle Specs
+## Problem
+The "Installed Equipment" section only shows 1 item ("Front Fog Lights") because the edge function only extracts from `installed_options_details`, which is a limited field. Additionally, the Options-Packages endpoint returns a 403 error due to API subscription tier limitations.
 
-## Overview
-Integrate MarketCheck's NeoVIN Decoder API to pull detailed vehicle specifications and installed options/equipment when a VIN is available. This replaces or supplements the basic NHTSA decode with richer data including factory options, packages, and installed equipment.
+The MarketCheck NeoVIN specs response actually contains two richer data sources that are being ignored:
+- `features` -- a categorized map (e.g., Safety, Comfort, Technology) with feature descriptions
+- `installed_equipment` -- a categorized map with detailed equipment entries
 
-## What Changes
+## Solution
+Update the `decode-vin-specs` edge function to also extract data from `features` and `installed_equipment`, combining all three sources into a comprehensive equipment list. Additionally, supplement with NHTSA decoded fields (air bags, ABS, ESC, etc.) as a fallback for vehicles where MarketCheck data is thin.
 
-### 1. New Edge Function: `decode-vin-specs`
-Create a new backend function that calls two MarketCheck endpoints:
-- **NeoVIN Specs**: `GET https://api.marketcheck.com/v2/decode/car/neovin/{vin}/specs` -- returns detailed specs (engine, transmission, drivetrain, dimensions, colors, standard features, installed equipment)
-- **Options Packages**: `GET https://api.marketcheck.com/v2/decode/car/neovin/{vin}/options-packages` -- returns all factory option packages available/installed for this VIN
+## Changes
 
-The function falls back to NHTSA data if MarketCheck fails (no extra API key needed -- reuses existing `MARKETCHECK_API_KEY`).
+### 1. Edge Function: `supabase/functions/decode-vin-specs/index.ts`
 
-### 2. Update VehicleInfo Type
-Add new fields to `VehicleInfo` in `src/types/vehicle.ts`:
-- `exteriorColor`, `interiorColor`
-- `engine` (detailed, e.g. "2.0L Turbo I4 248hp")
-- `installedEquipment` (string array of factory-installed features)
-- `optionPackages` (string array of option package names)
+**Extract from `specs.features`:**
+- Iterate over all categories in `specs.features` (object with category keys mapping to arrays of feature objects)
+- Each feature has a `description` -- add it to the equipment list with its category prefix for clarity (e.g., "Safety: Forward Collision Warning")
 
-### 3. Call NeoVIN Decode During VIN Entry
-In `src/components/analysis/VehicleInputStep.tsx`, after the user enters a VIN and NHTSA decode succeeds, also call the new `decode-vin-specs` function to enrich the vehicle data with MarketCheck specs.
+**Extract from `specs.installed_equipment`:**
+- Iterate over all categories in `specs.installed_equipment` (object with category keys mapping to arrays of equipment objects)
+- Each entry has a `category` and `description` -- add to the equipment list
 
-### 4. Display Vehicle Specs on the Report
-In `src/pages/Report.tsx`, add a "Vehicle Specifications" section near the report header showing:
-- Engine, transmission, drivetrain
-- Exterior/interior colors
-- Installed equipment and option packages (collapsible list)
+**Merge and deduplicate:**
+- Combine items from `installed_options_details`, `features`, and `installed_equipment`
+- Deduplicate by normalized name to avoid repeats
+- Return the combined list as `installedEquipment`
 
-### 5. Feed Specs to AI Analyzer
-Pass the enriched vehicle specs (engine, options, equipment) into the `analyze-vehicle` prompt so the AI can give more precise reliability assessments and maintenance estimates based on the exact configuration (e.g., turbo engine vs. naturally aspirated, AWD vs. FWD).
+**NHTSA equipment fallback:**
+- If the combined MarketCheck list is still very small (under 5 items), extract equipment-related fields from the NHTSA decode response (Air Bags, ABS, ESC, Blind Spot Monitoring, Lane Departure Warning, Adaptive Cruise Control, etc.)
+- Append these as additional equipment entries
+
+**Add `include_generic=true` query parameter** to the specs API call to potentially get more data from MarketCheck.
+
+### 2. No frontend changes needed
+The Report.tsx already renders the `installedEquipment` array with badges inside a collapsible -- it will automatically show all the new items.
 
 ## Technical Details
 
-### Edge Function: `supabase/functions/decode-vin-specs/index.ts`
-- Accepts `{ vin: string }`
-- Calls `https://api.marketcheck.com/v2/decode/car/neovin/{vin}/specs?api_key=...`
-- Calls `https://api.marketcheck.com/v2/decode/car/neovin/{vin}/options-packages?api_key=...`
-- Returns merged specs object
-- Add to `supabase/config.toml` with `verify_jwt = false`
+```text
+Current data flow:
+  specs.installed_options_details --> installedEquipment[] (sparse)
 
-### VehicleInputStep.tsx changes
-- After NHTSA decode, call `decode-vin-specs` edge function
-- Merge MarketCheck specs into VehicleInfo (MarketCheck takes priority for overlapping fields like trim, engine)
-
-### Report.tsx changes
-- Add a collapsible "Vehicle Specifications" card after the header
-- Show key specs (engine, transmission, drivetrain, colors) as a grid
-- Show installed equipment as a tag/chip list inside a collapsible section
-
-### analyze-vehicle/index.ts changes
-- Include vehicle specs (engine, drivetrain, installed equipment) in the user prompt so the AI factors in the exact configuration
-
-## Sequencing
-1. Update `VehicleInfo` type with new fields
-2. Create `decode-vin-specs` edge function
-3. Update `VehicleInputStep` to call the new function
-4. Update `Report.tsx` to display specs
-5. Update `analyze-vehicle` prompt with specs data
+Proposed data flow:
+  specs.installed_options_details ──┐
+  specs.features (all categories) ──┼──> deduplicated installedEquipment[]
+  specs.installed_equipment ────────┤
+  NHTSA safety/tech fields (fallback)─┘
+```
