@@ -28,14 +28,16 @@ serve(async (req) => {
       );
     }
 
-    // Call both endpoints in parallel
-    const [specsRes, optionsRes] = await Promise.all([
+    // Call MarketCheck + NHTSA in parallel
+    const [specsRes, optionsRes, nhtsaRes] = await Promise.all([
       fetch(`https://api.marketcheck.com/v2/decode/car/neovin/${vin}/specs?api_key=${API_KEY}`),
       fetch(`https://api.marketcheck.com/v2/decode/car/neovin/${vin}/options-packages?api_key=${API_KEY}`),
+      fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/${vin}?format=json`),
     ]);
 
     let specs: any = null;
     let optionsPackages: any = null;
+    let nhtsa: Record<string, string | null> = {};
 
     if (specsRes.ok) {
       specs = await specsRes.json();
@@ -53,6 +55,32 @@ serve(async (req) => {
       console.warn(`NeoVIN options failed for ${vin}: ${optionsRes.status}`);
       const errText = await optionsRes.text();
       console.warn("Options error body:", errText);
+    }
+
+    // Parse NHTSA data for engine fallback
+    if (nhtsaRes.ok) {
+      try {
+        const nhtsaData = await nhtsaRes.json();
+        const results = nhtsaData?.Results || [];
+        const getVal = (variable: string): string | null => {
+          const r = results.find((x: any) => x.Variable === variable);
+          return r?.Value || null;
+        };
+        nhtsa = {
+          displacement: getVal("Displacement (L)"),
+          cylinders: getVal("Engine Number of Cylinders"),
+          hp: getVal("Engine Brake (hp) From"),
+          configuration: getVal("Engine Configuration"),
+          fuelType: getVal("Fuel Type - Primary"),
+          transmission: getVal("Transmission Style"),
+          drivetrain: getVal("Drive Type"),
+          bodyStyle: getVal("Body Class"),
+          trim: getVal("Trim"),
+        };
+        console.log(`NHTSA engine data for ${vin}: ${nhtsa.displacement}L ${nhtsa.cylinders}cyl ${nhtsa.hp}hp`);
+      } catch (e) {
+        console.warn("Failed to parse NHTSA response:", e);
+      }
     }
 
     if (!specs && !optionsPackages) {
@@ -82,15 +110,23 @@ serve(async (req) => {
       }
     }
 
-    // Build engine detail string
+    // Build engine detail string (MarketCheck first, NHTSA fallback)
+    const rawHp = specs?.engine_hp || (nhtsa.hp ? parseFloat(nhtsa.hp) : null);
+    const rawTorque = specs?.engine_torque || null;
+    const rawCylinders = specs?.engine_cylinders || (nhtsa.cylinders ? parseInt(nhtsa.cylinders) : null);
+    const rawDisplacement = specs?.engine_displacement || (nhtsa.displacement ? parseFloat(nhtsa.displacement) : null);
+    const rawAspiration = specs?.engine_aspiration || null;
+    const rawConfiguration = specs?.engine_configuration || (nhtsa.configuration || null);
+
     let engineDetail: string | null = null;
-    if (specs) {
+    {
       const parts: string[] = [];
-      if (specs.engine_displacement) parts.push(`${specs.engine_displacement}L`);
-      if (specs.engine_aspiration && specs.engine_aspiration !== "Natural") parts.push(specs.engine_aspiration);
-      if (specs.engine_configuration) parts.push(specs.engine_configuration);
-      if (specs.engine_hp) parts.push(`${specs.engine_hp}hp`);
-      if (specs.engine_torque) parts.push(`${specs.engine_torque} lb-ft`);
+      if (rawDisplacement) parts.push(`${rawDisplacement}L`);
+      if (rawAspiration && rawAspiration !== "Natural") parts.push(typeof rawAspiration === "string" ? rawAspiration : rawAspiration.name || String(rawAspiration));
+      if (rawConfiguration) parts.push(typeof rawConfiguration === "string" ? rawConfiguration : String(rawConfiguration));
+      if (rawCylinders) parts.push(`${rawCylinders}-cyl`);
+      if (rawHp) parts.push(`${rawHp}hp`);
+      if (rawTorque) parts.push(`${rawTorque} lb-ft`);
       if (parts.length > 0) engineDetail = parts.join(" ");
     }
 
@@ -108,17 +144,17 @@ serve(async (req) => {
         year: specs?.year || null,
         make: str(specs?.make),
         model: str(specs?.model),
-        trim: str(specs?.trim),
-        bodyStyle: str(specs?.body_type),
-        transmission: str(specs?.transmission),
-        drivetrain: str(specs?.drivetrain),
-        fuelType: str(specs?.fuel_type),
-        engineSize: specs?.engine_displacement ? `${specs.engine_displacement}L` : null,
+        trim: str(specs?.trim) || nhtsa.trim || null,
+        bodyStyle: str(specs?.body_type) || nhtsa.bodyStyle || null,
+        transmission: str(specs?.transmission) || nhtsa.transmission || null,
+        drivetrain: str(specs?.drivetrain) || nhtsa.drivetrain || null,
+        fuelType: str(specs?.fuel_type) || nhtsa.fuelType || null,
+        engineSize: rawDisplacement ? `${rawDisplacement}L` : null,
         engine: engineDetail,
-        engineHp: specs?.engine_hp || null,
-        engineTorque: specs?.engine_torque || null,
-        engineCylinders: specs?.engine_cylinders || null,
-        engineAspiration: str(specs?.engine_aspiration),
+        engineHp: rawHp,
+        engineTorque: rawTorque,
+        engineCylinders: rawCylinders,
+        engineAspiration: str(rawAspiration),
         msrp: specs?.msrp || null,
         exteriorColor: str(specs?.exterior_color),
         interiorColor: str(specs?.interior_color),
