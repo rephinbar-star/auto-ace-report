@@ -394,6 +394,7 @@ export default function ReportPage() {
                     exteriorColor: d.exteriorColor || prev.vehicle.exteriorColor,
                     interiorColor: d.interiorColor || prev.vehicle.interiorColor,
                     installedEquipment: d.installedEquipment || [],
+                    categorizedEquipment: d.categorizedEquipment || null,
                     optionPackages: d.optionPackages || [],
                     trim: d.trim || prev.vehicle.trim,
                   },
@@ -1048,20 +1049,37 @@ export default function ReportPage() {
                     {vehicle.installedEquipment && vehicle.installedEquipment.length > 0 && (
                       <Collapsible>
                         <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted/50 transition-colors">
-                          <span>Installed Equipment ({vehicle.installedEquipment.length})</span>
+                          <span>Build Sheet ({vehicle.installedEquipment.length})</span>
                           <svg className="h-4 w-4 shrink-0 transition-transform duration-200" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                         </CollapsibleTrigger>
                         <CollapsibleContent className="pt-2">
-                          <div className="flex flex-wrap gap-1.5">
-                            {vehicle.installedEquipment.map((item: any, i: number) => {
-                              const label = typeof item === "string" ? item : item?.name || String(item);
-                              return (
-                                <Badge key={i} variant="secondary" className="text-xs font-normal">
-                                  {label}
-                                </Badge>
-                              );
-                            })}
-                          </div>
+                          {(vehicle as any).categorizedEquipment && Object.keys((vehicle as any).categorizedEquipment).length > 0 ? (
+                            <div className="space-y-3">
+                              {Object.entries((vehicle as any).categorizedEquipment as Record<string, string[]>).sort(([a], [b]) => a.localeCompare(b)).map(([category, items]) => (
+                                <div key={category}>
+                                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{category}</p>
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {items.map((item: string, i: number) => (
+                                      <Badge key={i} variant="secondary" className="text-xs font-normal">
+                                        {item}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="flex flex-wrap gap-1.5">
+                              {vehicle.installedEquipment.map((item: any, i: number) => {
+                                const label = typeof item === "string" ? item : item?.name || String(item);
+                                return (
+                                  <Badge key={i} variant="secondary" className="text-xs font-normal">
+                                    {label}
+                                  </Badge>
+                                );
+                              })}
+                            </div>
+                          )}
                         </CollapsibleContent>
                       </Collapsible>
                     )}
