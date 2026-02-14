@@ -325,6 +325,8 @@ For service history analysis:
       throw new Error("Invalid AI response format");
     }
 
+    const historyAnalysis = JSON.parse(toolCall.function.arguments);
+
     // If AI didn't extract VIN, try brute-force regex on raw PDF text
     if (!historyAnalysis.vin && textContent) {
       const vinMatch = textContent.match(/\b([A-HJ-NPR-Z0-9]{17})\b/);
