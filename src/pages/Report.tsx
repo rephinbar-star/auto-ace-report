@@ -888,15 +888,20 @@ export default function ReportPage() {
                 Upload CarFax/AutoCheck
               </Button>
               <Button 
-                variant="outline" 
-                size="sm" 
+                size="sm"
+                className="bg-[#EC1C24] hover:bg-[#C8101A] text-white border-none"
                 onClick={handleDownloadPDF}
                 disabled={isDownloading}
               >
                 {isDownloading ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
-                  <Download className="mr-2 h-4 w-4" />
+                  <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M8.5 21H4a1 1 0 01-1-1V4a1 1 0 011-1h16a1 1 0 011 1v16a1 1 0 01-1 1h-4.5" />
+                    <path d="M8.5 21L3 14l4-1.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M15.5 21L21 14l-4-1.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <text x="7" y="11.5" fontSize="6" fontWeight="bold" fill="currentColor" fontFamily="Arial">PDF</text>
+                  </svg>
                 )}
                 {isDownloading ? "Generating..." : "Download PDF"}
               </Button>
