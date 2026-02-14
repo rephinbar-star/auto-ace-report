@@ -33,6 +33,7 @@ import { useToast } from "@/hooks/use-toast";
 import { scrapeCarListing, ScrapedVehicle } from "@/lib/api/scrape-listing";
 import { cacheImages, getCachedUrls } from "@/lib/api/cache-images";
 import { extractFromScreenshot } from "@/lib/api/extract-screenshot";
+import { supabase } from "@/integrations/supabase/client";
 
 const vinSchema = z.object({
   vin: z.string()
@@ -479,10 +480,38 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
     try {
       const vehicle = await decodeVIN(data.vin);
       if (vehicle) {
-        setDecodedVehicle(vehicle);
+        // Enrich with MarketCheck NeoVIN specs in background
+        let enrichedVehicle = vehicle;
+        try {
+          const { data: specsResult } = await supabase.functions.invoke("decode-vin-specs", {
+            body: { vin: data.vin },
+          });
+          if (specsResult?.success && specsResult.data) {
+            const s = specsResult.data;
+            enrichedVehicle = {
+              ...vehicle,
+              trim: s.trim || vehicle.trim,
+              bodyStyle: s.bodyStyle || vehicle.bodyStyle,
+              engineSize: s.engineSize || vehicle.engineSize,
+              transmission: s.transmission || vehicle.transmission,
+              drivetrain: s.drivetrain || vehicle.drivetrain,
+              fuelType: s.fuelType || vehicle.fuelType,
+              engine: s.engine || undefined,
+              exteriorColor: s.exteriorColor || undefined,
+              interiorColor: s.interiorColor || undefined,
+              installedEquipment: s.installedEquipment?.length ? s.installedEquipment : undefined,
+              optionPackages: s.optionPackages?.length ? s.optionPackages : undefined,
+            };
+            console.log("Enriched vehicle with NeoVIN specs:", enrichedVehicle);
+          }
+        } catch (err) {
+          console.warn("NeoVIN decode failed, using NHTSA data only:", err);
+        }
+
+        setDecodedVehicle(enrichedVehicle);
         toast({
           title: "VIN Decoded Successfully",
-          description: `Found: ${vehicle.year} ${vehicle.make} ${vehicle.model}`,
+          description: `Found: ${enrichedVehicle.year} ${enrichedVehicle.make} ${enrichedVehicle.model}`,
         });
       } else {
         toast({
