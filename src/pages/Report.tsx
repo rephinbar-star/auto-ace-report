@@ -879,8 +879,8 @@ export default function ReportPage() {
                 }}
               />
               <Button 
-                variant="outline" 
                 size="sm"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white border-none"
                 onClick={() => headerHistoryInputRef.current?.click()}
                 disabled={isRefreshingPricing}
               >
