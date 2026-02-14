@@ -184,7 +184,14 @@ serve(async (req) => {
         const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
         if (LOVABLE_API_KEY) {
           try {
-            const base64PDF = btoa(String.fromCharCode(...bytes));
+            // Convert bytes to base64 in chunks to avoid stack overflow
+            let binary = "";
+            const chunkSize = 8192;
+            for (let i = 0; i < bytes.length; i += chunkSize) {
+              const chunk = bytes.subarray(i, i + chunkSize);
+              binary += String.fromCharCode(...chunk);
+            }
+            const base64PDF = btoa(binary);
             const visionResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
               method: "POST",
               headers: {
