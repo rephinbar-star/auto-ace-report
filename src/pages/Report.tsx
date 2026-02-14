@@ -383,6 +383,11 @@ export default function ReportPage() {
                     ...prev.vehicle,
                     engine: d.engine || prev.vehicle.engine,
                     engineSize: d.engineSize || prev.vehicle.engineSize,
+                    engineHp: d.engineHp || prev.vehicle.engineHp,
+                    engineTorque: d.engineTorque || prev.vehicle.engineTorque,
+                    engineCylinders: d.engineCylinders || prev.vehicle.engineCylinders,
+                    engineAspiration: d.engineAspiration || prev.vehicle.engineAspiration,
+                    msrp: d.msrp || prev.vehicle.msrp,
                     transmission: d.transmission || prev.vehicle.transmission,
                     drivetrain: d.drivetrain || prev.vehicle.drivetrain,
                     bodyStyle: d.bodyStyle || prev.vehicle.bodyStyle,
@@ -937,12 +942,39 @@ export default function ReportPage() {
           <Card className="mb-8">
             <CardContent className="p-5">
               <div className="flex flex-col gap-4">
+                {/* MSRP highlight */}
+                {vehicle.msrp && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <DollarSign className="h-4 w-4 text-primary" />
+                    <span className="text-muted-foreground">Original MSRP:</span>
+                    <span className="font-semibold">${Number(vehicle.msrp).toLocaleString()}</span>
+                  </div>
+                )}
+
                 {/* Basic specs row */}
                 <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
                   {(vehicle.engine || vehicle.engineSize) && (
                     <div className="flex items-center gap-2">
                       <Settings className="h-4 w-4 text-muted-foreground" />
                       <span className="text-sm">{vehicle.engine || vehicle.engineSize}</span>
+                    </div>
+                  )}
+                  {vehicle.engineHp && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">HP:</span>{" "}
+                      <span className="font-medium">{vehicle.engineHp}</span>
+                    </div>
+                  )}
+                  {vehicle.engineTorque && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Torque:</span>{" "}
+                      <span className="font-medium">{vehicle.engineTorque} lb-ft</span>
+                    </div>
+                  )}
+                  {vehicle.engineCylinders && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Cylinders:</span>{" "}
+                      <span className="font-medium">{vehicle.engineCylinders}</span>
                     </div>
                   )}
                   {vehicle.transmission && (

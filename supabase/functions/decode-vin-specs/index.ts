@@ -90,6 +90,7 @@ serve(async (req) => {
       if (specs.engine_aspiration && specs.engine_aspiration !== "Natural") parts.push(specs.engine_aspiration);
       if (specs.engine_configuration) parts.push(specs.engine_configuration);
       if (specs.engine_hp) parts.push(`${specs.engine_hp}hp`);
+      if (specs.engine_torque) parts.push(`${specs.engine_torque} lb-ft`);
       if (parts.length > 0) engineDetail = parts.join(" ");
     }
 
@@ -114,6 +115,11 @@ serve(async (req) => {
         fuelType: str(specs?.fuel_type),
         engineSize: specs?.engine_displacement ? `${specs.engine_displacement}L` : null,
         engine: engineDetail,
+        engineHp: specs?.engine_hp || null,
+        engineTorque: specs?.engine_torque || null,
+        engineCylinders: specs?.engine_cylinders || null,
+        engineAspiration: str(specs?.engine_aspiration),
+        msrp: specs?.msrp || null,
         exteriorColor: str(specs?.exterior_color),
         interiorColor: str(specs?.interior_color),
         installedEquipment,

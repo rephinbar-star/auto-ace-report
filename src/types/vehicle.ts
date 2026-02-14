@@ -14,6 +14,11 @@ export interface VehicleInfo {
   exteriorColor?: string;
   interiorColor?: string;
   engine?: string; // Detailed engine string, e.g. "2.0L Turbo I4 248hp"
+  engineHp?: number | null;
+  engineTorque?: number | null;
+  engineCylinders?: number | null;
+  engineAspiration?: string | null;
+  msrp?: number | null;
   installedEquipment?: string[];
   optionPackages?: string[];
 }
