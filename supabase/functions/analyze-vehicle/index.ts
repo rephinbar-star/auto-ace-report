@@ -93,7 +93,7 @@ async function lookupMPG(year: number, make: string, model: string): Promise<MPG
   };
 }
 
-async function lookupPricing(year: number, make: string, model: string, trim: string | undefined, mileage: number, condition: string, zipCode?: string): Promise<PricingData | null> {
+async function lookupPricing(year: number, make: string, model: string, trim: string | undefined, mileage: number, condition: string, zipCode?: string, vin?: string, sellerType?: string): Promise<PricingData | null> {
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
@@ -108,7 +108,7 @@ async function lookupPricing(year: number, make: string, model: string, trim: st
         "Content-Type": "application/json",
         "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
       },
-      body: JSON.stringify({ year, make, model, trim, mileage, condition, zipCode }),
+      body: JSON.stringify({ year, make, model, trim, mileage, condition, zipCode, vin, sellerType }),
     });
 
     if (response.ok) {
@@ -198,7 +198,7 @@ serve(async (req) => {
 
     // Fetch MPG, pricing, and maintenance data in parallel
     const mpgPromise = lookupMPG(vehicle.year, vehicle.make, vehicle.model);
-    const pricingPromise = lookupPricing(vehicle.year, vehicle.make, vehicle.model, vehicle.trim, condition.mileage, condition.condition, condition.zipCode);
+    const pricingPromise = lookupPricing(vehicle.year, vehicle.make, vehicle.model, vehicle.trim, condition.mileage, condition.condition, condition.zipCode, vehicle.vin, condition.sellerType);
     const maintenancePromise = lookupMaintenance(vehicle.year, vehicle.make, vehicle.model, vehicle.trim, condition.mileage);
     console.log(`Looking up MPG, pricing, and maintenance for ${vehicle.year} ${vehicle.make} ${vehicle.model}`);
 
