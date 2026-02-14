@@ -149,6 +149,11 @@ export default function AnalyzePage() {
               onBack={() => setCurrentStep(2)}
               onSkip={handleHistorySkip}
               mileage={condition?.mileage}
+              onVinExtracted={(vin) => {
+                if (vehicle && !vehicle.vin) {
+                  setVehicle({ ...vehicle, vin });
+                }
+              }}
             />
           )}
 

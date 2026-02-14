@@ -30,9 +30,10 @@ interface HistoryStepProps {
   onBack: () => void;
   onSkip: () => void;
   mileage?: number;
+  onVinExtracted?: (vin: string) => void;
 }
 
-export function HistoryStep({ onComplete, onBack, onSkip, mileage }: HistoryStepProps) {
+export function HistoryStep({ onComplete, onBack, onSkip, mileage, onVinExtracted }: HistoryStepProps) {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -103,6 +104,10 @@ export function HistoryStep({ onComplete, onBack, onSkip, mileage }: HistoryStep
       if (result.success && result.history) {
         setAnalysisResult(result.history);
         setUrlAccessError(false);
+        // Extract VIN if found in the history report
+        if (result.history.vin && onVinExtracted) {
+          onVinExtracted(result.history.vin);
+        }
         toast({
           title: "Report Analyzed",
           description: `Health Score: ${result.history.healthScore}/100`,
