@@ -1158,24 +1158,102 @@ export default function ReportPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between rounded-lg bg-muted p-4">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Asking Price</p>
-                        <p className="text-2xl font-bold">${condition.askingPrice.toLocaleString()}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm text-muted-foreground">vs Fair Market</p>
-                        <p className={cn(
-                          "text-2xl font-bold",
-                          priceAssessment.priceDifference > 0 ? "text-danger" : "text-success"
-                        )}>
-                          {priceAssessment.priceDifference > 0 ? "+" : ""}
-                          ${Math.abs(priceAssessment.priceDifference).toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
+                  <div className="space-y-6">
+                    {/* Deal rating headline */}
+                    {(() => {
+                      const dealRatingConfig: Record<string, { label: string; color: string }> = {
+                        excellent: { label: "great deal", color: "text-success" },
+                        good: { label: "good deal", color: "text-success" },
+                        fair: { label: "fair deal", color: "text-warning" },
+                        poor: { label: "poor deal", color: "text-warning" },
+                        overpriced: { label: "overpriced", color: "text-danger" },
+                      };
+                      const cfg = dealRatingConfig[priceAssessment.dealRating] || dealRatingConfig.fair;
+                      const referenceValue = condition.sellerType === "dealer"
+                        ? (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate)
+                        : priceAssessment.fairMarketPrivate;
+                      const isBelow = condition.askingPrice <= referenceValue;
+                      const contextMsg = isBelow
+                        ? "This vehicle is priced below the current market average."
+                        : priceAssessment.dealRating === "fair"
+                          ? "This vehicle is within the current average market range."
+                          : "This vehicle is priced above the current market average.";
 
+                      // Calculate bar position: map askingPrice between tradeIn (0%) and dealer/private * 1.15 (100%)
+                      const low = priceAssessment.fairMarketTradeIn;
+                      const high = (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate) * 1.15;
+                      const range = high - low || 1;
+                      const pct = Math.max(2, Math.min(98, ((condition.askingPrice - low) / range) * 100));
+
+                      // Market range markers
+                      const marketLow = condition.sellerType === "dealer"
+                        ? (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate) * 0.95
+                        : priceAssessment.fairMarketPrivate * 0.95;
+                      const marketHigh = condition.sellerType === "dealer"
+                        ? (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate) * 1.05
+                        : priceAssessment.fairMarketPrivate * 1.05;
+                      const pctLow = Math.max(5, Math.min(90, ((marketLow - low) / range) * 100));
+                      const pctHigh = Math.max(10, Math.min(95, ((marketHigh - low) / range) * 100));
+
+                      return (
+                        <div className="space-y-4">
+                          <div>
+                            <h3 className="text-2xl font-bold">
+                              This vehicle is a{" "}
+                              <span className={cfg.color}>{cfg.label}</span>
+                            </h3>
+                            <p className="mt-1 text-sm text-muted-foreground">{contextMsg}</p>
+                          </div>
+
+                          {/* Price bar visualization */}
+                          <div className="relative pt-10 pb-8">
+                            {/* Asking price label */}
+                            <div
+                              className="absolute -top-0 -translate-x-1/2"
+                              style={{ left: `${pct}%` }}
+                            >
+                              <div className="rounded-lg border bg-card px-3 py-1.5 text-sm font-bold shadow-sm whitespace-nowrap">
+                                ${condition.askingPrice.toLocaleString()}
+                              </div>
+                              <div className="mx-auto mt-1 h-3 w-px bg-border" />
+                            </div>
+
+                            {/* Gradient bar */}
+                            <div className="relative h-2.5 w-full rounded-full overflow-hidden">
+                              <div className="absolute inset-0 rounded-full" style={{
+                                background: "linear-gradient(to right, hsl(var(--warning)), hsl(var(--success)) 30%, hsl(var(--success)) 60%, hsl(var(--warning)) 80%, hsl(var(--danger)))"
+                              }} />
+                            </div>
+
+                            {/* Dot indicator on bar */}
+                            <div
+                              className="absolute top-[2.35rem] -translate-x-1/2"
+                              style={{ left: `${pct}%` }}
+                            >
+                              <div className="h-5 w-5 rounded-full border-[3px] border-primary bg-background shadow-md" />
+                            </div>
+
+                            {/* Market range labels */}
+                            <div className="relative mt-4">
+                              <span
+                                className="absolute text-xs text-muted-foreground -translate-x-1/2"
+                                style={{ left: `${pctLow}%` }}
+                              >
+                                ${Math.round(marketLow).toLocaleString()}
+                              </span>
+                              <span
+                                className="absolute text-xs text-muted-foreground -translate-x-1/2"
+                                style={{ left: `${pctHigh}%` }}
+                              >
+                                ${Math.round(marketHigh).toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Value cards grid */}
                     <div className="grid gap-4 sm:grid-cols-3">
                       {priceAssessment.fairMarketDealer && (
                         <div className={cn("rounded-lg border p-4", condition.sellerType === "dealer" && "border-primary/30 bg-primary/5")}>
@@ -1193,9 +1271,27 @@ export default function ReportPage() {
                       </div>
                     </div>
 
+                    {/* Asking price vs fair market delta */}
+                    <div className="flex items-center justify-between rounded-lg bg-muted p-4">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Asking Price</p>
+                        <p className="text-2xl font-bold">${condition.askingPrice.toLocaleString()}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-muted-foreground">vs Fair Market</p>
+                        <p className={cn(
+                          "text-2xl font-bold",
+                          priceAssessment.priceDifference > 0 ? "text-danger" : "text-success"
+                        )}>
+                          {priceAssessment.priceDifference > 0 ? "+" : ""}
+                          ${Math.abs(priceAssessment.priceDifference).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+
                     {/* Pricing Sources */}
                     {pricingSources.length > 0 && (
-                      <div className="mt-4 rounded-lg border border-dashed p-3">
+                      <div className="rounded-lg border border-dashed p-3">
                         <p className="text-xs font-medium text-muted-foreground mb-2">Pricing Sources</p>
                         <div className="flex flex-wrap gap-2">
                           {(() => {
