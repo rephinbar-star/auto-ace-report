@@ -1222,14 +1222,20 @@ export default function ReportPage() {
                             }
                             markers.push({ label: "Asking Price", value: condition.askingPrice, isAsking: true });
 
-                            const allValues = markers.map(m => m.value);
-                            const barMin = Math.min(...allValues) * 0.92;
-                            const barMax = Math.max(...allValues) * 1.08;
+                            // Anchor gradient to actual values: trade-in = deep green (left), FMV = center green, overpriced = red (right)
+                            const tradeInVal = priceAssessment.fairMarketTradeIn;
+                            const fmvVal = fairMarketValue;
+                            // Bar extends from trade-in * 0.92 to FMV * 1.25 so FMV sits around center-right
+                            const barMin = tradeInVal * 0.92;
+                            const barMax = fmvVal * 1.25;
                             const barRange = barMax - barMin || 1;
                             const toPct = (v: number) => Math.max(2, Math.min(98, ((v - barMin) / barRange) * 100));
 
+                            // Compute gradient stops based on actual value positions
+                            const fmvPct = toPct(fmvVal);
+
                             return (
-                              <div className="relative pt-12 pb-14 mt-2">
+                              <div className="relative pt-14 pb-14 mt-2">
                                 {/* Asking price floating label */}
                                 {(() => {
                                   const askPct = toPct(condition.askingPrice);
@@ -1238,6 +1244,7 @@ export default function ReportPage() {
                                       className="absolute top-0 -translate-x-1/2"
                                       style={{ left: `${askPct}%` }}
                                     >
+                                      <p className="text-[10px] text-muted-foreground text-center mb-0.5">Asking Price</p>
                                       <div className="rounded-lg border bg-card px-3 py-1.5 text-sm font-bold shadow-sm whitespace-nowrap">
                                         ${condition.askingPrice.toLocaleString()}
                                       </div>
@@ -1246,10 +1253,10 @@ export default function ReportPage() {
                                   );
                                 })()}
 
-                                {/* Gradient bar */}
+                                {/* Gradient bar - deep green on left (trade-in), green center (FMV), yellow/red right (overpriced) */}
                                 <div className="relative h-2.5 w-full rounded-full overflow-hidden">
                                   <div className="absolute inset-0 rounded-full" style={{
-                                    background: "linear-gradient(to right, hsl(var(--warning)), hsl(var(--success)) 30%, hsl(var(--success)) 60%, hsl(var(--warning)) 80%, hsl(var(--danger)))"
+                                    background: `linear-gradient(to right, hsl(145 60% 36%) 0%, hsl(var(--success)) ${fmvPct * 0.5}%, hsl(var(--success)) ${fmvPct}%, hsl(var(--warning)) ${fmvPct + (100 - fmvPct) * 0.6}%, hsl(var(--danger)) 100%)`
                                   }} />
                                 </div>
 
@@ -1259,7 +1266,7 @@ export default function ReportPage() {
                                   return (
                                     <div
                                       className="absolute -translate-x-1/2"
-                                      style={{ left: `${askPct}%`, top: "2.65rem" }}
+                                      style={{ left: `${askPct}%`, top: "3.85rem" }}
                                     >
                                       <div className="h-5 w-5 rounded-full border-[3px] border-primary bg-background shadow-md" />
                                     </div>
