@@ -1292,9 +1292,9 @@ export default function ReportPage() {
                             <span className="text-muted-foreground">
                               Asking price is{" "}
                               <span className={cn("font-semibold", priceAssessment.priceDifference > 0 ? "text-danger" : "text-success")}>
-                                {priceAssessment.priceDifference > 0 ? "+" : "-"}${Math.abs(priceAssessment.priceDifference).toLocaleString()}
+                                {priceAssessment.priceDifference > 0 ? "higher" : "lower"} by ${Math.abs(priceAssessment.priceDifference).toLocaleString()}
                               </span>
-                              {" "}vs fair market
+                              {" "}from fair market value.
                             </span>
                           </div>
                         </div>
