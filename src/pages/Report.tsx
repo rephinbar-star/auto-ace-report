@@ -1208,12 +1208,18 @@ export default function ReportPage() {
                           {/* Price bar visualization */}
                           {(() => {
                             // Build markers array for all values on the bar
-                            const markers: { label: string; value: number; isAsking?: boolean }[] = [];
+                            const fairMarketValue = condition.sellerType === "dealer"
+                              ? (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate)
+                              : priceAssessment.fairMarketPrivate;
+                            const markers: { label: string; value: number; isAsking?: boolean; isFairMarket?: boolean }[] = [];
                             markers.push({ label: "Trade-In", value: priceAssessment.fairMarketTradeIn });
-                            if (priceAssessment.fairMarketDealer) {
+                            markers.push({ label: "Fair Market Value", value: fairMarketValue, isFairMarket: true });
+                            if (priceAssessment.fairMarketDealer && condition.sellerType !== "dealer") {
                               markers.push({ label: "Dealer Retail", value: priceAssessment.fairMarketDealer });
                             }
-                            markers.push({ label: "Private Sale", value: priceAssessment.fairMarketPrivate });
+                            if (condition.sellerType === "dealer") {
+                              markers.push({ label: "Private Sale", value: priceAssessment.fairMarketPrivate });
+                            }
                             markers.push({ label: "Asking Price", value: condition.askingPrice, isAsking: true });
 
                             const allValues = markers.map(m => m.value);
@@ -1270,9 +1276,9 @@ export default function ReportPage() {
                                         className="absolute -translate-x-1/2 text-center"
                                         style={{ left: `${mPct}%` }}
                                       >
-                                        <div className="mx-auto mb-0.5 h-2.5 w-px bg-muted-foreground/40" />
-                                        <p className="text-[10px] text-muted-foreground leading-tight whitespace-nowrap">{m.label}</p>
-                                        <p className="text-xs font-semibold whitespace-nowrap">${m.value.toLocaleString()}</p>
+                                        <div className={cn("mx-auto mb-0.5 h-2.5 w-px", m.isFairMarket ? "bg-primary" : "bg-muted-foreground/40")} />
+                                        <p className={cn("text-[10px] leading-tight whitespace-nowrap", m.isFairMarket ? "font-medium text-primary" : "text-muted-foreground")}>{m.label}</p>
+                                        <p className={cn("text-xs font-semibold whitespace-nowrap", m.isFairMarket && "text-primary")}>${m.value.toLocaleString()}</p>
                                       </div>
                                     );
                                   })}
