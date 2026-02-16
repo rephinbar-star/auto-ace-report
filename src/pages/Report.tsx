@@ -1206,88 +1206,94 @@ export default function ReportPage() {
                           </div>
 
                           {/* Price bar visualization */}
-                          <div className="relative pt-10 pb-8">
-                            {/* Asking price label */}
-                            <div
-                              className="absolute -top-0 -translate-x-1/2"
-                              style={{ left: `${pct}%` }}
-                            >
-                              <div className="rounded-lg border bg-card px-3 py-1.5 text-sm font-bold shadow-sm whitespace-nowrap">
-                                ${condition.askingPrice.toLocaleString()}
+                          {(() => {
+                            // Build markers array for all values on the bar
+                            const markers: { label: string; value: number; isAsking?: boolean }[] = [];
+                            markers.push({ label: "Trade-In", value: priceAssessment.fairMarketTradeIn });
+                            if (priceAssessment.fairMarketDealer) {
+                              markers.push({ label: "Dealer Retail", value: priceAssessment.fairMarketDealer });
+                            }
+                            markers.push({ label: "Private Sale", value: priceAssessment.fairMarketPrivate });
+                            markers.push({ label: "Asking Price", value: condition.askingPrice, isAsking: true });
+
+                            const allValues = markers.map(m => m.value);
+                            const barMin = Math.min(...allValues) * 0.92;
+                            const barMax = Math.max(...allValues) * 1.08;
+                            const barRange = barMax - barMin || 1;
+                            const toPct = (v: number) => Math.max(2, Math.min(98, ((v - barMin) / barRange) * 100));
+
+                            return (
+                              <div className="relative pt-12 pb-14 mt-2">
+                                {/* Asking price floating label */}
+                                {(() => {
+                                  const askPct = toPct(condition.askingPrice);
+                                  return (
+                                    <div
+                                      className="absolute top-0 -translate-x-1/2"
+                                      style={{ left: `${askPct}%` }}
+                                    >
+                                      <div className="rounded-lg border bg-card px-3 py-1.5 text-sm font-bold shadow-sm whitespace-nowrap">
+                                        ${condition.askingPrice.toLocaleString()}
+                                      </div>
+                                      <div className="mx-auto mt-1 h-3 w-px bg-border" />
+                                    </div>
+                                  );
+                                })()}
+
+                                {/* Gradient bar */}
+                                <div className="relative h-2.5 w-full rounded-full overflow-hidden">
+                                  <div className="absolute inset-0 rounded-full" style={{
+                                    background: "linear-gradient(to right, hsl(var(--warning)), hsl(var(--success)) 30%, hsl(var(--success)) 60%, hsl(var(--warning)) 80%, hsl(var(--danger)))"
+                                  }} />
+                                </div>
+
+                                {/* Dot indicator for asking price */}
+                                {(() => {
+                                  const askPct = toPct(condition.askingPrice);
+                                  return (
+                                    <div
+                                      className="absolute -translate-x-1/2"
+                                      style={{ left: `${askPct}%`, top: "2.65rem" }}
+                                    >
+                                      <div className="h-5 w-5 rounded-full border-[3px] border-primary bg-background shadow-md" />
+                                    </div>
+                                  );
+                                })()}
+
+                                {/* Value markers below bar */}
+                                <div className="relative mt-5">
+                                  {markers.filter(m => !m.isAsking).map((m) => {
+                                    const mPct = toPct(m.value);
+                                    return (
+                                      <div
+                                        key={m.label}
+                                        className="absolute -translate-x-1/2 text-center"
+                                        style={{ left: `${mPct}%` }}
+                                      >
+                                        <div className="mx-auto mb-0.5 h-2.5 w-px bg-muted-foreground/40" />
+                                        <p className="text-[10px] text-muted-foreground leading-tight whitespace-nowrap">{m.label}</p>
+                                        <p className="text-xs font-semibold whitespace-nowrap">${m.value.toLocaleString()}</p>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
                               </div>
-                              <div className="mx-auto mt-1 h-3 w-px bg-border" />
-                            </div>
+                            );
+                          })()}
 
-                            {/* Gradient bar */}
-                            <div className="relative h-2.5 w-full rounded-full overflow-hidden">
-                              <div className="absolute inset-0 rounded-full" style={{
-                                background: "linear-gradient(to right, hsl(var(--warning)), hsl(var(--success)) 30%, hsl(var(--success)) 60%, hsl(var(--warning)) 80%, hsl(var(--danger)))"
-                              }} />
-                            </div>
-
-                            {/* Dot indicator on bar */}
-                            <div
-                              className="absolute top-[2.35rem] -translate-x-1/2"
-                              style={{ left: `${pct}%` }}
-                            >
-                              <div className="h-5 w-5 rounded-full border-[3px] border-primary bg-background shadow-md" />
-                            </div>
-
-                            {/* Market range labels */}
-                            <div className="relative mt-4">
-                              <span
-                                className="absolute text-xs text-muted-foreground -translate-x-1/2"
-                                style={{ left: `${pctLow}%` }}
-                              >
-                                ${Math.round(marketLow).toLocaleString()}
+                          {/* vs Fair Market delta */}
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">
+                              Asking price is{" "}
+                              <span className={cn("font-semibold", priceAssessment.priceDifference > 0 ? "text-danger" : "text-success")}>
+                                {priceAssessment.priceDifference > 0 ? "+" : "-"}${Math.abs(priceAssessment.priceDifference).toLocaleString()}
                               </span>
-                              <span
-                                className="absolute text-xs text-muted-foreground -translate-x-1/2"
-                                style={{ left: `${pctHigh}%` }}
-                              >
-                                ${Math.round(marketHigh).toLocaleString()}
-                              </span>
-                            </div>
+                              {" "}vs fair market
+                            </span>
                           </div>
                         </div>
                       );
                     })()}
-
-                    {/* Value cards grid */}
-                    <div className="grid gap-4 sm:grid-cols-3">
-                      {priceAssessment.fairMarketDealer && (
-                        <div className={cn("rounded-lg border p-4", condition.sellerType === "dealer" && "border-primary/30 bg-primary/5")}>
-                          <p className="text-sm text-muted-foreground">Dealer Retail</p>
-                          <p className="text-xl font-semibold">${priceAssessment.fairMarketDealer.toLocaleString()}</p>
-                        </div>
-                      )}
-                      <div className={cn("rounded-lg border p-4", condition.sellerType !== "dealer" && "border-primary/30 bg-primary/5")}>
-                        <p className="text-sm text-muted-foreground">Private Sale</p>
-                        <p className="text-xl font-semibold">${priceAssessment.fairMarketPrivate.toLocaleString()}</p>
-                      </div>
-                      <div className="rounded-lg border p-4">
-                        <p className="text-sm text-muted-foreground">Trade-In Value</p>
-                        <p className="text-xl font-semibold">${priceAssessment.fairMarketTradeIn.toLocaleString()}</p>
-                      </div>
-                    </div>
-
-                    {/* Asking price vs fair market delta */}
-                    <div className="flex items-center justify-between rounded-lg bg-muted p-4">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Asking Price</p>
-                        <p className="text-2xl font-bold">${condition.askingPrice.toLocaleString()}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm text-muted-foreground">vs Fair Market</p>
-                        <p className={cn(
-                          "text-2xl font-bold",
-                          priceAssessment.priceDifference > 0 ? "text-danger" : "text-success"
-                        )}>
-                          {priceAssessment.priceDifference > 0 ? "+" : ""}
-                          ${Math.abs(priceAssessment.priceDifference).toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
 
                     {/* Pricing Sources */}
                     {pricingSources.length > 0 && (
