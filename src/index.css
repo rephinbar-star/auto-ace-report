@@ -159,3 +159,11 @@
     @apply bg-card/80 backdrop-blur-md;
   }
 }
+
+/* Force-mobile overrides: when JS detects a mobile UA, override md: breakpoints */
+.force-mobile .desktop-only {
+  display: none !important;
+}
+.force-mobile .mobile-only {
+  display: block !important;
+}
