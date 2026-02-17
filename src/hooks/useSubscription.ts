@@ -13,17 +13,17 @@ interface SubscriptionState {
   error: string | null;
 }
 
-// Stripe price IDs for each tier
+// Stripe price IDs for each tier (one-time payments)
 export const STRIPE_PRICES = {
   premium: {
-    priceId: "price_1SuovTBo6mQ2JDIsAGAkAh4d",
-    productId: "prod_Tsa5IDIygPmVmk",
+    priceId: "price_1T1j4pBo6mQ2JDIsHtRLTbP3",
+    productId: "prod_TziVHrptdIpdCJ",
     price: 9.99,
     name: "Premium",
   },
   pro: {
-    priceId: "price_1SxjQOBo6mQ2JDIsilRvUBSe",
-    productId: "prod_TvabBuJcmLf5BM",
+    priceId: "price_1T1j4pBo6mQ2JDIsqYeS9351",
+    productId: "prod_TziV0GAxShUSpX",
     price: 19.99,
     name: "Pro",
   },
