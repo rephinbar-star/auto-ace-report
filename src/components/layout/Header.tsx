@@ -48,7 +48,7 @@ export function Header() {
           <div className="flex items-end gap-0">
             <span className="text-xl font-bold">CarWise</span>
             <Lightbulb className="h-5 w-5 text-yellow-400 fill-yellow-400 -ml-0.5 mb-0.5 animate-glow-pulse" />
-            <span className="ml-2 text-xs font-semibold text-blue-500 mb-0.5">- BETA -</span>
+            <span className="ml-2 rounded-full bg-blue-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-500 ring-1 ring-blue-500/30 mb-0.5">Beta</span>
           </div>
         </Link>
 
