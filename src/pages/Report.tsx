@@ -1473,7 +1473,7 @@ export default function ReportPage() {
                             : row.tradeInValue - row.loanBalance - totalCosts;
                           return (
                             <TableRow key={row.year}>
-                              <TableCell className="font-medium">Year {row.year}</TableCell>
+                              <TableCell className="font-medium text-xs whitespace-nowrap">Year {row.year}</TableCell>
                               <TableCell className="text-right">${row.privateValue.toLocaleString()}</TableCell>
                               <TableCell className="text-right">${row.tradeInValue.toLocaleString()}</TableCell>
                               <TableCell className="text-right">${row.loanBalance.toLocaleString()}</TableCell>
