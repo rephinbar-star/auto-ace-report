@@ -788,8 +788,8 @@ export default function ReportPage() {
     <div className="flex min-h-screen flex-col">
       <Header />
       
-      <main className="flex-1 bg-gradient-hero py-8 overflow-x-hidden">
-        <div className="container mx-auto max-w-6xl px-4">
+      <main className="flex-1 bg-gradient-hero py-8">
+        <div className="container mx-auto max-w-6xl px-4 overflow-x-hidden">
           {/* Back Navigation */}
           {backToComparisonUrl && (
             <Button 
@@ -1380,7 +1380,7 @@ export default function ReportPage() {
               />
 
               {/* Depreciation Chart */}
-              <Card className="overflow-hidden">
+              <Card className="overflow-hidden max-w-[calc(100vw-2rem)]">
                 <CardHeader>
                 <CardTitle className="flex items-center gap-2 flex-wrap">
                     <TrendingDown className="h-5 w-5 text-primary shrink-0" />
@@ -1398,8 +1398,8 @@ export default function ReportPage() {
                     )}
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="h-[300px] w-full overflow-hidden">
+                <CardContent className="p-3 md:p-6">
+                  <div className="h-[300px] w-full min-w-0 overflow-hidden">
                     <ResponsiveContainer width="100%" height={300}>
                       <LineChart data={chartData}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
