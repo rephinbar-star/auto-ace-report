@@ -200,7 +200,7 @@ export function CompareVehicleCard({ report, onRemove, isBestBuy, rank }: Compar
                 "font-bold",
                 Number(report.price_difference) > 0 ? "text-red-600" : "text-green-600"
               )}>
-                {Number(report.price_difference) > 0 ? "higher" : "less"} than Fair Market Value by ${Math.abs(Number(report.price_difference)).toLocaleString()}
+                ${Math.abs(Number(report.price_difference)).toLocaleString()} {Number(report.price_difference) > 0 ? "higher" : "lower"} than Fair Market Value
               </span>
             </div>
           )}

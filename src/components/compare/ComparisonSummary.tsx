@@ -350,9 +350,12 @@ export function ComparisonSummary({
           <h4 className="font-semibold text-sm">Price Comparison</h4>
           <div className="space-y-1">
             {vehicles.map((v) => {
-              const savings = v.fair_offer_price
-                ? Number(v.asking_price) - Number(v.fair_offer_price)
-                : 0;
+              const fmv = v.seller_type === "dealer" && v.fair_market_dealer
+                ? Number(v.fair_market_dealer)
+                : v.fair_market_private
+                  ? Number(v.fair_market_private)
+                  : null;
+              const diff = fmv ? Number(v.asking_price) - fmv : null;
               return (
                 <div
                   key={v.id}
@@ -365,15 +368,14 @@ export function ComparisonSummary({
                     <span className="font-medium">
                       ${Number(v.asking_price).toLocaleString()}
                     </span>
-                    {savings !== 0 && (
+                    {diff != null && diff !== 0 && (
                       <span
                         className={cn(
                           "text-xs font-medium",
-                          savings > 0 ? "text-destructive" : "text-success"
+                          diff > 0 ? "text-destructive" : "text-success"
                         )}
                       >
-                        {savings > 0 ? "+" : ""}
-                        {savings.toLocaleString()} vs fair
+                        ${Math.abs(diff).toLocaleString()} {diff > 0 ? "higher" : "lower"} than FMV
                       </span>
                     )}
                   </div>
