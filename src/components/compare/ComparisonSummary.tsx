@@ -66,7 +66,8 @@ export function ComparisonSummary({
           else if (item.category === "Title Status") strengths.push("clean title");
           else if (item.category === "Accident History") strengths.push("clean accident history");
           else if (item.category === "5-Year Equity") strengths.push("strong long-term equity");
-          else if (item.category === "Age & Warranty") strengths.push("newer with warranty protection");
+          else if (item.category === "Vehicle Age") strengths.push("newer model year");
+          else if (item.category === "Warranty") strengths.push("strong warranty coverage");
           else if (item.category === "Reliability & Risk") strengths.push("low ownership risk");
           else if (item.category === "5-Year TCO") strengths.push("lowest total ownership cost");
         }
