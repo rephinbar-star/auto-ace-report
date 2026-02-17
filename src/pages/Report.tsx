@@ -1241,7 +1241,7 @@ export default function ReportPage() {
                             const fmvPct = toPct(fmvVal);
 
                             return (
-                              <div className="relative pt-14 pb-14 mt-2">
+                              <div className="relative pt-14 pb-14 mt-2 overflow-hidden">
                                 {/* Asking price floating label */}
                                 {(() => {
                                   const askPct = toPct(condition.askingPrice);
@@ -1456,13 +1456,13 @@ export default function ReportPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Year</TableHead>
-                          <TableHead className="text-right">Private Value</TableHead>
-                          <TableHead className="text-right">Trade-In</TableHead>
-                          <TableHead className="text-right">Loan Balance</TableHead>
-                          <TableHead className="text-right">Repairs</TableHead>
-                          <TableHead className="text-right">Maintenance</TableHead>
-                          <TableHead className="text-right">Net Equity</TableHead>
+                          <TableHead className="text-xs whitespace-nowrap">Year</TableHead>
+                          <TableHead className="text-right text-xs whitespace-nowrap">Private Val.</TableHead>
+                          <TableHead className="text-right text-xs whitespace-nowrap">Trade-In</TableHead>
+                          <TableHead className="text-right text-xs whitespace-nowrap">Loan Bal.</TableHead>
+                          <TableHead className="text-right text-xs whitespace-nowrap">Repairs</TableHead>
+                          <TableHead className="text-right text-xs whitespace-nowrap">Maint.</TableHead>
+                          <TableHead className="text-right text-xs whitespace-nowrap">Net Equity</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1474,17 +1474,17 @@ export default function ReportPage() {
                           return (
                             <TableRow key={row.year}>
                               <TableCell className="font-medium text-xs whitespace-nowrap">Year {row.year}</TableCell>
-                              <TableCell className="text-right">${row.privateValue.toLocaleString()}</TableCell>
-                              <TableCell className="text-right">${row.tradeInValue.toLocaleString()}</TableCell>
-                              <TableCell className="text-right">${row.loanBalance.toLocaleString()}</TableCell>
-                              <TableCell className="text-right text-danger">
+                              <TableCell className="text-right text-xs whitespace-nowrap">${row.privateValue.toLocaleString()}</TableCell>
+                              <TableCell className="text-right text-xs whitespace-nowrap">${row.tradeInValue.toLocaleString()}</TableCell>
+                              <TableCell className="text-right text-xs whitespace-nowrap">${row.loanBalance.toLocaleString()}</TableCell>
+                              <TableCell className="text-right text-xs whitespace-nowrap text-danger">
                                 ${row.repairCosts.toLocaleString()}
                               </TableCell>
-                              <TableCell className="text-right text-muted-foreground">
+                              <TableCell className="text-right text-xs whitespace-nowrap text-muted-foreground">
                                 ${(row.maintenanceCosts || 0).toLocaleString()}
                               </TableCell>
                               <TableCell className={cn(
-                                "text-right font-semibold",
+                                "text-right text-xs whitespace-nowrap font-semibold",
                                 netEquity >= 0 ? "text-success" : "text-danger"
                               )}>
                                 {netEquity >= 0 ? "+" : ""}
