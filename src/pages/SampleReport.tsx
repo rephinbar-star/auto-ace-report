@@ -112,8 +112,8 @@ const sampleAnalysis = {
     fairMarketDealer: 35200,
     fairMarketTradeIn: 30800,
     dealRating: "good" as const,
-    priceDifference: 1300,
-    percentDifference: 3.9,
+    priceDifference: -700,
+    percentDifference: -2.0,
   },
   depreciationTable: [
     { year: 1, privateValue: 31500, tradeInValue: 29200, loanBalance: 28000, repairCosts: 0, maintenanceCosts: 180, netEquityPrivate: 3320, netEquityTradeIn: 1020 },
