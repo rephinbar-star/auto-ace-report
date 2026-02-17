@@ -48,6 +48,9 @@ export interface VehicleHistory {
   majorServicesDue?: string[] | null;       // Major services that should have been done but aren't documented
   majorServicesDone?: string[] | null;      // Major services documented as completed
   chronicRepairSystems?: string[] | null;   // Systems with repeated repairs (e.g., "transmission", "cooling")
+  // Warranty data (extracted from CarFax or estimated)
+  warrantyMonthsRemaining?: number | null;  // Months of factory/CPO warranty remaining
+  isCPO?: boolean | null;                   // Certified Pre-Owned status
 }
 
 export interface FinancingInfo {

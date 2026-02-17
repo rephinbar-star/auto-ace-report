@@ -77,6 +77,8 @@ const sampleComparisonVehicles: VehicleReport[] = [
     major_services_due: [],
     major_services_done: [],
     chronic_repair_systems: [],
+    warranty_months_remaining: null,
+    is_cpo: false,
   },
   {
     id: "sample-2",
@@ -143,6 +145,8 @@ const sampleComparisonVehicles: VehicleReport[] = [
     major_services_due: [],
     major_services_done: [],
     chronic_repair_systems: [],
+    warranty_months_remaining: null,
+    is_cpo: false,
   },
   {
     id: "sample-3",
@@ -214,6 +218,8 @@ const sampleComparisonVehicles: VehicleReport[] = [
     major_services_due: [],
     major_services_done: [],
     chronic_repair_systems: [],
+    warranty_months_remaining: null,
+    is_cpo: false,
   },
 ];
 
