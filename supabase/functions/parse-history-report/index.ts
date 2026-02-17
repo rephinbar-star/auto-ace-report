@@ -25,6 +25,9 @@ interface VehicleHistory {
   // Recall data from CarFax/AutoCheck
   openRecallCount?: number | null;
   resolvedRecallCount?: number | null;
+  // Warranty data
+  warrantyMonthsRemaining?: number | null;
+  isCPO?: boolean | null;
 }
 
 serve(async (req) => {
@@ -406,6 +409,14 @@ For service history analysis:
                   vin: {
                     type: ["string", "null"],
                     description: "The 17-character Vehicle Identification Number (VIN) if present in the report. Return null if not found."
+                  },
+                  warrantyMonthsRemaining: {
+                    type: ["number", "null"],
+                    description: "Months of factory or CPO warranty remaining as stated in the report (e.g., CarFax 'Warranty Information' section). Return the number of months if explicitly stated. Return null if warranty coverage is not mentioned."
+                  },
+                  isCPO: {
+                    type: ["boolean", "null"],
+                    description: "Whether the vehicle is Certified Pre-Owned (CPO). Return true if the report mentions CPO certification, manufacturer-backed certification, or dealer certification program. Return false if explicitly not CPO. Return null if not mentioned."
                   }
                 },
                 required: ["accidentCount", "ownerCount", "titleStatus", "serviceRecords", "issues", "positives", "healthScore", "summary"],

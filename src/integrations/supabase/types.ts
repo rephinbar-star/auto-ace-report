@@ -181,6 +181,7 @@ export type Database = {
           history_issues: string[] | null
           history_positives: string[] | null
           id: string
+          is_cpo: boolean | null
           lease_term_months: number | null
           listing_images: string[] | null
           listing_url: string | null
@@ -214,6 +215,7 @@ export type Database = {
           user_id: string
           value_proposition: string | null
           vin: string | null
+          warranty_months_remaining: number | null
           year: number
         }
         Insert: {
@@ -241,6 +243,7 @@ export type Database = {
           history_issues?: string[] | null
           history_positives?: string[] | null
           id?: string
+          is_cpo?: boolean | null
           lease_term_months?: number | null
           listing_images?: string[] | null
           listing_url?: string | null
@@ -274,6 +277,7 @@ export type Database = {
           user_id: string
           value_proposition?: string | null
           vin?: string | null
+          warranty_months_remaining?: number | null
           year: number
         }
         Update: {
@@ -301,6 +305,7 @@ export type Database = {
           history_issues?: string[] | null
           history_positives?: string[] | null
           id?: string
+          is_cpo?: boolean | null
           lease_term_months?: number | null
           listing_images?: string[] | null
           listing_url?: string | null
@@ -334,6 +339,7 @@ export type Database = {
           user_id?: string
           value_proposition?: string | null
           vin?: string | null
+          warranty_months_remaining?: number | null
           year?: number
         }
         Relationships: []
