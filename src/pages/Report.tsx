@@ -1203,6 +1203,13 @@ export default function ReportPage() {
                               <span className={cfg.color}>{cfg.label}</span>
                             </h3>
                             <p className="mt-1 text-sm text-muted-foreground">{contextMsg}</p>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              Asking price is{" "}
+                              <span className={cn("font-semibold", priceAssessment.priceDifference > 0 ? "text-danger" : "text-success")}>
+                                {priceAssessment.priceDifference > 0 ? "higher" : "lower"} by ${Math.abs(priceAssessment.priceDifference).toLocaleString()}
+                              </span>
+                              {" "}from fair market value.
+                            </p>
                           </div>
 
                           {/* Price bar visualization */}
@@ -1294,16 +1301,6 @@ export default function ReportPage() {
                             );
                           })()}
 
-                          {/* vs Fair Market delta */}
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">
-                              Asking price is{" "}
-                              <span className={cn("font-semibold", priceAssessment.priceDifference > 0 ? "text-danger" : "text-success")}>
-                                {priceAssessment.priceDifference > 0 ? "higher" : "lower"} by ${Math.abs(priceAssessment.priceDifference).toLocaleString()}
-                              </span>
-                              {" "}from fair market value.
-                            </span>
-                          </div>
                         </div>
                       );
                     })()}
