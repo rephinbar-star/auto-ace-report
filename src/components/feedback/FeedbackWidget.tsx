@@ -92,7 +92,7 @@ export function FeedbackWidget() {
   };
 
   return (
-    <div id="feedback-widget" className="fixed z-50" style={{ bottom: "6rem", right: 0 }}>
+    <div id="feedback-widget" className="fixed z-50" style={{ bottom: "6rem", right: "-1px" }}>
       {/* Vertical tab trigger */}
       {!isOpen && (
         <button
