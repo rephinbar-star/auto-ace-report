@@ -535,6 +535,8 @@ export default function ReportPage() {
         openRecallCount,
         nhtsaTotalRecalls,
         resolvedRecallCount,
+        warrantyMonthsRemaining: history?.warrantyMonthsRemaining ?? null,
+        isCPO: history?.isCPO ?? null,
       });
       setUvprsResult(result);
     };
