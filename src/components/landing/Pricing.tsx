@@ -1,10 +1,7 @@
-import { useState } from "react";
 import { Check, X, User, Zap, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Link } from "react-router-dom";
 import { STRIPE_PRICES } from "@/hooks/useSubscription";
 import { cn } from "@/lib/utils";
@@ -12,8 +9,7 @@ import { cn } from "@/lib/utils";
 const plans = [
   {
     name: "Free",
-    monthlyPrice: 0,
-    yearlyPrice: 0,
+    price: 0,
     description: "Perfect for trying out CarWise",
     icon: User,
     features: [
@@ -33,12 +29,10 @@ const plans = [
   },
   {
     name: "Premium",
-    monthlyPrice: STRIPE_PRICES.premium.monthlyPrice,
-    yearlyPrice: STRIPE_PRICES.premium.yearlyPrice,
+    price: STRIPE_PRICES.premium.price,
     description: "For occasional car shoppers",
     icon: Zap,
     features: [
-      { name: "Up to 8 reports per month", included: true },
       { name: "Compare up to 2 vehicles", included: true },
       { name: "PDF report export", included: true },
       { name: "Advanced price assessment", included: true },
@@ -47,18 +41,16 @@ const plans = [
       { name: "History report parsing", included: true },
       { name: "Dealership review", included: false },
     ],
-    cta: "Subscribe",
+    cta: "Buy Report",
     href: "/pricing",
     popular: true,
   },
   {
     name: "Pro",
-    monthlyPrice: STRIPE_PRICES.pro.monthlyPrice,
-    yearlyPrice: STRIPE_PRICES.pro.yearlyPrice,
+    price: STRIPE_PRICES.pro.price,
     description: "For serious car buyers",
     icon: Crown,
     features: [
-      { name: "Up to 15 reports per month", included: true },
       { name: "Compare up to 6 vehicles", included: true },
       { name: "Dealership review", included: true },
       { name: "PDF report export", included: true },
@@ -68,15 +60,13 @@ const plans = [
       { name: "History report parsing", included: true },
       { name: "Priority support", included: true },
     ],
-    cta: "Subscribe",
+    cta: "Buy Report",
     href: "/pricing",
     popular: false,
   },
 ];
 
 export function Pricing() {
-  const [isYearly, setIsYearly] = useState(false);
-
   return (
     <section className="py-20 md:py-28">
       <div className="container mx-auto px-4">
@@ -86,40 +76,8 @@ export function Pricing() {
             Simple, Transparent Pricing
           </h2>
           <p className="text-lg text-muted-foreground mb-6">
-            Start for free. Upgrade when you need more features.
+            Start for free. Pay per report when you need more features.
           </p>
-
-          {/* Billing toggle */}
-          <div className="flex items-center justify-center gap-3">
-            <Label 
-              htmlFor="landing-billing-toggle" 
-              className={cn(
-                "cursor-pointer transition-colors",
-                !isYearly ? "text-foreground font-medium" : "text-muted-foreground"
-              )}
-            >
-              Monthly
-            </Label>
-            <Switch
-              id="landing-billing-toggle"
-              checked={isYearly}
-              onCheckedChange={setIsYearly}
-            />
-            <Label 
-              htmlFor="landing-billing-toggle" 
-              className={cn(
-                "cursor-pointer transition-colors",
-                isYearly ? "text-foreground font-medium" : "text-muted-foreground"
-              )}
-            >
-              Yearly
-            </Label>
-            {isYearly && (
-              <Badge variant="secondary" className="ml-2 bg-green-500/10 text-green-600 border-green-500/20">
-                Save 17%
-              </Badge>
-            )}
-          </div>
         </div>
 
         <div className="mx-auto grid max-w-5xl gap-6 md:grid-cols-3">
@@ -146,15 +104,12 @@ export function Pricing() {
                 <CardTitle className="text-xl">{plan.name}</CardTitle>
                 <div className="mt-4">
                   <span className="text-4xl font-bold">
-                    ${isYearly ? Math.round(plan.yearlyPrice / 12) : plan.monthlyPrice}
+                    ${plan.price}
                   </span>
-                  <span className="text-muted-foreground">/month</span>
+                  {plan.price > 0 && (
+                    <span className="text-muted-foreground">/report</span>
+                  )}
                 </div>
-                {isYearly && plan.yearlyPrice > 0 && (
-                  <p className="text-sm text-muted-foreground mt-1">
-                    ${plan.yearlyPrice} billed annually
-                  </p>
-                )}
                 <CardDescription className="mt-2">{plan.description}</CardDescription>
               </CardHeader>
 

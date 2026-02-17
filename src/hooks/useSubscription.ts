@@ -18,15 +18,13 @@ export const STRIPE_PRICES = {
   premium: {
     priceId: "price_1SuovTBo6mQ2JDIsAGAkAh4d",
     productId: "prod_Tsa5IDIygPmVmk",
-    monthlyPrice: 9.99,
-    yearlyPrice: 99.99,
+    price: 9.99,
     name: "Premium",
   },
   pro: {
     priceId: "price_1SxjQOBo6mQ2JDIsilRvUBSe",
     productId: "prod_TvabBuJcmLf5BM",
-    monthlyPrice: 19.99,
-    yearlyPrice: 199.99,
+    price: 19.99,
     name: "Pro",
   },
 } as const;
