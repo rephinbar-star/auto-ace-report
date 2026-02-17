@@ -4,9 +4,10 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ShieldAlert, Info, HelpCircle, Upload, Loader2 } from "lucide-react";
+import { ShieldAlert, Info, HelpCircle, Upload, Loader2, ShieldCheck, ShieldX } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { UVPRSResult } from "@/lib/uvprs-scoring";
+import { estimateWarrantyStatus } from "@/lib/warranty-data";
 
 const factorTooltips: Record<string, { meaning: string; advice: string }> = {
   title: {
@@ -45,6 +46,10 @@ const factorTooltips: Record<string, { meaning: string; advice: string }> = {
     meaning: "Uses NHTSA (the official federal database) as the primary source for all recalls issued for this year/make/model, then subtracts any recalls confirmed as resolved by your CarFax/AutoCheck report. This cross-reference gives the most accurate open recall count, though minor discrepancies can occur if CarFax hasn't recorded a recent repair.",
     advice: "Check NHTSA.gov with the VIN for the definitive list. All recall repairs are free at any authorized dealer — complete them before driving.",
   },
+  warranty: {
+    meaning: "Evaluates remaining factory or CPO warranty coverage. Vehicles still under warranty carry lower risk because major repairs are covered. Uses CarFax data when available, otherwise estimates from manufacturer terms.",
+    advice: "Verify warranty status with the dealer. CPO vehicles typically get extended coverage. Factor in warranty when negotiating — an in-warranty vehicle is worth more.",
+  },
 };
 
 interface RiskScoreBreakdownProps {
@@ -52,6 +57,12 @@ interface RiskScoreBreakdownProps {
   missingHistoryReport?: boolean;
   onUploadHistory?: (file: File) => void;
   isUploadingHistory?: boolean;
+  vehicleYear?: number;
+  vehicleMake?: string;
+  vehicleMileage?: number;
+  vehicleOwnerCount?: number | null;
+  warrantyMonthsRemaining?: number | null;
+  isCPO?: boolean | null;
 }
 
 const riskColors: Record<string, string> = {
@@ -73,7 +84,7 @@ function getFactorBarColor(score: number): string {
   return "[&>div]:bg-danger";
 }
 
-export function RiskScoreBreakdown({ result, missingHistoryReport, onUploadHistory, isUploadingHistory }: RiskScoreBreakdownProps) {
+export function RiskScoreBreakdown({ result, missingHistoryReport, onUploadHistory, isUploadingHistory, vehicleYear, vehicleMake, vehicleMileage, vehicleOwnerCount, warrantyMonthsRemaining, isCPO }: RiskScoreBreakdownProps) {
   const { totalScore, riskLevel, riskLabel, factors, knownFactorCount } = result;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -138,11 +149,11 @@ export function RiskScoreBreakdown({ result, missingHistoryReport, onUploadHisto
           </div>
         </div>
 
-        {knownFactorCount < 9 && (
+        {knownFactorCount < 10 && (
           <div className="flex items-start gap-2 rounded-md bg-muted p-3 text-xs text-muted-foreground">
             <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
             <span>
-              {9 - knownFactorCount} factor(s) had missing data. Weights were redistributed across {knownFactorCount} known factors.
+              {10 - knownFactorCount} factor(s) had missing data. Weights were redistributed across {knownFactorCount} known factors.
             </span>
           </div>
         )}
@@ -194,6 +205,75 @@ export function RiskScoreBreakdown({ result, missingHistoryReport, onUploadHisto
             })}
           </div>
         </TooltipProvider>
+
+        {/* Warranty Coverage Detail */}
+        {vehicleYear && vehicleMake && vehicleMileage != null && (() => {
+          const status = warrantyMonthsRemaining != null
+            ? {
+                bumperActive: warrantyMonthsRemaining > 0,
+                powertrainActive: warrantyMonthsRemaining > 0,
+                bumperMonthsRemaining: Math.min(warrantyMonthsRemaining, warrantyMonthsRemaining),
+                powertrainMonthsRemaining: warrantyMonthsRemaining,
+              }
+            : estimateWarrantyStatus(vehicleMake, vehicleYear, vehicleMileage, vehicleOwnerCount);
+
+          const coverages = [
+            {
+              label: "Bumper-to-Bumper",
+              active: status.bumperActive,
+              months: status.bumperMonthsRemaining,
+            },
+            {
+              label: "Powertrain",
+              active: status.powertrainActive,
+              months: status.powertrainMonthsRemaining,
+            },
+          ];
+
+          return (
+            <div className="rounded-lg border bg-card p-4 space-y-3">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                {status.bumperActive || status.powertrainActive ? (
+                  <ShieldCheck className="h-4 w-4 text-success" />
+                ) : (
+                  <ShieldX className="h-4 w-4 text-destructive" />
+                )}
+                <span>Factory Warranty Coverage</span>
+                {isCPO && (
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/30 text-primary">
+                    CPO
+                  </Badge>
+                )}
+                {warrantyMonthsRemaining == null && (
+                  <span className="text-[10px] text-muted-foreground italic ml-auto">estimated from manufacturer data</span>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {coverages.map((c) => (
+                  <div key={c.label} className="rounded-md border bg-muted/50 p-3 space-y-1.5">
+                    <p className="text-xs font-medium text-muted-foreground">{c.label}</p>
+                    {c.active ? (
+                      <>
+                        <p className="text-sm font-semibold text-success">Active</p>
+                        <p className="text-xs text-muted-foreground">
+                          ~{c.months >= 12
+                            ? `${Math.floor(c.months / 12)}yr ${c.months % 12}mo`
+                            : `${c.months}mo`
+                          } remaining
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-sm font-semibold text-destructive">Expired</p>
+                        <p className="text-xs text-muted-foreground">No coverage</p>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
       </CardContent>
     </Card>
   );
