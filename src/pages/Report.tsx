@@ -138,7 +138,7 @@ export default function ReportPage() {
   const { tier } = useSubscription();
   const isMobile = useIsMobile();
   const isPro = tier === "pro";
-  const isPaid = tier === "basic" || tier === "pro";
+  const isPaid = tier === "premium" || tier === "pro";
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
   const headerHistoryInputRef = useRef<HTMLInputElement>(null);

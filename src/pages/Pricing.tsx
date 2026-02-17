@@ -29,7 +29,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useSubscription, STRIPE_PRICES, SubscriptionTier } from "@/hooks/useSubscription";
 import { toast } from "sonner";
 
-type PlanKey = "free" | "basic" | "pro";
+type PlanKey = "free" | "premium" | "pro";
 
 interface Plan {
   key: PlanKey;
@@ -52,38 +52,37 @@ const plans: Plan[] = [
     yearlyPrice: 0,
     icon: User,
     features: [
-      { name: "5 vehicle analyses per month", included: true },
+      { name: "1 vehicle per report", included: true },
+      { name: "Up to 4 reports per month", included: true },
       { name: "Advanced price assessment", included: true },
       { name: "Deal rating with confidence score", included: true },
       { name: "5-year depreciation forecast", included: true },
       { name: "Expert AI opinion", included: true },
       { name: "History report parsing (Carfax, AutoCheck)", included: true },
       { name: "PDF report export", included: false },
-      { name: "Compare up to 3 vehicles", included: false },
+      { name: "Vehicle comparison", included: false },
       { name: "Dealership review", included: false },
-      { name: "Priority support", included: false },
     ],
     popular: false,
   },
   {
-    key: "basic",
-    name: "Standard",
+    key: "premium",
+    name: "Premium",
     description: "For occasional car shoppers",
-    monthlyPrice: STRIPE_PRICES.basic.monthlyPrice,
-    yearlyPrice: STRIPE_PRICES.basic.yearlyPrice,
+    monthlyPrice: STRIPE_PRICES.premium.monthlyPrice,
+    yearlyPrice: STRIPE_PRICES.premium.yearlyPrice,
     icon: Zap,
-    priceId: STRIPE_PRICES.basic.priceId,
+    priceId: STRIPE_PRICES.premium.priceId,
     features: [
-      { name: "Unlimited vehicle analyses", included: true },
+      { name: "Up to 8 reports per month", included: true },
+      { name: "Compare up to 2 vehicles", included: true },
+      { name: "PDF report export", included: true },
       { name: "Advanced price assessment", included: true },
       { name: "Deal rating with confidence score", included: true },
       { name: "5-year depreciation forecast", included: true },
       { name: "Expert AI opinion", included: true },
       { name: "History report parsing (Carfax, AutoCheck)", included: true },
-      { name: "PDF report export", included: true },
-      { name: "Compare up to 3 vehicles", included: true },
       { name: "Dealership review", included: false },
-      { name: "Priority support", included: false },
     ],
     popular: true,
   },
@@ -96,15 +95,15 @@ const plans: Plan[] = [
     icon: Crown,
     priceId: STRIPE_PRICES.pro.priceId,
     features: [
-      { name: "Unlimited vehicle analyses", included: true },
+      { name: "Up to 15 reports per month", included: true },
+      { name: "Compare up to 6 vehicles", included: true },
+      { name: "Dealership review", included: true },
+      { name: "PDF report export", included: true },
       { name: "Advanced price assessment", included: true },
       { name: "Deal rating with confidence score", included: true },
       { name: "5-year depreciation forecast", included: true },
       { name: "Expert AI opinion", included: true },
       { name: "History report parsing (Carfax, AutoCheck)", included: true },
-      { name: "PDF report export", included: true },
-      { name: "Compare up to 6 vehicles", included: true },
-      { name: "Dealership review", included: true },
       { name: "Priority support", included: true },
     ],
     popular: false,
@@ -201,7 +200,7 @@ export default function PricingPage() {
     if (tier === plan.key && subscribed) return "Manage Plan";
     
     if (subscribed) {
-      const tierOrder: PlanKey[] = ["free", "basic", "pro"];
+      const tierOrder: PlanKey[] = ["free", "premium", "pro"];
       const currentIndex = tierOrder.indexOf(tier);
       const planIndex = tierOrder.indexOf(plan.key);
       return planIndex > currentIndex ? "Upgrade" : "Downgrade";
