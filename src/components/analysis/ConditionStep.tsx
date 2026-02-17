@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
   FormControl,
@@ -32,6 +33,7 @@ const conditionSchema = z.object({
   sellerType: z.enum(["private", "dealer"]),
   sellerName: z.string().max(100).optional().or(z.literal("")),
   zipCode: z.string().regex(/^\d{5}$/, "Enter a valid 5-digit ZIP code").optional().or(z.literal("")),
+  isCPO: z.boolean().optional(),
 });
 
 interface ConditionStepProps {
@@ -54,6 +56,7 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
       sellerType: initialData?.sellerType || "dealer",
       sellerName: initialData?.sellerName ?? "",
       zipCode: initialData?.zipCode ?? "",
+      isCPO: initialData?.isCPO ?? false,
     },
   });
 
@@ -67,6 +70,7 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
         sellerType: initialData.sellerType || "dealer",
         sellerName: initialData.sellerName ?? "",
         zipCode: initialData.zipCode ?? "",
+        isCPO: initialData.isCPO ?? false,
       });
     }
   }, [initialData, form]);
@@ -84,6 +88,7 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
       zipCode: data.zipCode || undefined,
       listingUrl: initialData?.listingUrl,
       images: initialData?.images,
+      isCPO: data.isCPO || false,
     });
   };
 
@@ -226,6 +231,30 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
                       Improves pricing accuracy with region-specific market data.
                     </FormDescription>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* CPO Checkbox */}
+              <FormField
+                control={form.control}
+                name="isCPO"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel className="cursor-pointer">
+                        Certified Pre-Owned (CPO)
+                      </FormLabel>
+                      <FormDescription>
+                        Check if this vehicle is manufacturer-certified pre-owned. CPO vehicles have extended warranty coverage and reduce risk.
+                      </FormDescription>
+                    </div>
                   </FormItem>
                 )}
               />
