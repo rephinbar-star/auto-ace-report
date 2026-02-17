@@ -312,7 +312,7 @@ export function scoreWarrantyStatus(
       score = 40;
       description = `${warrantyMonthsRemaining} months of warranty remaining — expiring soon`;
     } else {
-      score = 95;
+      score = 100;
       description = "Warranty expired";
     }
   } else {
@@ -327,7 +327,7 @@ export function scoreWarrantyStatus(
       score = 45;
       description = `Estimated B2B expired, powertrain active (~${status.powertrainMonthsRemaining}mo remaining)`;
     } else {
-      score = 90;
+      score = 100;
       description = "Estimated fully out of warranty";
     }
   }
