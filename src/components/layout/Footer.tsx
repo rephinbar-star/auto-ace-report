@@ -6,6 +6,7 @@ const footerLinks = {
     { name: "How It Works", href: "/how-it-works" },
     { name: "Pricing", href: "/pricing" },
     { name: "Start Analysis", href: "/analyze" },
+    { name: "Changelog & Roadmap", href: "/roadmap" },
   ],
   support: [
     { name: "Help Center", href: "/help" },
