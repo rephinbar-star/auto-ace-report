@@ -1452,7 +1452,7 @@ export default function ReportPage() {
                         </Label>
                       </div>
                     </div>
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0" style={{ maxWidth: 'calc(100vw - 2rem)' }}>
                     <Table>
                       <TableHeader>
                         <TableRow>
