@@ -302,6 +302,7 @@ export default function ReportPage() {
               condition: report.condition,
               sellerType: report.seller_type,
               images: report.listing_images,
+              isCPO: report.is_cpo || false,
             },
             financing: {
               type: report.financing_type,
@@ -322,6 +323,8 @@ export default function ReportPage() {
               majorServicesDue: report.major_services_due,
               majorServicesDone: report.major_services_done,
               chronicRepairSystems: report.chronic_repair_systems,
+              warrantyMonthsRemaining: report.warranty_months_remaining ?? null,
+              isCPO: report.is_cpo || false,
             },
           });
           
