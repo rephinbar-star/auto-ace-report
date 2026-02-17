@@ -1474,21 +1474,21 @@ export default function ReportPage() {
                           return (
                             <TableRow key={row.year}>
                               <TableCell className="font-medium text-xs whitespace-nowrap px-1.5 md:px-4">Yr {row.year}</TableCell>
-                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${row.privateValue.toLocaleString()}</TableCell>
-                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${row.tradeInValue.toLocaleString()}</TableCell>
-                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${row.loanBalance.toLocaleString()}</TableCell>
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${Math.round(row.privateValue).toLocaleString()}</TableCell>
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${Math.round(row.tradeInValue).toLocaleString()}</TableCell>
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${Math.round(row.loanBalance).toLocaleString()}</TableCell>
                               <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 text-danger">
-                                ${row.repairCosts.toLocaleString()}
+                                ${Math.round(row.repairCosts).toLocaleString()}
                               </TableCell>
                               <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 text-muted-foreground">
-                                ${(row.maintenanceCosts || 0).toLocaleString()}
+                                ${Math.round(row.maintenanceCosts || 0).toLocaleString()}
                               </TableCell>
                               <TableCell className={cn(
                                 "text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-semibold",
                                 netEquity >= 0 ? "text-success" : "text-danger"
                               )}>
-                                {netEquity >= 0 ? "+" : ""}
-                                ${netEquity.toLocaleString()}
+                                {netEquity >= 0 ? "+" : "-"}
+                                ${Math.abs(Math.round(netEquity)).toLocaleString()}
                               </TableCell>
                             </TableRow>
                           );
