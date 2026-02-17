@@ -1307,7 +1307,7 @@ export default function ReportPage() {
                                 </div>
                                 {/* Mobile: simple flex row */}
                                 <div className="flex justify-between mt-3 md:hidden">
-                                  {markers.filter(m => !m.isAsking).map((m) => (
+                                  {[...markers.filter(m => !m.isAsking)].sort((a, b) => a.value - b.value).map((m) => (
                                     <div key={m.label} className="text-center">
                                       <p className={cn("text-[10px] leading-tight", m.isFairMarket ? "font-medium text-primary" : "text-muted-foreground")}>
                                         {m.label === "Fair Market Value" ? "FMV" : m.label === "Private Sale" ? "Priv. Sale" : m.label === "Dealer Retail" ? "Dealer" : m.label}
