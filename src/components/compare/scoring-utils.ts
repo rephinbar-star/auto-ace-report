@@ -1,6 +1,7 @@
 import type { Json } from "@/integrations/supabase/types";
 import type { Tables } from "@/integrations/supabase/types";
 import { calculateTCO, type TCOResult } from "@/lib/tco-calculations";
+import { estimateWarrantyStatus } from "@/lib/warranty-data";
 
 type VehicleReport = Tables<"vehicle_reports">;
 
@@ -240,34 +241,75 @@ export function calculateEquityScore(depTable: Json | null): ScoreBreakdownItem 
 }
 
 /**
- * Calculate vehicle age & warranty score (12 points max)
- * Uses continuous scoring formula for year-by-year precision
+ * Calculate vehicle age score (6 points max)
+ * Pure age scoring without warranty (warranty is now a separate factor)
  */
 export function calculateAgeScore(year: number, healthScore: number | null): ScoreBreakdownItem {
   const currentYear = new Date().getFullYear();
   const age = currentYear - year;
   
-  // Continuous scoring: starts at 12, decreases ~1 point per year, minimum 2
-  const baseScore = Math.max(2, Math.round(12 - age));
+  // Continuous scoring: starts at 6, decreases ~0.6 points per year, minimum 1
+  const baseScore = Math.max(1, Math.round(6 - age * 0.6));
   
-  // Health bonus: >= 80 gets +1, >= 90 gets +2
+  // Health bonus: >= 90 gets +1
   let healthBonus = 0;
-  if (healthScore && healthScore >= 90) healthBonus = 2;
-  else if (healthScore && healthScore >= 80) healthBonus = 1;
+  if (healthScore && healthScore >= 90) healthBonus = 1;
   
-  const finalScore = Math.min(baseScore + healthBonus, 12);
+  const finalScore = Math.min(baseScore + healthBonus, 6);
   
   let description = `${age} year${age !== 1 ? "s" : ""} old`;
-  if (age <= 3) description += " (likely under warranty)";
-  else if (age <= 5) description += " (warranty may be expiring)";
   if (healthBonus > 0) description += ` • Well-maintained (+${healthBonus})`;
   
   return {
-    category: "Age & Warranty",
+    category: "Vehicle Age",
     score: finalScore,
-    maxScore: 12,
+    maxScore: 6,
     description,
   };
+}
+
+/**
+ * Calculate warranty score (6 points max)
+ * Uses actual warranty data when available, falls back to manufacturer estimate
+ */
+export function calculateWarrantyScore(
+  year: number,
+  make: string,
+  mileage: number,
+  warrantyMonthsRemaining: number | null,
+  isCPO: boolean | null,
+  ownerCount: number | null
+): ScoreBreakdownItem {
+  // CPO bonus
+  if (isCPO) {
+    return {
+      category: "Warranty",
+      score: 6,
+      maxScore: 6,
+      description: "Certified Pre-Owned — extended warranty coverage",
+    };
+  }
+
+  // If we have actual warranty months from CarFax
+  if (warrantyMonthsRemaining != null) {
+    if (warrantyMonthsRemaining >= 24) {
+      return { category: "Warranty", score: 6, maxScore: 6, description: `${warrantyMonthsRemaining} months remaining` };
+    } else if (warrantyMonthsRemaining >= 12) {
+      return { category: "Warranty", score: 4, maxScore: 6, description: `${warrantyMonthsRemaining} months remaining` };
+    } else if (warrantyMonthsRemaining > 0) {
+      return { category: "Warranty", score: 2, maxScore: 6, description: `${warrantyMonthsRemaining} months remaining — expiring soon` };
+    }
+    return { category: "Warranty", score: 1, maxScore: 6, description: "Warranty expired" };
+  }
+
+  // Fallback: estimate from manufacturer data
+  const estimate = estimateWarrantyStatus(make, year, mileage, ownerCount ?? 1);
+  if (estimate.bumperActive) {
+    return { category: "Warranty", score: 5, maxScore: 6, description: `Est. under ${make} bumper-to-bumper warranty` };
+  } else if (estimate.powertrainActive) {
+    return { category: "Warranty", score: 3, maxScore: 6, description: `Est. powertrain warranty only` };
+  }
+  return { category: "Warranty", score: 1, maxScore: 6, description: "Est. warranty expired" };
 }
 
 /**
@@ -452,6 +494,7 @@ export function calculateVehicleScore(
     calculateAccidentScore(vehicle.accident_count),
     calculateEquityScore(vehicle.depreciation_table),
     calculateAgeScore(vehicle.year, vehicle.health_score),
+    calculateWarrantyScore(vehicle.year, vehicle.make, vehicle.mileage, vehicle.warranty_months_remaining, vehicle.is_cpo, vehicle.owner_count),
     calculateReliabilityScore(vehicle.make, vehicle.reliability_concerns),
     calculateMileageScore(vehicle.mileage, vehicle.year),
   ];
