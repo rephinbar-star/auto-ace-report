@@ -48,7 +48,7 @@ export function Header() {
           <div className="flex items-end gap-0">
             <span className="text-xl font-bold">CarWise</span>
             <Lightbulb className="h-5 w-5 text-yellow-400 fill-yellow-400 -ml-0.5 mb-0.5 animate-glow-pulse" />
-            <span className="ml-2 rounded-full bg-blue-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-500 ring-1 ring-blue-500/30 mb-0.5 animate-[pulse_3s_ease-in-out_infinite]">Beta</span>
+            <a href="https://github.com/rephinbar-star/auto-ace-report" target="_blank" rel="noopener noreferrer" className="ml-2 rounded-full bg-blue-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-blue-500 ring-1 ring-blue-500/30 mb-0.5 animate-[pulse_3s_ease-in-out_infinite] hover:bg-blue-500/25 transition-colors" onClick={(e) => e.stopPropagation()}>Beta</a>
           </div>
         </Link>
 
