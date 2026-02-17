@@ -168,8 +168,7 @@ export function CompareVehicleCard({ report, onRemove, isBestBuy, rank }: Compar
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <DollarSign className="h-3 w-3" />
-                {report.seller_type === "dealer" ? "Dealer Retail" : "Private Sale"}
+                <DollarSign className="h-3 w-3" /> Fair Market Value
               </p>
               <p className="font-semibold">
                 {report.seller_type === "dealer" && report.fair_market_dealer
@@ -189,19 +188,19 @@ export function CompareVehicleCard({ report, onRemove, isBestBuy, rank }: Compar
           </div>
 
           {/* Price Difference */}
-          {report.price_difference && (
+          {report.price_difference != null && (
             <div className={cn(
-              "p-3 rounded-lg mb-4 flex items-center justify-between",
+              "p-3 rounded-lg mb-4 text-sm",
               Number(report.price_difference) > 0 
-                ? "bg-red-500/10 text-red-600" 
-                : "bg-green-500/10 text-green-600"
+                ? "bg-red-500/10" 
+                : "bg-green-500/10"
             )}>
-              <span className="text-sm font-medium">
-                vs {report.seller_type === "dealer" ? "Dealer Retail" : "Market"}
-              </span>
-              <span className="font-bold">
-                {Number(report.price_difference) > 0 ? "+" : ""}
-                ${Number(report.price_difference).toLocaleString()}
+              <span className="text-muted-foreground">Asking price is </span>
+              <span className={cn(
+                "font-bold",
+                Number(report.price_difference) > 0 ? "text-red-600" : "text-green-600"
+              )}>
+                {Number(report.price_difference) > 0 ? "higher" : "less"} than Fair Market Value by ${Math.abs(Number(report.price_difference)).toLocaleString()}
               </span>
             </div>
           )}
