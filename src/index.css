@@ -131,10 +131,6 @@
     @apply border-border;
   }
 
-  html {
-    overflow-x: clip;
-  }
-
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
