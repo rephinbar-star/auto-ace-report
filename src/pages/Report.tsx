@@ -1380,11 +1380,11 @@ export default function ReportPage() {
               />
 
               {/* Depreciation Chart */}
-              <Card>
+              <Card className="overflow-hidden">
                 <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <TrendingDown className="h-5 w-5 text-primary" />
-                    5-Year Depreciation & Equity
+                <CardTitle className="flex items-center gap-2 flex-wrap">
+                    <TrendingDown className="h-5 w-5 text-primary shrink-0" />
+                    <span>5-Year Depreciation & Equity</span>
                     {pricingSources.length > 0 ? (
                       <Badge variant="outline" className="ml-auto gap-1 border-success/30 bg-success/10 text-success text-xs font-medium">
                         <BadgeCheck className="h-3 w-3" />
@@ -1399,7 +1399,7 @@ export default function ReportPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-[300px] w-full">
+                  <div className="h-[300px] w-full overflow-hidden">
                     <ResponsiveContainer width="100%" height={300}>
                       <LineChart data={chartData}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
@@ -1456,13 +1456,13 @@ export default function ReportPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="text-xs whitespace-nowrap">Year</TableHead>
-                          <TableHead className="text-right text-xs whitespace-nowrap">Private Val.</TableHead>
-                          <TableHead className="text-right text-xs whitespace-nowrap">Trade-In</TableHead>
-                          <TableHead className="text-right text-xs whitespace-nowrap">Loan Bal.</TableHead>
-                          <TableHead className="text-right text-xs whitespace-nowrap">Repairs</TableHead>
-                          <TableHead className="text-right text-xs whitespace-nowrap">Maint.</TableHead>
-                          <TableHead className="text-right text-xs whitespace-nowrap">Net Equity</TableHead>
+                          <TableHead className="text-xs whitespace-nowrap px-1.5 md:px-4">Year</TableHead>
+                          <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Priv.</TableHead>
+                          <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Trade</TableHead>
+                          <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Loan</TableHead>
+                          <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Repair</TableHead>
+                          <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Maint.</TableHead>
+                          <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Equity</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1473,18 +1473,18 @@ export default function ReportPage() {
                             : row.tradeInValue - row.loanBalance - totalCosts;
                           return (
                             <TableRow key={row.year}>
-                              <TableCell className="font-medium text-xs whitespace-nowrap">Year {row.year}</TableCell>
-                              <TableCell className="text-right text-xs whitespace-nowrap">${row.privateValue.toLocaleString()}</TableCell>
-                              <TableCell className="text-right text-xs whitespace-nowrap">${row.tradeInValue.toLocaleString()}</TableCell>
-                              <TableCell className="text-right text-xs whitespace-nowrap">${row.loanBalance.toLocaleString()}</TableCell>
-                              <TableCell className="text-right text-xs whitespace-nowrap text-danger">
+                              <TableCell className="font-medium text-xs whitespace-nowrap px-1.5 md:px-4">Yr {row.year}</TableCell>
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${row.privateValue.toLocaleString()}</TableCell>
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${row.tradeInValue.toLocaleString()}</TableCell>
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${row.loanBalance.toLocaleString()}</TableCell>
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 text-danger">
                                 ${row.repairCosts.toLocaleString()}
                               </TableCell>
-                              <TableCell className="text-right text-xs whitespace-nowrap text-muted-foreground">
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 text-muted-foreground">
                                 ${(row.maintenanceCosts || 0).toLocaleString()}
                               </TableCell>
                               <TableCell className={cn(
-                                "text-right text-xs whitespace-nowrap font-semibold",
+                                "text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-semibold",
                                 netEquity >= 0 ? "text-success" : "text-danger"
                               )}>
                                 {netEquity >= 0 ? "+" : ""}
