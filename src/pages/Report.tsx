@@ -788,7 +788,7 @@ export default function ReportPage() {
     <div className="flex min-h-screen flex-col">
       <Header />
       
-      <main className="flex-1 bg-gradient-hero py-8">
+      <main className="flex-1 bg-gradient-hero py-8 overflow-x-hidden">
         <div className="container mx-auto max-w-6xl px-4">
           {/* Back Navigation */}
           {backToComparisonUrl && (
