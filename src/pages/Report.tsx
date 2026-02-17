@@ -1675,6 +1675,12 @@ export default function ReportPage() {
                   result={uvprsResult} 
                   missingHistoryReport={!vehicleData?.history?.serviceRecords}
                   isUploadingHistory={isUploadingHistory}
+                  vehicleYear={vehicleData?.vehicle?.year}
+                  vehicleMake={vehicleData?.vehicle?.make}
+                  vehicleMileage={vehicleData?.condition?.mileage}
+                  vehicleOwnerCount={vehicleData?.history?.ownerCount}
+                  warrantyMonthsRemaining={vehicleData?.history?.warrantyMonthsRemaining}
+                  isCPO={vehicleData?.history?.isCPO}
                   onUploadHistory={async (file: File) => {
                     setIsUploadingHistory(true);
                     try {
