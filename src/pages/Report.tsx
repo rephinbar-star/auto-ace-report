@@ -1241,82 +1241,118 @@ export default function ReportPage() {
                             const fmvPct = toPct(fmvVal);
 
                             return (
-                              <div className="relative pt-14 pb-14 mt-2 overflow-hidden">
-                                {/* Asking price floating label */}
-                                {(() => {
-                                  const askPct = toPct(condition.askingPrice);
-                                  const clampStyle = askPct > 80
-                                    ? { left: `${askPct}%`, transform: "translateX(-80%)" }
-                                    : askPct < 20
-                                      ? { left: `${askPct}%`, transform: "translateX(-20%)" }
-                                      : { left: `${askPct}%`, transform: "translateX(-50%)" };
-                                  return (
-                                    <div className="absolute top-0" style={clampStyle}>
-                                      <p className="text-[10px] text-muted-foreground text-center mb-0.5">Asking Price</p>
-                                      <div className="rounded-lg border bg-card px-3 py-1.5 text-sm font-bold shadow-sm whitespace-nowrap">
-                                        ${condition.askingPrice.toLocaleString()}
-                                      </div>
-                                      <div className="mx-auto mt-1 h-3 w-px bg-border" />
-                                    </div>
-                                  );
-                                })()}
-
-                                {/* Gradient bar - deep green on left (trade-in), green center (FMV), yellow/red right (overpriced) */}
-                                <div className="relative h-2.5 w-full rounded-full overflow-hidden">
-                                  <div className="absolute inset-0 rounded-full" style={{
-                                    background: `linear-gradient(to right, hsl(145 60% 36%) 0%, hsl(var(--success)) ${fmvPct * 0.5}%, hsl(var(--success)) ${fmvPct}%, hsl(var(--warning)) ${fmvPct + (100 - fmvPct) * 0.6}%, hsl(var(--danger)) 100%)`
-                                  }} />
-                                </div>
-
-                                {/* Dot indicator for asking price */}
-                                {(() => {
-                                  const askPct = toPct(condition.askingPrice);
-                                  return (
-                                    <div
-                                      className="absolute -translate-x-1/2"
-                                      style={{ left: `${askPct}%`, top: "3.85rem" }}
-                                    >
-                                      <div className="h-5 w-5 rounded-full border-[3px] border-primary bg-background shadow-md" />
-                                    </div>
-                                  );
-                                })()}
-
-                                {/* Value markers below bar - positioned on desktop, listed on mobile */}
-                                {/* Desktop: absolute positioned markers */}
-                                <div className="relative mt-5 hidden md:block">
-                                  {markers.filter(m => !m.isAsking).map((m) => {
-                                    const mPct = toPct(m.value);
-                                    const markerStyle = mPct > 85
-                                      ? { left: `${mPct}%`, transform: "translateX(-90%)" }
-                                      : mPct < 15
-                                        ? { left: `${mPct}%`, transform: "translateX(-10%)" }
-                                        : { left: `${mPct}%`, transform: "translateX(-50%)" };
-                                    const textAlign = mPct > 85 ? "text-right" : mPct < 15 ? "text-left" : "text-center";
+                              <>
+                                {/* Desktop: horizontal gradient bar */}
+                                <div className="relative pt-14 pb-14 mt-2 overflow-hidden hidden md:block">
+                                  {/* Asking price floating label */}
+                                  {(() => {
+                                    const askPct = toPct(condition.askingPrice);
+                                    const clampStyle = askPct > 80
+                                      ? { left: `${askPct}%`, transform: "translateX(-80%)" }
+                                      : askPct < 20
+                                        ? { left: `${askPct}%`, transform: "translateX(-20%)" }
+                                        : { left: `${askPct}%`, transform: "translateX(-50%)" };
                                     return (
-                                      <div
-                                        key={m.label}
-                                        className={cn("absolute", textAlign)}
-                                        style={markerStyle}
-                                      >
-                                        <div className={cn("mb-0.5 h-2.5 w-px", m.isFairMarket ? "bg-primary" : "bg-muted-foreground/40", mPct > 85 ? "ml-auto" : mPct < 15 ? "" : "mx-auto")} />
-                                        <p className={cn("text-[10px] leading-tight whitespace-nowrap", m.isFairMarket ? "font-medium text-primary" : "text-muted-foreground")}>{m.label}</p>
-                                        <p className={cn("text-xs font-semibold whitespace-nowrap", m.isFairMarket && "text-primary")}>${m.value.toLocaleString()}</p>
+                                      <div className="absolute top-0" style={clampStyle}>
+                                        <p className="text-[10px] text-muted-foreground text-center mb-0.5">Asking Price</p>
+                                        <div className="rounded-lg border bg-card px-3 py-1.5 text-sm font-bold shadow-sm whitespace-nowrap">
+                                          ${condition.askingPrice.toLocaleString()}
+                                        </div>
+                                        <div className="mx-auto mt-1 h-3 w-px bg-border" />
                                       </div>
                                     );
-                                  })}
+                                  })()}
+
+                                  {/* Gradient bar */}
+                                  <div className="relative h-2.5 w-full rounded-full overflow-hidden">
+                                    <div className="absolute inset-0 rounded-full" style={{
+                                      background: `linear-gradient(to right, hsl(145 60% 36%) 0%, hsl(var(--success)) ${fmvPct * 0.5}%, hsl(var(--success)) ${fmvPct}%, hsl(var(--warning)) ${fmvPct + (100 - fmvPct) * 0.6}%, hsl(var(--danger)) 100%)`
+                                    }} />
+                                  </div>
+
+                                  {/* Dot indicator */}
+                                  {(() => {
+                                    const askPct = toPct(condition.askingPrice);
+                                    return (
+                                      <div
+                                        className="absolute -translate-x-1/2"
+                                        style={{ left: `${askPct}%`, top: "3.85rem" }}
+                                      >
+                                        <div className="h-5 w-5 rounded-full border-[3px] border-primary bg-background shadow-md" />
+                                      </div>
+                                    );
+                                  })()}
+
+                                  {/* Desktop markers */}
+                                  <div className="relative mt-5">
+                                    {markers.filter(m => !m.isAsking).map((m) => {
+                                      const mPct = toPct(m.value);
+                                      const markerStyle = mPct > 85
+                                        ? { left: `${mPct}%`, transform: "translateX(-90%)" }
+                                        : mPct < 15
+                                          ? { left: `${mPct}%`, transform: "translateX(-10%)" }
+                                          : { left: `${mPct}%`, transform: "translateX(-50%)" };
+                                      const textAlign = mPct > 85 ? "text-right" : mPct < 15 ? "text-left" : "text-center";
+                                      return (
+                                        <div
+                                          key={m.label}
+                                          className={cn("absolute", textAlign)}
+                                          style={markerStyle}
+                                        >
+                                          <div className={cn("mb-0.5 h-2.5 w-px", m.isFairMarket ? "bg-primary" : "bg-muted-foreground/40", mPct > 85 ? "ml-auto" : mPct < 15 ? "" : "mx-auto")} />
+                                          <p className={cn("text-[10px] leading-tight whitespace-nowrap", m.isFairMarket ? "font-medium text-primary" : "text-muted-foreground")}>{m.label}</p>
+                                          <p className={cn("text-xs font-semibold whitespace-nowrap", m.isFairMarket && "text-primary")}>${m.value.toLocaleString()}</p>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
                                 </div>
-                                {/* Mobile: simple flex row */}
-                                <div className="flex justify-between mt-3 md:hidden">
-                                  {[...markers.filter(m => !m.isAsking)].sort((a, b) => a.value - b.value).map((m) => (
-                                    <div key={m.label} className="text-center">
-                                      <p className={cn("text-[10px] leading-tight", m.isFairMarket ? "font-medium text-primary" : "text-muted-foreground")}>
-                                        {m.label === "Fair Market Value" ? "FMV" : m.label === "Private Sale" ? "Priv. Sale" : m.label === "Dealer Retail" ? "Dealer" : m.label}
-                                      </p>
-                                      <p className={cn("text-xs font-semibold", m.isFairMarket && "text-primary")}>${Math.round(m.value).toLocaleString()}</p>
-                                    </div>
-                                  ))}
+
+                                {/* Mobile: vertical bar chart */}
+                                <div className="mt-4 space-y-2.5 md:hidden">
+                                  {(() => {
+                                    const allMarkers = [...markers].sort((a, b) => a.value - b.value);
+                                    const maxVal = Math.max(...allMarkers.map(m => m.value));
+                                    const barColor = (m: typeof allMarkers[0]) => {
+                                      if (m.isAsking) return "bg-primary";
+                                      if (m.isFairMarket) return "bg-success";
+                                      return "bg-muted-foreground/30";
+                                    };
+                                    const shortLabel = (label: string) =>
+                                      label === "Fair Market Value" ? "Fair Market Value"
+                                      : label === "Private Sale" ? "Private Sale"
+                                      : label === "Dealer Retail" ? "Dealer Retail"
+                                      : label;
+                                    return allMarkers.map((m) => {
+                                      const widthPct = Math.max(8, (m.value / maxVal) * 100);
+                                      return (
+                                        <div key={m.label}>
+                                          <div className="flex items-center justify-between mb-0.5">
+                                            <span className={cn(
+                                              "text-xs font-medium",
+                                              m.isAsking ? "text-foreground" : m.isFairMarket ? "text-primary" : "text-muted-foreground"
+                                            )}>
+                                              {shortLabel(m.label)}
+                                            </span>
+                                            <span className={cn(
+                                              "text-xs font-semibold",
+                                              m.isAsking ? "text-foreground" : m.isFairMarket ? "text-primary" : "text-muted-foreground"
+                                            )}>
+                                              ${Math.round(m.value).toLocaleString()}
+                                            </span>
+                                          </div>
+                                          <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                                            <div
+                                              className={cn("h-full rounded-full transition-all", barColor(m))}
+                                              style={{ width: `${widthPct}%` }}
+                                            />
+                                          </div>
+                                        </div>
+                                      );
+                                    });
+                                  })()}
                                 </div>
-                              </div>
+                              </>
                             );
                           })()}
 
