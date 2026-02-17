@@ -1202,9 +1202,8 @@ export default function ReportPage() {
                               This vehicle is a{" "}
                               <span className={cfg.color}>{cfg.label}</span>
                             </h3>
-                            <p className="mt-1 text-sm text-muted-foreground">{contextMsg}</p>
                             <p className="mt-1 text-sm text-muted-foreground">
-                              Asking price is{" "}
+                              {contextMsg} Asking price is{" "}
                               <span className={cn("font-semibold", priceAssessment.priceDifference > 0 ? "text-danger" : "text-success")}>
                                 {priceAssessment.priceDifference > 0 ? "higher" : "lower"} by ${Math.abs(priceAssessment.priceDifference).toLocaleString()}
                               </span>
