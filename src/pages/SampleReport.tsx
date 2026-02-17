@@ -95,73 +95,73 @@ const statCardVariants: Variants = {
 
 // Sample data for demonstration
 const sampleVehicle = {
-  year: 2021,
-  make: "Honda",
-  model: "Accord",
-  trim: "Sport 2.0T",
-  mileage: 42500,
-  askingPrice: 26995,
-  condition: "good",
-  dealerName: "Premier Honda of San Jose",
+  year: 2024,
+  make: "Toyota",
+  model: "RAV4",
+  trim: "XLE Premium AWD",
+  mileage: 18200,
+  askingPrice: 34500,
+  condition: "excellent",
+  dealerName: "Bay Area Toyota",
   sellerType: "dealer",
 };
 
 const sampleAnalysis = {
   priceAssessment: {
-    fairMarketPrivate: 25800,
-    fairMarketTradeIn: 23200,
-    dealRating: "fair" as const,
-    priceDifference: 1195,
-    percentDifference: 4.6,
+    fairMarketPrivate: 33200,
+    fairMarketTradeIn: 30800,
+    dealRating: "good" as const,
+    priceDifference: 1300,
+    percentDifference: 3.9,
   },
   depreciationTable: [
-    { year: 1, privateValue: 24500, tradeInValue: 22100, loanBalance: 22000, repairCosts: 0, maintenanceCosts: 200, netEquityPrivate: 2300, netEquityTradeIn: -100 },
-    { year: 2, privateValue: 22800, tradeInValue: 20500, loanBalance: 17500, repairCosts: 0, maintenanceCosts: 250, netEquityPrivate: 4850, netEquityTradeIn: 2550 },
-    { year: 3, privateValue: 20900, tradeInValue: 18800, loanBalance: 12800, repairCosts: 300, maintenanceCosts: 300, netEquityPrivate: 7300, netEquityTradeIn: 5200 },
-    { year: 4, privateValue: 18700, tradeInValue: 16800, loanBalance: 7900, repairCosts: 600, maintenanceCosts: 350, netEquityPrivate: 9600, netEquityTradeIn: 7700 },
-    { year: 5, privateValue: 16200, tradeInValue: 14600, loanBalance: 2800, repairCosts: 1200, maintenanceCosts: 400, netEquityPrivate: 11600, netEquityTradeIn: 10000 },
+    { year: 1, privateValue: 31500, tradeInValue: 29200, loanBalance: 28000, repairCosts: 0, maintenanceCosts: 180, netEquityPrivate: 3320, netEquityTradeIn: 1020 },
+    { year: 2, privateValue: 29200, tradeInValue: 27000, loanBalance: 22400, repairCosts: 0, maintenanceCosts: 220, netEquityPrivate: 6580, netEquityTradeIn: 4380 },
+    { year: 3, privateValue: 26800, tradeInValue: 24800, loanBalance: 16500, repairCosts: 250, maintenanceCosts: 280, netEquityPrivate: 9770, netEquityTradeIn: 7770 },
+    { year: 4, privateValue: 24200, tradeInValue: 22400, loanBalance: 10300, repairCosts: 500, maintenanceCosts: 320, netEquityPrivate: 12880, netEquityTradeIn: 11080 },
+    { year: 5, privateValue: 21500, tradeInValue: 19900, loanBalance: 3800, repairCosts: 800, maintenanceCosts: 380, netEquityPrivate: 15720, netEquityTradeIn: 14120 },
   ],
   riskAssessment: {
     level: "low" as const,
-    depreciationRisk: "The Honda Accord historically holds its value well, with an average depreciation of 12-15% annually. This specific trim with the 2.0T engine tends to retain value slightly better than the base models due to enthusiast demand.",
+    depreciationRisk: "The Toyota RAV4 is one of the strongest value holders in the compact SUV segment, with an average depreciation of 10-13% annually. The XLE Premium trim with AWD retains value particularly well due to strong year-round demand.",
     reliabilityConcerns: [
-      { concern: "2.0T engines may experience turbo wear after 80k miles", costLow: 1200, costHigh: 2500 },
-      { concern: "Infotainment system occasional glitches reported", costLow: 300, costHigh: 800 },
+      { concern: "Infotainment system may need software updates periodically", costLow: 0, costHigh: 150 },
+      { concern: "AWD system fluid change recommended at 30k miles", costLow: 120, costHigh: 200 },
     ],
-    valueProposition: "This Accord represents solid value with its combination of reliability, fuel efficiency, and sporty performance. The asking price is slightly above market, but the clean history and single ownership justify a modest premium.",
-    fairOfferPrice: 25500,
-    expertOpinion: "This 2021 Honda Accord Sport 2.0T is a compelling option for buyers seeking a balance of reliability and performance. With only 42,500 miles and a clean title, this vehicle is well within the expected mileage range for its age.\n\nThe 2.0-liter turbocharged engine paired with the 10-speed automatic provides spirited acceleration while maintaining respectable fuel economy. Honda's reputation for longevity means you can expect many trouble-free miles ahead.\n\nWhile the asking price of $26,995 is about $1,195 above the fair market value, the single-owner history and documented service records add peace of mind. I recommend negotiating toward $25,500-$26,000 for a fair deal.\n\nOverall verdict: A smart, practical choice with low ownership risk.",
-    repairAnalysis: "**Anticipated Repairs Based on Mileage & History**\n\nBased on the vehicle's current 42,500 miles and CarFax/AutoCheck service records showing regular maintenance at Honda dealerships, here's what to expect:\n\n**Completed Maintenance (Per CarFax/AutoCheck):**\n• Regular oil changes every 5,000 miles ✓\n• Brake fluid flush at 30,000 miles ✓\n• Cabin/engine air filters replaced at 35,000 miles ✓\n• Tire rotation every 7,500 miles ✓\n\n**Upcoming Service (45k-60k miles):**\n• Brake pad replacement (~$300-450) - Front pads typically need replacement around 50,000 miles\n• Transmission fluid change (~$150-200) - Recommended at 60,000 miles for 2.0T models\n• Spark plug inspection (~$50-100)\n\n**Mid-Term Repairs (60k-100k miles):**\n• Rear brake pads & rotors (~$400-550)\n• Drive belt replacement (~$150-250)\n• Battery replacement (~$150-200) - Typically lasts 4-5 years\n• Suspension components inspection - May need bushings/struts (~$500-800)\n\n**Long-Term Considerations (100k+ miles):**\n• Turbo system maintenance (~$200-400 inspection)\n• Timing chain inspection (2.0T uses chain, not belt - good for longevity)\n• Water pump replacement (~$400-600)\n• AC compressor service (~$300-500)\n\n**Total Estimated 5-Year Repair Costs: $1,800-$2,500**\n\nThis is below average for vehicles in this class, reflecting Honda's reliability reputation. The documented service history reduces risk of unexpected failures.",
+    valueProposition: "This RAV4 XLE Premium represents excellent value with its combination of Toyota reliability, low mileage, and comprehensive safety features. The asking price is slightly above market, but the near-new condition and low mileage justify the premium.",
+    fairOfferPrice: 33500,
+    expertOpinion: "This 2024 Toyota RAV4 XLE Premium AWD is an outstanding choice for buyers seeking a reliable, practical, and well-equipped compact SUV. With only 18,200 miles, this vehicle is barely broken in.\n\nThe 2.5-liter Dynamic Force engine delivers a smooth 203 hp while achieving impressive fuel economy for an AWD SUV. Toyota's Safety Sense 3.0 suite provides comprehensive driver assistance features that are standard on this trim.\n\nThe XLE Premium adds SofTex heated seats, an 8-inch touchscreen with wireless Apple CarPlay/Android Auto, a power liftgate, and dual-zone climate control — features that significantly enhance daily usability.\n\nAt $34,500, the asking price is approximately $1,300 above fair market value. Given the low mileage and excellent condition, I recommend negotiating toward $33,500 for a fair deal.\n\nOverall verdict: A top-tier choice with minimal ownership risk and strong long-term value retention.",
+    repairAnalysis: "**Anticipated Repairs Based on Mileage & History**\n\nBased on the vehicle's current 18,200 miles and service records showing regular maintenance at Toyota dealerships, here's what to expect:\n\n**Completed Maintenance (Per Service Records):**\n• Regular oil changes every 5,000 miles ✓\n• Tire rotation every 5,000 miles ✓\n• Multi-point inspection at 15,000 miles ✓\n\n**Upcoming Service (20k-30k miles):**\n• Cabin air filter replacement (~$40-60)\n• Engine air filter replacement (~$30-50)\n• Brake inspection (~$0-50)\n\n**Mid-Term Repairs (30k-60k miles):**\n• AWD fluid change (~$120-200)\n• Brake pad replacement (~$250-400)\n• Battery replacement (~$150-200) - Typically lasts 4-5 years\n• Spark plug replacement (~$120-180)\n\n**Long-Term Considerations (60k-100k miles):**\n• Transmission fluid change (~$150-250)\n• Coolant flush (~$100-150)\n• Suspension component inspection (~$200-400)\n• Drive belt replacement (~$120-200)\n\n**Total Estimated 5-Year Repair Costs: $1,500-$2,200**\n\nThis is well below average for vehicles in this class, reflecting Toyota's exceptional reliability. The low mileage starting point means most major services are still far out.",
   },
   historyAnalysis: {
-    healthScore: 87,
+    healthScore: 94,
     positives: [
       "Single owner vehicle",
       "Clean title - no accidents reported",
-      "Regular maintenance at Honda dealership",
+      "Regular maintenance at Toyota dealership",
       "No open recalls",
       "All scheduled services completed on time",
+      "Still under factory warranty",
     ],
     concerns: [
-      "Minor cosmetic damage reported (door ding)",
-      "Last oil change was 4,500 miles ago",
+      "Minor paint chip on front bumper noted",
     ],
   },
   dealerReview: {
-    dealerName: "Premier Honda of San Jose",
-    trustScore: 82,
+    dealerName: "Bay Area Toyota",
+    trustScore: 88,
     trustLevel: "high" as const,
-    summary: "Premier Honda has maintained a strong reputation with consistent positive feedback across major review platforms. Customers praise their transparent pricing and no-pressure sales approach.",
+    summary: "Bay Area Toyota has earned a strong reputation for transparent pricing and exceptional customer service. Consistently rated among the top Toyota dealers in the region.",
     positives: [
-      "Transparent pricing - no hidden fees",
-      "Responsive customer service team",
-      "Clean, well-maintained facility",
-      "Strong post-sale support",
+      "Transparent pricing — no hidden dealer fees",
+      "Excellent certified pre-owned program",
+      "Responsive and knowledgeable sales team",
+      "Comprehensive vehicle inspection reports provided",
     ],
     redFlags: [
-      "Some complaints about extended wait times for service appointments",
+      "Weekend wait times can be lengthy for service",
     ],
-    sources: ["Google Reviews", "AutoTrader", "CarGurus"],
+    sources: ["Google Reviews", "DealerRater", "Cars.com"],
   },
 };
 
@@ -268,7 +268,7 @@ export default function SampleReportPage() {
           const annualMiles = 12000;
           const tco = calculateTCO(
             sampleVehicle.askingPrice,
-            28, // Honda Accord combined MPG
+            30, // Toyota RAV4 combined MPG
             "gasoline",
             depreciationTable,
             { annualMiles },
