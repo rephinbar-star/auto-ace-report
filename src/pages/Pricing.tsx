@@ -96,7 +96,6 @@ const plans: Plan[] = [
       { name: "5-year depreciation forecast", included: true },
       { name: "Expert AI opinion", included: true },
       { name: "History report parsing (Carfax, AutoCheck)", included: true },
-      { name: "Priority support", included: true },
     ],
     popular: false,
   },

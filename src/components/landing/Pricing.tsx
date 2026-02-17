@@ -58,7 +58,6 @@ const plans = [
       { name: "5-year depreciation forecast", included: true },
       { name: "Expert AI opinion", included: true },
       { name: "History report parsing", included: true },
-      { name: "Priority support", included: true },
     ],
     cta: "Buy Report",
     href: "/pricing",
