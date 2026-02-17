@@ -236,6 +236,8 @@ export default function ReportPage() {
         pricing_sources: pricingSources.length > 0 ? pricingSources : null,
         pricing_last_updated: pricingLastUpdated?.toISOString() || null,
         risk_score: uvprsResult?.totalScore ?? null,
+        is_cpo: condition.isCPO || false,
+        warranty_months_remaining: history?.warrantyMonthsRemaining ?? null,
         status: "complete",
       });
 
@@ -536,7 +538,7 @@ export default function ReportPage() {
         nhtsaTotalRecalls,
         resolvedRecallCount,
         warrantyMonthsRemaining: history?.warrantyMonthsRemaining ?? null,
-        isCPO: history?.isCPO ?? null,
+        isCPO: condition?.isCPO || history?.isCPO || null,
       });
       setUvprsResult(result);
     };
@@ -1680,7 +1682,7 @@ export default function ReportPage() {
                   vehicleMileage={vehicleData?.condition?.mileage}
                   vehicleOwnerCount={vehicleData?.history?.ownerCount}
                   warrantyMonthsRemaining={vehicleData?.history?.warrantyMonthsRemaining}
-                  isCPO={vehicleData?.history?.isCPO}
+                  isCPO={vehicleData?.condition?.isCPO || vehicleData?.history?.isCPO}
                   onUploadHistory={async (file: File) => {
                     setIsUploadingHistory(true);
                     try {
