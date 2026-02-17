@@ -1,114 +1,51 @@
 
 
-## Complete Manufacturer Warranty Reference Table
+## Fix Warranty Factor: Increase Weight and Fix Expired Score
 
-### Overview
-Create a new `src/lib/warranty-data.ts` file containing factory warranty terms for every brand currently sold or recently sold in the US market. This data will be used by the upcoming warranty-aware UVPRS scoring factor.
+### Problem
+1. **Weight too low at 6%** -- Warranty status directly impacts financial risk (out-of-pocket repair exposure). It deserves more weight than Owner Count or Vehicle Age alone.
+2. **Expired warranty scores only 60-70/100** -- An expired warranty means full financial exposure for repairs. This should be the highest-risk score for this factor.
 
-### Warranty Data Structure
+### Changes
 
-Each brand entry will include:
-- `bumperYears` -- bumper-to-bumper warranty duration in years
-- `bumperMiles` -- bumper-to-bumper mileage limit (in thousands)
-- `powertrainYears` -- powertrain warranty duration in years
-- `powertrainMiles` -- powertrain mileage limit (in thousands)
-- `transferable` -- whether the powertrain warranty transfers to second owner
+**File: `src/lib/uvprs-scoring.ts`**
 
-### Complete Brand Table
+#### 1. Rebalance weights -- Warranty from 6% to 10%
 
-Data sourced from FactoryWarrantyList.com (current model year terms):
+| Factor | Current | New | Rationale |
+|--------|---------|-----|-----------|
+| Title Status | 20% | 20% | No change -- title is critical |
+| Accident History | 18% | 17% | Slight trim |
+| Service History | 15% | 14% | Slight trim |
+| Mileage-for-Age | 12% | 11% | Slight trim |
+| Brand Reliability | 10% | 10% | No change |
+| **Warranty Status** | **6%** | **10%** | **Increased -- directly impacts repair cost exposure** |
+| Price vs Market | 8% | 7% | Slight trim |
+| Owner Count | 4% | 4% | No change |
+| Vehicle Age | 4% | 4% | No change |
+| Open Recalls | 3% | 3% | No change |
+| **Total** | **100%** | **100%** | |
 
-| Brand | B2B (yr/mi) | Powertrain (yr/mi) | Transferable |
-|-------|------------|-------------------|--------------|
-| Acura | 4 / 50k | 6 / 70k | Yes |
-| Alfa Romeo | 4 / 50k | 4 / 50k | Yes |
-| Audi | 4 / 50k | 4 / 50k | Yes |
-| BMW | 4 / 50k | 4 / 50k | Yes |
-| Buick | 3 / 36k | 5 / 60k | Yes |
-| Cadillac | 4 / 50k | 6 / 70k | Yes |
-| Chevrolet | 3 / 36k | 5 / 60k | Yes |
-| Chrysler | 3 / 36k | 5 / 60k | Yes |
-| Dodge | 3 / 36k | 5 / 60k | Yes |
-| Fiat | 4 / 50k | 4 / 50k | Yes |
-| Ford | 3 / 36k | 5 / 60k | Yes |
-| Genesis | 5 / 60k | 10 / 100k | No |
-| GMC | 3 / 36k | 5 / 60k | Yes |
-| Honda | 3 / 36k | 5 / 60k | Yes |
-| Hyundai | 5 / 60k | 10 / 100k | No |
-| Infiniti | 4 / 60k | 6 / 70k | Yes |
-| Jaguar | 5 / 60k | 5 / 60k | Yes |
-| Jeep | 3 / 36k | 5 / 60k | Yes |
-| Kia | 5 / 60k | 10 / 100k | No |
-| Land Rover | 4 / 50k | 4 / 50k | Yes |
-| Lexus | 4 / 50k | 6 / 70k | Yes |
-| Lincoln | 4 / 50k | 6 / 70k | Yes |
-| Lucid | 4 / 50k | 8 / 100k | Yes |
-| Maserati | 4 / 50k | 4 / 50k | Yes |
-| Mazda | 3 / 36k | 5 / 60k | Yes |
-| Mercedes-Benz | 4 / 50k | 4 / 50k | Yes |
-| MINI | 4 / 50k | 4 / 50k | Yes |
-| Mitsubishi | 5 / 60k | 10 / 100k | No |
-| Nissan | 3 / 36k | 5 / 60k | Yes |
-| Polestar | 4 / 50k | 4 / 50k | Yes |
-| Porsche | 4 / 50k | 4 / 50k | Yes |
-| Ram | 3 / 36k | 5 / 60k | Yes |
-| Rivian | 5 / 60k | 8 / 175k | Yes |
-| Subaru | 3 / 36k | 5 / 60k | Yes |
-| Tesla | 4 / 50k | 8 / 120k | Yes |
-| Toyota | 3 / 36k | 5 / 60k | Yes |
-| Volkswagen | 4 / 50k | 4 / 50k | Yes |
-| Volvo | 4 / 50k | 4 / 50k | Yes |
+#### 2. Fix expired warranty scores
 
-Plus a `default` entry of 3 / 36k bumper-to-bumper and 5 / 60k powertrain for unknown brands.
+Update `scoreWarrantyStatus` so expired warranty scores 90-95 instead of 60-70:
+
+| Scenario | Current Score | New Score |
+|----------|-------------|-----------|
+| 24+ months remaining | 5 | 5 |
+| 12-23 months remaining | 15 | 15 |
+| 1-11 months remaining | 30 | 40 |
+| Expired (CarFax confirmed) | 60 | 95 |
+| Estimated: full warranty | 10 | 10 |
+| Estimated: powertrain only | 35 | 45 |
+| Estimated: fully expired | 70 | 90 |
+
+The "expiring soon" band (1-11 months) also gets a bump to 40 since buyers will likely face out-of-warranty costs shortly after purchase.
 
 ### Technical Details
 
-**New file: `src/lib/warranty-data.ts`**
+Only one file changes: `src/lib/uvprs-scoring.ts`
 
-```typescript
-export interface WarrantyTerms {
-  bumperYears: number;
-  bumperMiles: number;       // in actual miles (e.g., 36000)
-  powertrainYears: number;
-  powertrainMiles: number;   // in actual miles (e.g., 60000)
-  transferable: boolean;     // powertrain transfers to 2nd owner
-}
-
-export const MANUFACTURER_WARRANTY: Record<string, WarrantyTerms> = {
-  "Acura": { bumperYears: 4, bumperMiles: 50000, powertrainYears: 6, powertrainMiles: 70000, transferable: true },
-  // ... all brands listed above ...
-  "default": { bumperYears: 3, bumperMiles: 36000, powertrainYears: 5, powertrainMiles: 60000, transferable: true },
-};
-```
-
-Also export a helper function:
-
-```typescript
-export function estimateWarrantyStatus(
-  make: string,
-  year: number,
-  mileage: number,
-  ownerCount?: number | null
-): {
-  bumperActive: boolean;
-  powertrainActive: boolean;
-  bumperMonthsRemaining: number;
-  powertrainMonthsRemaining: number;
-} { ... }
-```
-
-This helper will:
-1. Look up the brand's warranty terms (fall back to `default`)
-2. Hard rule: mileage over 50,000 = bumper-to-bumper expired
-3. Check age against bumperYears/powertrainYears
-4. Check mileage against bumperMiles/powertrainMiles
-5. If `ownerCount > 1` and `transferable === false`, powertrain is expired
-6. Return estimated months remaining for each coverage type
-
-### Notes
-- Tesla's powertrain mileage varies by model (100k-150k) -- we use 120k as a conservative middle ground
-- Rivian's drivetrain warranty is 175k miles, unusually generous
-- Hyundai/Kia/Genesis/Mitsubishi 10yr/100k powertrain is first-owner only (non-transferable)
-- EV battery warranties (8yr/100k federal minimum) are separate and not tracked here initially
-- Hybrid component warranties (8yr/100k) are also not tracked separately
+- Update the `WEIGHTS` constant with rebalanced values
+- Update the score values inside `scoreWarrantyStatus` for expired and expiring-soon cases
 
