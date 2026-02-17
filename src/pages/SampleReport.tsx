@@ -109,6 +109,7 @@ const sampleVehicle = {
 const sampleAnalysis = {
   priceAssessment: {
     fairMarketPrivate: 33200,
+    fairMarketDealer: 35200,
     fairMarketTradeIn: 30800,
     dealRating: "good" as const,
     priceDifference: 1300,
@@ -458,52 +459,176 @@ export default function SampleReportPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      <motion.div 
-                        className="flex items-center justify-between rounded-lg bg-muted p-4"
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: 0.3 }}
-                      >
-                        <div>
-                          <p className="text-sm text-muted-foreground">Asking Price</p>
-                          <p className="text-2xl font-bold">${sampleVehicle.askingPrice.toLocaleString()}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm text-muted-foreground">vs Fair Market</p>
-                          <motion.p 
-                            className={cn(
-                              "text-2xl font-bold",
-                              priceAssessment.priceDifference > 0 ? "text-red-600" : "text-green-600"
-                            )}
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: 0.5 }}
-                          >
-                            {priceAssessment.priceDifference > 0 ? "+" : ""}
-                            ${Math.abs(priceAssessment.priceDifference).toLocaleString()}
-                          </motion.p>
-                        </div>
-                      </motion.div>
+                    <div className="space-y-6">
+                      {/* Deal rating headline */}
+                      {(() => {
+                        const dealRatingConfig: Record<string, { label: string; color: string }> = {
+                          excellent: { label: "great deal", color: "text-success" },
+                          good: { label: "good deal", color: "text-success" },
+                          fair: { label: "fair deal", color: "text-warning" },
+                          poor: { label: "poor deal", color: "text-warning" },
+                          overpriced: { label: "overpriced", color: "text-danger" },
+                        };
+                        const cfg = dealRatingConfig[priceAssessment.dealRating] || dealRatingConfig.fair;
+                        const sellerType = sampleVehicle.sellerType;
+                        const referenceValue = sellerType === "dealer"
+                          ? (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate)
+                          : priceAssessment.fairMarketPrivate;
+                        const isBelow = sampleVehicle.askingPrice <= referenceValue;
+                        const contextMsg = isBelow
+                          ? "This vehicle is priced below the current market average."
+                          : (priceAssessment.dealRating as string) === "fair"
+                            ? "This vehicle is within the current average market range."
+                            : "This vehicle is priced above the current market average.";
 
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <motion.div 
-                          className="rounded-lg border p-4"
-                          whileHover={{ scale: 1.02, borderColor: "hsl(var(--primary))" }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          <p className="text-sm text-muted-foreground">Private Sale Value</p>
-                          <p className="text-xl font-semibold">${priceAssessment.fairMarketPrivate.toLocaleString()}</p>
-                        </motion.div>
-                        <motion.div 
-                          className="rounded-lg border p-4"
-                          whileHover={{ scale: 1.02, borderColor: "hsl(var(--primary))" }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          <p className="text-sm text-muted-foreground">Trade-In Value</p>
-                          <p className="text-xl font-semibold">${priceAssessment.fairMarketTradeIn.toLocaleString()}</p>
-                        </motion.div>
-                      </div>
+                        // Build markers for the price bar
+                        const fairMarketValue = sellerType === "dealer"
+                          ? (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate)
+                          : priceAssessment.fairMarketPrivate;
+                        const markers: { label: string; value: number; isAsking?: boolean; isFairMarket?: boolean }[] = [];
+                        markers.push({ label: "Trade-In", value: priceAssessment.fairMarketTradeIn });
+                        markers.push({ label: "Fair Market Value", value: fairMarketValue, isFairMarket: true });
+                        if (priceAssessment.fairMarketDealer && sellerType !== "dealer") {
+                          markers.push({ label: "Dealer Retail", value: priceAssessment.fairMarketDealer });
+                        }
+                        if (sellerType === "dealer") {
+                          markers.push({ label: "Private Sale", value: priceAssessment.fairMarketPrivate });
+                        }
+                        markers.push({ label: "Asking Price", value: sampleVehicle.askingPrice, isAsking: true });
+
+                        // Bar calculations
+                        const tradeInVal = priceAssessment.fairMarketTradeIn;
+                        const fmvVal = fairMarketValue;
+                        const barMin = tradeInVal * 0.90;
+                        const barMax = fmvVal * 1.35;
+                        const barRange = barMax - barMin || 1;
+                        const toPct = (v: number) => Math.max(5, Math.min(92, ((v - barMin) / barRange) * 100));
+                        const fmvPct = toPct(fmvVal);
+
+                        return (
+                          <div className="space-y-4">
+                            <div>
+                              <h3 className="text-2xl font-bold">
+                                This vehicle is a{" "}
+                                <span className={cfg.color}>{cfg.label}</span>
+                              </h3>
+                              <p className="mt-1 text-sm text-muted-foreground">
+                                {contextMsg} Asking price is{" "}
+                                <span className={cn("font-semibold", priceAssessment.priceDifference > 0 ? "text-danger" : "text-success")}>
+                                  {priceAssessment.priceDifference > 0 ? "higher" : "lower"} by ${Math.abs(priceAssessment.priceDifference).toLocaleString()}
+                                </span>
+                                {" "}from fair market value.
+                              </p>
+                            </div>
+
+                            {/* Desktop: horizontal gradient bar */}
+                            <div className="relative pt-14 pb-14 mt-2 overflow-hidden hidden md:block">
+                              {/* Asking price floating label */}
+                              {(() => {
+                                const askPct = toPct(sampleVehicle.askingPrice);
+                                const clampStyle = askPct > 80
+                                  ? { left: `${askPct}%`, transform: "translateX(-80%)" }
+                                  : askPct < 20
+                                    ? { left: `${askPct}%`, transform: "translateX(-20%)" }
+                                    : { left: `${askPct}%`, transform: "translateX(-50%)" };
+                                return (
+                                  <div className="absolute top-0" style={clampStyle}>
+                                    <p className="text-[10px] text-muted-foreground text-center mb-0.5">Asking Price</p>
+                                    <div className="rounded-lg border bg-card px-3 py-1.5 text-sm font-bold shadow-sm whitespace-nowrap">
+                                      ${sampleVehicle.askingPrice.toLocaleString()}
+                                    </div>
+                                    <div className="mx-auto mt-1 h-3 w-px bg-border" />
+                                  </div>
+                                );
+                              })()}
+
+                              {/* Gradient bar */}
+                              <div className="relative h-2.5 w-full rounded-full overflow-hidden">
+                                <div className="absolute inset-0 rounded-full" style={{
+                                  background: `linear-gradient(to right, hsl(145 60% 36%) 0%, hsl(var(--success)) ${fmvPct * 0.5}%, hsl(var(--success)) ${fmvPct}%, hsl(var(--warning)) ${fmvPct + (100 - fmvPct) * 0.6}%, hsl(var(--danger)) 100%)`
+                                }} />
+                              </div>
+
+                              {/* Dot indicator */}
+                              {(() => {
+                                const askPct = toPct(sampleVehicle.askingPrice);
+                                return (
+                                  <div
+                                    className="absolute -translate-x-1/2"
+                                    style={{ left: `${askPct}%`, top: "3.85rem" }}
+                                  >
+                                    <div className="h-5 w-5 rounded-full border-[3px] border-primary bg-background shadow-md" />
+                                  </div>
+                                );
+                              })()}
+
+                              {/* Desktop markers */}
+                              <div className="relative mt-5">
+                                {markers.filter(m => !m.isAsking).map((m) => {
+                                  const mPct = toPct(m.value);
+                                  const markerStyle = mPct > 85
+                                    ? { left: `${mPct}%`, transform: "translateX(-90%)" }
+                                    : mPct < 15
+                                      ? { left: `${mPct}%`, transform: "translateX(-10%)" }
+                                      : { left: `${mPct}%`, transform: "translateX(-50%)" };
+                                  const textAlign = mPct > 85 ? "text-right" : mPct < 15 ? "text-left" : "text-center";
+                                  return (
+                                    <div
+                                      key={m.label}
+                                      className={cn("absolute", textAlign)}
+                                      style={markerStyle}
+                                    >
+                                      <div className={cn("mb-0.5 h-2.5 w-px", m.isFairMarket ? "bg-primary" : "bg-muted-foreground/40", mPct > 85 ? "ml-auto" : mPct < 15 ? "" : "mx-auto")} />
+                                      <p className={cn("text-[10px] leading-tight whitespace-nowrap", m.isFairMarket ? "font-medium text-primary" : "text-muted-foreground")}>{m.label}</p>
+                                      <p className={cn("text-xs font-semibold whitespace-nowrap", m.isFairMarket && "text-primary")}>${m.value.toLocaleString()}</p>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            {/* Mobile: vertical bar chart */}
+                            <div className="mt-4 space-y-2.5 md:hidden">
+                              {(() => {
+                                const allMarkers = [...markers].sort((a, b) => a.value - b.value);
+                                const maxVal = Math.max(...allMarkers.map(m => m.value));
+                                const barColor = (m: typeof allMarkers[0]) => {
+                                  if (m.isAsking) return "bg-primary";
+                                  if (m.isFairMarket) return "bg-success";
+                                  return "bg-muted-foreground/30";
+                                };
+                                return allMarkers.map((m) => {
+                                  const widthPct = Math.max(8, (m.value / maxVal) * 100);
+                                  return (
+                                    <div key={m.label}>
+                                      <div className="flex items-center justify-between mb-0.5">
+                                        <span className={cn(
+                                          "text-xs font-medium",
+                                          m.isAsking ? "text-foreground" : m.isFairMarket ? "text-primary" : "text-muted-foreground"
+                                        )}>
+                                          {m.label}
+                                        </span>
+                                        <span className={cn(
+                                          "text-xs font-semibold",
+                                          m.isAsking ? "text-foreground" : m.isFairMarket ? "text-primary" : "text-muted-foreground"
+                                        )}>
+                                          ${Math.round(m.value).toLocaleString()}
+                                        </span>
+                                      </div>
+                                      <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                                        <div
+                                          className={cn("h-full rounded-full transition-all", barColor(m))}
+                                          style={{ width: `${widthPct}%` }}
+                                        />
+                                      </div>
+                                    </div>
+                                  );
+                                });
+                              })()}
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </CardContent>
                 </Card>
