@@ -531,7 +531,7 @@ function CompareContent() {
               </div>
 
               {/* Need more slots message */}
-              {!canAddMore && tier === "basic" && (
+              {!canAddMore && tier === "premium" && (
                 <Card className="bg-muted/50 border-dashed">
                   <CardContent className="py-6 text-center">
                     <p className="text-muted-foreground mb-3">

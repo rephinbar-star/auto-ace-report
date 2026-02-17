@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./useAuth";
 
-export type SubscriptionTier = "free" | "basic" | "pro";
+export type SubscriptionTier = "free" | "premium" | "pro";
 
 interface SubscriptionState {
   subscribed: boolean;
@@ -15,12 +15,12 @@ interface SubscriptionState {
 
 // Stripe price IDs for each tier
 export const STRIPE_PRICES = {
-  basic: {
+  premium: {
     priceId: "price_1SuovTBo6mQ2JDIsAGAkAh4d",
     productId: "prod_Tsa5IDIygPmVmk",
     monthlyPrice: 9.99,
     yearlyPrice: 99.99,
-    name: "Basic",
+    name: "Premium",
   },
   pro: {
     priceId: "price_1SxjQOBo6mQ2JDIsilRvUBSe",

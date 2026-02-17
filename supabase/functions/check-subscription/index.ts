@@ -14,8 +14,8 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
 
 // Product IDs mapping (must match STRIPE_PRICES in useSubscription.ts)
 const PRODUCT_TIERS: Record<string, string> = {
-  "prod_Tsa5IDIygPmVmk": "basic",  // Standard plan
-  "prod_TvabBuJcmLf5BM": "pro",    // Pro plan
+  "prod_Tsa5IDIygPmVmk": "premium",  // Premium plan
+  "prod_TvabBuJcmLf5BM": "pro",      // Pro plan
 };
 
 serve(async (req) => {
