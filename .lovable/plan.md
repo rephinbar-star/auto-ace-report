@@ -1,61 +1,114 @@
 
 
-## Force Mobile Layout Fallback
+## Complete Manufacturer Warranty Reference Table
 
-### Problem
-The mobile-specific layout (e.g., vertical price assessment bars) relies on Tailwind's `md:` CSS breakpoint (768px). If a device reports an incorrect viewport width or the media query doesn't trigger as expected, users see the desktop layout on a mobile device.
+### Overview
+Create a new `src/lib/warranty-data.ts` file containing factory warranty terms for every brand currently sold or recently sold in the US market. This data will be used by the upcoming warranty-aware UVPRS scoring factor.
 
-### Solution
-Add a JavaScript-based mobile detection fallback that applies a CSS class to force the mobile layout, even when the CSS media query doesn't fire correctly.
+### Warranty Data Structure
 
-### How It Works
+Each brand entry will include:
+- `bumperYears` -- bumper-to-bumper warranty duration in years
+- `bumperMiles` -- bumper-to-bumper mileage limit (in thousands)
+- `powertrainYears` -- powertrain warranty duration in years
+- `powertrainMiles` -- powertrain mileage limit (in thousands)
+- `transferable` -- whether the powertrain warranty transfers to second owner
 
-1. **Enhance `useIsMobile` hook** (`src/hooks/use-mobile.tsx`)
-   - Keep the existing media query check
-   - Add a secondary check using `navigator.userAgent` to detect mobile devices (iOS, Android, etc.)
-   - If either check returns true, the hook returns `true`
+### Complete Brand Table
 
-2. **Apply a body-level CSS class** (`src/pages/Report.tsx`)
-   - Import `useIsMobile` in the Report page
-   - When `isMobile` is true, add a `force-mobile` class to the report wrapper
-   - This class will override `md:` breakpoints for the critical sections
+Data sourced from FactoryWarrantyList.com (current model year terms):
 
-3. **Add CSS overrides** (`src/index.css`)
-   - Define `.force-mobile` rules that mirror what `md:hidden` / `hidden md:block` do, ensuring the mobile layout is shown regardless of what the CSS media query resolves to
-   - Target the specific sections: price assessment bar, depreciation table, and any other mobile-specific layouts
+| Brand | B2B (yr/mi) | Powertrain (yr/mi) | Transferable |
+|-------|------------|-------------------|--------------|
+| Acura | 4 / 50k | 6 / 70k | Yes |
+| Alfa Romeo | 4 / 50k | 4 / 50k | Yes |
+| Audi | 4 / 50k | 4 / 50k | Yes |
+| BMW | 4 / 50k | 4 / 50k | Yes |
+| Buick | 3 / 36k | 5 / 60k | Yes |
+| Cadillac | 4 / 50k | 6 / 70k | Yes |
+| Chevrolet | 3 / 36k | 5 / 60k | Yes |
+| Chrysler | 3 / 36k | 5 / 60k | Yes |
+| Dodge | 3 / 36k | 5 / 60k | Yes |
+| Fiat | 4 / 50k | 4 / 50k | Yes |
+| Ford | 3 / 36k | 5 / 60k | Yes |
+| Genesis | 5 / 60k | 10 / 100k | No |
+| GMC | 3 / 36k | 5 / 60k | Yes |
+| Honda | 3 / 36k | 5 / 60k | Yes |
+| Hyundai | 5 / 60k | 10 / 100k | No |
+| Infiniti | 4 / 60k | 6 / 70k | Yes |
+| Jaguar | 5 / 60k | 5 / 60k | Yes |
+| Jeep | 3 / 36k | 5 / 60k | Yes |
+| Kia | 5 / 60k | 10 / 100k | No |
+| Land Rover | 4 / 50k | 4 / 50k | Yes |
+| Lexus | 4 / 50k | 6 / 70k | Yes |
+| Lincoln | 4 / 50k | 6 / 70k | Yes |
+| Lucid | 4 / 50k | 8 / 100k | Yes |
+| Maserati | 4 / 50k | 4 / 50k | Yes |
+| Mazda | 3 / 36k | 5 / 60k | Yes |
+| Mercedes-Benz | 4 / 50k | 4 / 50k | Yes |
+| MINI | 4 / 50k | 4 / 50k | Yes |
+| Mitsubishi | 5 / 60k | 10 / 100k | No |
+| Nissan | 3 / 36k | 5 / 60k | Yes |
+| Polestar | 4 / 50k | 4 / 50k | Yes |
+| Porsche | 4 / 50k | 4 / 50k | Yes |
+| Ram | 3 / 36k | 5 / 60k | Yes |
+| Rivian | 5 / 60k | 8 / 175k | Yes |
+| Subaru | 3 / 36k | 5 / 60k | Yes |
+| Tesla | 4 / 50k | 8 / 120k | Yes |
+| Toyota | 3 / 36k | 5 / 60k | Yes |
+| Volkswagen | 4 / 50k | 4 / 50k | Yes |
+| Volvo | 4 / 50k | 4 / 50k | Yes |
 
-### Key Sections Affected
-- Price Assessment: vertical bar layout vs. horizontal gradient
-- Depreciation Table: scrollable narrow layout
-- Any other `md:hidden` / `hidden md:block` pairs in Report.tsx
+Plus a `default` entry of 3 / 36k bumper-to-bumper and 5 / 60k powertrain for unknown brands.
 
 ### Technical Details
 
-**`src/hooks/use-mobile.tsx`** -- add user-agent sniffing:
+**New file: `src/lib/warranty-data.ts`**
+
 ```typescript
-const UA_MOBILE = /Android|iPhone|iPad|iPod|webOS|BlackBerry|Opera Mini|IEMobile/i;
+export interface WarrantyTerms {
+  bumperYears: number;
+  bumperMiles: number;       // in actual miles (e.g., 36000)
+  powertrainYears: number;
+  powertrainMiles: number;   // in actual miles (e.g., 60000)
+  transferable: boolean;     // powertrain transfers to 2nd owner
+}
 
-// Return true if EITHER media query OR user-agent says mobile
-const isMobileUA = UA_MOBILE.test(navigator.userAgent);
-setIsMobile(window.innerWidth < MOBILE_BREAKPOINT || isMobileUA);
+export const MANUFACTURER_WARRANTY: Record<string, WarrantyTerms> = {
+  "Acura": { bumperYears: 4, bumperMiles: 50000, powertrainYears: 6, powertrainMiles: 70000, transferable: true },
+  // ... all brands listed above ...
+  "default": { bumperYears: 3, bumperMiles: 36000, powertrainYears: 5, powertrainMiles: 60000, transferable: true },
+};
 ```
 
-**`src/pages/Report.tsx`** -- apply class to wrapper:
-```tsx
-const isMobile = useIsMobile();
-// ...
-<div className={cn("...", isMobile && "force-mobile")}>
+Also export a helper function:
+
+```typescript
+export function estimateWarrantyStatus(
+  make: string,
+  year: number,
+  mileage: number,
+  ownerCount?: number | null
+): {
+  bumperActive: boolean;
+  powertrainActive: boolean;
+  bumperMonthsRemaining: number;
+  powertrainMonthsRemaining: number;
+} { ... }
 ```
 
-**`src/index.css`** -- force overrides:
-```css
-.force-mobile .desktop-only { display: none !important; }
-.force-mobile .mobile-only { display: block !important; }
-```
+This helper will:
+1. Look up the brand's warranty terms (fall back to `default`)
+2. Hard rule: mileage over 50,000 = bumper-to-bumper expired
+3. Check age against bumperYears/powertrainYears
+4. Check mileage against bumperMiles/powertrainMiles
+5. If `ownerCount > 1` and `transferable === false`, powertrain is expired
+6. Return estimated months remaining for each coverage type
 
-Then in Report.tsx, replace the raw `md:hidden` / `hidden md:block` pairs on the price assessment section with `desktop-only` / `mobile-only` utility classes so the JS override can take effect.
+### Notes
+- Tesla's powertrain mileage varies by model (100k-150k) -- we use 120k as a conservative middle ground
+- Rivian's drivetrain warranty is 175k miles, unusually generous
+- Hyundai/Kia/Genesis/Mitsubishi 10yr/100k powertrain is first-owner only (non-transferable)
+- EV battery warranties (8yr/100k federal minimum) are separate and not tracked here initially
+- Hybrid component warranties (8yr/100k) are also not tracked separately
 
-### Minimal Risk
-- Desktop users are unaffected (user-agent won't match, width will be >= 768)
-- Existing CSS breakpoints still work as primary detection
-- JS check is purely additive -- it can only force mobile, never force desktop
