@@ -77,12 +77,12 @@ export interface UVPRSResult {
 
 const WEIGHTS: Record<string, number> = {
   title: 0.20,
-  accident: 0.18,
-  service: 0.15,
-  mileageForAge: 0.12,
+  accident: 0.17,
+  service: 0.14,
+  mileageForAge: 0.11,
   brand: 0.10,
-  price: 0.08,
-  warranty: 0.06,
+  warranty: 0.10,
+  price: 0.07,
   owners: 0.04,
   age: 0.04,
   recall: 0.03,
@@ -309,10 +309,10 @@ export function scoreWarrantyStatus(
       score = 15;
       description = `${warrantyMonthsRemaining} months of warranty remaining`;
     } else if (warrantyMonthsRemaining >= 1) {
-      score = 30;
+      score = 40;
       description = `${warrantyMonthsRemaining} months of warranty remaining — expiring soon`;
     } else {
-      score = 60;
+      score = 95;
       description = "Warranty expired";
     }
   } else {
@@ -324,10 +324,10 @@ export function scoreWarrantyStatus(
       score = 10;
       description = `Estimated under full warranty (~${status.bumperMonthsRemaining}mo B2B, ~${status.powertrainMonthsRemaining}mo powertrain)`;
     } else if (status.powertrainActive) {
-      score = 35;
+      score = 45;
       description = `Estimated B2B expired, powertrain active (~${status.powertrainMonthsRemaining}mo remaining)`;
     } else {
-      score = 70;
+      score = 90;
       description = "Estimated fully out of warranty";
     }
   }
