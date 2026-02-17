@@ -1231,11 +1231,11 @@ export default function ReportPage() {
                             // Anchor gradient to actual values: trade-in = deep green (left), FMV = center green, overpriced = red (right)
                             const tradeInVal = priceAssessment.fairMarketTradeIn;
                             const fmvVal = fairMarketValue;
-                            // Bar extends from trade-in * 0.92 to FMV * 1.25 so FMV sits around center-right
-                            const barMin = tradeInVal * 0.92;
-                            const barMax = fmvVal * 1.25;
+                            // Bar extends beyond FMV so markers have room on mobile
+                            const barMin = tradeInVal * 0.90;
+                            const barMax = fmvVal * 1.35;
                             const barRange = barMax - barMin || 1;
-                            const toPct = (v: number) => Math.max(2, Math.min(98, ((v - barMin) / barRange) * 100));
+                            const toPct = (v: number) => Math.max(5, Math.min(92, ((v - barMin) / barRange) * 100));
 
                             // Compute gradient stops based on actual value positions
                             const fmvPct = toPct(fmvVal);
@@ -1245,11 +1245,13 @@ export default function ReportPage() {
                                 {/* Asking price floating label */}
                                 {(() => {
                                   const askPct = toPct(condition.askingPrice);
+                                  const clampStyle = askPct > 80
+                                    ? { left: `${askPct}%`, transform: "translateX(-80%)" }
+                                    : askPct < 20
+                                      ? { left: `${askPct}%`, transform: "translateX(-20%)" }
+                                      : { left: `${askPct}%`, transform: "translateX(-50%)" };
                                   return (
-                                    <div
-                                      className="absolute top-0 -translate-x-1/2"
-                                      style={{ left: `${askPct}%` }}
-                                    >
+                                    <div className="absolute top-0" style={clampStyle}>
                                       <p className="text-[10px] text-muted-foreground text-center mb-0.5">Asking Price</p>
                                       <div className="rounded-lg border bg-card px-3 py-1.5 text-sm font-bold shadow-sm whitespace-nowrap">
                                         ${condition.askingPrice.toLocaleString()}
@@ -1283,13 +1285,20 @@ export default function ReportPage() {
                                 <div className="relative mt-5">
                                   {markers.filter(m => !m.isAsking).map((m) => {
                                     const mPct = toPct(m.value);
+                                    // Clamp translate for edge markers so they don't overflow
+                                    const markerStyle = mPct > 85
+                                      ? { left: `${mPct}%`, transform: "translateX(-90%)" }
+                                      : mPct < 15
+                                        ? { left: `${mPct}%`, transform: "translateX(-10%)" }
+                                        : { left: `${mPct}%`, transform: "translateX(-50%)" };
+                                    const textAlign = mPct > 85 ? "text-right" : mPct < 15 ? "text-left" : "text-center";
                                     return (
                                       <div
                                         key={m.label}
-                                        className="absolute -translate-x-1/2 text-center"
-                                        style={{ left: `${mPct}%` }}
+                                        className={cn("absolute", textAlign)}
+                                        style={markerStyle}
                                       >
-                                        <div className={cn("mx-auto mb-0.5 h-2.5 w-px", m.isFairMarket ? "bg-primary" : "bg-muted-foreground/40")} />
+                                        <div className={cn("mb-0.5 h-2.5 w-px", m.isFairMarket ? "bg-primary" : "bg-muted-foreground/40", mPct > 85 ? "ml-auto" : mPct < 15 ? "" : "mx-auto")} />
                                         <p className={cn("text-[10px] leading-tight whitespace-nowrap", m.isFairMarket ? "font-medium text-primary" : "text-muted-foreground")}>{m.label}</p>
                                         <p className={cn("text-xs font-semibold whitespace-nowrap", m.isFairMarket && "text-primary")}>${m.value.toLocaleString()}</p>
                                       </div>
