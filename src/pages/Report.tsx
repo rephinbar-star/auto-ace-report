@@ -1292,6 +1292,12 @@ export default function ReportPage() {
                                         ? { left: `${mPct}%`, transform: "translateX(-10%)" }
                                         : { left: `${mPct}%`, transform: "translateX(-50%)" };
                                     const textAlign = mPct > 85 ? "text-right" : mPct < 15 ? "text-left" : "text-center";
+                                    // Shorter labels for mobile
+                                    const shortLabel = m.label === "Fair Market Value" ? "FMV"
+                                      : m.label === "Trade-In" ? "Trade-In"
+                                      : m.label === "Private Sale" ? "Priv. Sale"
+                                      : m.label === "Dealer Retail" ? "Dealer"
+                                      : m.label;
                                     return (
                                       <div
                                         key={m.label}
@@ -1299,8 +1305,11 @@ export default function ReportPage() {
                                         style={markerStyle}
                                       >
                                         <div className={cn("mb-0.5 h-2.5 w-px", m.isFairMarket ? "bg-primary" : "bg-muted-foreground/40", mPct > 85 ? "ml-auto" : mPct < 15 ? "" : "mx-auto")} />
-                                        <p className={cn("text-[10px] leading-tight whitespace-nowrap", m.isFairMarket ? "font-medium text-primary" : "text-muted-foreground")}>{m.label}</p>
-                                        <p className={cn("text-xs font-semibold whitespace-nowrap", m.isFairMarket && "text-primary")}>${m.value.toLocaleString()}</p>
+                                        <p className={cn("text-[10px] leading-tight", m.isFairMarket ? "font-medium text-primary" : "text-muted-foreground")}>
+                                          <span className="md:hidden">{shortLabel}</span>
+                                          <span className="hidden md:inline">{m.label}</span>
+                                        </p>
+                                        <p className={cn("text-xs font-semibold whitespace-nowrap", m.isFairMarket && "text-primary")}>${Math.round(m.value).toLocaleString()}</p>
                                       </div>
                                     );
                                   })}
