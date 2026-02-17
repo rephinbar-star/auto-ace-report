@@ -316,8 +316,8 @@ export function scoreWarrantyStatus(
       description = "Warranty expired";
     }
   } else {
-    // Estimate from manufacturer warranty data
-    known = false;
+    // Estimate from manufacturer warranty data — still considered "known"
+    known = true;
     const status = estimateWarrantyStatus(make, year, mileage, ownerCount);
 
     if (status.bumperActive && status.powertrainActive) {
