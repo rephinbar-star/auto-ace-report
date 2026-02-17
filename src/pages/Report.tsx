@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
@@ -135,6 +136,7 @@ export default function ReportPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { tier } = useSubscription();
+  const isMobile = useIsMobile();
   const isPro = tier === "pro";
   const isPaid = tier === "basic" || tier === "pro";
   const [isLoading, setIsLoading] = useState(true);
@@ -785,7 +787,7 @@ export default function ReportPage() {
   }));
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className={cn("flex min-h-screen flex-col", isMobile && "force-mobile")}>
       <Header />
       
       <main className="flex-1 bg-gradient-hero py-8">
@@ -1243,7 +1245,7 @@ export default function ReportPage() {
                             return (
                               <>
                                 {/* Desktop: horizontal gradient bar */}
-                                <div className="relative pt-14 pb-14 mt-2 overflow-hidden hidden md:block">
+                                <div className="relative pt-14 pb-14 mt-2 overflow-hidden hidden md:block desktop-only">
                                   {/* Asking price floating label */}
                                   {(() => {
                                     const askPct = toPct(condition.askingPrice);
@@ -1309,7 +1311,7 @@ export default function ReportPage() {
                                 </div>
 
                                 {/* Mobile: vertical bar chart */}
-                                <div className="mt-4 space-y-2.5 md:hidden">
+                                <div className="mt-4 space-y-2.5 md:hidden mobile-only">
                                   {(() => {
                                     const allMarkers = [...markers].sort((a, b) => a.value - b.value);
                                     const maxVal = Math.max(...allMarkers.map(m => m.value));
