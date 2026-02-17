@@ -9,6 +9,7 @@
  */
 
 import { BRAND_RELIABILITY } from "@/components/compare/scoring-utils";
+import { estimateWarrantyStatus } from "@/lib/warranty-data";
 
 // ============================================================================
 // Types
@@ -46,6 +47,10 @@ export interface UVPRSInput {
   openRecallCount?: number | null;
   nhtsaTotalRecalls?: number | null;
   resolvedRecallCount?: number | null;
+
+  // Warranty
+  warrantyMonthsRemaining?: number | null;  // From CarFax (takes priority)
+  isCPO?: boolean | null;
 }
 
 export interface UVPRSFactorResult {
@@ -73,13 +78,14 @@ export interface UVPRSResult {
 const WEIGHTS: Record<string, number> = {
   title: 0.20,
   accident: 0.18,
-  service: 0.17,
+  service: 0.15,
   mileageForAge: 0.12,
   brand: 0.10,
   price: 0.08,
-  owners: 0.06,
+  warranty: 0.06,
+  owners: 0.04,
   age: 0.04,
-  recall: 0.05,
+  recall: 0.03,
 };
 
 const EXPECTED_MILES_PER_YEAR = 11000;
@@ -280,6 +286,61 @@ export function scoreRecalls(openRecallCount: number | null | undefined): { scor
   return { score: 50, known: true }; // 3+
 }
 
+/** J) Warranty status — uses CarFax data if available, otherwise estimates from manufacturer terms */
+export function scoreWarrantyStatus(
+  make: string,
+  year: number,
+  mileage: number,
+  ownerCount?: number | null,
+  warrantyMonthsRemaining?: number | null,
+  isCPO?: boolean | null
+): { score: number; known: boolean; description: string } {
+  let score: number;
+  let known: boolean;
+  let description: string;
+
+  if (warrantyMonthsRemaining != null) {
+    // CarFax provided warranty data — use directly
+    known = true;
+    if (warrantyMonthsRemaining >= 24) {
+      score = 5;
+      description = `${warrantyMonthsRemaining} months of warranty remaining`;
+    } else if (warrantyMonthsRemaining >= 12) {
+      score = 15;
+      description = `${warrantyMonthsRemaining} months of warranty remaining`;
+    } else if (warrantyMonthsRemaining >= 1) {
+      score = 30;
+      description = `${warrantyMonthsRemaining} months of warranty remaining — expiring soon`;
+    } else {
+      score = 60;
+      description = "Warranty expired";
+    }
+  } else {
+    // Estimate from manufacturer warranty data
+    known = false;
+    const status = estimateWarrantyStatus(make, year, mileage, ownerCount);
+
+    if (status.bumperActive && status.powertrainActive) {
+      score = 10;
+      description = `Estimated under full warranty (~${status.bumperMonthsRemaining}mo B2B, ~${status.powertrainMonthsRemaining}mo powertrain)`;
+    } else if (status.powertrainActive) {
+      score = 35;
+      description = `Estimated B2B expired, powertrain active (~${status.powertrainMonthsRemaining}mo remaining)`;
+    } else {
+      score = 70;
+      description = "Estimated fully out of warranty";
+    }
+  }
+
+  // CPO bonus: reduce score by 15 points (floor at 5)
+  if (isCPO === true) {
+    score = Math.max(5, score - 15);
+    description += " (CPO certified)";
+  }
+
+  return { score, known, description };
+}
+
 // ============================================================================
 // Main Calculator
 // ============================================================================
@@ -400,6 +461,15 @@ export function calculateUVPRS(input: UVPRSInput): UVPRSResult {
     score: recall.score, weight: WEIGHTS.recall, weighted: 0,
     known: recall.known,
     description: recallDescription,
+  });
+
+  // 10. Warranty Status
+  const warranty = scoreWarrantyStatus(input.make, input.year, input.mileage, input.ownerCount, input.warrantyMonthsRemaining, input.isCPO);
+  factorResults.push({
+    key: "warranty", label: "Warranty Status",
+    score: warranty.score, weight: WEIGHTS.warranty, weighted: 0,
+    known: warranty.known,
+    description: warranty.description,
   });
 
   // Renormalize weights over known factors

@@ -652,6 +652,8 @@ export async function generateComparisonPDF(data: ComparisonPDFData): Promise<vo
       chronicRepairSystems: v.chronic_repair_systems,
       fairMarketPrivate: v.fair_market_private ? Number(v.fair_market_private) : null,
       fairMarketDealer: v.fair_market_dealer ? Number(v.fair_market_dealer) : null,
+      warrantyMonthsRemaining: v.warranty_months_remaining,
+      isCPO: v.is_cpo,
     });
 
     const uvColor: [number, number, number] =

@@ -219,6 +219,8 @@ export default function SampleReportPage() {
     fairMarketPrivate: priceAssessment.fairMarketPrivate,
     fairMarketDealer: undefined,
     openRecallCount: 0,
+    warrantyMonthsRemaining: null,
+    isCPO: false,
   });
 
   const chartData = depreciationTable.map((row) => ({

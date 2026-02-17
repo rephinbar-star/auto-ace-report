@@ -79,6 +79,8 @@ export function CompareVehicleCard({ report, onRemove, isBestBuy, rank }: Compar
     fairMarketPrivate: report.fair_market_private ? Number(report.fair_market_private) : null,
     fairMarketDealer: report.fair_market_dealer ? Number(report.fair_market_dealer) : null,
     openRecallCount: null,
+    warrantyMonthsRemaining: report.warranty_months_remaining,
+    isCPO: report.is_cpo,
   }), [report]);
 
   const uvprsColor = uvprs.riskLevel === "low" ? "text-green-600 bg-green-500/10 border-green-500/20"
