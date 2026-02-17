@@ -29,6 +29,7 @@ const ContactPage = lazy(() => import("./pages/Contact"));
 const FAQPage = lazy(() => import("./pages/FAQ"));
 const HelpCenterPage = lazy(() => import("./pages/HelpCenter"));
 const AdminPage = lazy(() => import("./pages/Admin"));
+const RoadmapPage = lazy(() => import("./pages/Roadmap"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Loading fallback component
@@ -68,6 +69,7 @@ const App = () => (
                 <Route path="/faq" element={<FAQPage />} />
                 <Route path="/help" element={<HelpCenterPage />} />
                 <Route path="/admin" element={<AdminPage />} />
+                <Route path="/roadmap" element={<RoadmapPage />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
