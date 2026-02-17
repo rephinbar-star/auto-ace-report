@@ -6,8 +6,6 @@ import { SEO } from "@/components/seo/SEO";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { 
   Check, 
   X, 
@@ -26,7 +24,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { useAuth } from "@/hooks/useAuth";
-import { useSubscription, STRIPE_PRICES, SubscriptionTier } from "@/hooks/useSubscription";
+import { useSubscription, STRIPE_PRICES } from "@/hooks/useSubscription";
 import { toast } from "sonner";
 
 type PlanKey = "free" | "premium" | "pro";
@@ -35,8 +33,7 @@ interface Plan {
   key: PlanKey;
   name: string;
   description: string;
-  monthlyPrice: number;
-  yearlyPrice: number;
+  price: number;
   icon: React.ComponentType<{ className?: string }>;
   features: { name: string; included: boolean }[];
   priceId?: string;
@@ -48,8 +45,7 @@ const plans: Plan[] = [
     key: "free",
     name: "Free",
     description: "Perfect for trying out CarWise",
-    monthlyPrice: 0,
-    yearlyPrice: 0,
+    price: 0,
     icon: User,
     features: [
       { name: "1 vehicle per report", included: true },
@@ -69,12 +65,10 @@ const plans: Plan[] = [
     key: "premium",
     name: "Premium",
     description: "For occasional car shoppers",
-    monthlyPrice: STRIPE_PRICES.premium.monthlyPrice,
-    yearlyPrice: STRIPE_PRICES.premium.yearlyPrice,
+    price: STRIPE_PRICES.premium.price,
     icon: Zap,
     priceId: STRIPE_PRICES.premium.priceId,
     features: [
-      { name: "Up to 8 reports per month", included: true },
       { name: "Compare up to 2 vehicles", included: true },
       { name: "PDF report export", included: true },
       { name: "Advanced price assessment", included: true },
@@ -90,12 +84,10 @@ const plans: Plan[] = [
     key: "pro",
     name: "Pro",
     description: "For serious car buyers",
-    monthlyPrice: STRIPE_PRICES.pro.monthlyPrice,
-    yearlyPrice: STRIPE_PRICES.pro.yearlyPrice,
+    price: STRIPE_PRICES.pro.price,
     icon: Crown,
     priceId: STRIPE_PRICES.pro.priceId,
     features: [
-      { name: "Up to 15 reports per month", included: true },
       { name: "Compare up to 6 vehicles", included: true },
       { name: "Dealership review", included: true },
       { name: "PDF report export", included: true },
@@ -116,8 +108,8 @@ const faqs = [
     answer: "Our AI analyzes real-time market data from multiple sources to provide valuations within 3-5% of actual market prices. We update our models daily to reflect current market conditions.",
   },
   {
-    question: "Can I cancel my subscription anytime?",
-    answer: "Yes, you can cancel your subscription at any time. If you cancel, you'll continue to have access until the end of your billing period. No refunds are provided for partial months.",
+    question: "How does the one-time payment work?",
+    answer: "Premium and Pro reports are one-time purchases. Pay once per report and get instant access to all the features included in that tier. No subscriptions or recurring charges.",
   },
   {
     question: "What vehicle history reports do you support?",
@@ -125,27 +117,25 @@ const faqs = [
   },
   {
     question: "Do you offer refunds?",
-    answer: "We offer a 7-day money-back guarantee for all paid plans. If you're not satisfied with the service, contact us within 7 days of purchase for a full refund.",
+    answer: "We offer a 7-day money-back guarantee for all paid reports. If you're not satisfied with the report, contact us within 7 days of purchase for a full refund.",
   },
   {
-    question: "Can I upgrade or downgrade my plan?",
-    answer: "Yes, you can change your plan at any time through your account settings. Upgrades take effect immediately, and downgrades take effect at the start of your next billing cycle.",
+    question: "What's the difference between Premium and Pro?",
+    answer: "Premium reports let you compare up to 2 vehicles with PDF export. Pro reports include comparison of up to 6 vehicles, dealership reviews, and priority support.",
   },
   {
-    question: "Is there a free trial?",
-    answer: "The Free plan is always available with limited features. Paid plans can be canceled within 7 days for a full refund if you're not satisfied.",
+    question: "Is the free tier really free?",
+    answer: "Yes! The Free plan gives you up to 4 single-vehicle reports per month with our core analysis features, completely free. No credit card required.",
   },
 ];
 
 export default function PricingPage() {
-  const [isYearly, setIsYearly] = useState(false);
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const { user } = useAuth();
-  const { tier, subscribed, createCheckout, openCustomerPortal } = useSubscription();
+  const { createCheckout } = useSubscription();
   const navigate = useNavigate();
 
   const handlePlanAction = async (plan: Plan) => {
-    // Free plan - just navigate to signup
     if (plan.key === "free") {
       if (user) {
         navigate("/dashboard");
@@ -155,27 +145,12 @@ export default function PricingPage() {
       return;
     }
 
-    // Must be logged in for paid plans
     if (!user) {
-      toast.info("Please sign up or log in to subscribe");
+      toast.info("Please sign up or log in to purchase a report");
       navigate("/signup", { state: { returnTo: "/pricing" } });
       return;
     }
 
-    // Already on this plan - open portal to manage
-    if (tier === plan.key && subscribed) {
-      try {
-        setLoadingPlan(plan.key);
-        await openCustomerPortal();
-      } catch (error) {
-        toast.error("Failed to open subscription management");
-      } finally {
-        setLoadingPlan(null);
-      }
-      return;
-    }
-
-    // Create checkout for new subscription
     if (plan.priceId) {
       try {
         setLoadingPlan(plan.key);
@@ -190,35 +165,15 @@ export default function PricingPage() {
 
   const getButtonText = (plan: Plan) => {
     if (loadingPlan === plan.key) return "Loading...";
-    
-    if (plan.key === "free") {
-      return user ? "Current Plan" : "Get Started";
-    }
-
-    if (!user) return "Subscribe";
-    
-    if (tier === plan.key && subscribed) return "Manage Plan";
-    
-    if (subscribed) {
-      const tierOrder: PlanKey[] = ["free", "premium", "pro"];
-      const currentIndex = tierOrder.indexOf(tier);
-      const planIndex = tierOrder.indexOf(plan.key);
-      return planIndex > currentIndex ? "Upgrade" : "Downgrade";
-    }
-    
-    return "Subscribe";
-  };
-
-  const isCurrentPlan = (planKey: PlanKey) => {
-    if (planKey === "free" && !subscribed) return true;
-    return tier === planKey && subscribed;
+    if (plan.key === "free") return user ? "Go to Dashboard" : "Get Started";
+    return "Buy Report";
   };
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <SEO
         title="Pricing - CarWise"
-        description="Choose the right CarWise plan for your needs. From free basic analysis to professional dealer tools."
+        description="Choose the right CarWise report for your needs. Free basic analysis or pay-per-report for premium features."
       />
       <Header />
 
@@ -230,29 +185,9 @@ export default function PricingPage() {
             <h1 className="text-4xl md:text-5xl font-bold mb-6">
               Simple, transparent pricing
             </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-              Choose the plan that fits your needs. Upgrade or downgrade anytime.
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Start free, then pay per report when you need more features. No subscriptions.
             </p>
-
-            {/* Billing toggle */}
-            <div className="flex items-center justify-center gap-3">
-              <Label htmlFor="billing-toggle" className={cn(!isYearly && "text-foreground", isYearly && "text-muted-foreground")}>
-                Monthly
-              </Label>
-              <Switch
-                id="billing-toggle"
-                checked={isYearly}
-                onCheckedChange={setIsYearly}
-              />
-              <Label htmlFor="billing-toggle" className={cn(isYearly && "text-foreground", !isYearly && "text-muted-foreground")}>
-                Yearly
-              </Label>
-              {isYearly && (
-                <Badge variant="secondary" className="ml-2 bg-green-500/10 text-green-600 border-green-500/20">
-                  Save 17%
-                </Badge>
-              )}
-            </div>
           </div>
         </section>
 
@@ -265,21 +200,13 @@ export default function PricingPage() {
                   key={plan.key}
                   className={cn(
                     "relative flex flex-col",
-                    plan.popular && "border-primary shadow-lg",
-                    isCurrentPlan(plan.key) && "ring-2 ring-primary"
+                    plan.popular && "border-primary shadow-lg"
                   )}
                 >
                   {plan.popular && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                       <Badge className="bg-primary text-primary-foreground">
                         Most Popular
-                      </Badge>
-                    </div>
-                  )}
-                  {isCurrentPlan(plan.key) && (
-                    <div className="absolute -top-3 right-4">
-                      <Badge variant="secondary" className="bg-green-500/10 text-green-600 border-green-500/20">
-                        Your Plan
                       </Badge>
                     </div>
                   )}
@@ -296,15 +223,12 @@ export default function PricingPage() {
                     <div className="text-center mb-6">
                       <div className="flex items-baseline justify-center gap-1">
                         <span className="text-4xl font-bold">
-                          ${isYearly ? Math.round(plan.yearlyPrice / 12) : plan.monthlyPrice}
+                          ${plan.price}
                         </span>
-                        <span className="text-muted-foreground">/month</span>
+                        {plan.price > 0 && (
+                          <span className="text-muted-foreground">/report</span>
+                        )}
                       </div>
-                      {isYearly && plan.yearlyPrice > 0 && (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          ${plan.yearlyPrice} billed annually
-                        </p>
-                      )}
                     </div>
 
                     <ul className="space-y-3">
@@ -331,13 +255,13 @@ export default function PricingPage() {
                       className="w-full" 
                       variant={plan.popular ? "default" : "outline"}
                       onClick={() => handlePlanAction(plan)}
-                      disabled={loadingPlan === plan.key || (plan.key === "free" && user && !subscribed)}
+                      disabled={loadingPlan === plan.key}
                     >
                       {loadingPlan === plan.key && (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       )}
                       {getButtonText(plan)}
-                      {!loadingPlan && plan.key !== "free" && !isCurrentPlan(plan.key) && (
+                      {!loadingPlan && plan.key !== "free" && (
                         <ArrowRight className="ml-2 h-4 w-4" />
                       )}
                     </Button>
