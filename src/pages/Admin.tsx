@@ -50,7 +50,8 @@ import {
   Mail,
   Lock,
   ArrowRight,
-  AlertTriangle
+  AlertTriangle,
+  Trash2
 } from "lucide-react";
 
 interface Subscriber {
@@ -86,7 +87,7 @@ export default function AdminPage() {
 
   // Dialog state
   const [selectedUser, setSelectedUser] = useState<Subscriber | null>(null);
-  const [dialogType, setDialogType] = useState<"plan" | "block" | null>(null);
+  const [dialogType, setDialogType] = useState<"plan" | "block" | "delete" | null>(null);
   const [newPlan, setNewPlan] = useState<string>("");
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -290,6 +291,37 @@ export default function AdminPage() {
     setAuthStep("password");
     setPassword("");
     setOtpCode("");
+  };
+
+  const handleDeleteUser = async () => {
+    if (!selectedUser) return;
+
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase.functions.invoke("admin-delete-user", {
+        body: { targetUserId: selectedUser.userId },
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "User deleted",
+        description: `${selectedUser.email} has been permanently deleted.`,
+      });
+
+      setDialogType(null);
+      setSelectedUser(null);
+      fetchSubscribers();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to delete user";
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   if (authLoading) {
@@ -571,6 +603,17 @@ export default function AdminPage() {
                                   </>
                                 )}
                               </Button>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => {
+                                  setSelectedUser(sub);
+                                  setDialogType("delete");
+                                }}
+                              >
+                                <Trash2 className="mr-1 h-3 w-3" />
+                                Delete
+                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -665,6 +708,43 @@ export default function AdminPage() {
                 <>
                   <UserX className="mr-2 h-4 w-4" />
                   Block User
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete User Dialog */}
+      <Dialog open={dialogType === "delete"} onOpenChange={() => setDialogType(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-destructive" />
+              Delete User Permanently
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to permanently delete <strong>{selectedUser?.email}</strong>? This will remove all their data including reports, subscriptions, and account information. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogType(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteUser}
+              disabled={isUpdating}
+            >
+              {isUpdating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Permanently
                 </>
               )}
             </Button>
