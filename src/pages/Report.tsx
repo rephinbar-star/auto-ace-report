@@ -1112,9 +1112,9 @@ export default function ReportPage() {
             </CardContent>
           </Card>
 
-          <div className="grid gap-8 lg:grid-cols-3">
+          <div className="grid gap-8 lg:grid-cols-3 min-w-0">
             {/* Left Column - Main Content */}
-            <div className="space-y-8 lg:col-span-2">
+            <div className="space-y-8 lg:col-span-2 min-w-0">
               {/* Price Assessment */}
               <Card>
                 <CardHeader>

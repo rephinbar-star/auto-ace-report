@@ -156,7 +156,7 @@ const faqCategories = [
       {
         question: "How can I contact customer support?",
         answer:
-          "You can reach our support team via email at support@carwise.com, through the contact form on our website, or by phone at 1-800-CAR-WISE during business hours (Mon-Fri 9AM-6PM PST).",
+          "You can reach our support team via email at carwise.expert@gmail.com or through the contact form on our website.",
       },
       {
         question: "Can I delete my account?",
@@ -225,7 +225,7 @@ export default function FAQPage() {
                   <Link to="/contact">Contact Support</Link>
                 </Button>
                 <Button variant="outline" asChild>
-                  <a href="mailto:support@carwise.com">Email Us</a>
+                  <a href="mailto:carwise.expert@gmail.com">Email Us</a>
                 </Button>
               </CardContent>
             </Card>

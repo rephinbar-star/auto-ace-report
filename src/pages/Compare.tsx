@@ -254,7 +254,7 @@ function CompareContent() {
                 <p className="text-muted-foreground mt-1">
                   Analyze vehicles side-by-side to find the best buy
                 </p>
-                <div className="mt-3 text-sm text-muted-foreground max-w-2xl">
+                <p className="mt-3 text-sm text-muted-foreground max-w-2xl break-words">
                   <span className="font-semibold text-foreground">Methodology:</span>{" "}
                   Our scoring system evaluates each vehicle across multiple dimensions including 
                   deal quality relative to market value, title history and its impact on resale, 
@@ -262,7 +262,7 @@ function CompareContent() {
                   vehicle age and warranty coverage, brand and model reliability ratings based on 
                   industry data from J.D. Power and Consumer Reports, annual mileage accumulation, 
                   and total cost of ownership including fuel economy and anticipated repair costs.
-                </div>
+                </p>
               </div>
             </div>
             <div className="flex gap-2">
@@ -368,10 +368,10 @@ function CompareContent() {
                           />
                           <div className="relative text-xs text-muted-foreground">
                             <div className="flex justify-between">
-                              <span>5,000 mi</span>
-                              <span>19,000 mi</span>
+                              <span>5k mi</span>
+                              <span>19k mi</span>
                             </div>
-                            <span className="absolute left-1/2 -translate-x-1/2 top-0">12,000 mi (avg)</span>
+                            <span className="hidden sm:inline absolute left-1/2 -translate-x-1/2 top-0">12k mi (avg)</span>
                           </div>
                         </div>
                         <Badge variant="secondary" className="text-sm font-bold min-w-[100px] justify-center">
