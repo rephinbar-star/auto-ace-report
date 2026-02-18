@@ -1369,6 +1369,51 @@ export default function ReportPage() {
                       );
                     })()}
 
+                    {/* Negotiation Target */}
+                    {(() => {
+                      const rating = priceAssessment.dealRating;
+                      if (rating === "excellent") return null;
+                      const fmv = condition.sellerType === "dealer"
+                        ? (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate)
+                        : priceAssessment.fairMarketPrivate;
+                      const targets = [
+                        { label: "Fair Deal Target", desc: "Within 5% of market value", price: fmv, rating: "fair" as const },
+                        { label: "Good Deal Target", desc: "5–10% below market value", price: Math.round(fmv * 0.95), rating: "good" as const },
+                        { label: "Excellent Deal Target", desc: "10%+ below market value", price: Math.round(fmv * 0.90), rating: "excellent" as const },
+                      ];
+                      // Only show targets that are better than current rating
+                      const ratingOrder = ["poor", "overpriced", "fair", "good", "excellent"];
+                      const currentIdx = ratingOrder.indexOf(rating);
+                      const relevantTargets = targets.filter(t => ratingOrder.indexOf(t.rating) > currentIdx);
+                      if (relevantTargets.length === 0) return null;
+                      const primaryTarget = relevantTargets[0]; // closest achievable upgrade
+                      const savings = condition.askingPrice - primaryTarget.price;
+
+                      return (
+                        <div className="rounded-lg border border-success/30 bg-success/5 p-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <DollarSign className="h-4 w-4 text-success" />
+                            <h4 className="text-sm font-semibold">Negotiation Targets</h4>
+                          </div>
+                          <div className="grid gap-3 sm:grid-cols-3">
+                            {relevantTargets.map((t) => (
+                              <div key={t.label} className="rounded-md bg-background border p-3">
+                                <p className="text-xs text-muted-foreground">{t.label}</p>
+                                <p className="text-lg font-bold text-success">${t.price.toLocaleString()}</p>
+                                <p className="text-[11px] text-muted-foreground">{t.desc}</p>
+                              </div>
+                            ))}
+                          </div>
+                          {savings > 0 && (
+                            <p className="mt-3 text-xs text-muted-foreground">
+                              Negotiating to the <span className="font-medium text-foreground">{primaryTarget.label.replace(" Target", "")}</span> price 
+                              would save you <span className="font-semibold text-success">${savings.toLocaleString()}</span> from the current asking price.
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })()}
+
                     {/* Pricing Sources */}
                     {pricingSources.length > 0 && (
                       <div className="rounded-lg border border-dashed p-3">
