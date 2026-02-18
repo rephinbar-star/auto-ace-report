@@ -288,7 +288,7 @@ export default function SampleReportPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col overflow-x-hidden">
       <SEO
         title="Sample Report - CarWise"
         description="See an example of what a CarWise vehicle analysis report looks like."
@@ -296,7 +296,7 @@ export default function SampleReportPage() {
       <Header />
       
       <main className="flex-1 bg-gradient-to-b from-primary/5 to-background py-8">
-        <div className="container mx-auto max-w-6xl px-4">
+        <div className="container mx-auto max-w-6xl px-4 overflow-x-hidden">
           {/* Sample Banner */}
           <motion.div 
             initial={{ opacity: 0, y: -20 }}
@@ -441,10 +441,10 @@ export default function SampleReportPage() {
             ))}
           </div>
 
-          <div className="grid gap-8 lg:grid-cols-3">
+          <div className="grid gap-8 lg:grid-cols-3 min-w-0">
             {/* Left Column - Main Content */}
             <motion.div 
-              className="space-y-8 lg:col-span-2"
+              className="space-y-8 lg:col-span-2 min-w-0"
               variants={containerVariants}
               initial="hidden"
               animate="visible"
