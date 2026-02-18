@@ -88,6 +88,7 @@ serve(async (req) => {
     const UNSUPPORTED_DOMAINS: { pattern: RegExp; name: string; message?: string }[] = [
       { pattern: /autotrader\.com/i, name: "AutoTrader" },
       { pattern: /truecar\.com/i, name: "TrueCar" },
+      { pattern: /craigslist\.org/i, name: "Craigslist", message: "Craigslist is not supported for Quick Import due to platform restrictions. To analyze this vehicle, click 'Enter Manually' and type in the details from the listing." },
       { pattern: /facebook\.com/i, name: "Facebook Marketplace", message: "Facebook Marketplace is not supported for Quick Import due to platform restrictions. To analyze this vehicle, manually enter the details from the listing on the next screen." },
     ];
 
