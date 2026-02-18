@@ -310,8 +310,8 @@ function DashboardContent() {
             </div>
             <div className="p-4 rounded-xl bg-card border">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-emerald-500/10">
-                  <Car className="h-5 w-5 text-emerald-600" />
+                <div className="p-2 rounded-lg bg-success/10">
+                  <Car className="h-5 w-5 text-success" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{stats.complete}</p>
@@ -321,8 +321,8 @@ function DashboardContent() {
             </div>
             <div className="p-4 rounded-xl bg-card border">
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-teal-500/10">
-                  <TrendingUp className="h-5 w-5 text-teal-600" />
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <TrendingUp className="h-5 w-5 text-primary" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{stats.excellent}</p>
