@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Mail, Phone, MapPin, Clock, Send } from "lucide-react";
+import { Mail, MapPin, Clock, Send } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ContactPage() {
@@ -69,25 +69,6 @@ export default function ContactPage() {
                     <p className="text-muted-foreground">General Inquiries & Support:</p>
                     <a href="mailto:carwise.expert@gmail.com" className="text-primary hover:underline">
                       carwise.expert@gmail.com
-                    </a>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Phone className="h-5 w-5 text-primary" />
-                      Call Us
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground">Toll-Free:</p>
-                    <a href="tel:1-800-CAR-WISE" className="text-primary hover:underline">
-                      1-800-CAR-WISE
-                    </a>
-                    <p className="text-muted-foreground mt-3">Local:</p>
-                    <a href="tel:+14155551234" className="text-primary hover:underline">
-                      (415) 555-1234
                     </a>
                   </CardContent>
                 </Card>
