@@ -253,8 +253,9 @@ export function ComparisonSummary({
         {/* TCO Comparison Table */}
         {scoredVehicles.some(s => s.tco) && (
           <div className="space-y-2">
-            <h4 className="font-semibold text-sm flex items-center gap-2">
-              ⛽ Total Cost of Ownership (5 Years @ {annualMiles.toLocaleString()} mi/yr • Gas ${gasPricePerGallon.toFixed(2)}/gal • Electricity ${electricityPricePerKwh.toFixed(2)}/kWh)
+            <h4 className="font-semibold text-sm flex items-start gap-2 flex-wrap">
+              <span>⛽</span>
+              <span className="break-words">Total Cost of Ownership (5 Years @ {annualMiles.toLocaleString()} mi/yr • Gas ${gasPricePerGallon.toFixed(2)}/gal • Elec ${electricityPricePerKwh.toFixed(2)}/kWh)</span>
             </h4>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -298,10 +299,10 @@ export function ComparisonSummary({
                           isLowestTCO && "bg-success/5"
                         )}
                       >
-                        <td className="py-2 px-1">
-                          <div className="flex items-center gap-2">
-                            {isLowestTCO && <span className="text-success">✓</span>}
-                            <span className="truncate max-w-[120px]">
+                        <td className="py-2 px-1 max-w-[140px]">
+                          <div className="flex items-center gap-1 min-w-0">
+                            {isLowestTCO && <span className="text-success shrink-0">✓</span>}
+                            <span className="truncate">
                               {scored.vehicle.year} {scored.vehicle.make} {scored.vehicle.model}
                             </span>
                           </div>
@@ -359,23 +360,23 @@ export function ComparisonSummary({
               return (
                 <div
                   key={v.id}
-                  className="flex items-center justify-between text-sm p-2 rounded bg-background"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-4 text-sm p-2 rounded bg-background"
                 >
-                  <span className="truncate flex-1">
+                  <span className="truncate min-w-0">
                     {v.year} {v.make} {v.model}
                   </span>
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 sm:gap-4 shrink-0">
                     <span className="font-medium">
                       ${Number(v.asking_price).toLocaleString()}
                     </span>
                     {diff != null && diff !== 0 && (
                       <span
                         className={cn(
-                          "text-xs font-medium",
+                          "text-xs font-medium whitespace-nowrap",
                           diff > 0 ? "text-destructive" : "text-success"
                         )}
                       >
-                        ${Math.abs(diff).toLocaleString()} {diff > 0 ? "higher" : "lower"} than FMV
+                        ${Math.abs(diff).toLocaleString()} {diff > 0 ? "higher" : "lower"}
                       </span>
                     )}
                   </div>

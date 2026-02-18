@@ -343,10 +343,10 @@ function DashboardContent() {
                 className="pl-10"
               />
             </div>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-3 w-full sm:w-auto">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[140px]">
-                  <Filter className="h-4 w-4 mr-2" />
+                <SelectTrigger className="w-full sm:w-[140px]">
+                  <Filter className="h-4 w-4 mr-2 shrink-0" />
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -359,7 +359,7 @@ function DashboardContent() {
               </Select>
 
               <Select value={dealRatingFilter} onValueChange={setDealRatingFilter}>
-                <SelectTrigger className="w-[150px]">
+                <SelectTrigger className="w-full sm:w-[150px]">
                   <SelectValue placeholder="Deal Rating" />
                 </SelectTrigger>
                 <SelectContent>
@@ -373,7 +373,7 @@ function DashboardContent() {
               </Select>
 
               <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-[150px]">
+                <SelectTrigger className="w-full sm:w-[150px]">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
