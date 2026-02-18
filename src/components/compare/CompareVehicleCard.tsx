@@ -42,8 +42,8 @@ const dealRatingConfig = {
   excellent: { label: "Excellent Deal", className: "bg-green-500/10 text-green-600 border-green-500/20", score: 5 },
   good: { label: "Good Deal", className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20", score: 4 },
   fair: { label: "Fair Deal", className: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20", score: 3 },
-  poor: { label: "Poor Deal", className: "bg-orange-500/10 text-orange-600 border-orange-500/20", score: 2 },
-  overpriced: { label: "Overpriced", className: "bg-red-500/10 text-red-600 border-red-500/20", score: 1 },
+  overpriced: { label: "Overpriced", className: "bg-orange-500/10 text-orange-600 border-orange-500/20", score: 2 },
+  poor: { label: "Poor Deal", className: "bg-red-500/10 text-red-600 border-red-500/20", score: 1 },
 };
 
 const riskConfig = {

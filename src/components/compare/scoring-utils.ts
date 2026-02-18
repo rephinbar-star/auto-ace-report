@@ -18,8 +18,8 @@ export const DEAL_RATING_SCORES: Record<string, number> = {
   excellent: 14,
   good: 11,
   fair: 8,
-  poor: 5,
-  overpriced: 2,
+  overpriced: 5,
+  poor: 2,
 };
 
 // 2. Title Status (18 points max) - Critical factor
@@ -641,14 +641,14 @@ export function generateWhyNotReasons(
   
   // Deal rating
   if (v.deal_rating && best.deal_rating) {
-    const dealOrder = ["excellent", "good", "fair", "poor", "overpriced"];
+    const dealOrder = ["excellent", "good", "fair", "overpriced", "poor"];
     const vIndex = dealOrder.indexOf(v.deal_rating);
     const bestIndex = dealOrder.indexOf(best.deal_rating);
     if (vIndex > bestIndex + 1) {
-      if (v.deal_rating === "overpriced") {
+      if (v.deal_rating === "poor") {
+        reasons.push("Rated as a **poor deal** — the asking price is significantly inflated relative to market value.");
+      } else if (v.deal_rating === "overpriced") {
         reasons.push("Currently **overpriced** relative to market value. Negotiate or wait for a price drop.");
-      } else if (v.deal_rating === "poor") {
-        reasons.push("Rated as a **poor deal**—the asking price doesn't align with the vehicle's value.");
       }
     }
   }
