@@ -237,6 +237,20 @@ export function Header() {
       {mobileMenuOpen && (
         <div className="border-t bg-background md:hidden">
           <div className="container mx-auto space-y-1 px-4 py-4">
+            {isAuthenticated && (
+              <Link
+                to="/dashboard"
+                className={cn(
+                  "block rounded-lg px-3 py-2 text-base font-medium transition-colors",
+                  location.pathname === "/dashboard"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted"
+                )}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Dashboard
+              </Link>
+            )}
             {navigation.map((item) => (
               <Link
                 key={item.name}
@@ -255,11 +269,6 @@ export function Header() {
             <div className="flex flex-col gap-2 pt-4">
               {isAuthenticated ? (
                 <>
-                  <Button asChild variant="outline" className="w-full">
-                    <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)}>
-                      Dashboard
-                    </Link>
-                  </Button>
                   <Button asChild className="w-full">
                     <Link to="/analyze" onClick={() => setMobileMenuOpen(false)}>
                       Start Analysis
