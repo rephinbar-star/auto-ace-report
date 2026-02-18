@@ -235,6 +235,14 @@ IMPORTANT: The seller type is "${condition.sellerType}".
 - If "private": calculate priceDifference and dealRating by comparing askingPrice to fairMarketPrivate (private party sale value).
 - Always provide ALL three values: fairMarketPrivate, fairMarketDealer, and fairMarketTradeIn regardless of seller type.
 
+DEAL RATING THRESHOLDS (you MUST follow these deterministic rules based on percentDifference):
+- "excellent": askingPrice is MORE THAN 10% BELOW the appropriate fair market value (percentDifference < -10%)
+- "good": askingPrice is 5% to 10% BELOW fair market value (-10% <= percentDifference < -5%)
+- "fair": askingPrice is WITHIN 5% of fair market value (-5% <= percentDifference <= +5%)
+- "overpriced": askingPrice is 5% to 15% ABOVE fair market value (+5% < percentDifference <= +15%)
+- "poor": askingPrice is MORE THAN 15% ABOVE fair market value (percentDifference > +15%)
+These thresholds are absolute rules. Do NOT override them based on subjective judgment.
+
 Always provide specific dollar amounts, not ranges. Be direct and honest about risks.`;
 
     // Build vehicle specs section if enriched data is available
