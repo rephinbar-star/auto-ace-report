@@ -265,8 +265,8 @@ function DashboardContent() {
             </div>
           )}
 
-          {/* Beta banner */}
-          <div className="mb-6 flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-5 py-3">
+          {/* Beta banner — full on desktop, single button on mobile */}
+          <div className="mb-6 hidden md:flex items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-5 py-3">
             <div className="flex items-center justify-center rounded-full bg-primary/10 p-2">
               <Sparkles className="h-5 w-5 text-primary" />
             </div>
@@ -283,6 +283,16 @@ function DashboardContent() {
               Take a Tour
             </Button>
             <Badge variant="secondary" className="shrink-0">BETA</Badge>
+          </div>
+          <div className="mb-6 md:hidden">
+            <Button
+              variant="outline"
+              className="w-full gap-2 border-primary/30 bg-primary/5 text-sm font-medium"
+              onClick={() => setShowOnboarding(true)}
+            >
+              <HelpCircle className="h-4 w-4 text-primary" />
+              Take an App Tour
+            </Button>
           </div>
 
           {/* Stats cards */}
