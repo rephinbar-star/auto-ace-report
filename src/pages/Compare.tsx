@@ -124,8 +124,8 @@ function CompareContent() {
       excellent: 5,
       good: 4,
       fair: 3,
-      poor: 2,
-      overpriced: 1,
+      overpriced: 2,
+      poor: 1,
     };
     
     const riskScore: Record<string, number> = {
@@ -159,8 +159,8 @@ function CompareContent() {
       excellent: 5,
       good: 4,
       fair: 3,
-      poor: 2,
-      overpriced: 1,
+      overpriced: 2,
+      poor: 1,
     };
     
     const riskScore: Record<string, number> = {

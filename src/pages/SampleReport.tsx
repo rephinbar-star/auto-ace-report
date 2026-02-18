@@ -170,8 +170,8 @@ const dealRatingColors = {
   excellent: "bg-green-500 text-white",
   good: "bg-emerald-500 text-white",
   fair: "bg-yellow-500 text-white",
-  poor: "bg-orange-500 text-white",
-  overpriced: "bg-red-500 text-white",
+  overpriced: "bg-orange-500 text-white",
+  poor: "bg-red-500 text-white",
 };
 
 const riskLevelColors = {

@@ -776,8 +776,8 @@ export default function ReportPage() {
     excellent: "bg-success text-success-foreground",
     good: "bg-success/80 text-success-foreground",
     fair: "bg-warning text-warning-foreground",
-    poor: "bg-warning/80 text-warning-foreground",
-    overpriced: "bg-danger text-danger-foreground",
+    overpriced: "bg-warning/80 text-warning-foreground",
+    poor: "bg-danger text-danger-foreground",
   };
 
   const riskLevelColors = {
@@ -1174,8 +1174,8 @@ export default function ReportPage() {
                         excellent: { label: "great deal", color: "text-success" },
                         good: { label: "good deal", color: "text-success" },
                         fair: { label: "fair deal", color: "text-warning" },
-                        poor: { label: "poor deal", color: "text-warning" },
-                        overpriced: { label: "overpriced", color: "text-danger" },
+                        overpriced: { label: "overpriced", color: "text-warning" },
+                        poor: { label: "poor deal", color: "text-danger" },
                       };
                       const cfg = dealRatingConfig[priceAssessment.dealRating] || dealRatingConfig.fair;
                       const referenceValue = condition.sellerType === "dealer"
