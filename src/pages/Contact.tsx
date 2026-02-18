@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Mail, MapPin, Clock, Send } from "lucide-react";
+import { Mail, Send } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ContactPage() {
@@ -73,39 +73,6 @@ export default function ContactPage() {
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <MapPin className="h-5 w-5 text-primary" />
-                      Visit Us
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground">
-                      123 Auto Drive, Suite 100
-                      <br />
-                      San Francisco, CA 94102
-                      <br />
-                      United States
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Clock className="h-5 w-5 text-primary" />
-                      Business Hours
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2 text-muted-foreground">
-                      <p>Monday - Friday: 9:00 AM - 6:00 PM PST</p>
-                      <p>Saturday: 10:00 AM - 4:00 PM PST</p>
-                      <p>Sunday: Closed</p>
-                    </div>
-                  </CardContent>
-                </Card>
               </div>
 
               {/* Contact Form */}
