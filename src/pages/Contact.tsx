@@ -66,13 +66,9 @@ export default function ContactPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-muted-foreground">General Inquiries:</p>
-                    <a href="mailto:hello@carwise.com" className="text-primary hover:underline">
-                      hello@carwise.com
-                    </a>
-                    <p className="text-muted-foreground mt-3">Support:</p>
-                    <a href="mailto:support@carwise.com" className="text-primary hover:underline">
-                      support@carwise.com
+                    <p className="text-muted-foreground">General Inquiries & Support:</p>
+                    <a href="mailto:carwise.expert@gmail.com" className="text-primary hover:underline">
+                      carwise.expert@gmail.com
                     </a>
                   </CardContent>
                 </Card>
