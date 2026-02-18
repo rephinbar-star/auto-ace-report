@@ -99,7 +99,7 @@ serve(async (req) => {
     // Send OTP via email
     const resend = new Resend(resendKey);
     const { error: emailError } = await resend.emails.send({
-      from: "CarWise Admin <noreply@resend.dev>",
+      from: "CarWise Admin <admin@carwise.expert>",
       to: [user.email!],
       subject: "CarWise Admin Access Code",
       html: `
