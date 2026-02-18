@@ -662,9 +662,8 @@ export default function SampleReportPage() {
                                     ))}
                                   </div>
                                   {savings > 0 && (
-                                    <p className="mt-3 text-xs text-muted-foreground">
-                                      Negotiating to the <span className="font-medium text-foreground">{primaryTarget.label.replace(" Target", "")}</span> price 
-                                      would save you <span className="font-semibold text-success">${savings.toLocaleString()}</span> from the current asking price.
+                                    <p className="mt-3 text-xs text-muted-foreground break-words">
+                                      Negotiating to the <span className="font-medium text-foreground">{primaryTarget.label.replace(" Target", "")}</span> price would save you <span className="font-semibold text-success">${savings.toLocaleString()}</span> from the current asking price.
                                     </p>
                                   )}
                                 </div>
