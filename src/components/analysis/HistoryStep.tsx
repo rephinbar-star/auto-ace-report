@@ -47,14 +47,16 @@ export function HistoryStep({ onComplete, onBack, onSkip, mileage, onVinExtracte
     defaultValues: { historyUrl: "" },
   });
 
+  const acceptedTypes = ["application/pdf", "image/png", "image/jpeg", "image/webp"];
+
   const handleFileSelect = (file: File) => {
-    if (file.type === "application/pdf") {
+    if (acceptedTypes.includes(file.type)) {
       setUploadedFile(file);
       setAnalysisResult(null);
     } else {
       toast({
         title: "Invalid file type",
-        description: "Please upload a PDF file.",
+        description: "Please upload a PDF or image file (PNG, JPG, WebP).",
         variant: "destructive",
       });
     }
@@ -171,7 +173,7 @@ export function HistoryStep({ onComplete, onBack, onSkip, mileage, onVinExtracte
       <div>
         <h2 className="text-2xl font-bold">Vehicle History Report</h2>
         <p className="text-muted-foreground">
-          Upload a CarFax/AutoCheck or vehicle history report for deeper analysis.
+          Upload a CarFax/AutoCheck report (PDF or screenshots) for deeper analysis.
         </p>
       </div>
 
@@ -208,13 +210,13 @@ export function HistoryStep({ onComplete, onBack, onSkip, mileage, onVinExtracte
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="application/pdf"
+                accept="application/pdf,image/png,image/jpeg,image/webp"
                 onChange={handleFileInputChange}
                 className="hidden"
               />
               <div className="flex flex-col items-center gap-2">
                 <Upload className="h-8 w-8 text-muted-foreground" />
-                <p className="font-medium">Upload CarFax/AutoCheck PDF</p>
+                <p className="font-medium">Upload CarFax/AutoCheck PDF or Screenshots</p>
                 <p className="text-sm text-muted-foreground">Click to browse</p>
               </div>
             </div>
@@ -242,7 +244,7 @@ export function HistoryStep({ onComplete, onBack, onSkip, mileage, onVinExtracte
           <CardHeader>
             <CardTitle>Upload Report</CardTitle>
             <CardDescription>
-              Drag and drop a PDF or click to browse. We'll extract accident history, service records, and ownership details.
+              Upload a PDF or screenshots of your report. We'll extract accident history, service records, and ownership details.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -263,7 +265,7 @@ export function HistoryStep({ onComplete, onBack, onSkip, mileage, onVinExtracte
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="application/pdf"
+                accept="application/pdf,image/png,image/jpeg,image/webp"
                 onChange={handleFileInputChange}
                 className="hidden"
                 disabled={isAnalyzing}
@@ -299,8 +301,8 @@ export function HistoryStep({ onComplete, onBack, onSkip, mileage, onVinExtracte
                     <Upload className="h-6 w-6 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="font-medium">Drop your CarFax/AutoCheck PDF here</p>
-                    <p className="text-sm text-muted-foreground">or click to browse</p>
+                    <p className="font-medium">Drop your CarFax/AutoCheck PDF or screenshots here</p>
+                    <p className="text-sm text-muted-foreground">PDF, PNG, JPG, or WebP</p>
                   </div>
                 </div>
               )}

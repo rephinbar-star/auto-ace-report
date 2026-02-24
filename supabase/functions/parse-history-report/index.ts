@@ -105,7 +105,7 @@ serve(async (req) => {
 
     // Handle file upload
     if (file) {
-      console.log("Processing uploaded file:", file.name, file.size);
+      console.log("Processing uploaded file:", file.name, file.size, file.type);
 
       // Only upload to storage if user is authenticated
       if (user) {
@@ -116,85 +116,29 @@ serve(async (req) => {
 
         if (uploadError) {
           console.error("Storage upload error:", uploadError);
-          // Continue without storage - analysis still works
         } else {
           storagePath = fileName;
         }
       }
 
-      // For PDF parsing, we'll extract text using a simple approach
-      // Read file as array buffer and convert to text (basic extraction)
       const arrayBuffer = await file.arrayBuffer();
       const bytes = new Uint8Array(arrayBuffer);
-      
-      // Basic PDF text extraction (simplified - extracts visible text streams)
-      textContent = extractTextFromPDF(bytes);
+      const isImage = file.type.startsWith("image/");
 
-      // Decompress FlateDecode streams to find VIN and additional text
-      const decompressedText = await decompressPDFStreams(bytes);
-      if (decompressedText) {
-        console.log(`Decompressed ${decompressedText.length} chars from PDF streams`);
-        const vinFromDecompressed = decompressedText.match(/\b([A-HJ-NPR-Z0-9]{17})\b/);
-        if (vinFromDecompressed) {
-          console.log("VIN found in decompressed PDF stream:", vinFromDecompressed[1]);
-          textContent += `\nVIN: ${vinFromDecompressed[1]}`;
-        }
-        // Use decompressed text if it's richer
-        if (decompressedText.length > textContent.length) {
-          textContent = decompressedText;
-          // Re-add VIN if we found it
-          if (vinFromDecompressed) {
-            textContent += `\nVIN: ${vinFromDecompressed[1]}`;
-          }
-        }
-      }
-
-      // Fallback: scan raw bytes for VIN pattern  
-      if (!textContent.includes("VIN:")) {
-        const rawStr = new TextDecoder("latin1").decode(bytes);
-        const vinFromRaw = rawStr.match(/\b([A-HJ-NPR-Z0-9]{17})\b/);
-        if (vinFromRaw) {
-          console.log("VIN found in raw PDF bytes:", vinFromRaw[1]);
-          textContent += `\nVIN: ${vinFromRaw[1]}`;
-        }
-      }
-      
-      // Log a snippet around "VIN" or first 500 chars for debugging
-      const vinIdx = textContent.toUpperCase().indexOf("VIN");
-      if (vinIdx >= 0) {
-        console.log("Text near 'VIN':", textContent.substring(Math.max(0, vinIdx - 20), vinIdx + 80));
-      } else {
-        console.log("No 'VIN' keyword found in extracted text. First 300 chars:", textContent.substring(0, 300));
-      }
-      
-      // Try matching VIN with possible spaces/separators between chars
-      if (!textContent.includes("VIN:")) {
-        // Remove spaces and try matching
-        const noSpaces = textContent.replace(/\s+/g, "");
-        const vinNoSpaces = noSpaces.match(/([A-HJ-NPR-Z0-9]{17})/);
-        if (vinNoSpaces) {
-          console.log("VIN found after removing spaces:", vinNoSpaces[1]);
-          textContent += `\nVIN: ${vinNoSpaces[1]}`;
-        }
-      }
-
-      console.log(`Extracted text length: ${textContent.length} chars`);
-      
-      // If text is garbled (CIDFont encoding), use Gemini vision to read the PDF
-      const hasReadableText = /[a-zA-Z]{5,}/.test(textContent.substring(0, 500));
-      if (!hasReadableText || textContent.length < 100) {
-        console.log("Text appears garbled or too short, using Gemini vision to read PDF");
+      if (isImage) {
+        // For images (screenshots of CarFax/AutoCheck), use Gemini vision directly
+        console.log("Processing image file with Gemini vision");
         const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
         if (LOVABLE_API_KEY) {
           try {
-            // Convert bytes to base64 in chunks to avoid stack overflow
             let binary = "";
             const chunkSize = 8192;
             for (let i = 0; i < bytes.length; i += chunkSize) {
               const chunk = bytes.subarray(i, i + chunkSize);
               binary += String.fromCharCode(...chunk);
             }
-            const base64PDF = btoa(binary);
+            const base64Image = btoa(binary);
+            const mimeType = file.type || "image/png";
             const visionResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
               method: "POST",
               headers: {
@@ -209,12 +153,12 @@ serve(async (req) => {
                     content: [
                       {
                         type: "text",
-                        text: "Extract ALL text content from this PDF document. Include every detail: VIN number, vehicle info, accident history, service records, ownership history, title info, recalls. Return the full text content."
+                        text: "Extract ALL text content from this vehicle history report screenshot (CarFax, AutoCheck, or similar). Include every detail: VIN number, vehicle info, accident history, service records, ownership history, title info, recalls, mileage readings. Return the full text content."
                       },
                       {
                         type: "image_url",
                         image_url: {
-                          url: `data:application/pdf;base64,${base64PDF}`
+                          url: `data:${mimeType};base64,${base64Image}`
                         }
                       }
                     ]
@@ -227,10 +171,9 @@ serve(async (req) => {
             if (visionResponse.ok) {
               const visionData = await visionResponse.json();
               const extractedText = visionData.choices?.[0]?.message?.content;
-              if (extractedText && extractedText.length > 100) {
-                console.log(`Gemini vision extracted ${extractedText.length} chars`);
+              if (extractedText && extractedText.length > 20) {
+                console.log(`Gemini vision extracted ${extractedText.length} chars from image`);
                 textContent = extractedText;
-                // Extract VIN from vision text
                 const vinFromVision = extractedText.match(/\b([A-HJ-NPR-Z0-9]{17})\b/);
                 if (vinFromVision) {
                   console.log("VIN found via Gemini vision:", vinFromVision[1]);
@@ -244,10 +187,126 @@ serve(async (req) => {
             console.error("Gemini vision error:", e);
           }
         }
-      }
-      
-      if (!textContent || textContent.length < 100) {
-        textContent = `Vehicle History Report: ${file.name}. File uploaded for analysis.`;
+        if (!textContent || textContent.length < 50) {
+          textContent = `Vehicle History Report screenshot: ${file.name}. Image uploaded for analysis.`;
+        }
+      } else {
+        // PDF processing (existing logic)
+        // Basic PDF text extraction (simplified - extracts visible text streams)
+        textContent = extractTextFromPDF(bytes);
+
+        // Decompress FlateDecode streams to find VIN and additional text
+        const decompressedText = await decompressPDFStreams(bytes);
+        if (decompressedText) {
+          console.log(`Decompressed ${decompressedText.length} chars from PDF streams`);
+          const vinFromDecompressed = decompressedText.match(/\b([A-HJ-NPR-Z0-9]{17})\b/);
+          if (vinFromDecompressed) {
+            console.log("VIN found in decompressed PDF stream:", vinFromDecompressed[1]);
+            textContent += `\nVIN: ${vinFromDecompressed[1]}`;
+          }
+          if (decompressedText.length > textContent.length) {
+            textContent = decompressedText;
+            if (vinFromDecompressed) {
+              textContent += `\nVIN: ${vinFromDecompressed[1]}`;
+            }
+          }
+        }
+
+        // Fallback: scan raw bytes for VIN pattern  
+        if (!textContent.includes("VIN:")) {
+          const rawStr = new TextDecoder("latin1").decode(bytes);
+          const vinFromRaw = rawStr.match(/\b([A-HJ-NPR-Z0-9]{17})\b/);
+          if (vinFromRaw) {
+            console.log("VIN found in raw PDF bytes:", vinFromRaw[1]);
+            textContent += `\nVIN: ${vinFromRaw[1]}`;
+          }
+        }
+        
+        const vinIdx = textContent.toUpperCase().indexOf("VIN");
+        if (vinIdx >= 0) {
+          console.log("Text near 'VIN':", textContent.substring(Math.max(0, vinIdx - 20), vinIdx + 80));
+        } else {
+          console.log("No 'VIN' keyword found. First 300 chars:", textContent.substring(0, 300));
+        }
+        
+        if (!textContent.includes("VIN:")) {
+          const noSpaces = textContent.replace(/\s+/g, "");
+          const vinNoSpaces = noSpaces.match(/([A-HJ-NPR-Z0-9]{17})/);
+          if (vinNoSpaces) {
+            console.log("VIN found after removing spaces:", vinNoSpaces[1]);
+            textContent += `\nVIN: ${vinNoSpaces[1]}`;
+          }
+        }
+
+        console.log(`Extracted text length: ${textContent.length} chars`);
+        
+        // If text is garbled, use Gemini vision to read the PDF
+        const hasReadableText = /[a-zA-Z]{5,}/.test(textContent.substring(0, 500));
+        if (!hasReadableText || textContent.length < 100) {
+          console.log("Text appears garbled or too short, using Gemini vision to read PDF");
+          const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+          if (LOVABLE_API_KEY) {
+            try {
+              let binary = "";
+              const chunkSize = 8192;
+              for (let i = 0; i < bytes.length; i += chunkSize) {
+                const chunk = bytes.subarray(i, i + chunkSize);
+                binary += String.fromCharCode(...chunk);
+              }
+              const base64PDF = btoa(binary);
+              const visionResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  model: "google/gemini-2.5-flash",
+                  messages: [
+                    {
+                      role: "user",
+                      content: [
+                        {
+                          type: "text",
+                          text: "Extract ALL text content from this PDF document. Include every detail: VIN number, vehicle info, accident history, service records, ownership history, title info, recalls. Return the full text content."
+                        },
+                        {
+                          type: "image_url",
+                          image_url: {
+                            url: `data:application/pdf;base64,${base64PDF}`
+                          }
+                        }
+                      ]
+                    }
+                  ],
+                  max_tokens: 8000,
+                }),
+              });
+
+              if (visionResponse.ok) {
+                const visionData = await visionResponse.json();
+                const extractedText = visionData.choices?.[0]?.message?.content;
+                if (extractedText && extractedText.length > 100) {
+                  console.log(`Gemini vision extracted ${extractedText.length} chars`);
+                  textContent = extractedText;
+                  const vinFromVision = extractedText.match(/\b([A-HJ-NPR-Z0-9]{17})\b/);
+                  if (vinFromVision) {
+                    console.log("VIN found via Gemini vision:", vinFromVision[1]);
+                    textContent += `\nVIN: ${vinFromVision[1]}`;
+                  }
+                }
+              } else {
+                console.error("Gemini vision request failed:", visionResponse.status);
+              }
+            } catch (e) {
+              console.error("Gemini vision error:", e);
+            }
+          }
+        }
+        
+        if (!textContent || textContent.length < 100) {
+          textContent = `Vehicle History Report: ${file.name}. File uploaded for analysis.`;
+        }
       }
     }
 
