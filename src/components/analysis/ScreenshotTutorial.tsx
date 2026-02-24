@@ -194,7 +194,7 @@ function StepUpload() {
   return (
     <div className="flex flex-col items-center gap-4">
       {/* Phone mockup showing the upload flow */}
-      <div className="w-[160px]">
+      <div className="relative w-[160px]">
         <div className="rounded-2xl border-2 border-foreground/20 bg-muted/30 p-1.5 shadow-lg">
           <div className="rounded-xl bg-background overflow-hidden">
             {/* Status bar */}
@@ -225,8 +225,11 @@ function StepUpload() {
                   className="space-y-1.5"
                 >
                   <div className="flex items-center justify-between">
-                    <p className="text-[8px] font-semibold">Recents</p>
+                    <p className="text-[8px] font-bold text-foreground">📷 Photos App</p>
                     <p className="text-[7px] text-primary font-medium">Select</p>
+                  </div>
+                  <div className="flex items-center gap-1 mb-0.5">
+                    <p className="text-[7px] text-muted-foreground">Recents</p>
                   </div>
                   {/* Photo grid */}
                   <div className="grid grid-cols-3 gap-0.5">
@@ -263,6 +266,21 @@ function StepUpload() {
             </div>
           </div>
         </div>
+
+        {/* Animated finger tapping */}
+        {!selecting && (
+          <motion.div
+            className="absolute z-20 text-2xl"
+            initial={{ opacity: 0, bottom: 10, right: -8 }}
+            animate={tapped
+              ? { opacity: 1, bottom: 30, right: 20, scale: [1, 0.85, 1] }
+              : { opacity: 1, bottom: 10, right: -8 }
+            }
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+          >
+            👆
+          </motion.div>
+        )}
       </div>
 
       <p className="text-sm text-muted-foreground text-center max-w-[260px]">
