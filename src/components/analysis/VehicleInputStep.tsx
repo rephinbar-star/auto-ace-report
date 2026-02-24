@@ -906,7 +906,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
               <CardTitle className="text-lg">Quick Import from Listing</CardTitle>
             </div>
             <CardDescription>
-              Upload screenshots of the listing from marketplace (AutoTrader, CarGurus, Cars.com etc.) <span className="font-bold">Easiest for Mobile Users</span>
+              Upload screenshots of the listing from marketplace (AutoTrader, CarGurus, Cars.com, Dealer Site etc.) <span className="font-bold">Easiest for Mobile Users.</span>
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
