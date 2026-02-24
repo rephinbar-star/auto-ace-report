@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -912,6 +913,25 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* How it works tutorial trigger - above upload area */}
+            <motion.button
+              type="button"
+              onClick={() => setShowTutorial(true)}
+              className="flex items-center justify-center gap-2 w-full rounded-lg border border-primary/30 bg-primary/5 px-4 py-2.5 text-sm font-semibold text-primary hover:bg-primary/10 transition-colors"
+              animate={{ scale: [1, 1.02, 1] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <motion.span
+                animate={{ rotate: [0, 15, -15, 0] }}
+                transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 1 }}
+              >
+                <HelpCircle className="h-5 w-5" />
+              </motion.span>
+              How do I do this?
+            </motion.button>
+
+            <ScreenshotTutorial open={showTutorial} onClose={() => setShowTutorial(false)} />
+
             {/* Screenshot Upload - Primary Option */}
             <div
               className={`relative flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-6 transition-colors cursor-pointer ${
@@ -966,18 +986,6 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                 onChange={handleScreenshotUpload}
               />
             </div>
-
-            {/* How it works tutorial trigger */}
-            <button
-              type="button"
-              onClick={() => setShowTutorial(true)}
-              className="inline-flex items-center gap-1.5 text-primary hover:text-primary/80 hover:underline text-xs font-medium transition-colors mx-auto"
-            >
-              <Sparkles className="h-3.5 w-3.5" />
-              How screenshot import works
-            </button>
-
-            <ScreenshotTutorial open={showTutorial} onClose={() => setShowTutorial(false)} />
 
             {/* Divider */}
             <div className="flex items-center gap-3">
