@@ -955,7 +955,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                   </Button>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">or</div>
                   <div
-                    className={`relative flex items-center gap-3 rounded-lg border-2 border-dashed px-4 py-3 transition-colors ${
+                    className={`relative flex flex-col items-center gap-2 rounded-lg border-2 border-dashed px-4 py-3 transition-colors ${
                       isDragging
                         ? "border-primary bg-primary/10"
                         : "border-muted-foreground/25 hover:border-primary/50"
