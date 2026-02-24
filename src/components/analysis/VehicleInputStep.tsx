@@ -28,6 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Loader2, Search, Car, Link as LinkIcon, CheckCircle, AlertCircle, ArrowRight, ExternalLink, AlertTriangle, ChevronLeft, ChevronRight, ImageIcon, HelpCircle, Camera, Sparkles } from "lucide-react";
 import { ScreenshotTutorial } from "@/components/analysis/ScreenshotTutorial";
+import { URLTutorial } from "@/components/analysis/URLTutorial";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { decodeVIN, isValidVIN, getMakes, getModels } from "@/lib/nhtsa";
 import { VehicleInfo, VehicleCondition } from "@/types/vehicle";
@@ -869,30 +870,8 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
 
   return (
     <div className="space-y-6">
-      {/* Help Video Dialog */}
-      <Dialog open={showHelpVideo} onOpenChange={setShowHelpVideo}>
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>How to Copy & Paste URL</DialogTitle>
-          </DialogHeader>
-          <div className="aspect-video w-full">
-            <iframe
-              width="100%"
-              height="100%"
-              src="https://www.youtube.com/embed/Ng-y9d1pz9w"
-              title="How to Copy & Paste URL"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowFullScreen
-              className="rounded-lg"
-            />
-          </div>
-          <div className="flex justify-center pt-2">
-            <DialogClose asChild>
-              <Button variant="outline">Close</Button>
-            </DialogClose>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* URL Tutorial */}
+      <URLTutorial open={showHelpVideo} onClose={() => setShowHelpVideo(false)} />
       <div>
         <h2 className="text-2xl font-bold">Vehicle Information</h2>
         <p className="text-muted-foreground">
@@ -1029,14 +1008,21 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                     {(isLoading || isDecodingVin) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     {isDecodingVin ? "Decoding VIN..." : isLoading ? "Importing..." : <><LinkIcon className="h-4 w-4" />Import from URL</>}
                   </Button>
-                  <button
+                  <motion.button
                     type="button"
                     onClick={() => setShowHelpVideo(true)}
-                    className="inline-flex items-center gap-1 text-primary hover:text-primary/80 hover:underline text-xs font-medium transition-colors"
+                    className="inline-flex items-center gap-1.5 text-primary hover:text-primary/80 text-xs font-semibold transition-colors"
+                    animate={{ scale: [1, 1.03, 1] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                   >
-                    <HelpCircle className="h-3.5 w-3.5" />
-                    How to Copy & Paste URL
-                  </button>
+                    <motion.span
+                      animate={{ rotate: [0, 15, -15, 0] }}
+                      transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 1 }}
+                    >
+                      <HelpCircle className="h-4 w-4" />
+                    </motion.span>
+                    How do I do this?
+                  </motion.button>
                 </div>
               </form>
             </Form>
