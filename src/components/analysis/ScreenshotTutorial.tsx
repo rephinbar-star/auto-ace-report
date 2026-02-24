@@ -66,86 +66,113 @@ function StepFindListing() {
 
 /* ─── Step 2: Take a Screenshot ─── */
 function StepTakeScreenshot() {
+  const [currentShot, setCurrentShot] = useState(0);
   const [flashed, setFlashed] = useState(false);
-  const [captured, setCaptured] = useState(false);
+  const [thumbnails, setThumbnails] = useState<number[]>([]);
+
+  const screens = [
+    { label: "Price & overview", detail: "$24,995", sub: "2022 Honda Civic" },
+    { label: "Vehicle details", detail: "VIN: 2HG...", sub: "45,230 mi · EX-L" },
+    { label: "Seller & history", detail: "1 Owner", sub: "Clean title" },
+  ];
 
   useEffect(() => {
-    const t1 = setTimeout(() => setFlashed(true), 800);
-    const t2 = setTimeout(() => {
-      setFlashed(false);
-      setCaptured(true);
-    }, 1100);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+    // Animate 3 sequential screenshots
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    screens.forEach((_, i) => {
+      // Show screen
+      timers.push(setTimeout(() => setCurrentShot(i), i * 1600));
+      // Flash
+      timers.push(setTimeout(() => setFlashed(true), i * 1600 + 600));
+      // Capture
+      timers.push(setTimeout(() => {
+        setFlashed(false);
+        setThumbnails((prev) => [...prev, i]);
+      }, i * 1600 + 900));
+    });
+    return () => timers.forEach(clearTimeout);
   }, []);
 
+  const screen = screens[currentShot];
+
   return (
-    <div className="flex flex-col items-center gap-4">
-      {/* Phone mockup */}
-      <div className="relative w-[140px]">
-        <div className="rounded-2xl border-2 border-foreground/20 bg-muted/30 p-1.5 shadow-lg">
-          <div className="rounded-xl bg-background overflow-hidden">
-            {/* Status bar */}
-            <div className="flex justify-between px-2 py-0.5 text-[7px] text-muted-foreground">
-              <span>9:41</span>
-              <span>●●●</span>
-            </div>
-            {/* Screen content */}
-            <div className="p-2 space-y-1.5">
-              <div className="h-14 rounded bg-primary/10 flex items-center justify-center">
-                <Car className="h-5 w-5 text-primary/40" />
+    <div className="flex flex-col items-center gap-3">
+      <div className="flex items-start gap-3">
+        {/* Phone mockup */}
+        <div className="relative w-[130px] shrink-0">
+          <div className="rounded-2xl border-2 border-foreground/20 bg-muted/30 p-1.5 shadow-lg">
+            <div className="rounded-xl bg-background overflow-hidden">
+              <div className="flex justify-between px-2 py-0.5 text-[7px] text-muted-foreground">
+                <span>9:41</span>
+                <span>●●●</span>
               </div>
-              <div className="h-2 w-3/4 rounded bg-foreground/10" />
-              <div className="h-2 w-1/2 rounded bg-foreground/5" />
-              <div className="h-3.5 w-12 rounded bg-primary/15 flex items-center justify-center text-[6px] font-bold text-primary">$24,995</div>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentShot}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="p-2 space-y-1.5"
+                >
+                  <div className="h-10 rounded bg-primary/10 flex items-center justify-center">
+                    <Car className="h-4 w-4 text-primary/40" />
+                  </div>
+                  <div className="text-[7px] font-bold text-foreground/80">{screen.detail}</div>
+                  <div className="text-[6px] text-muted-foreground">{screen.sub}</div>
+                  <div className="h-1.5 w-3/4 rounded bg-foreground/5" />
+                </motion.div>
+              </AnimatePresence>
             </div>
           </div>
+
+          {/* Flash overlay */}
+          <AnimatePresence>
+            {flashed && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.9 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.12 }}
+                className="absolute inset-0 rounded-2xl bg-white z-10"
+              />
+            )}
+          </AnimatePresence>
+
+          <motion.div
+            className="absolute -bottom-2 -right-2 rounded-full bg-primary p-1.5 shadow-md"
+            animate={flashed ? { scale: [1, 1.3, 1] } : {}}
+            transition={{ duration: 0.3 }}
+          >
+            <Camera className="h-3 w-3 text-primary-foreground" />
+          </motion.div>
         </div>
 
-        {/* Flash overlay */}
-        <AnimatePresence>
-          {flashed && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.9 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="absolute inset-0 rounded-2xl bg-white z-10"
-            />
-          )}
-        </AnimatePresence>
-
-        {/* Camera icon pulse */}
-        <motion.div
-          className="absolute -bottom-2 -right-2 rounded-full bg-primary p-1.5 shadow-md"
-          animate={captured ? { scale: [1, 1.3, 1] } : {}}
-          transition={{ duration: 0.3 }}
-        >
-          <Camera className="h-3.5 w-3.5 text-primary-foreground" />
-        </motion.div>
+        {/* Captured thumbnails stack */}
+        <div className="flex flex-col gap-1.5 pt-2 min-w-[100px]">
+          <p className="text-[9px] font-semibold text-muted-foreground mb-0.5">Screenshots taken:</p>
+          {screens.map((s, i) => (
+            <AnimatePresence key={i}>
+              {thumbnails.includes(i) && (
+                <motion.div
+                  initial={{ opacity: 0, x: -10, scale: 0.8 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  className="flex items-center gap-1.5 rounded border bg-muted/40 px-2 py-1"
+                >
+                  <div className="h-5 w-4 rounded-sm bg-primary/10 flex items-center justify-center shrink-0">
+                    <Car className="h-2 w-2 text-primary/50" />
+                  </div>
+                  <p className="text-[7px] font-medium truncate">{s.label}</p>
+                  <CheckCircle className="h-2.5 w-2.5 text-green-500 shrink-0" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          ))}
+        </div>
       </div>
 
-      {/* Captured thumbnail */}
-      <AnimatePresence>
-        {captured && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.5, y: -10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-1.5"
-          >
-            <div className="h-8 w-6 rounded border bg-primary/10 flex items-center justify-center">
-              <Car className="h-3 w-3 text-primary/50" />
-            </div>
-            <div>
-              <p className="text-[10px] font-medium">screenshot_listing.png</p>
-              <p className="text-[8px] text-muted-foreground">Saved to camera roll</p>
-            </div>
-            <CheckCircle className="h-3.5 w-3.5 text-green-500" />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <p className="text-sm text-muted-foreground text-center max-w-[260px]">
-        Take a screenshot of the listing page. On iPhone press <strong>Side + Volume Up</strong>; on Android press <strong>Power + Volume Down</strong>.
+      <p className="text-sm text-muted-foreground text-center max-w-[280px]">
+        Take <strong>multiple screenshots</strong> to capture all the details — price, year, make, model, mileage, and <strong className="text-foreground">most importantly the VIN number</strong>. Scroll through the listing and screenshot each section.
       </p>
     </div>
   );
