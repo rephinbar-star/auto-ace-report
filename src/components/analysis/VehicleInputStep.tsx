@@ -25,7 +25,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Search, Car, Link as LinkIcon, CheckCircle, AlertCircle, ArrowRight, ExternalLink, AlertTriangle, ChevronLeft, ChevronRight, ImageIcon, HelpCircle, Camera } from "lucide-react";
+import { Loader2, Search, Car, Link as LinkIcon, CheckCircle, AlertCircle, ArrowRight, ExternalLink, AlertTriangle, ChevronLeft, ChevronRight, ImageIcon, HelpCircle, Camera, Sparkles } from "lucide-react";
+import { ScreenshotTutorial } from "@/components/analysis/ScreenshotTutorial";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { decodeVIN, isValidVIN, getMakes, getModels } from "@/lib/nhtsa";
 import { VehicleInfo, VehicleCondition } from "@/types/vehicle";
@@ -166,6 +167,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
   const [showFacebookHelper, setShowFacebookHelper] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showHelpVideo, setShowHelpVideo] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
   const [isExtractingScreenshot, setIsExtractingScreenshot] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const { toast } = useToast();
@@ -964,6 +966,18 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                 onChange={handleScreenshotUpload}
               />
             </div>
+
+            {/* How it works tutorial trigger */}
+            <button
+              type="button"
+              onClick={() => setShowTutorial(true)}
+              className="inline-flex items-center gap-1.5 text-primary hover:text-primary/80 hover:underline text-xs font-medium transition-colors mx-auto"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              How screenshot import works
+            </button>
+
+            <ScreenshotTutorial open={showTutorial} onClose={() => setShowTutorial(false)} />
 
             {/* Divider */}
             <div className="flex items-center gap-3">
