@@ -323,7 +323,7 @@ Provide your expert analysis.`;
                       fairMarketPrivate: { type: "number", description: "Fair private party sale value in dollars" },
                       fairMarketDealer: { type: "number", description: "Fair dealer retail value in dollars" },
                       fairMarketTradeIn: { type: "number", description: "Fair trade-in value in dollars" },
-                      dealRating: { type: "string", enum: ["excellent", "good", "fair", "overpriced", "poor"], description: "Deal rating from best to worst: excellent > good > fair > overpriced > poor. 'poor' is the worst rating (significantly inflated price). 'overpriced' means above market value but not as bad as poor." },
+                      dealRating: { type: "string", enum: ["excellent", "good", "fair", "overpriced", "poor"], description: "Deal rating from best to worst: excellent > good > fair > overpriced > poor. 'overpriced' means 5-15% above market value. 'poor' is the worst rating — more than 15% above market value, a significantly bad deal." },
                       priceDifference: { type: "number", description: "Difference between asking price and the appropriate fair market value (dealer retail for dealer sellers, private sale for private sellers)" },
                       percentDifference: { type: "number", description: "Percentage difference from the appropriate fair market value" },
                     },
