@@ -967,10 +967,27 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
             </div>
 
             {/* Divider */}
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-px bg-border" />
-              <span className="text-sm text-muted-foreground font-semibold">or paste marketplace listing URL</span>
-              <div className="flex-1 h-px bg-border" />
+            <div className="flex flex-col items-center gap-1.5">
+              <div className="flex items-center gap-3 w-full">
+                <div className="flex-1 h-px bg-border" />
+                <span className="text-sm text-muted-foreground font-semibold">or paste marketplace listing URL</span>
+                <div className="flex-1 h-px bg-border" />
+              </div>
+              <motion.button
+                type="button"
+                onClick={() => setShowHelpVideo(true)}
+                className="inline-flex items-center gap-1.5 text-primary hover:text-primary/80 text-xs font-semibold transition-colors"
+                animate={{ scale: [1, 1.03, 1] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <motion.span
+                  animate={{ rotate: [0, 15, -15, 0] }}
+                  transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 1 }}
+                >
+                  <HelpCircle className="h-4 w-4" />
+                </motion.span>
+                How do I do this?
+              </motion.button>
             </div>
 
             {/* URL Import - Secondary Option */}
@@ -1003,27 +1020,10 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                     </FormItem>
                   )}
                 />
-                <div className="flex gap-3 items-center flex-wrap">
-                  <Button type="submit" size="default" disabled={isLoading || isDecodingVin || isExtractingScreenshot} className="gap-2">
-                    {(isLoading || isDecodingVin) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {isDecodingVin ? "Decoding VIN..." : isLoading ? "Importing..." : <><LinkIcon className="h-4 w-4" />Import from URL</>}
-                  </Button>
-                  <motion.button
-                    type="button"
-                    onClick={() => setShowHelpVideo(true)}
-                    className="inline-flex items-center gap-1.5 text-primary hover:text-primary/80 text-xs font-semibold transition-colors"
-                    animate={{ scale: [1, 1.03, 1] }}
-                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                  >
-                    <motion.span
-                      animate={{ rotate: [0, 15, -15, 0] }}
-                      transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 1 }}
-                    >
-                      <HelpCircle className="h-4 w-4" />
-                    </motion.span>
-                    How do I do this?
-                  </motion.button>
-                </div>
+                <Button type="submit" size="default" disabled={isLoading || isDecodingVin || isExtractingScreenshot} className="gap-2 w-full sm:w-auto">
+                  {(isLoading || isDecodingVin) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isDecodingVin ? "Decoding VIN..." : isLoading ? "Importing..." : <><LinkIcon className="h-4 w-4" />Import from URL</>}
+                </Button>
               </form>
             </Form>
           </CardContent>
