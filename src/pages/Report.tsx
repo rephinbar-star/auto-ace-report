@@ -776,7 +776,7 @@ export default function ReportPage() {
     excellent: "bg-success text-success-foreground",
     good: "bg-success/80 text-success-foreground",
     fair: "bg-warning text-warning-foreground",
-    overpriced: "bg-warning/80 text-warning-foreground",
+    overpriced: "bg-orange-500 text-white",
     poor: "bg-danger text-danger-foreground",
   };
 
@@ -1174,7 +1174,7 @@ export default function ReportPage() {
                         excellent: { label: "great deal", color: "text-success" },
                         good: { label: "good deal", color: "text-success" },
                         fair: { label: "fair deal", color: "text-warning" },
-                        overpriced: { label: "overpriced", color: "text-warning" },
+                        overpriced: { label: "overpriced", color: "text-orange-500" },
                         poor: { label: "poor deal", color: "text-danger" },
                       };
                       const cfg = dealRatingConfig[priceAssessment.dealRating] || dealRatingConfig.fair;

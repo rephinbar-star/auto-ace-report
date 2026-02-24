@@ -39,7 +39,7 @@ const categoryTooltips: Record<string, { title: string; details: string[] }> = {
       "Good: 11 pts — Fair price, some savings",
       "Fair: 8 pts — At market value",
       "Overpriced: 5 pts — Above market value",
-      "Poor: 2 pts — Significantly inflated",
+      "Poor: 2 pts — Significantly overpriced, worst deal",
     ],
   },
   "Title Status": {
