@@ -902,30 +902,84 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
         <Card className="border-primary/20 bg-primary/5">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
-              <LinkIcon className="h-5 w-5 text-primary" />
+              <Camera className="h-5 w-5 text-primary" />
               <CardTitle className="text-lg">Quick Import from Listing</CardTitle>
             </div>
-            <CardDescription className="flex items-center gap-2 flex-wrap">
-              <span>Paste a car listing URL to automatically extract vehicle details, VIN, price, and mileage.</span>
-              <button
-                type="button"
-                onClick={() => setShowHelpVideo(true)}
-                className="inline-flex items-center gap-1 text-primary hover:text-primary/80 hover:underline text-sm font-medium transition-colors"
-              >
-                <HelpCircle className="h-3.5 w-3.5" />
-                How to Copy & Paste URL
-              </button>
+            <CardDescription>
+              Upload screenshots or paste a listing URL to automatically extract vehicle details.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            {/* Screenshot Upload - Primary Option */}
+            <div
+              className={`relative flex flex-col items-center gap-3 rounded-xl border-2 border-dashed p-6 transition-colors cursor-pointer ${
+                isDragging
+                  ? "border-primary bg-primary/10"
+                  : "border-primary/40 hover:border-primary hover:bg-primary/5"
+              }`}
+              onClick={() => !isExtractingScreenshot && document.getElementById("screenshot-upload")?.click()}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDragging(false);
+                const dt = e.dataTransfer;
+                if (dt.files.length > 0) {
+                  const input = document.getElementById("screenshot-upload") as HTMLInputElement;
+                  if (input) {
+                    const dataTransfer = new DataTransfer();
+                    for (let i = 0; i < dt.files.length; i++) {
+                      dataTransfer.items.add(dt.files[i]);
+                    }
+                    input.files = dataTransfer.files;
+                    input.dispatchEvent(new Event("change", { bubbles: true }));
+                  }
+                }
+              }}
+            >
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10">
+                {isExtractingScreenshot ? (
+                  <Loader2 className="h-6 w-6 text-primary animate-spin" />
+                ) : (
+                  <Camera className="h-6 w-6 text-primary" />
+                )}
+              </div>
+              <div className="text-center">
+                <p className="font-semibold text-base">
+                  {isExtractingScreenshot ? "Extracting details..." : "Upload Listing Screenshots"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  or drop / paste (Ctrl+V) images here
+                </p>
+              </div>
+              <input
+                id="screenshot-upload"
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleScreenshotUpload}
+              />
+            </div>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-border" />
+              <span className="text-xs text-muted-foreground font-medium">or paste a URL</span>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+
+            {/* URL Import - Secondary Option */}
             <Form {...listingUrlForm}>
-              <form onSubmit={listingUrlForm.handleSubmit(handleListingUrlSubmit)} className="space-y-4">
+              <form onSubmit={listingUrlForm.handleSubmit(handleListingUrlSubmit)} className="space-y-3">
                 <FormField
                   control={listingUrlForm.control}
                   name="listingUrl"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Listing URL</FormLabel>
                       <FormControl>
                         <Input 
                           placeholder="https://www.cars.com/vehicledetail/..." 
@@ -949,63 +1003,18 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                   )}
                 />
                 <div className="flex gap-3 items-center flex-wrap">
-                  <Button type="submit" disabled={isLoading || isDecodingVin || isExtractingScreenshot}>
+                  <Button type="submit" variant="secondary" size="sm" disabled={isLoading || isDecodingVin || isExtractingScreenshot}>
                     {(isLoading || isDecodingVin) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {isDecodingVin ? "Decoding VIN..." : isLoading ? "Importing..." : "Import from Listing URL"}
+                    {isDecodingVin ? "Decoding VIN..." : isLoading ? "Importing..." : "Import from URL"}
                   </Button>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">or</div>
-                  <div
-                    className={`relative flex flex-col items-center gap-2 rounded-lg border-2 border-dashed px-4 py-3 transition-colors ${
-                      isDragging
-                        ? "border-primary bg-primary/10"
-                        : "border-muted-foreground/25 hover:border-primary/50"
-                    }`}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      setIsDragging(true);
-                    }}
-                    onDragLeave={() => setIsDragging(false)}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      setIsDragging(false);
-                      const dt = e.dataTransfer;
-                      if (dt.files.length > 0) {
-                        // Create a synthetic event to reuse the existing handler
-                        const input = document.getElementById("screenshot-upload") as HTMLInputElement;
-                        if (input) {
-                          const dataTransfer = new DataTransfer();
-                          for (let i = 0; i < dt.files.length; i++) {
-                            dataTransfer.items.add(dt.files[i]);
-                          }
-                          input.files = dataTransfer.files;
-                          input.dispatchEvent(new Event("change", { bubbles: true }));
-                        }
-                      }
-                    }}
+                  <button
+                    type="button"
+                    onClick={() => setShowHelpVideo(true)}
+                    className="inline-flex items-center gap-1 text-primary hover:text-primary/80 hover:underline text-xs font-medium transition-colors"
                   >
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      disabled={isLoading || isDecodingVin || isExtractingScreenshot}
-                      onClick={() => document.getElementById("screenshot-upload")?.click()}
-                    >
-                      {isExtractingScreenshot ? (
-                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Extracting...</>
-                      ) : (
-                        <><Camera className="mr-2 h-4 w-4" />Upload Listing Screenshots</>
-                      )}
-                    </Button>
-                    <span className="text-xs text-muted-foreground">or drop / paste (Ctrl+V) images here</span>
-                    <input
-                      id="screenshot-upload"
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      className="hidden"
-                      onChange={handleScreenshotUpload}
-                    />
-                  </div>
+                    <HelpCircle className="h-3.5 w-3.5" />
+                    How to Copy & Paste URL
+                  </button>
                 </div>
               </form>
             </Form>
