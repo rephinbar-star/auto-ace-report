@@ -153,56 +153,93 @@ function StepTakeScreenshot() {
 
 /* ─── Step 3: Upload to CarWise ─── */
 function StepUpload() {
-  const [dropped, setDropped] = useState(false);
+  const [tapped, setTapped] = useState(false);
+  const [selecting, setSelecting] = useState(false);
+  const [selected, setSelected] = useState(false);
 
   useEffect(() => {
-    const t = setTimeout(() => setDropped(true), 1200);
-    return () => clearTimeout(t);
+    const t1 = setTimeout(() => setTapped(true), 600);
+    const t2 = setTimeout(() => setSelecting(true), 1200);
+    const t3 = setTimeout(() => setSelected(true), 2400);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
   }, []);
 
   return (
     <div className="flex flex-col items-center gap-4">
-      <div className="relative w-full max-w-[260px] h-[130px]">
-        {/* Drop zone */}
-        <motion.div
-          className="absolute inset-0 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2"
-          animate={dropped
-            ? { borderColor: "hsl(var(--primary))", backgroundColor: "hsl(var(--primary) / 0.08)" }
-            : { borderColor: "hsl(var(--primary) / 0.4)" }
-          }
-          transition={{ duration: 0.3 }}
-        >
-          {dropped ? (
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", stiffness: 300 }}
-            >
-              <CheckCircle className="h-8 w-8 text-green-500" />
-            </motion.div>
-          ) : (
-            <Upload className="h-6 w-6 text-primary/50" />
-          )}
-          <p className="text-xs text-muted-foreground font-medium">
-            {dropped ? "Screenshot uploaded!" : "Upload screenshots here"}
-          </p>
-        </motion.div>
+      {/* Phone mockup showing the upload flow */}
+      <div className="w-[160px]">
+        <div className="rounded-2xl border-2 border-foreground/20 bg-muted/30 p-1.5 shadow-lg">
+          <div className="rounded-xl bg-background overflow-hidden">
+            {/* Status bar */}
+            <div className="flex justify-between px-2 py-0.5 text-[7px] text-muted-foreground">
+              <span>9:41</span>
+              <span>●●●</span>
+            </div>
 
-        {/* Floating thumbnail moving into drop zone */}
-        {!dropped && (
-          <motion.div
-            className="absolute z-10 h-12 w-9 rounded border bg-muted shadow-lg flex items-center justify-center"
-            initial={{ top: -10, left: "70%", rotate: -8, opacity: 0 }}
-            animate={{ top: "35%", left: "45%", rotate: 0, opacity: 1 }}
-            transition={{ duration: 1, ease: "easeInOut" }}
-          >
-            <Car className="h-4 w-4 text-primary/50" />
-          </motion.div>
-        )}
+            <div className="p-2 space-y-2">
+              {!selecting ? (
+                /* Upload zone on phone */
+                <motion.div
+                  className="rounded-lg border-2 border-dashed flex flex-col items-center justify-center gap-1 py-4"
+                  animate={tapped
+                    ? { borderColor: "hsl(var(--primary))", backgroundColor: "hsl(var(--primary) / 0.08)", scale: [1, 0.97, 1] }
+                    : { borderColor: "hsl(var(--primary) / 0.3)" }
+                  }
+                  transition={{ duration: 0.25 }}
+                >
+                  <Camera className="h-4 w-4 text-primary/60" />
+                  <p className="text-[7px] text-muted-foreground font-medium">Upload Screenshots</p>
+                </motion.div>
+              ) : (
+                /* Photos app / gallery picker */
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-1.5"
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="text-[8px] font-semibold">Recents</p>
+                    <p className="text-[7px] text-primary font-medium">Select</p>
+                  </div>
+                  {/* Photo grid */}
+                  <div className="grid grid-cols-3 gap-0.5">
+                    {[0, 1, 2, 3, 4, 5].map((i) => (
+                      <motion.div
+                        key={i}
+                        className="relative aspect-square rounded-sm bg-muted flex items-center justify-center"
+                      >
+                        <Car className="h-2.5 w-2.5 text-muted-foreground/40" />
+                        {selected && i < 3 && (
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ delay: i * 0.15, type: "spring", stiffness: 400 }}
+                            className="absolute top-0.5 right-0.5 h-3 w-3 rounded-full bg-primary flex items-center justify-center"
+                          >
+                            <CheckCircle className="h-2 w-2 text-primary-foreground" />
+                          </motion.div>
+                        )}
+                      </motion.div>
+                    ))}
+                  </div>
+                  {selected && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="rounded bg-primary py-1 text-center text-[8px] font-semibold text-primary-foreground"
+                    >
+                      Add 3 Photos
+                    </motion.div>
+                  )}
+                </motion.div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       <p className="text-sm text-muted-foreground text-center max-w-[260px]">
-        Tap the upload area on the Analyze page, or <strong>drag & drop</strong> / <strong>paste (Ctrl+V)</strong> your screenshot directly.
+        Tap the upload area on CarWise — your <strong>photo library</strong> opens so you can select multiple screenshots at once.
       </p>
     </div>
   );
