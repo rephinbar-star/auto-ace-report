@@ -1,36 +1,46 @@
 
 
-# Animated Screenshot Upload Walkthrough
+# URL Copy & Paste Tutorial
 
 ## Overview
-Build a reusable `ScreenshotTutorial` component that appears as a help overlay/modal on the Analyze page. It walks users through 3-4 animated steps showing how to screenshot a car listing and upload it to CarWise.
+Create a new `URLTutorial` component -- a 4-step animated walkthrough (matching the style of `ScreenshotTutorial`) that teaches users how to copy a listing URL from a marketplace site and paste it into CarWise.
 
 ## Steps Illustrated
 
-1. **Find Your Listing** -- Show a stylized mockup of a phone/browser with a car listing site (AutoTrader, CarGurus, etc.)
-2. **Take a Screenshot** -- Animate a "screenshot capture" effect (flash overlay, device frame shrinking to a thumbnail)
-3. **Upload to CarWise** -- Show the screenshot being "dragged" into the upload zone with a success checkmark
-4. **Auto-Extracted Details** -- Show form fields magically populating (year, make, model, price, mileage)
+1. **Find Your Listing** -- Browser mockup showing a car listing on a marketplace site (Cars.com, CarGurus, etc.) with the address bar highlighted
+2. **Copy the URL** -- Animate tapping/clicking the address bar, the URL text becoming selected (highlighted), and a "Copy" action appearing with a confirmation
+3. **Paste into CarWise** -- Show the CarWise URL input field, animate a tap/click on it, then a "Paste" action filling in the URL with a success effect
+4. **Auto-Imported Details** -- Reuse the same staggered field-reveal pattern from `ScreenshotTutorial` Step 4, showing year, make, model, price populating automatically
 
 ## Technical Approach
 
-### New Files
-- `src/components/analysis/ScreenshotTutorial.tsx` -- The main walkthrough component with all 4 steps, auto-play/manual navigation, and Framer Motion animations
+### New File
+- `src/components/analysis/URLTutorial.tsx` -- Follows the same architecture as `ScreenshotTutorial.tsx`: same Dialog wrapper, progress bar, dots, Back/Next/Got it navigation, auto-advance timer, and `AnimatePresence` transitions
 
 ### Integration
-- Add a small "How it works" help link/button below the upload zone in `VehicleInputStep.tsx` that opens the tutorial as a Dialog modal
-- Uses existing `Dialog` from Radix and `framer-motion` for step transitions (both already installed)
+- Import `URLTutorial` in `VehicleInputStep.tsx`
+- Replace the existing `showHelpVideo` state usage (line 1034) to open the new `URLTutorial` instead of whatever `showHelpVideo` currently does
+- Add `<URLTutorial open={showHelpVideo} onClose={() => setShowHelpVideo(false)} />` in the render
 
-### Animation Details
-- Each step uses CSS-illustrated mockups (no real images needed -- styled divs resembling phone screens, browser windows, and app UI)
-- `AnimatePresence` with slide/fade transitions between steps (matching the existing `OnboardingTour` pattern)
-- Step 2 has a "flash" keyframe animation simulating a screenshot capture
-- Step 3 animates a thumbnail image moving from one position into the drop zone
-- Step 4 uses staggered `motion.div` to reveal extracted fields one by one
-- Auto-advances every ~4 seconds with a progress bar, or user can click through manually
+### Animation Details per Step
 
-### UI Pattern
-- Reuses the same navigation pattern as the existing `OnboardingTour` component (progress dots, Back/Next buttons, dismiss)
-- Compact modal (max-w-md) that works on both desktop and mobile
-- "Got it!" button on the final step to dismiss
+**Step 1 -- Find Your Listing:**
+- Same browser-chrome mockup as `ScreenshotTutorial` Step 1 (traffic lights, address bar, fake listing content)
+- Address bar subtly pulses to draw attention
 
+**Step 2 -- Copy the URL:**
+- Browser address bar mockup; animated finger/cursor taps the address bar
+- URL text gets a highlight/selection effect (blue background)
+- A "Copied!" tooltip or toast animates in with a checkmark
+
+**Step 3 -- Paste into CarWise:**
+- Mockup of the CarWise input field (matching the real UI style)
+- Animated cursor/finger taps the input
+- URL text "types in" with a quick animation
+- "Import from URL" button pulses
+
+**Step 4 -- Auto-Imported Details:**
+- Identical pattern to `ScreenshotTutorial`'s `StepExtracted` -- staggered reveal of Year, Make/Model, Price, Mileage fields with green checkmarks
+
+### Changes to Existing Files
+- `VehicleInputStep.tsx`: Add import for `URLTutorial`, render it using the existing `showHelpVideo` state, and optionally make the trigger button slightly more prominent (matching the "How do I do this?" style with an animated icon)
