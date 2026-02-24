@@ -182,14 +182,40 @@ function StepTakeScreenshot() {
 function StepUpload() {
   const [tapped, setTapped] = useState(false);
   const [selecting, setSelecting] = useState(false);
-  const [selected, setSelected] = useState(false);
+  // Track which photos have been "tapped" by finger (0, 1, 2)
+  const [tappedPhotos, setTappedPhotos] = useState<number[]>([]);
+  const [fingerTarget, setFingerTarget] = useState(-1);
+  const [showAddButton, setShowAddButton] = useState(false);
 
   useEffect(() => {
-    const t1 = setTimeout(() => setTapped(true), 600);
-    const t2 = setTimeout(() => setSelecting(true), 1200);
-    const t3 = setTimeout(() => setSelected(true), 2400);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    // Phase 1: Finger taps upload zone
+    timers.push(setTimeout(() => setTapped(true), 600));
+    // Phase 2: Gallery opens
+    timers.push(setTimeout(() => setSelecting(true), 1200));
+    // Phase 3: Finger moves to photo 0, taps it
+    timers.push(setTimeout(() => setFingerTarget(0), 1800));
+    timers.push(setTimeout(() => setTappedPhotos([0]), 2100));
+    // Phase 4: Finger moves to photo 1, taps it
+    timers.push(setTimeout(() => setFingerTarget(1), 2500));
+    timers.push(setTimeout(() => setTappedPhotos([0, 1]), 2800));
+    // Phase 5: Finger moves to photo 2, taps it
+    timers.push(setTimeout(() => setFingerTarget(2), 3200));
+    timers.push(setTimeout(() => {
+      setTappedPhotos([0, 1, 2]);
+      setFingerTarget(-1); // hide finger
+    }, 3500));
+    // Phase 6: Show "Add 3 Photos" button
+    timers.push(setTimeout(() => setShowAddButton(true), 3800));
+    return () => timers.forEach(clearTimeout);
   }, []);
+
+  // Grid positions for finger targeting (col, row) mapped to approximate CSS positions
+  const fingerPositions: Record<number, { bottom: number; right: number }> = {
+    0: { bottom: 52, right: 108 },
+    1: { bottom: 52, right: 62 },
+    2: { bottom: 52, right: 16 },
+  };
 
   return (
     <div className="flex flex-col items-center gap-4">
@@ -237,13 +263,15 @@ function StepUpload() {
                       <motion.div
                         key={i}
                         className="relative aspect-square rounded-sm bg-muted flex items-center justify-center"
+                        animate={fingerTarget === i ? { scale: [1, 0.92, 1] } : {}}
+                        transition={{ duration: 0.15 }}
                       >
                         <Car className="h-2.5 w-2.5 text-muted-foreground/40" />
-                        {selected && i < 3 && (
+                        {tappedPhotos.includes(i) && (
                           <motion.div
                             initial={{ scale: 0 }}
                             animate={{ scale: 1 }}
-                            transition={{ delay: i * 0.15, type: "spring", stiffness: 400 }}
+                            transition={{ type: "spring", stiffness: 400 }}
                             className="absolute top-0.5 right-0.5 h-3 w-3 rounded-full bg-primary flex items-center justify-center"
                           >
                             <CheckCircle className="h-2 w-2 text-primary-foreground" />
@@ -252,7 +280,7 @@ function StepUpload() {
                       </motion.div>
                     ))}
                   </div>
-                  {selected && (
+                  {showAddButton && (
                     <motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
@@ -267,7 +295,7 @@ function StepUpload() {
           </div>
         </div>
 
-        {/* Animated finger tapping */}
+        {/* Animated finger - tapping upload zone initially, then each photo */}
         {!selecting && (
           <motion.div
             className="absolute z-20 text-2xl"
@@ -277,6 +305,21 @@ function StepUpload() {
               : { opacity: 1, bottom: 10, right: -8 }
             }
             transition={{ duration: 0.5, ease: "easeInOut" }}
+          >
+            👆
+          </motion.div>
+        )}
+        {selecting && fingerTarget >= 0 && (
+          <motion.div
+            className="absolute z-20 text-lg"
+            animate={{
+              bottom: fingerPositions[fingerTarget]?.bottom ?? 50,
+              right: fingerPositions[fingerTarget]?.right ?? 60,
+              scale: [1, 0.8, 1],
+              opacity: 1,
+            }}
+            initial={{ opacity: 0, bottom: 30, right: 60 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
           >
             👆
           </motion.div>
