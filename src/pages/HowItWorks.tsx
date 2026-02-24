@@ -35,7 +35,7 @@ const steps = [
     title: "Add History Report",
     description: "Upload a vehicle history report (Carfax, AutoCheck) or paste a URL. Our AI extracts accident history, ownership records, and service information.",
     details: [
-      "PDF Upload of Screenshots or CarFax / AutoCheck",
+      "PDF Upload or Screenshots of CarFax / AutoCheck",
       "AI-powered data extraction",
       "Accident and title status detection",
       "Analyze service and maintenance history",
