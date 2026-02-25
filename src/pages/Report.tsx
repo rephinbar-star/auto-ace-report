@@ -1700,6 +1700,73 @@ export default function ReportPage() {
                 </CardContent>
               </Card>
 
+              {/* Final Verdict Card - Horizontal layout in main content */}
+              {analysis.finalVerdict ? (
+                <Card className={cn(
+                  "border-2",
+                  analysis.finalVerdict.verdict === "Buy" ? "border-success bg-success/5"
+                    : analysis.finalVerdict.verdict === "Negotiate" ? "border-warning bg-warning/5"
+                    : "border-danger bg-danger/5"
+                )}>
+                  <CardContent className="p-6">
+                    <div className="flex flex-col sm:flex-row items-center gap-6">
+                      <div className="flex flex-col items-center gap-2 shrink-0">
+                        {analysis.finalVerdict.verdict === "Buy" ? (
+                          <ThumbsUp className="h-10 w-10 text-success" />
+                        ) : analysis.finalVerdict.verdict === "Negotiate" ? (
+                          <HandCoins className="h-10 w-10 text-warning" />
+                        ) : (
+                          <ThumbsDown className="h-10 w-10 text-danger" />
+                        )}
+                        <Badge className={cn("text-lg px-4 py-1",
+                          analysis.finalVerdict.verdict === "Buy" ? "bg-success text-success-foreground"
+                            : analysis.finalVerdict.verdict === "Negotiate" ? "bg-warning text-warning-foreground"
+                            : "bg-danger text-danger-foreground"
+                        )}>
+                          {analysis.finalVerdict.verdict.toUpperCase()}
+                        </Badge>
+                      </div>
+                      <div className="flex-1 text-center sm:text-left">
+                        <p className="text-sm text-muted-foreground">{analysis.finalVerdict.justification}</p>
+                      </div>
+                      <div className="shrink-0 text-center sm:border-l sm:pl-6">
+                        <p className="mb-1 text-sm font-semibold">Fair Offer Price</p>
+                        <p className="text-3xl font-bold">${riskAssessment.fairOfferPrice.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                /* Fallback: original recommendation card if no finalVerdict */
+                <Card className={cn(
+                  "border-2",
+                  uvprsResult
+                    ? uvprsResult.riskLevel === "low" ? "border-success bg-success/5"
+                      : uvprsResult.riskLevel === "moderate" ? "border-warning bg-warning/5"
+                      : "border-danger bg-danger/5"
+                    : riskAssessment.level === "low" ? "border-success bg-success/5"
+                      : riskAssessment.level === "medium" ? "border-warning bg-warning/5"
+                      : "border-danger bg-danger/5"
+                )}>
+                  <CardContent className="p-6 text-center">
+                    <Badge className={cn("mb-4",
+                      uvprsResult
+                        ? uvprsResult.riskLevel === "low" ? "bg-success text-success-foreground"
+                          : uvprsResult.riskLevel === "moderate" ? "bg-warning text-warning-foreground"
+                          : "bg-danger text-danger-foreground"
+                        : riskLevelColors[riskAssessment.level]
+                    )}>
+                      {uvprsResult ? uvprsResult.riskLabel.toUpperCase() : `${riskAssessment.level.toUpperCase()} RISK`}
+                    </Badge>
+                    <p className="mb-2 text-lg font-semibold">Fair Offer Price</p>
+                    <p className="text-3xl font-bold">${riskAssessment.fairOfferPrice.toLocaleString()}</p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Based on condition, market data, and risk factors
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Action Buttons */}
               {!isSavedReport && (
                 <div className="flex flex-col gap-3 sm:flex-row">
@@ -2041,68 +2108,7 @@ export default function ReportPage() {
                 </Card>
               )}
 
-              {/* Final Verdict Card */}
-              {analysis.finalVerdict ? (
-                <Card className={cn(
-                  "border-2",
-                  analysis.finalVerdict.verdict === "Buy" ? "border-success bg-success/5"
-                    : analysis.finalVerdict.verdict === "Negotiate" ? "border-warning bg-warning/5"
-                    : "border-danger bg-danger/5"
-                )}>
-                  <CardContent className="p-6 text-center">
-                    <div className="mb-3">
-                      {analysis.finalVerdict.verdict === "Buy" ? (
-                        <ThumbsUp className="mx-auto h-10 w-10 text-success" />
-                      ) : analysis.finalVerdict.verdict === "Negotiate" ? (
-                        <HandCoins className="mx-auto h-10 w-10 text-warning" />
-                      ) : (
-                        <ThumbsDown className="mx-auto h-10 w-10 text-danger" />
-                      )}
-                    </div>
-                    <Badge className={cn("mb-3 text-lg px-4 py-1",
-                      analysis.finalVerdict.verdict === "Buy" ? "bg-success text-success-foreground"
-                        : analysis.finalVerdict.verdict === "Negotiate" ? "bg-warning text-warning-foreground"
-                        : "bg-danger text-danger-foreground"
-                    )}>
-                      {analysis.finalVerdict.verdict.toUpperCase()}
-                    </Badge>
-                    <p className="mt-2 text-sm text-muted-foreground">{analysis.finalVerdict.justification}</p>
-                    <div className="mt-4 border-t pt-4">
-                      <p className="mb-1 text-lg font-semibold">Fair Offer Price</p>
-                      <p className="text-3xl font-bold">${riskAssessment.fairOfferPrice.toLocaleString()}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : (
-                /* Fallback: original recommendation card if no finalVerdict */
-                <Card className={cn(
-                  "border-2",
-                  uvprsResult
-                    ? uvprsResult.riskLevel === "low" ? "border-success bg-success/5"
-                      : uvprsResult.riskLevel === "moderate" ? "border-warning bg-warning/5"
-                      : "border-danger bg-danger/5"
-                    : riskAssessment.level === "low" ? "border-success bg-success/5"
-                      : riskAssessment.level === "medium" ? "border-warning bg-warning/5"
-                      : "border-danger bg-danger/5"
-                )}>
-                  <CardContent className="p-6 text-center">
-                    <Badge className={cn("mb-4",
-                      uvprsResult
-                        ? uvprsResult.riskLevel === "low" ? "bg-success text-success-foreground"
-                          : uvprsResult.riskLevel === "moderate" ? "bg-warning text-warning-foreground"
-                          : "bg-danger text-danger-foreground"
-                        : riskLevelColors[riskAssessment.level]
-                    )}>
-                      {uvprsResult ? uvprsResult.riskLabel.toUpperCase() : `${riskAssessment.level.toUpperCase()} RISK`}
-                    </Badge>
-                    <p className="mb-2 text-lg font-semibold">Fair Offer Price</p>
-                    <p className="text-3xl font-bold">${riskAssessment.fairOfferPrice.toLocaleString()}</p>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      Based on condition, market data, and risk factors
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
+              {/* Final Verdict moved to main content area */}
 
               {/* Ad Placeholder */}
               <div className="rounded-lg border-2 border-dashed border-muted bg-muted/20 p-4 text-center">
