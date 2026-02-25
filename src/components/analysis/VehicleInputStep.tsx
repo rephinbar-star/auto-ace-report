@@ -37,6 +37,7 @@ import { scrapeCarListing, ScrapedVehicle } from "@/lib/api/scrape-listing";
 import { cacheImages, getCachedUrls } from "@/lib/api/cache-images";
 import { extractFromScreenshot } from "@/lib/api/extract-screenshot";
 import { supabase } from "@/integrations/supabase/client";
+import { VinLocationTooltip } from "@/components/analysis/VinLocationTooltip";
 
 const vinSchema = z.object({
   vin: z.string()
@@ -1356,7 +1357,10 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                           name="vin"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>VIN</FormLabel>
+                               <FormLabel className="flex items-center gap-2">
+                                 VIN
+                                 <VinLocationTooltip />
+                               </FormLabel>
                               <FormControl>
                                 <Input 
                                   placeholder="Enter 17-character VIN" 
@@ -1367,7 +1371,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                                 />
                               </FormControl>
                               <FormDescription>
-                                Find the VIN on the driver's side dashboard or door jamb.
+                                Find the VIN on the driver's side dashboard or door Jam.
                               </FormDescription>
                               <FormMessage />
                             </FormItem>
