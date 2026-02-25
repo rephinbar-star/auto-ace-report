@@ -1519,6 +1519,7 @@ export default function ReportPage() {
                 depreciationTable={depreciationTable}
                 evRange={mpgData?.evRange ?? null}
                 onAnnualMilesChange={setUserAnnualMiles}
+                zipCode={condition?.zipCode}
               />
 
               {/* Depreciation Chart */}
