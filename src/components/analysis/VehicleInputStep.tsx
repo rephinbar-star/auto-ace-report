@@ -1365,13 +1365,13 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                                  VIN
                                  <VinLocationTooltip />
                                </FormLabel>
-                               <div className="flex gap-2">
-                                 <FormControl>
-                                   <div className="relative flex-1">
+                               <div className="flex gap-2 w-full">
+                                 <FormControl className="min-w-0 flex-1">
+                                   <div className="relative min-w-0">
                                      <Input 
                                        placeholder="Enter 17-character VIN" 
                                        {...field}
-                                       className={`font-mono uppercase transition-all duration-300 ${vinScanned ? "ring-2 ring-success border-success bg-success/5" : ""}`}
+                                       className={`font-mono uppercase transition-all duration-300 w-full ${vinScanned ? "ring-2 ring-success border-success bg-success/5" : ""}`}
                                        maxLength={17}
                                        onChange={(e) => field.onChange(e.target.value.toUpperCase())}
                                      />
