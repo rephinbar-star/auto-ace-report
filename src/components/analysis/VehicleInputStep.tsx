@@ -1421,8 +1421,8 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                                       vinForm.handleSubmit(handleVINSubmit)();
                                     }}
                                   />
-                                  <p className="text-xs text-muted-foreground leading-relaxed">
-                                    Scan the VIN directly from the car, screenshot the listing page on your phone, or take a photo of a VIN from any other source like paper or a photo of your computer screen.
+                                  <p className="text-sm text-muted-foreground leading-relaxed">
+                                    <strong>Scan</strong> the VIN directly from the car &nbsp;<strong>OR</strong>&nbsp; screenshot the listing page on your phone &nbsp;<strong>OR</strong>&nbsp; take a photo of the VIN from any other source like paper or a photo of your computer screen.
                                   </p>
                                 </div>
                                {vinDecodeError && (
