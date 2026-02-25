@@ -1,56 +1,65 @@
 
+## VIN Camera Scanning for Mobile & Tablet
 
-# Update the Analyze Vehicle AI Prompt
+### Overview
+Add a "Scan VIN" camera button on the VIN Lookup tab that appears only on mobile/tablet devices. When tapped, it opens the device camera, captures a photo, and uses the existing AI screenshot extraction pipeline (Gemini Vision via `extract-from-screenshot`) to read the VIN directly from the image — no manual typing needed.
 
-## Summary
-Update the system prompt in the `analyze-vehicle` edge function to incorporate a significantly expanded role definition, broader vehicle expertise, deeper analytical capabilities, and new warranty analysis instructions.
+---
 
-## Changes
+### How It Works
 
-**File:** `supabase/functions/analyze-vehicle/index.ts`
+```text
+User taps "Scan VIN"
+       ↓
+Hidden <input type="file" accept="image/*" capture="environment">
+       ↓
+Device rear camera opens natively (no extra library needed)
+       ↓
+User photographs VIN sticker (dashboard, door jamb, etc.)
+       ↓
+Image sent to extract-from-screenshot edge function (Gemini Vision)
+       ↓
+VIN extracted → auto-filled into the VIN input field
+       ↓
+User taps "Decode VIN" to confirm (or it auto-submits if valid)
+```
 
-### 1. Expanded System Prompt (lines 220-246)
+---
 
-Replace the current system prompt with the enhanced version covering:
+### Technical Plan
 
-**Role definition** -- Expert automotive analyst with 30+ years mechanic experience across all vehicle types (sedans, SUVs, pickups, minivans, sports cars, exotics, EVs, hydrogen vehicles). Also a professional pre-owned vehicle buyer from auctions, dealers, and private sellers who knows red flags for mechanical and financial risk. Master mechanic trained on all electronics and automotive technology up to present day.
+**1. New Component: `src/components/analysis/VinCameraScanner.tsx`**
+- A small self-contained component that renders a camera capture button
+- Uses a hidden `<input type="file" accept="image/*" capture="environment">` — this is the native, zero-dependency way to invoke the rear camera on iOS and Android
+- On file selection, sends the image to the existing `extractFromScreenshot()` function in `src/lib/api/extract-screenshot.ts`
+- Parses out the `vin` field from the returned `ExtractedVehicle` object
+- Calls an `onVinCaptured(vin: string)` callback prop to pass the result back
+- Shows a loading spinner while AI is processing, and an error toast if extraction fails or no VIN is found
 
-**Analytical capabilities** -- Added explicit instructions for:
-- Understanding how deferred/missed maintenance affects future performance and upcoming repairs
-- Understanding how timely maintenance can prevent or delay repairs, with predicted timing and costs from RepairPal/CarEdge/TrueDelta
-- Analyzing when repairs or maintenance may indicate an unreported accident
-- Detecting inconsistencies in maintenance/repair history and DMV records (mileage reporting, title mis-reporting)
-- Applying the same principles when comparing multiple vehicles
+**2. Update: `src/components/analysis/VehicleInputStep.tsx`**
+- Import `useIsMobile` from `@/hooks/use-mobile` to gate the button (mobile/tablet only)
+- Import and render `<VinCameraScanner>` inside the VIN Lookup tab's `FormItem`, next to the VIN `<Input>` field
+- The input and camera button will sit side-by-side in a flex row:
+  ```
+  [ VIN Input field .............. ] [ 📷 Scan ]
+  ```
+- Wire the `onVinCaptured` callback to call `vinForm.setValue("vin", vin)` followed by `vinForm.handleSubmit(handleVINSubmit)()` to auto-decode once a valid VIN is returned
 
-**Mileage constraint update** -- Changed from "never reference services above current mileage" to a 24,000-mile buffer: "never reference services at mileages greater by 24,000 miles than current mileage." This allows referencing upcoming service intervals within the next ~2 years of typical driving.
+---
 
-**Pricing fallback hierarchy** -- Added: "If KBB data is not available, fall back on MarketCheck."
+### UI Details
+- The "Scan VIN" button uses the `Camera` icon (already imported in `VehicleInputStep.tsx`) and a short label
+- Styled as a secondary outline button, same height as the input (`h-10`)
+- While scanning: button shows a `Loader2` spinner and is disabled
+- Only rendered when `useIsMobile()` returns `true` — desktop users won't see it
+- A small helper text below the input: *"Mobile users: tap Scan to use your camera"* — only shown on mobile
 
-**Maintenance sources expanded** -- Added CarEdge and TrueDelta alongside RepairPal as authoritative sources throughout the prompt.
+---
 
-**New warranty analysis section** -- Added instructions for:
-- Pro-rating risk reduction based on remaining bumper-to-bumper factory warranty time
-- Treating absence of factory or CPO warranty as a risk factor, correlated with service history
-- Analyzing whether past repairs are preventative vs indicative of inevitable upcoming repairs
-- Cross-referencing with RepairPal/CarEdge/TrueDelta data on common repairs at specific mileage windows
+### Files Changed
+| File | Change |
+|------|--------|
+| `src/components/analysis/VinCameraScanner.tsx` | **Create** — new camera capture component |
+| `src/components/analysis/VehicleInputStep.tsx` | **Edit** — add `VinCameraScanner` next to the VIN input in the VIN Lookup tab |
 
-### 2. Structured Output Schema Updates (lines 350-372)
-
-**Add `warrantyAnalysis` section** to the tool function parameters:
-- `warrantyStatus`: string -- "active", "expired", or "unknown"
-- `warrantyMonthsRemaining`: number or null
-- `riskReductionFactor`: number (0-100) -- how much warranty reduces risk
-- `warrantyNotes`: string -- analysis of warranty impact on purchase decision
-
-Add `"warrantyAnalysis"` to the `required` array (line 384).
-
-**Update `reliabilityConcerns` description** to reference CarEdge/TrueDelta in addition to RepairPal.
-
-### 3. No Changes to Data Pipeline or Other Logic
-
-The user prompt template, parallel lookups (MPG/pricing/maintenance), response handling, and error handling remain unchanged.
-
-## Technical Details
-
-All changes are confined to the string literals and JSON schema within `supabase/functions/analyze-vehicle/index.ts`. The edge function will be auto-deployed after the update. No database migrations, new dependencies, or new files are needed.
-
+No new dependencies, no edge function changes, no database changes needed.
