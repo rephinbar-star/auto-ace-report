@@ -1,0 +1,1 @@
+ALTER TABLE public.vehicle_reports ADD COLUMN zip_code text DEFAULT NULL;
