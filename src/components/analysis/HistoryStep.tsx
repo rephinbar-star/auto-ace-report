@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { VehicleHistory } from "@/types/vehicle";
 import { parseHistoryReport } from "@/lib/api/parse-history";
 import { useToast } from "@/hooks/use-toast";
+import { ScreenshotTooltip } from "@/components/analysis/ScreenshotTooltip";
 
 const historySchema = z.object({
   historyUrl: z.string().url().optional().or(z.literal("")),
@@ -249,6 +250,10 @@ export function HistoryStep({ onComplete, onBack, onSkip, mileage, onVinExtracte
           </CardHeader>
           <CardContent className="space-y-6">
             {/* File upload area */}
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs text-muted-foreground">PDF, PNG, JPG, or WebP</p>
+              <ScreenshotTooltip />
+            </div>
             <div
               className={cn(
                 "relative cursor-pointer rounded-lg border-2 border-dashed p-8 text-center transition-colors",
