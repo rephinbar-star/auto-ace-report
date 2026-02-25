@@ -24,13 +24,15 @@ import {
 } from "@/components/ui/select";
 import { VehicleCondition } from "@/types/vehicle";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { HelpCircle } from "lucide-react";
+import { HelpCircle, Tag } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { useSubscription } from "@/hooks/useSubscription";
 import { DealerTrustPreview } from "./DealerTrustPreview";
 
 const conditionSchema = z.object({
   mileage: z.coerce.number().min(0, "Mileage must be positive").max(500000),
   askingPrice: z.coerce.number().min(0, "Price must be positive"),
+  finalPrice: z.coerce.number().min(0, "Price must be positive").optional().or(z.literal("")),
   condition: z.enum(["excellent", "good", "fair", "poor"]),
   sellerType: z.enum(["private", "dealer"]),
   sellerName: z.string().max(100).optional().or(z.literal("")),
@@ -54,6 +56,7 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
     defaultValues: {
       mileage: initialData?.mileage || 0,
       askingPrice: initialData?.askingPrice || 0,
+      finalPrice: initialData?.finalPrice || ("" as unknown as number),
       condition: initialData?.condition || "good",
       sellerType: initialData?.sellerType || "dealer",
       sellerName: initialData?.sellerName ?? "",
@@ -68,6 +71,7 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
       form.reset({
         mileage: initialData.mileage || 0,
         askingPrice: initialData.askingPrice || 0,
+        finalPrice: initialData.finalPrice || ("" as unknown as number),
         condition: initialData.condition || "good",
         sellerType: initialData.sellerType || "dealer",
         sellerName: initialData.sellerName ?? "",
@@ -79,11 +83,20 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
 
   const watchSellerType = form.watch("sellerType");
   const watchSellerName = form.watch("sellerName");
+  const watchAskingPrice = form.watch("askingPrice");
+  const watchFinalPrice = form.watch("finalPrice");
+
+  const discountPct =
+    watchAskingPrice > 0 && watchFinalPrice && Number(watchFinalPrice) > 0 && Number(watchFinalPrice) < watchAskingPrice
+      ? (((watchAskingPrice - Number(watchFinalPrice)) / watchAskingPrice) * 100).toFixed(1)
+      : null;
 
   const handleSubmit = (data: z.infer<typeof conditionSchema>) => {
+    const finalPriceNum = data.finalPrice ? Number(data.finalPrice) : undefined;
     onComplete({
       mileage: data.mileage,
       askingPrice: data.askingPrice,
+      finalPrice: finalPriceNum && finalPriceNum > 0 ? finalPriceNum : undefined,
       condition: data.condition,
       sellerType: data.sellerType,
       sellerName: data.sellerType === "dealer" ? data.sellerName || undefined : undefined,
@@ -160,6 +173,44 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
                   )}
                 />
               </div>
+
+              {/* Agreed Final Price */}
+              <FormField
+                control={form.control}
+                name="finalPrice"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+                      Agreed On Final Price
+                      <span className="text-xs font-normal text-muted-foreground">(Optional)</span>
+                      {discountPct && (
+                        <Badge className="text-xs bg-success/15 text-success border-success/25 font-semibold">
+                          {discountPct}% discount
+                        </Badge>
+                      )}
+                    </FormLabel>
+                    <FormControl>
+                      <div className="relative max-w-[200px]">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                          $
+                        </span>
+                        <Input
+                          type="number"
+                          placeholder="e.g. 23500"
+                          className="pl-7"
+                          {...field}
+                          value={field.value === 0 ? "" : field.value}
+                        />
+                      </div>
+                    </FormControl>
+                    <FormDescription>
+                      The price buyer and seller actually agreed on. Helps measure your negotiated discount.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <FormField
