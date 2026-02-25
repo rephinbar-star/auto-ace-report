@@ -228,7 +228,7 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
                       />
                     </FormControl>
                     <FormDescription>
-                      Improves pricing accuracy with region-specific market data.
+                      Improves pricing accuracy and cost of ownership with region-specific market data.
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
