@@ -38,6 +38,8 @@ import { cacheImages, getCachedUrls } from "@/lib/api/cache-images";
 import { extractFromScreenshot } from "@/lib/api/extract-screenshot";
 import { supabase } from "@/integrations/supabase/client";
 import { VinLocationTooltip } from "@/components/analysis/VinLocationTooltip";
+import { VinCameraScanner } from "@/components/analysis/VinCameraScanner";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const vinSchema = z.object({
   vin: z.string()
@@ -174,6 +176,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
   const [isExtractingScreenshot, setIsExtractingScreenshot] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   // State for NHTSA data
   const [availableMakes, setAvailableMakes] = useState<string[]>([]);
@@ -1361,18 +1364,30 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                                  VIN
                                  <VinLocationTooltip />
                                </FormLabel>
-                              <FormControl>
-                                <Input 
-                                  placeholder="Enter 17-character VIN" 
-                                  {...field}
-                                  className="font-mono uppercase"
-                                  maxLength={17}
-                                  onChange={(e) => field.onChange(e.target.value.toUpperCase())}
-                                />
-                              </FormControl>
-                              <FormDescription>
-                                Find the VIN on the driver's side dashboard or door Jam.
-                              </FormDescription>
+                              <div className="flex gap-2">
+                                <FormControl>
+                                  <Input 
+                                    placeholder="Enter 17-character VIN" 
+                                    {...field}
+                                    className="font-mono uppercase"
+                                    maxLength={17}
+                                    onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                                  />
+                                </FormControl>
+                                {isMobile && (
+                                  <VinCameraScanner
+                                    onVinCaptured={(vin) => {
+                                      vinForm.setValue("vin", vin, { shouldValidate: true });
+                                      vinForm.handleSubmit(handleVINSubmit)();
+                                    }}
+                                  />
+                                )}
+                              </div>
+                               <FormDescription>
+                                 {isMobile
+                                   ? "Type your VIN or tap Scan to use your camera."
+                                   : "Find the VIN on the driver's side dashboard or door jamb."}
+                               </FormDescription>
                               <FormMessage />
                             </FormItem>
                           )}
