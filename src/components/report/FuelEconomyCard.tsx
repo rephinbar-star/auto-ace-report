@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Fuel, DollarSign, Gauge, TrendingUp, Car, HelpCircle, Zap, Battery } from "lucide-react";
+import { Fuel, DollarSign, Gauge, TrendingUp, Car, HelpCircle, Zap, Battery, MapPin, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   calculateTCO, 
   calculateMonthlyOwnershipCost,
@@ -16,6 +17,16 @@ import {
 const NATIONAL_AVG_GAS_PRICE = 3.25;
 const NATIONAL_AVG_ELECTRICITY_PRICE = 0.15; // $/kWh
 
+interface GasPriceData {
+  regular: number | null;
+  midGrade: number | null;
+  premium: number | null;
+  diesel: number | null;
+  electricity: number | null;
+  location: string;
+  source: string;
+}
+
 interface FuelEconomyCardProps {
   mpgCity: number | null;
   mpgHighway: number | null;
@@ -25,8 +36,9 @@ interface FuelEconomyCardProps {
   make: string;
   year: number;
   depreciationTable?: unknown;
-  evRange?: number | null; // EV range in miles when new
+  evRange?: number | null;
   onAnnualMilesChange?: (miles: number) => void;
+  zipCode?: string;
 }
 
 export function FuelEconomyCard({
@@ -40,14 +52,59 @@ export function FuelEconomyCard({
   depreciationTable,
   evRange,
   onAnnualMilesChange,
+  zipCode,
 }: FuelEconomyCardProps) {
   const [annualMiles, setAnnualMiles] = useState(12000);
   const [gasPricePerGallon, setGasPricePerGallon] = useState(NATIONAL_AVG_GAS_PRICE);
   const [gasPriceInput, setGasPriceInput] = useState(NATIONAL_AVG_GAS_PRICE.toFixed(2));
   const [electricityPrice, setElectricityPrice] = useState(NATIONAL_AVG_ELECTRICITY_PRICE);
   const [electricityPriceInput, setElectricityPriceInput] = useState(NATIONAL_AVG_ELECTRICITY_PRICE.toFixed(2));
+  const [localGasData, setLocalGasData] = useState<GasPriceData | null>(null);
+  const [isLoadingGasPrice, setIsLoadingGasPrice] = useState(false);
+  const [gasPriceSource, setGasPriceSource] = useState<"national" | "local">("national");
 
   const isElectric = fuelType?.toLowerCase().includes("electric");
+
+  // Fetch local gas prices when zipCode is available
+  useEffect(() => {
+    if (!zipCode || !/^\d{5}$/.test(zipCode)) return;
+
+    const fetchLocalGasPrice = async () => {
+      setIsLoadingGasPrice(true);
+      try {
+        const { data, error } = await supabase.functions.invoke("lookup-gas-price", {
+          body: { zipCode },
+        });
+
+        if (error) throw error;
+        if (data?.success && data.data) {
+          const gasData = data.data as GasPriceData;
+          setLocalGasData(gasData);
+
+          // Auto-populate with mid-grade (89 octane) price, fallback to regular
+          const localGasPrice = gasData.midGrade || gasData.regular;
+          if (localGasPrice && localGasPrice > 0) {
+            setGasPricePerGallon(localGasPrice);
+            setGasPriceInput(localGasPrice.toFixed(2));
+            setGasPriceSource("local");
+          }
+
+          // Auto-populate electricity price if available
+          if (gasData.electricity && gasData.electricity > 0) {
+            setElectricityPrice(gasData.electricity);
+            setElectricityPriceInput(gasData.electricity.toFixed(2));
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch local gas prices:", err);
+        // Keep national averages as fallback
+      } finally {
+        setIsLoadingGasPrice(false);
+      }
+    };
+
+    fetchLocalGasPrice();
+  }, [zipCode]);
 
   // Calculate TCO with user-adjustable mileage and energy price
   const tco = calculateTCO(
@@ -70,14 +127,12 @@ export function FuelEconomyCard({
     if (!mpgCombined) return { label: "Unknown", color: "bg-muted text-muted-foreground" };
     
     if (isElectric) {
-      // MPGe thresholds for EVs (they're typically 80-140+ MPGe)
       if (mpgCombined >= 120) return { label: "Excellent", color: "bg-success/10 text-success" };
       if (mpgCombined >= 100) return { label: "Good", color: "bg-success/10 text-success" };
       if (mpgCombined >= 85) return { label: "Average", color: "bg-warning/10 text-warning" };
       return { label: "Below Average", color: "bg-destructive/10 text-destructive" };
     }
     
-    // Gas car thresholds
     if (mpgCombined >= 35) return { label: "Excellent", color: "bg-success/10 text-success" };
     if (mpgCombined >= 28) return { label: "Good", color: "bg-success/10 text-success" };
     if (mpgCombined >= 22) return { label: "Average", color: "bg-warning/10 text-warning" };
@@ -95,6 +150,7 @@ export function FuelEconomyCard({
   const handleGasPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setGasPriceInput(value);
+    setGasPriceSource("national"); // User is manually editing, no longer "local"
     
     const parsed = parseFloat(value);
     if (!isNaN(parsed) && parsed > 0 && parsed <= 10) {
@@ -141,6 +197,51 @@ export function FuelEconomyCard({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Local Gas Price Badge */}
+        {isLoadingGasPrice && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            <span>Looking up local gas prices for ZIP {zipCode}...</span>
+          </div>
+        )}
+        {localGasData && !isLoadingGasPrice && (
+          <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium">Local Gas Prices — {localGasData.location}</span>
+              <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20">
+                Live
+              </Badge>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {localGasData.regular && (
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground">Regular</p>
+                  <p className="text-sm font-bold">${localGasData.regular.toFixed(2)}</p>
+                </div>
+              )}
+              {localGasData.midGrade && (
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground">Mid-Grade</p>
+                  <p className="text-sm font-bold text-primary">${localGasData.midGrade.toFixed(2)}</p>
+                </div>
+              )}
+              {localGasData.premium && (
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground">Premium</p>
+                  <p className="text-sm font-bold">${localGasData.premium.toFixed(2)}</p>
+                </div>
+              )}
+              {localGasData.diesel && (
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground">Diesel</p>
+                  <p className="text-sm font-bold">${localGasData.diesel.toFixed(2)}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Annual Mileage Slider */}
         <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
           <div className="flex items-center justify-between">
@@ -225,6 +326,11 @@ export function FuelEconomyCard({
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground flex items-center gap-1">
                   Electricity Price
+                  {gasPriceSource === "local" && (
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-primary/10 text-primary border-primary/20">
+                      <MapPin className="h-2.5 w-2.5 mr-0.5" />Local
+                    </Badge>
+                  )}
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -232,9 +338,11 @@ export function FuelEconomyCard({
                       </TooltipTrigger>
                       <TooltipContent className="max-w-xs">
                         <p className="text-sm">
-                          National average residential electricity rate. 
-                          Adjust to match your local utility rates for more accurate estimates.
-                          Home charging is typically $0.10-0.20/kWh; public charging can be $0.30-0.50/kWh.
+                          {localGasData?.electricity
+                            ? `Local residential electricity rate for ${localGasData.location}. Adjust to match your actual utility bill.`
+                            : "National average residential electricity rate. Adjust to match your local utility rates for more accurate estimates."
+                          }
+                          {" "}Home charging is typically $0.10-0.20/kWh; public charging can be $0.30-0.50/kWh.
                         </p>
                       </TooltipContent>
                     </Tooltip>
@@ -259,6 +367,11 @@ export function FuelEconomyCard({
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground flex items-center gap-1">
                   Gas Price (89 octane avg.)
+                  {gasPriceSource === "local" && (
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-primary/10 text-primary border-primary/20">
+                      <MapPin className="h-2.5 w-2.5 mr-0.5" />Local
+                    </Badge>
+                  )}
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -266,8 +379,10 @@ export function FuelEconomyCard({
                       </TooltipTrigger>
                       <TooltipContent className="max-w-xs">
                         <p className="text-sm">
-                          National average price for 89 octane (mid-grade) gasoline. 
-                          Adjust to match your local fuel prices for more accurate estimates.
+                          {gasPriceSource === "local" && localGasData
+                            ? `Local mid-grade gas price for ${localGasData.location}. Adjust to match prices at your usual station.`
+                            : "National average price for 89 octane (mid-grade) gasoline. Adjust to match your local fuel prices for more accurate estimates."
+                          }
                         </p>
                       </TooltipContent>
                     </Tooltip>
@@ -377,7 +492,9 @@ export function FuelEconomyCard({
           {isElectric 
             ? `, $${electricityPrice.toFixed(2)}/kWh electricity` 
             : `, $${gasPricePerGallon.toFixed(2)}/gal gas`
-          }. Maintenance scales with mileage.
+          }
+          {gasPriceSource === "local" && localGasData ? ` (${localGasData.location})` : ""}
+          . Maintenance scales with mileage.
           {annualMiles > 12000 && " Excess mileage (above 12k/yr) adds ~$0.18/mi in depreciation."}
         </p>
       </CardContent>
