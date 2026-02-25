@@ -141,7 +141,7 @@ export function VinLocationTooltip() {
           aria-label="Where to find the VIN"
         >
           <HelpCircle className="h-3.5 w-3.5" />
-          <span className="underline underline-offset-2">Where is it?</span>
+          <span className="underline underline-offset-2">Where to find it?</span>
         </button>
       </PopoverTrigger>
       <PopoverContent side="bottom" align="start" className="w-72 p-0 overflow-hidden">
