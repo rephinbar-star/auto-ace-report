@@ -63,7 +63,7 @@ export function VinCameraScanner({ onVinCaptured, label = "Scan" }: VinCameraSca
       <Button
         type="button"
         variant="outline"
-        className="h-10 w-full gap-1.5"
+        className="h-10 gap-1.5"
         disabled={isScanning}
         onClick={() => inputRef.current?.click()}
         aria-label="Scan VIN with camera"
