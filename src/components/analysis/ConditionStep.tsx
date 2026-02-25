@@ -23,6 +23,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { VehicleCondition } from "@/types/vehicle";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { HelpCircle } from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
 import { DealerTrustPreview } from "./DealerTrustPreview";
 
@@ -218,7 +220,19 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
                 name="zipCode"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>ZIP Code (Recommended)</FormLabel>
+                    <FormLabel className="flex items-center gap-1.5">
+                      ZIP Code (Recommended)
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            <p className="text-sm">Improves pricing accuracy, local gas prices, and total cost of ownership calculations with region-specific market data.</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </FormLabel>
                     <FormControl>
                       <Input 
                         placeholder="e.g., 92008" 
@@ -227,9 +241,6 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
                         {...field} 
                       />
                     </FormControl>
-                    <FormDescription>
-                      Improves pricing accuracy and cost of ownership with region-specific market data.
-                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
