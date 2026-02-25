@@ -1408,9 +1408,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                                    </motion.div>
                                  )}
                                </div>
-                               <FormDescription>
-                                  Find the VIN on the driver&apos;s side dashboard or door jamb.
-                                </FormDescription>
+                               
                                 <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
                                   <div className="flex justify-center">
                                     <VinCameraScanner
