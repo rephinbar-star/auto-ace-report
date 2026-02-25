@@ -15,7 +15,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Car, Calendar, Gauge, DollarSign, ArrowRight, AlertTriangle, CheckCircle, Clock, Check, Trash2 } from "lucide-react";
+import { Car, Calendar, Gauge, DollarSign, ArrowRight, AlertTriangle, CheckCircle, Clock, Check, Trash2, ShieldCheck, ThumbsUp, ThumbsDown, HandCoins } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -138,6 +138,28 @@ export function ReportCard({ report, selectionMode, isSelected, onSelect, select
               <span className={cn("text-xs font-medium", risk.className)}>
                 {risk.label}
               </span>
+            )}
+            {report.warranty_status && (
+              <Badge variant="outline" className={cn(
+                report.warranty_status === "active" ? "bg-green-500/10 text-green-600 border-green-500/20"
+                  : report.warranty_status === "expired" ? "bg-red-500/10 text-red-600 border-red-500/20"
+                  : "bg-yellow-500/10 text-yellow-600 border-yellow-500/20"
+              )}>
+                <ShieldCheck className="h-3 w-3 mr-1" />
+                {report.warranty_status === "active" ? "Warranty Active" : report.warranty_status === "expired" ? "Warranty Expired" : "Warranty Unknown"}
+              </Badge>
+            )}
+            {report.final_verdict && (
+              <Badge variant="outline" className={cn(
+                report.final_verdict === "Buy" ? "bg-green-500/10 text-green-600 border-green-500/20"
+                  : report.final_verdict === "Negotiate" ? "bg-yellow-500/10 text-yellow-600 border-yellow-500/20"
+                  : "bg-red-500/10 text-red-600 border-red-500/20"
+              )}>
+                {report.final_verdict === "Buy" ? <ThumbsUp className="h-3 w-3 mr-1" />
+                  : report.final_verdict === "Negotiate" ? <HandCoins className="h-3 w-3 mr-1" />
+                  : <ThumbsDown className="h-3 w-3 mr-1" />}
+                {report.final_verdict}
+              </Badge>
             )}
           </div>
         )}
