@@ -1481,12 +1481,13 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                         </div>
                       </div>
 
-                      <div className="flex gap-2">
-                        <Button onClick={confirmDecodedVehicle}>
+                      <div className="flex flex-col gap-2">
+                        <Button className="w-full" onClick={confirmDecodedVehicle}>
                           Continue with this vehicle
                         </Button>
                         <Button 
-                          variant="outline" 
+                          variant="outline"
+                          className="w-full"
                           onClick={() => {
                             setDecodedVehicle(null);
                             vinForm.reset();
