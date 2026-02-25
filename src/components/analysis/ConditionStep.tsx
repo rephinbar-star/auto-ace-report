@@ -218,7 +218,7 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
                 name="zipCode"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>ZIP Code (Optional)</FormLabel>
+                    <FormLabel>ZIP Code (Recommended)</FormLabel>
                     <FormControl>
                       <Input 
                         placeholder="e.g., 92008" 
