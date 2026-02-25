@@ -6,9 +6,10 @@ import { useToast } from "@/hooks/use-toast";
 
 interface VinCameraScannerProps {
   onVinCaptured: (vin: string) => void;
+  label?: string;
 }
 
-export function VinCameraScanner({ onVinCaptured }: VinCameraScannerProps) {
+export function VinCameraScanner({ onVinCaptured, label = "Scan" }: VinCameraScannerProps) {
   const [isScanning, setIsScanning] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -73,7 +74,7 @@ export function VinCameraScanner({ onVinCaptured }: VinCameraScannerProps) {
         ) : (
           <Camera className="h-4 w-4" />
         )}
-        <span>{isScanning ? "Scanning…" : "Scan"}</span>
+        <span>{isScanning ? "Scanning…" : label}</span>
       </Button>
     </>
   );

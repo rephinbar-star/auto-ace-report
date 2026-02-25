@@ -1369,48 +1369,52 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                                  VIN
                                  <VinLocationTooltip />
                                </FormLabel>
-                               <div className="flex w-full min-w-0 gap-2">
-                                 <div className="relative min-w-0 flex-1">
-                                   <FormControl>
-                                     <Input 
-                                       placeholder="Enter 17-character VIN" 
-                                       {...field}
-                                       className={`font-mono uppercase transition-all duration-300 w-full ${
-                                         vinScanned
-                                           ? "ring-2 ring-success border-success bg-success/5"
-                                           : vinDecodeError
-                                           ? "ring-2 ring-destructive border-destructive bg-destructive/5"
-                                           : ""
-                                       }`}
-                                       maxLength={17}
-                                       onChange={(e) => {
-                                         field.onChange(e.target.value.toUpperCase());
-                                         if (vinDecodeError) setVinDecodeError(null);
-                                       }}
-                                     />
-                                   </FormControl>
-                                   {vinScanned && (
-                                     <motion.div
-                                       initial={{ opacity: 0, scale: 0.5 }}
-                                       animate={{ opacity: 1, scale: 1 }}
-                                       exit={{ opacity: 0, scale: 0.5 }}
-                                       className="absolute right-2.5 top-1/2 -translate-y-1/2 text-success pointer-events-none"
-                                     >
-                                       <CheckCircle className="h-4 w-4" />
-                                     </motion.div>
-                                   )}
-                                   {vinDecodeError && !vinScanned && (
-                                     <motion.div
-                                       initial={{ opacity: 0, scale: 0.5 }}
-                                       animate={{ opacity: 1, scale: 1 }}
-                                       className="absolute right-2.5 top-1/2 -translate-y-1/2 text-destructive pointer-events-none"
-                                     >
-                                       <AlertCircle className="h-4 w-4" />
-                                     </motion.div>
-                                   )}
-                                 </div>
-                                 {isMobile && (
+                               <div className="relative w-full min-w-0">
+                                 <FormControl>
+                                   <Input 
+                                     placeholder="Enter 17-character VIN" 
+                                     {...field}
+                                     className={`font-mono uppercase transition-all duration-300 w-full ${
+                                       vinScanned
+                                         ? "ring-2 ring-success border-success bg-success/5"
+                                         : vinDecodeError
+                                         ? "ring-2 ring-destructive border-destructive bg-destructive/5"
+                                         : ""
+                                     }`}
+                                     maxLength={17}
+                                     onChange={(e) => {
+                                       field.onChange(e.target.value.toUpperCase());
+                                       if (vinDecodeError) setVinDecodeError(null);
+                                     }}
+                                   />
+                                 </FormControl>
+                                 {vinScanned && (
+                                   <motion.div
+                                     initial={{ opacity: 0, scale: 0.5 }}
+                                     animate={{ opacity: 1, scale: 1 }}
+                                     exit={{ opacity: 0, scale: 0.5 }}
+                                     className="absolute right-2.5 top-1/2 -translate-y-1/2 text-success pointer-events-none"
+                                   >
+                                     <CheckCircle className="h-4 w-4" />
+                                   </motion.div>
+                                 )}
+                                 {vinDecodeError && !vinScanned && (
+                                   <motion.div
+                                     initial={{ opacity: 0, scale: 0.5 }}
+                                     animate={{ opacity: 1, scale: 1 }}
+                                     className="absolute right-2.5 top-1/2 -translate-y-1/2 text-destructive pointer-events-none"
+                                   >
+                                     <AlertCircle className="h-4 w-4" />
+                                   </motion.div>
+                                 )}
+                               </div>
+                               <FormDescription>
+                                 Find the VIN on the driver&apos;s side dashboard or door jamb.
+                               </FormDescription>
+                               {isMobile && (
+                                 <div className="flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
                                    <VinCameraScanner
+                                     label="Scan, Screenshot or Photo"
                                      onVinCaptured={(vin) => {
                                        vinForm.setValue("vin", vin, { shouldValidate: true });
                                        setVinScanned(true);
@@ -1418,13 +1422,11 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                                        vinForm.handleSubmit(handleVINSubmit)();
                                      }}
                                    />
-                                 )}
-                               </div>
-                               <FormDescription>
-                                  {isMobile
-                                    ? "Type your VIN or tap Scan to use your camera."
-                                    : "Find the VIN on the driver's side dashboard or door jamb."}
-                                </FormDescription>
+                                   <p className="text-xs text-muted-foreground leading-relaxed">
+                                     Scan the VIN directly from the car, screenshot the listing page on your phone, or take a photo of a VIN from any other source like paper or a photo of your computer screen.
+                                   </p>
+                                 </div>
+                               )}
                                {vinDecodeError && (
                                  <motion.p
                                    initial={{ opacity: 0, y: -4 }}
