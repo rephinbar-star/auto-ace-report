@@ -175,6 +175,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
   const [showTutorial, setShowTutorial] = useState(false);
   const [isExtractingScreenshot, setIsExtractingScreenshot] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [vinScanned, setVinScanned] = useState(false);
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
@@ -1364,24 +1365,38 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                                  VIN
                                  <VinLocationTooltip />
                                </FormLabel>
-                              <div className="flex gap-2">
-                                <FormControl>
-                                  <Input 
-                                    placeholder="Enter 17-character VIN" 
-                                    {...field}
-                                    className="font-mono uppercase"
-                                    maxLength={17}
-                                    onChange={(e) => field.onChange(e.target.value.toUpperCase())}
-                                  />
-                                </FormControl>
-                                {isMobile && (
-                                  <VinCameraScanner
-                                    onVinCaptured={(vin) => {
-                                      vinForm.setValue("vin", vin, { shouldValidate: true });
-                                      vinForm.handleSubmit(handleVINSubmit)();
-                                    }}
-                                  />
-                                )}
+                               <div className="flex gap-2">
+                                 <FormControl>
+                                   <div className="relative flex-1">
+                                     <Input 
+                                       placeholder="Enter 17-character VIN" 
+                                       {...field}
+                                       className={`font-mono uppercase transition-all duration-300 ${vinScanned ? "ring-2 ring-success border-success bg-success/5" : ""}`}
+                                       maxLength={17}
+                                       onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                                     />
+                                     {vinScanned && (
+                                       <motion.div
+                                         initial={{ opacity: 0, scale: 0.5 }}
+                                         animate={{ opacity: 1, scale: 1 }}
+                                         exit={{ opacity: 0, scale: 0.5 }}
+                                         className="absolute right-2.5 top-1/2 -translate-y-1/2 text-success"
+                                       >
+                                         <CheckCircle className="h-4 w-4" />
+                                       </motion.div>
+                                     )}
+                                   </div>
+                                 </FormControl>
+                                 {isMobile && (
+                                   <VinCameraScanner
+                                     onVinCaptured={(vin) => {
+                                       vinForm.setValue("vin", vin, { shouldValidate: true });
+                                       setVinScanned(true);
+                                       setTimeout(() => setVinScanned(false), 2000);
+                                       vinForm.handleSubmit(handleVINSubmit)();
+                                     }}
+                                   />
+                                 )}
                               </div>
                                <FormDescription>
                                  {isMobile
