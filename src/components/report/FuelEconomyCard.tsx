@@ -62,6 +62,8 @@ export function FuelEconomyCard({
   const [localGasData, setLocalGasData] = useState<GasPriceData | null>(null);
   const [isLoadingGasPrice, setIsLoadingGasPrice] = useState(false);
   const [gasPriceSource, setGasPriceSource] = useState<"national" | "local">("national");
+  const [zipInput, setZipInput] = useState(zipCode || "");
+  const [zipError, setZipError] = useState("");
 
   const isElectric = fuelType?.toLowerCase().includes("electric");
 
@@ -173,6 +175,47 @@ export function FuelEconomyCard({
   const fuelRating = getFuelRating();
   const normalizedFuelType = isElectric ? "Electric" : (fuelType || "Gasoline").charAt(0).toUpperCase() + (fuelType || "gasoline").slice(1).toLowerCase();
 
+  const fetchGasPricesByZip = async (zip: string) => {
+    setIsLoadingGasPrice(true);
+    setZipError("");
+    try {
+      const { data, error } = await supabase.functions.invoke("lookup-gas-price", {
+        body: { zipCode: zip },
+      });
+      if (error) throw error;
+      if (data?.success && data.data) {
+        const gasData = data.data as GasPriceData;
+        setLocalGasData(gasData);
+        const localGasPrice = gasData.midGrade || gasData.regular;
+        if (localGasPrice && localGasPrice > 0) {
+          setGasPricePerGallon(localGasPrice);
+          setGasPriceInput(localGasPrice.toFixed(2));
+          setGasPriceSource("local");
+        }
+        if (gasData.electricity && gasData.electricity > 0) {
+          setElectricityPrice(gasData.electricity);
+          setElectricityPriceInput(gasData.electricity.toFixed(2));
+        }
+      } else {
+        setZipError("No price data found for this ZIP code.");
+      }
+    } catch {
+      setZipError("Couldn't fetch prices. Check the ZIP and try again.");
+    } finally {
+      setIsLoadingGasPrice(false);
+    }
+  };
+
+  const handleZipSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const zip = zipInput.trim();
+    if (!/^\d{5}$/.test(zip)) {
+      setZipError("Please enter a valid 5-digit ZIP code.");
+      return;
+    }
+    fetchGasPricesByZip(zip);
+  };
+
   const handleMileageChange = (value: number[]) => {
     setAnnualMiles(value[0]);
     onAnnualMilesChange?.(value[0]);
@@ -228,13 +271,43 @@ export function FuelEconomyCard({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Local Gas Price Badge */}
-        {isLoadingGasPrice && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            <span>Looking up local gas prices for ZIP {zipCode}...</span>
+        {/* ZIP Code Lookup */}
+        <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+          <div className="flex items-center gap-2 mb-1">
+            <MapPin className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium">Local Gas Prices</span>
+            {gasPriceSource === "local" && localGasData && (
+              <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20">
+                Live
+              </Badge>
+            )}
           </div>
-        )}
+          <form onSubmit={handleZipSubmit} className="flex items-center gap-2">
+            <Input
+              type="text"
+              inputMode="numeric"
+              placeholder="Enter ZIP code"
+              value={zipInput}
+              onChange={(e) => { setZipInput(e.target.value); setZipError(""); }}
+              maxLength={5}
+              className="h-8 w-32 text-sm"
+            />
+            <button
+              type="submit"
+              disabled={isLoadingGasPrice}
+              className="h-8 px-3 rounded-md bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 flex items-center gap-1.5 transition-colors"
+            >
+              {isLoadingGasPrice ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <MapPin className="h-3.5 w-3.5" />
+              )}
+              {isLoadingGasPrice ? "Looking up…" : "Look up"}
+            </button>
+          </form>
+          {zipError && <p className="text-xs text-destructive">{zipError}</p>}
+        </div>
+
         {localGasData && !isLoadingGasPrice && (
           <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
             <div className="flex items-center gap-2">
