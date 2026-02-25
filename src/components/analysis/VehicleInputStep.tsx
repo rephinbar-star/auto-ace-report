@@ -1407,8 +1407,14 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                                      <AlertCircle className="h-4 w-4" />
                                    </motion.div>
                                  )}
-                               </div>
-                               
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                  <div className="flex-1 h-px bg-border" />
+                                  <span className="text-sm font-semibold text-muted-foreground">OR</span>
+                                  <div className="flex-1 h-px bg-border" />
+                                </div>
+
                                 <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
                                   <div className="flex justify-center">
                                     <VinCameraScanner
