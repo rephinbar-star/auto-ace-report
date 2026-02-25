@@ -65,15 +65,13 @@ export function FuelEconomyCard({
 
   const isElectric = fuelType?.toLowerCase().includes("electric");
 
-  // Fetch local gas prices when zipCode is available
+  // Fetch local gas prices — use zipCode if available, otherwise try browser geolocation
   useEffect(() => {
-    if (!zipCode || !/^\d{5}$/.test(zipCode)) return;
-
-    const fetchLocalGasPrice = async () => {
+    const fetchGasPrices = async (zip: string) => {
       setIsLoadingGasPrice(true);
       try {
         const { data, error } = await supabase.functions.invoke("lookup-gas-price", {
-          body: { zipCode },
+          body: { zipCode: zip },
         });
 
         if (error) throw error;
@@ -81,7 +79,6 @@ export function FuelEconomyCard({
           const gasData = data.data as GasPriceData;
           setLocalGasData(gasData);
 
-          // Auto-populate with mid-grade (89 octane) price, fallback to regular
           const localGasPrice = gasData.midGrade || gasData.regular;
           if (localGasPrice && localGasPrice > 0) {
             setGasPricePerGallon(localGasPrice);
@@ -89,7 +86,6 @@ export function FuelEconomyCard({
             setGasPriceSource("local");
           }
 
-          // Auto-populate electricity price if available
           if (gasData.electricity && gasData.electricity > 0) {
             setElectricityPrice(gasData.electricity);
             setElectricityPriceInput(gasData.electricity.toFixed(2));
@@ -97,13 +93,48 @@ export function FuelEconomyCard({
         }
       } catch (err) {
         console.error("Failed to fetch local gas prices:", err);
-        // Keep national averages as fallback
       } finally {
         setIsLoadingGasPrice(false);
       }
     };
 
-    fetchLocalGasPrice();
+    if (zipCode && /^\d{5}$/.test(zipCode)) {
+      fetchGasPrices(zipCode);
+      return;
+    }
+
+    // Fallback: use browser geolocation to reverse-geocode a ZIP
+    if (!("geolocation" in navigator)) return;
+
+    setIsLoadingGasPrice(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          // Use free reverse geocoding to get ZIP code
+          const geoRes = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&addressdetails=1`,
+            { headers: { "User-Agent": "CarWise/1.0" } }
+          );
+          if (geoRes.ok) {
+            const geoData = await geoRes.json();
+            const detectedZip = geoData?.address?.postcode?.substring(0, 5);
+            if (detectedZip && /^\d{5}$/.test(detectedZip)) {
+              await fetchGasPrices(detectedZip);
+              return;
+            }
+          }
+        } catch (err) {
+          console.error("Geolocation reverse geocode failed:", err);
+        }
+        setIsLoadingGasPrice(false);
+      },
+      () => {
+        // User denied geolocation — silently fall back to national averages
+        setIsLoadingGasPrice(false);
+      },
+      { timeout: 5000 }
+    );
   }, [zipCode]);
 
   // Calculate TCO with user-adjustable mileage and energy price
