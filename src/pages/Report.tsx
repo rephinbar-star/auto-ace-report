@@ -42,8 +42,6 @@ import {
   Upload,
   Download,
   Loader2,
-  Scale,
-  Save,
   ArrowLeft,
   ExternalLink,
   BadgeCheck,
@@ -529,6 +527,15 @@ export default function ReportPage() {
     loadAnalysis();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Auto-save new reports once analysis completes
+  const hasAutoSaved = useRef(false);
+  useEffect(() => {
+    if (!analysis || !vehicleData || isSavedReport || hasAutoSaved.current) return;
+    hasAutoSaved.current = true;
+    handleSaveReport(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analysis, vehicleData, isSavedReport]);
 
   // Compute UVPRS when analysis data is available
   useEffect(() => {
@@ -1770,56 +1777,13 @@ export default function ReportPage() {
                 );
               })()}
 
-              {/* Analyze Another Vehicle - Only for saved reports */}
-              {isSavedReport && (
-                <Button asChild className="w-full">
-                  <Link to="/analyze">
-                    <Car className="mr-2 h-4 w-4" />
-                    Analyze Another Vehicle
-                  </Link>
-                </Button>
-              )}
-
-              {/* Action Buttons */}
-              {!isSavedReport && (
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <Button 
-                    variant="outline" 
-                    className="flex-1"
-                    onClick={async () => {
-                      if (!isPaid) {
-                        navigate("/pricing");
-                        return;
-                      }
-                      // Save report first, then navigate to compare
-                      const saved = await handleSaveReport(true);
-                      if (saved) {
-                        navigate("/dashboard?select=true");
-                      }
-                    }}
-                    disabled={isSaving}
-                  >
-                    {isSaving ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Scale className="mr-2 h-4 w-4" />
-                    )}
-                    Compare with Another Vehicle
-                  </Button>
-                  <Button 
-                    className="flex-1"
-                    onClick={() => handleSaveReport()}
-                    disabled={isSaving}
-                  >
-                    {isSaving ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Save className="mr-2 h-4 w-4" />
-                    )}
-                    {isSaving ? "Saving..." : "Save Report"}
-                  </Button>
-                </div>
-              )}
+              {/* Analyze Another Vehicle */}
+              <Button asChild className="w-full">
+                <Link to="/analyze">
+                  <Car className="mr-2 h-4 w-4" />
+                  Analyze Another Vehicle
+                </Link>
+              </Button>
             </div>
 
             {/* Right Column - Sidebar */}
