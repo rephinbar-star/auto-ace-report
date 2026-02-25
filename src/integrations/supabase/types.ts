@@ -222,6 +222,7 @@ export type Database = {
           warranty_risk_reduction: number | null
           warranty_status: string | null
           year: number
+          zip_code: string | null
         }
         Insert: {
           accident_count?: number | null
@@ -289,6 +290,7 @@ export type Database = {
           warranty_risk_reduction?: number | null
           warranty_status?: string | null
           year: number
+          zip_code?: string | null
         }
         Update: {
           accident_count?: number | null
@@ -356,6 +358,7 @@ export type Database = {
           warranty_risk_reduction?: number | null
           warranty_status?: string | null
           year?: number
+          zip_code?: string | null
         }
         Relationships: []
       }
