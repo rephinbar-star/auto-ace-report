@@ -795,6 +795,8 @@ export default function ReportPage() {
         })(),
         pricingSources,
         hasServiceRecords: vehicleData?.history?.serviceRecords ?? false,
+        warrantyAnalysis: analysis.warrantyAnalysis,
+        finalVerdict: analysis.finalVerdict,
       });
       sonnerToast.success("PDF downloaded successfully!");
     } catch (error) {

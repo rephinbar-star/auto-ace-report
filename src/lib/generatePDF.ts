@@ -68,6 +68,18 @@ interface TCOData {
   electricityPerKwh?: number;
 }
 
+interface WarrantyAnalysis {
+  warrantyStatus: "active" | "expired" | "unknown";
+  warrantyMonthsRemaining?: number | null;
+  riskReductionFactor: number;
+  warrantyNotes: string;
+}
+
+interface FinalVerdict {
+  verdict: "Buy" | "Negotiate" | "Walk Away";
+  justification: string;
+}
+
 interface ReportData {
   vehicle: VehicleData;
   priceAssessment: PriceAssessment;
@@ -82,6 +94,8 @@ interface ReportData {
   sellerType?: string;
   pricingSources?: string[];
   hasServiceRecords?: boolean;
+  warrantyAnalysis?: WarrantyAnalysis;
+  finalVerdict?: FinalVerdict;
 }
 
 // ── Color palette matching the website (teal primary) ──
@@ -153,7 +167,7 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   const contentW = W - 2 * M;
   let y = 0;
 
-  const { vehicle, priceAssessment, riskAssessment, historyAnalysis, depreciationTable, images, dealerReview, serviceHistory, uvprsResult, tcoData, sellerType, pricingSources, hasServiceRecords } = data;
+  const { vehicle, priceAssessment, riskAssessment, historyAnalysis, depreciationTable, images, dealerReview, serviceHistory, uvprsResult, tcoData, sellerType, pricingSources, hasServiceRecords, warrantyAnalysis, finalVerdict } = data;
 
   // Helper to deduplicate sources by domain
   const getDeduplicatedSources = (sources: string[]): { displayName: string; url: string }[] => {
@@ -1029,44 +1043,135 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   }
 
   // ══════════════════════════════════════════════
-  // RECOMMENDATION CARD
+  // WARRANTY ANALYSIS
   // ══════════════════════════════════════════════
-  ensureSpace(32);
+  if (warrantyAnalysis) {
+    sectionTitle("Warranty Analysis");
+
+    ensureSpace(22);
+    const waColor: [number, number, number] = warrantyAnalysis.warrantyStatus === "active" ? GREEN
+      : warrantyAnalysis.warrantyStatus === "expired" ? RED : AMBER;
+
+    // Status + Risk Reduction row
+    pdf.setFillColor(...BG_MUTED);
+    pdf.roundedRect(M, y, contentW, 16, 3, 3, "F");
+
+    pdf.setFontSize(8);
+    pdf.setTextColor(...SLATE);
+    pdf.text("Warranty Status", M + 5, y + 5);
+    pdf.setFontSize(11);
+    pdf.setFont("helvetica", "bold");
+    pdf.setTextColor(...waColor);
+    const statusLabel = warrantyAnalysis.warrantyStatus.charAt(0).toUpperCase() + warrantyAnalysis.warrantyStatus.slice(1);
+    pdf.text(statusLabel, M + 5, y + 12);
+
+    if (warrantyAnalysis.warrantyMonthsRemaining != null) {
+      pdf.setFontSize(8);
+      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(...SLATE);
+      pdf.text("Months Remaining", M + 50, y + 5);
+      pdf.setFontSize(11);
+      pdf.setFont("helvetica", "bold");
+      pdf.setTextColor(...BLACK);
+      pdf.text(`${warrantyAnalysis.warrantyMonthsRemaining}`, M + 50, y + 12);
+    }
+
+    pdf.setFontSize(8);
+    pdf.setFont("helvetica", "normal");
+    pdf.setTextColor(...SLATE);
+    pdf.text("Risk Reduction", M + 95, y + 5);
+    pdf.setFontSize(11);
+    pdf.setFont("helvetica", "bold");
+    pdf.setTextColor(...(warrantyAnalysis.riskReductionFactor >= 50 ? GREEN : warrantyAnalysis.riskReductionFactor >= 20 ? AMBER : RED));
+    pdf.text(`${warrantyAnalysis.riskReductionFactor}%`, M + 95, y + 12);
+
+    pdf.setFont("helvetica", "normal");
+    y += 20;
+
+    // Warranty notes
+    if (warrantyAnalysis.warrantyNotes) {
+      wrappedText(warrantyAnalysis.warrantyNotes, 9, SLATE);
+    }
+  }
+
+  // ══════════════════════════════════════════════
+  // FINAL VERDICT & RECOMMENDATION
+  // ══════════════════════════════════════════════
+  ensureSpace(42);
   y += 5;
-  const recColor = uvprsResult
-    ? (uvprsResult.riskLevel === "low" ? GREEN : uvprsResult.riskLevel === "moderate" ? AMBER : RED)
-    : (riskAssessment.level === "low" ? GREEN : riskAssessment.level === "medium" ? AMBER : RED);
-  const recLabel = uvprsResult
-    ? uvprsResult.riskLabel.toUpperCase()
-    : `${riskAssessment.level.toUpperCase()} RISK`;
 
-  pdf.setDrawColor(...recColor);
-  pdf.setLineWidth(0.8);
-  pdf.roundedRect(M, y, contentW, 26, 3, 3, "S");
+  if (finalVerdict) {
+    const verdictColor: [number, number, number] = finalVerdict.verdict === "Buy" ? GREEN
+      : finalVerdict.verdict === "Negotiate" ? AMBER : RED;
 
-  // Badge
-  pdf.setFillColor(...recColor);
-  const badgeTextW = pdf.getStringUnitWidth(recLabel) * 7 / pdf.internal.scaleFactor;
-  const badgeW = badgeTextW + 8;
-  pdf.roundedRect(M + (contentW - badgeW) / 2, y + 3, badgeW, 7, 2, 2, "F");
-  pdf.setFontSize(7);
-  pdf.setFont("helvetica", "bold");
-  pdf.setTextColor(...WHITE);
-  pdf.text(recLabel, M + (contentW - badgeW) / 2 + 4, y + 8);
+    pdf.setDrawColor(...verdictColor);
+    pdf.setLineWidth(0.8);
+    pdf.roundedRect(M, y, contentW, 36, 3, 3, "S");
 
-  // Fair offer text
-  pdf.setFontSize(9);
-  pdf.setFont("helvetica", "normal");
-  pdf.setTextColor(...SLATE);
-  const foLabel = "Fair Offer Price";
-  pdf.text(foLabel, M + (contentW - pdf.getStringUnitWidth(foLabel) * 9 / pdf.internal.scaleFactor) / 2, y + 15);
-  pdf.setFontSize(14);
-  pdf.setFont("helvetica", "bold");
-  pdf.setTextColor(...BLACK);
-  const fairOfferStr = fmt(riskAssessment.fairOfferPrice);
-  pdf.text(fairOfferStr, M + (contentW - pdf.getStringUnitWidth(fairOfferStr) * 14 / pdf.internal.scaleFactor) / 2, y + 22);
+    // Verdict badge
+    const verdictText = finalVerdict.verdict.toUpperCase();
+    pdf.setFillColor(...verdictColor);
+    const vBadgeW = pdf.getStringUnitWidth(verdictText) * 9 / pdf.internal.scaleFactor + 10;
+    pdf.roundedRect(M + (contentW - vBadgeW) / 2, y + 3, vBadgeW, 9, 2, 2, "F");
+    pdf.setFontSize(9);
+    pdf.setFont("helvetica", "bold");
+    pdf.setTextColor(...WHITE);
+    pdf.text(verdictText, M + (contentW - vBadgeW) / 2 + 5, y + 9);
 
-  y += 30;
+    // Justification
+    pdf.setFontSize(8);
+    pdf.setFont("helvetica", "normal");
+    pdf.setTextColor(...SLATE);
+    const justLines = pdf.splitTextToSize(finalVerdict.justification, contentW - 20);
+    pdf.text(justLines, M + 10, y + 17);
+
+    // Fair offer
+    pdf.setFontSize(9);
+    pdf.setTextColor(...SLATE);
+    const foLabel = "Fair Offer Price";
+    pdf.text(foLabel, M + (contentW - pdf.getStringUnitWidth(foLabel) * 9 / pdf.internal.scaleFactor) / 2, y + 25);
+    pdf.setFontSize(14);
+    pdf.setFont("helvetica", "bold");
+    pdf.setTextColor(...BLACK);
+    const fairOfferStr = fmt(riskAssessment.fairOfferPrice);
+    pdf.text(fairOfferStr, M + (contentW - pdf.getStringUnitWidth(fairOfferStr) * 14 / pdf.internal.scaleFactor) / 2, y + 33);
+
+    y += 40;
+  } else {
+    // Fallback: original recommendation card
+    const recColor = uvprsResult
+      ? (uvprsResult.riskLevel === "low" ? GREEN : uvprsResult.riskLevel === "moderate" ? AMBER : RED)
+      : (riskAssessment.level === "low" ? GREEN : riskAssessment.level === "medium" ? AMBER : RED);
+    const recLabel = uvprsResult
+      ? uvprsResult.riskLabel.toUpperCase()
+      : `${riskAssessment.level.toUpperCase()} RISK`;
+
+    pdf.setDrawColor(...recColor);
+    pdf.setLineWidth(0.8);
+    pdf.roundedRect(M, y, contentW, 26, 3, 3, "S");
+
+    pdf.setFillColor(...recColor);
+    const badgeTextW = pdf.getStringUnitWidth(recLabel) * 7 / pdf.internal.scaleFactor;
+    const badgeW = badgeTextW + 8;
+    pdf.roundedRect(M + (contentW - badgeW) / 2, y + 3, badgeW, 7, 2, 2, "F");
+    pdf.setFontSize(7);
+    pdf.setFont("helvetica", "bold");
+    pdf.setTextColor(...WHITE);
+    pdf.text(recLabel, M + (contentW - badgeW) / 2 + 4, y + 8);
+
+    pdf.setFontSize(9);
+    pdf.setFont("helvetica", "normal");
+    pdf.setTextColor(...SLATE);
+    const foLabel = "Fair Offer Price";
+    pdf.text(foLabel, M + (contentW - pdf.getStringUnitWidth(foLabel) * 9 / pdf.internal.scaleFactor) / 2, y + 15);
+    pdf.setFontSize(14);
+    pdf.setFont("helvetica", "bold");
+    pdf.setTextColor(...BLACK);
+    const fairOfferStr = fmt(riskAssessment.fairOfferPrice);
+    pdf.text(fairOfferStr, M + (contentW - pdf.getStringUnitWidth(fairOfferStr) * 14 / pdf.internal.scaleFactor) / 2, y + 22);
+
+    y += 30;
+  }
 
   // ── Footer on last page ──
   addFooter();
