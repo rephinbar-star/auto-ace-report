@@ -66,6 +66,7 @@ export function FuelEconomyCard({
   const [gasPriceSource, setGasPriceSource] = useState<"national" | "local">("national");
   const [zipInput, setZipInput] = useState(zipCode || "");
   const [zipError, setZipError] = useState("");
+  const [geoDenied, setGeoDenied] = useState(false);
 
   const isElectric = fuelType?.toLowerCase().includes("electric");
 
@@ -134,8 +135,9 @@ export function FuelEconomyCard({
         setIsLoadingGasPrice(false);
       },
       () => {
-        // User denied geolocation — silently fall back to national averages
+        // User denied geolocation — show prompt to enter ZIP manually
         setIsLoadingGasPrice(false);
+        setGeoDenied(true);
       },
       { timeout: 5000 }
     );
@@ -276,9 +278,14 @@ export function FuelEconomyCard({
       </CardHeader>
       <CardContent className="space-y-6">
         {/* ZIP Code Lookup */}
-        <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+        <div className={cn(
+          "rounded-lg border p-3 space-y-2 transition-colors",
+          geoDenied && !zipCode && gasPriceSource === "national"
+            ? "border-warning/40 bg-warning/5"
+            : "bg-muted/30"
+        )}>
           <div className="flex items-center gap-2 mb-1">
-            <MapPin className="h-4 w-4 text-muted-foreground" />
+            <MapPin className={cn("h-4 w-4", geoDenied && !zipCode && gasPriceSource === "national" ? "text-warning" : "text-muted-foreground")} />
             <span className="text-sm font-medium">Local Gas Prices</span>
             {gasPriceSource === "local" && localGasData && (
               <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20">
@@ -286,6 +293,14 @@ export function FuelEconomyCard({
               </Badge>
             )}
           </div>
+
+          {/* Prompt when geolocation denied and no ZIP stored */}
+          {geoDenied && !zipCode && gasPriceSource === "national" && (
+            <p className="text-xs text-warning-foreground bg-warning/10 border border-warning/20 rounded-md px-2.5 py-2 leading-relaxed">
+              📍 Allowing location access or entering your ZIP code allows us to generate a much more accurate regionally-based analysis — including car values, gas prices, and total cost of ownership.
+            </p>
+          )}
+
           <form onSubmit={handleZipSubmit} className="flex items-center gap-2">
             <Input
               type="text"
