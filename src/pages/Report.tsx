@@ -1725,36 +1725,50 @@ export default function ReportPage() {
                     </div>
                   </CardContent>
                 </Card>
-              ) : (
-                /* Fallback: original recommendation card if no finalVerdict */
-                <Card className={cn(
-                  "border-2",
-                  uvprsResult
-                    ? uvprsResult.riskLevel === "low" ? "border-success bg-success/5"
-                      : uvprsResult.riskLevel === "moderate" ? "border-warning bg-warning/5"
-                      : "border-danger bg-danger/5"
-                    : riskAssessment.level === "low" ? "border-success bg-success/5"
-                      : riskAssessment.level === "medium" ? "border-warning bg-warning/5"
-                      : "border-danger bg-danger/5"
-                )}>
-                  <CardContent className="p-6 text-center">
-                    <Badge className={cn("mb-4",
-                      uvprsResult
-                        ? uvprsResult.riskLevel === "low" ? "bg-success text-success-foreground"
-                          : uvprsResult.riskLevel === "moderate" ? "bg-warning text-warning-foreground"
-                          : "bg-danger text-danger-foreground"
-                        : riskLevelColors[riskAssessment.level]
-                    )}>
-                      {uvprsResult ? uvprsResult.riskLabel.toUpperCase() : `${riskAssessment.level.toUpperCase()} RISK`}
-                    </Badge>
-                    <p className="mb-2 text-lg font-semibold">Fair Offer Price</p>
-                    <p className="text-3xl font-bold">${riskAssessment.fairOfferPrice.toLocaleString()}</p>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      Based on condition, market data, and risk factors
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
+              ) : (() => {
+                /* Fallback: derive verdict from risk data */
+                const effectiveRisk = uvprsResult?.riskLevel 
+                  ?? (riskAssessment.level === "medium" ? "moderate" : riskAssessment.level);
+                const fallbackVerdict = effectiveRisk === "low" ? "Buy" 
+                  : effectiveRisk === "moderate" ? "Negotiate" : "Walk Away";
+                const fallbackJustification = effectiveRisk === "low"
+                  ? "Low overall risk with favorable market pricing and condition factors support a confident purchase at the fair offer price."
+                  : effectiveRisk === "moderate"
+                  ? "Moderate risk factors were identified — negotiate the price down to the fair offer amount to offset potential maintenance or depreciation concerns."
+                  : "High risk factors including condition, history, or pricing concerns make this vehicle inadvisable at the current asking price.";
+                const verdictIcon = fallbackVerdict === "Buy" 
+                  ? <ThumbsUp className="h-10 w-10 text-success" />
+                  : fallbackVerdict === "Negotiate" 
+                  ? <HandCoins className="h-10 w-10 text-warning" />
+                  : <ThumbsDown className="h-10 w-10 text-danger" />;
+                const verdictBorder = fallbackVerdict === "Buy" ? "border-success bg-success/5"
+                  : fallbackVerdict === "Negotiate" ? "border-warning bg-warning/5"
+                  : "border-danger bg-danger/5";
+                const verdictBadge = fallbackVerdict === "Buy" ? "bg-success text-success-foreground"
+                  : fallbackVerdict === "Negotiate" ? "bg-warning text-warning-foreground"
+                  : "bg-danger text-danger-foreground";
+                return (
+                  <Card className={cn("border-2", verdictBorder)}>
+                    <CardContent className="p-6">
+                      <div className="flex flex-col sm:flex-row items-center gap-6">
+                        <div className="flex flex-col items-center gap-2 shrink-0">
+                          {verdictIcon}
+                          <Badge className={cn("text-lg px-4 py-1", verdictBadge)}>
+                            {fallbackVerdict.toUpperCase()}
+                          </Badge>
+                        </div>
+                        <div className="flex-1 text-center sm:text-left">
+                          <p className="text-sm text-muted-foreground">{fallbackJustification}</p>
+                        </div>
+                        <div className="shrink-0 text-center sm:border-l sm:pl-6">
+                          <p className="mb-1 text-sm font-semibold">Fair Offer Price</p>
+                          <p className="text-3xl font-bold">${riskAssessment.fairOfferPrice.toLocaleString()}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })()}
 
               {/* Analyze Another Vehicle - Only for saved reports */}
               {isSavedReport && (
