@@ -252,6 +252,11 @@ export default function ReportPage() {
         risk_score: uvprsResult?.totalScore ?? null,
         is_cpo: condition.isCPO || false,
         warranty_months_remaining: history?.warrantyMonthsRemaining ?? null,
+        warranty_status: analysis.warrantyAnalysis?.warrantyStatus || null,
+        warranty_risk_reduction: analysis.warrantyAnalysis?.riskReductionFactor ?? null,
+        warranty_notes: analysis.warrantyAnalysis?.warrantyNotes || null,
+        final_verdict: analysis.finalVerdict?.verdict || null,
+        final_verdict_justification: analysis.finalVerdict?.justification || null,
         status: "complete",
       });
 
@@ -373,6 +378,20 @@ export default function ReportPage() {
               positives: report.history_positives || [],
               concerns: report.history_issues || [],
             },
+            ...(report.warranty_status ? {
+              warrantyAnalysis: {
+                warrantyStatus: report.warranty_status as "active" | "expired" | "unknown",
+                warrantyMonthsRemaining: report.warranty_months_remaining ?? null,
+                riskReductionFactor: report.warranty_risk_reduction ?? 0,
+                warrantyNotes: report.warranty_notes || "",
+              },
+            } : {}),
+            ...(report.final_verdict ? {
+              finalVerdict: {
+                verdict: report.final_verdict as "Buy" | "Negotiate" | "Walk Away",
+                justification: report.final_verdict_justification || "",
+              },
+            } : {}),
           });
           
           // Load MPG data from saved report
