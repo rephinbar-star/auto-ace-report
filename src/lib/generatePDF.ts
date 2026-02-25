@@ -1138,39 +1138,61 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
 
     y += 40;
   } else {
-    // Fallback: original recommendation card
-    const recColor = uvprsResult
-      ? (uvprsResult.riskLevel === "low" ? GREEN : uvprsResult.riskLevel === "moderate" ? AMBER : RED)
-      : (riskAssessment.level === "low" ? GREEN : riskAssessment.level === "medium" ? AMBER : RED);
-    const recLabel = uvprsResult
-      ? uvprsResult.riskLabel.toUpperCase()
-      : `${riskAssessment.level.toUpperCase()} RISK`;
+    // Fallback: derive Buy/Negotiate/Walk Away from risk level
+    const riskLevel = uvprsResult
+      ? uvprsResult.riskLevel
+      : riskAssessment.level;
 
-    pdf.setDrawColor(...recColor);
+    let derivedVerdict: "Buy" | "Negotiate" | "Walk Away";
+    let derivedJustification: string;
+
+    if (riskLevel === "low") {
+      derivedVerdict = "Buy";
+      derivedJustification = "This vehicle shows low risk indicators across pricing, history, and reliability factors. The deal aligns well with market values and presents a sound purchase opportunity.";
+    } else if (riskLevel === "medium" || riskLevel === "moderate") {
+      derivedVerdict = "Negotiate";
+      derivedJustification = "This vehicle has moderate risk factors that warrant negotiation. Consider leveraging the identified concerns to negotiate a better price closer to the fair offer value.";
+    } else {
+      derivedVerdict = "Walk Away";
+      derivedJustification = "This vehicle presents significant risk flags including pricing, history, or reliability concerns. The risks outweigh potential value at the current asking price.";
+    }
+
+    const verdictColor: [number, number, number] = derivedVerdict === "Buy" ? GREEN
+      : derivedVerdict === "Negotiate" ? AMBER : RED;
+
+    pdf.setDrawColor(...verdictColor);
     pdf.setLineWidth(0.8);
-    pdf.roundedRect(M, y, contentW, 26, 3, 3, "S");
+    pdf.roundedRect(M, y, contentW, 36, 3, 3, "S");
 
-    pdf.setFillColor(...recColor);
-    const badgeTextW = pdf.getStringUnitWidth(recLabel) * 7 / pdf.internal.scaleFactor;
-    const badgeW = badgeTextW + 8;
-    pdf.roundedRect(M + (contentW - badgeW) / 2, y + 3, badgeW, 7, 2, 2, "F");
-    pdf.setFontSize(7);
+    // Verdict badge
+    const verdictText = derivedVerdict.toUpperCase();
+    pdf.setFillColor(...verdictColor);
+    const vBadgeW = pdf.getStringUnitWidth(verdictText) * 9 / pdf.internal.scaleFactor + 10;
+    pdf.roundedRect(M + (contentW - vBadgeW) / 2, y + 3, vBadgeW, 9, 2, 2, "F");
+    pdf.setFontSize(9);
     pdf.setFont("helvetica", "bold");
     pdf.setTextColor(...WHITE);
-    pdf.text(recLabel, M + (contentW - badgeW) / 2 + 4, y + 8);
+    pdf.text(verdictText, M + (contentW - vBadgeW) / 2 + 5, y + 9);
 
-    pdf.setFontSize(9);
+    // Justification
+    pdf.setFontSize(8);
     pdf.setFont("helvetica", "normal");
     pdf.setTextColor(...SLATE);
+    const justLines = pdf.splitTextToSize(derivedJustification, contentW - 20);
+    pdf.text(justLines, M + 10, y + 17);
+
+    // Fair offer
+    pdf.setFontSize(9);
+    pdf.setTextColor(...SLATE);
     const foLabel = "Fair Offer Price";
-    pdf.text(foLabel, M + (contentW - pdf.getStringUnitWidth(foLabel) * 9 / pdf.internal.scaleFactor) / 2, y + 15);
+    pdf.text(foLabel, M + (contentW - pdf.getStringUnitWidth(foLabel) * 9 / pdf.internal.scaleFactor) / 2, y + 25);
     pdf.setFontSize(14);
     pdf.setFont("helvetica", "bold");
     pdf.setTextColor(...BLACK);
     const fairOfferStr = fmt(riskAssessment.fairOfferPrice);
-    pdf.text(fairOfferStr, M + (contentW - pdf.getStringUnitWidth(fairOfferStr) * 14 / pdf.internal.scaleFactor) / 2, y + 22);
+    pdf.text(fairOfferStr, M + (contentW - pdf.getStringUnitWidth(fairOfferStr) * 14 / pdf.internal.scaleFactor) / 2, y + 33);
 
-    y += 30;
+    y += 40;
   }
 
   // ── Footer on last page ──
