@@ -217,7 +217,11 @@ serve(async (req) => {
       console.log("No maintenance data available, falling back to AI-only estimates");
     }
 
-    const systemPrompt = `You are an expert automotive analyst combining the knowledge of a professional mechanic with 30+ years experience and a seasoned used car buyer. You provide comprehensive, honest, and actionable vehicle purchase analysis.
+    const systemPrompt = `You are an expert automotive analyst with 30+ years of master mechanic experience across ALL vehicle types — sedans, SUVs, pickup trucks, minivans, sports cars, exotic high-end cars, electric vehicles, and hydrogen vehicles. You are also a professional pre-owned vehicle buyer who has purchased vehicles from auctions, dealerships, and private individuals, and you know exactly what red flags to look for that indicate high mechanical and financial risk. You are trained in depth on automotive technology up to present day, including all electronics, ADAS systems, hybrid/EV drivetrains, and infotainment systems. You are a master mechanic capable of troubleshooting automotive issues on all vehicle types, brands, models, and trim levels.
+
+You understand how unattended, deferred, or missed maintenance affects future performance and can predict upcoming repairs as a result of neglect. Conversely, you understand how timely maintenance can prevent or delay repairs and can predict when they might be due — including estimated costs sourced from RepairPal, CarEdge, and TrueDelta. You can analyze when certain repairs or maintenance patterns may be indicative of an accident that was reported or unreported on the vehicle's history. You can detect inconsistencies in maintenance/repair history as well as DMV-related issues like mileage reporting discrepancies, title mis-reporting, and anything else that seems out of order.
+
+Ultimately, your role is to help a buyer — with all of your experience and analytical capabilities — decide whether to purchase a specific vehicle and at what price, while making the buyer fully aware of potential risks. The same principle and approach applies when comparing two or more vehicles the buyer is considering.
 
 Your analysis must be data-driven and consider:
 - Current market conditions and regional pricing variations
@@ -225,10 +229,13 @@ Your analysis must be data-driven and consider:
 - Common mechanical issues and repair costs for this vehicle
 - The impact of mileage, condition, and ownership history on value
 - Realistic repair and maintenance costs based on the vehicle's age and mileage
+- Whether past repairs are preventative or indicative of inevitable upcoming failures
 
-CRITICAL MILEAGE CONSTRAINT: The vehicle's current odometer reading is ${condition.mileage.toLocaleString()} miles. All reliability concerns, service history references, and mileage-based assessments MUST be consistent with this mileage. Do NOT reference services completed at mileages higher than the vehicle's current odometer reading.
-${hasPricing ? "\nCRITICAL PRICING RULE: You have been provided with REAL-TIME MARKET PRICING DATA from KBB, Edmunds, and/or NADA. You MUST copy these exact dollar values for fairMarketPrivate, fairMarketDealer, and fairMarketTradeIn. Do NOT adjust, round, or deviate from the sourced values by more than 2%. If multiple sources disagree, use the KBB value as primary. The sourced data is ground truth — your role is to USE it, not re-estimate it." : ""}
-${hasMaintenance ? "\nIMPORTANT: You have been provided with REAL-TIME REPAIR AND MAINTENANCE COST DATA from authoritative sources (RepairPal, Edmunds, owner reports). You MUST use these values as your primary reference for:\n- reliabilityConcerns: costLow and costHigh values\n- depreciationTable: repairCosts and maintenanceCosts columns\nDo not deviate significantly from the sourced cost data. Distribute repair costs across the 5-year period based on when issues typically occur at the vehicle's mileage progression." : ""}
+CRITICAL MILEAGE CONSTRAINT: The vehicle's current odometer reading is ${condition.mileage.toLocaleString()} miles. All reliability concerns, service history references, and mileage-based assessments MUST be consistent with this mileage. Do NOT reference services completed at mileages greater than ${(condition.mileage + 24000).toLocaleString()} miles (current mileage + 24,000 mile lookahead for upcoming service intervals).
+${hasPricing ? "\nCRITICAL PRICING RULE: You have been provided with REAL-TIME MARKET PRICING DATA from KBB, Edmunds, NADA, and/or MarketCheck. You MUST copy these exact dollar values for fairMarketPrivate, fairMarketDealer, and fairMarketTradeIn. Do NOT adjust, round, or deviate from the sourced values by more than 2%. If multiple sources disagree, use the KBB value as primary. If KBB data is not available, fall back on MarketCheck. The sourced data is ground truth — your role is to USE it, not re-estimate it." : ""}
+${hasMaintenance ? "\nIMPORTANT: You have been provided with REAL-TIME REPAIR AND MAINTENANCE COST DATA from authoritative sources (RepairPal, CarEdge, TrueDelta, Edmunds, owner reports). You MUST use these values as your primary reference for:\n- reliabilityConcerns: costLow and costHigh values\n- depreciationTable: repairCosts and maintenanceCosts columns\nDo not deviate significantly from the sourced cost data. Distribute repair costs across the 5-year period based on when issues typically occur at the vehicle's mileage progression." : ""}
+
+WARRANTY ANALYSIS: The effect of an in-force factory warranty is a significant risk reduction, pro-rated by how much time/mileage is left on the bumper-to-bumper factory warranty. Conversely, the absence of any factory warranty or CPO warranty must be correlated with the service history of the vehicle to analyze whether repairs made are preventative or indicative of inevitable upcoming repairs (which increases risk). Cross-reference with RepairPal/CarEdge/TrueDelta data on common repairs at specific mileage windows and their estimated costs.
 
 IMPORTANT: The seller type is "${condition.sellerType}".
 - If "dealer": calculate priceDifference and dealRating by comparing askingPrice to fairMarketDealer (dealer retail value). Dealers include overhead, reconditioning, and sometimes warranties, so their prices are naturally higher than private party prices.
@@ -358,12 +365,12 @@ Provide your expert analysis.`;
                           type: "object",
                           properties: {
                             concern: { type: "string", description: "Description of the reliability concern including typical mileage range, e.g. 'MCU (Media Control Unit) eMMC failure (Common 40,000-60,000 miles)'" },
-                            costLow: { type: "number", description: "Low end of typical repair cost in USD based on RepairPal/owner-reported data. Use null if unknown." },
-                            costHigh: { type: "number", description: "High end of typical repair cost in USD based on RepairPal/owner-reported data. Use null if unknown." },
+                            costLow: { type: "number", description: "Low end of typical repair cost in USD based on RepairPal/CarEdge/TrueDelta/owner-reported data. Use null if unknown." },
+                            costHigh: { type: "number", description: "High end of typical repair cost in USD based on RepairPal/CarEdge/TrueDelta/owner-reported data. Use null if unknown." },
                           },
                           required: ["concern"],
                         },
-                        description: "List of reliability concerns with estimated repair costs sourced from RepairPal and owner-reported data. Each concern MUST include typical mileage when the issue occurs AND estimated repair cost range."
+                        description: "List of reliability concerns with estimated repair costs sourced from RepairPal, CarEdge, TrueDelta, and owner-reported data. Each concern MUST include typical mileage when the issue occurs AND estimated repair cost range."
                       },
                       valueProposition: { type: "string" },
                       fairOfferPrice: { type: "number" },
@@ -380,8 +387,18 @@ Provide your expert analysis.`;
                     },
                     required: ["healthScore", "positives", "concerns"],
                   },
+                  warrantyAnalysis: {
+                    type: "object",
+                    properties: {
+                      warrantyStatus: { type: "string", enum: ["active", "expired", "unknown"], description: "Current factory warranty status" },
+                      warrantyMonthsRemaining: { type: "number", description: "Estimated months remaining on bumper-to-bumper factory warranty. Null if unknown." },
+                      riskReductionFactor: { type: "number", description: "How much the warranty reduces purchase risk on a scale of 0-100. 0 = no reduction (expired/none), 100 = full coverage." },
+                      warrantyNotes: { type: "string", description: "Analysis of warranty impact on the purchase decision, including whether absence of warranty correlates with service history patterns and upcoming repair likelihood." },
+                    },
+                    required: ["warrantyStatus", "riskReductionFactor", "warrantyNotes"],
+                  },
                 },
-                required: ["priceAssessment", "depreciationTable", "riskAssessment", "historyAnalysis"],
+                required: ["priceAssessment", "depreciationTable", "riskAssessment", "historyAnalysis", "warrantyAnalysis"],
               },
             },
           },
