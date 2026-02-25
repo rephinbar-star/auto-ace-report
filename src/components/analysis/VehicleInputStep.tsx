@@ -1412,15 +1412,17 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                                   Find the VIN on the driver&apos;s side dashboard or door jamb.
                                 </FormDescription>
                                 <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
-                                  <VinCameraScanner
-                                    label="Scan, Screenshot or Photo"
-                                    onVinCaptured={(vin) => {
-                                      vinForm.setValue("vin", vin, { shouldValidate: true });
-                                      setVinScanned(true);
-                                      setTimeout(() => setVinScanned(false), 2000);
-                                      vinForm.handleSubmit(handleVINSubmit)();
-                                    }}
-                                  />
+                                  <div className="flex justify-center">
+                                    <VinCameraScanner
+                                      label="Scan, Screenshot or Photo"
+                                      onVinCaptured={(vin) => {
+                                        vinForm.setValue("vin", vin, { shouldValidate: true });
+                                        setVinScanned(true);
+                                        setTimeout(() => setVinScanned(false), 2000);
+                                        vinForm.handleSubmit(handleVINSubmit)();
+                                      }}
+                                    />
+                                  </div>
                                   <p className="text-sm text-muted-foreground leading-relaxed">
                                     <strong>Scan</strong> the <strong>VIN</strong> directly from the car &nbsp;<strong>OR</strong>&nbsp; screenshot the listing page on your phone &nbsp;<strong>OR</strong>&nbsp; take a photo of the VIN from any other source like paper or a photo of your computer screen.
                                   </p>
