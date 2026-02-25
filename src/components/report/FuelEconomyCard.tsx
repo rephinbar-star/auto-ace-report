@@ -39,6 +39,7 @@ interface FuelEconomyCardProps {
   evRange?: number | null;
   onAnnualMilesChange?: (miles: number) => void;
   zipCode?: string;
+  onZipCodeSave?: (zip: string) => void;
 }
 
 export function FuelEconomyCard({
@@ -53,6 +54,7 @@ export function FuelEconomyCard({
   evRange,
   onAnnualMilesChange,
   zipCode,
+  onZipCodeSave,
 }: FuelEconomyCardProps) {
   const [annualMiles, setAnnualMiles] = useState(12000);
   const [gasPricePerGallon, setGasPricePerGallon] = useState(NATIONAL_AVG_GAS_PRICE);
@@ -196,6 +198,8 @@ export function FuelEconomyCard({
           setElectricityPrice(gasData.electricity);
           setElectricityPriceInput(gasData.electricity.toFixed(2));
         }
+        // Persist the ZIP code back to the report
+        onZipCodeSave?.(zip);
       } else {
         setZipError("No price data found for this ZIP code.");
       }

@@ -1522,6 +1522,13 @@ export default function ReportPage() {
                 evRange={mpgData?.evRange ?? null}
                 onAnnualMilesChange={setUserAnnualMiles}
                 zipCode={condition?.zipCode}
+                onZipCodeSave={async (zip) => {
+                  if (!isSavedReport || !id) return;
+                  await supabase
+                    .from("vehicle_reports")
+                    .update({ zip_code: zip })
+                    .eq("id", id);
+                }}
               />
 
               {/* Depreciation Chart */}
