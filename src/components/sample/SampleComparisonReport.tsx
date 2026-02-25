@@ -78,6 +78,11 @@ const sampleComparisonVehicles: VehicleReport[] = [
     chronic_repair_systems: [],
     warranty_months_remaining: 24,
     is_cpo: false,
+    warranty_status: "active",
+    warranty_risk_reduction: 70,
+    warranty_notes: "Factory bumper-to-bumper warranty still active with 24 months remaining.",
+    final_verdict: "Buy",
+    final_verdict_justification: "Excellent deal on a low-mileage, well-maintained vehicle with active warranty.",
   },
   {
     id: "sample-2",
@@ -146,6 +151,11 @@ const sampleComparisonVehicles: VehicleReport[] = [
     chronic_repair_systems: [],
     warranty_months_remaining: 12,
     is_cpo: false,
+    warranty_status: "active",
+    warranty_risk_reduction: 40,
+    warranty_notes: "Limited factory warranty remaining with 12 months left.",
+    final_verdict: "Negotiate",
+    final_verdict_justification: "Good vehicle but priced slightly above market — negotiate toward fair market value.",
   },
   {
     id: "sample-3",
@@ -217,6 +227,11 @@ const sampleComparisonVehicles: VehicleReport[] = [
     chronic_repair_systems: [],
     warranty_months_remaining: 6,
     is_cpo: false,
+    warranty_status: "expired",
+    warranty_risk_reduction: 10,
+    warranty_notes: "Factory warranty nearly expired — upcoming repairs will be out of pocket.",
+    final_verdict: "Walk Away",
+    final_verdict_justification: "High mileage with significant reliability concerns and minimal warranty coverage.",
   },
 ];
 

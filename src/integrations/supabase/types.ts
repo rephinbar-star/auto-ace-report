@@ -174,6 +174,8 @@ export type Database = {
           fair_market_private: number | null
           fair_market_trade_in: number | null
           fair_offer_price: number | null
+          final_verdict: string | null
+          final_verdict_justification: string | null
           financing_type: Database["public"]["Enums"]["financing_type"]
           fuel_type: string | null
           has_service_records: boolean | null
@@ -216,6 +218,9 @@ export type Database = {
           value_proposition: string | null
           vin: string | null
           warranty_months_remaining: number | null
+          warranty_notes: string | null
+          warranty_risk_reduction: number | null
+          warranty_status: string | null
           year: number
         }
         Insert: {
@@ -236,6 +241,8 @@ export type Database = {
           fair_market_private?: number | null
           fair_market_trade_in?: number | null
           fair_offer_price?: number | null
+          final_verdict?: string | null
+          final_verdict_justification?: string | null
           financing_type?: Database["public"]["Enums"]["financing_type"]
           fuel_type?: string | null
           has_service_records?: boolean | null
@@ -278,6 +285,9 @@ export type Database = {
           value_proposition?: string | null
           vin?: string | null
           warranty_months_remaining?: number | null
+          warranty_notes?: string | null
+          warranty_risk_reduction?: number | null
+          warranty_status?: string | null
           year: number
         }
         Update: {
@@ -298,6 +308,8 @@ export type Database = {
           fair_market_private?: number | null
           fair_market_trade_in?: number | null
           fair_offer_price?: number | null
+          final_verdict?: string | null
+          final_verdict_justification?: string | null
           financing_type?: Database["public"]["Enums"]["financing_type"]
           fuel_type?: string | null
           has_service_records?: boolean | null
@@ -340,6 +352,9 @@ export type Database = {
           value_proposition?: string | null
           vin?: string | null
           warranty_months_remaining?: number | null
+          warranty_notes?: string | null
+          warranty_risk_reduction?: number | null
+          warranty_status?: string | null
           year?: number
         }
         Relationships: []
