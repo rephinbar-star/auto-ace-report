@@ -26,6 +26,7 @@ export interface VehicleInfo {
 export interface VehicleCondition {
   mileage: number;
   askingPrice: number;
+  finalPrice?: number;
   condition: "excellent" | "good" | "fair" | "poor";
   listingUrl?: string;
   sellerType: "private" | "dealer";

@@ -43,6 +43,7 @@ export default function AnalyzePage() {
       setCondition(prev => ({
         mileage: scrapedCondition.mileage || prev?.mileage || 0,
         askingPrice: scrapedCondition.askingPrice || prev?.askingPrice || 0,
+        finalPrice: scrapedCondition.finalPrice || prev?.finalPrice,
         condition: scrapedCondition.condition || prev?.condition || "good",
         sellerType: scrapedCondition.sellerType || prev?.sellerType || "dealer",
         sellerName: scrapedCondition.sellerName || prev?.sellerName,
