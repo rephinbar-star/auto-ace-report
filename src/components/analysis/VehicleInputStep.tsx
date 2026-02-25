@@ -1409,24 +1409,22 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                                  )}
                                </div>
                                <FormDescription>
-                                 Find the VIN on the driver&apos;s side dashboard or door jamb.
-                               </FormDescription>
-                               {isMobile && (
-                                 <div className="flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/5 p-3">
-                                   <VinCameraScanner
-                                     label="Scan, Screenshot or Photo"
-                                     onVinCaptured={(vin) => {
-                                       vinForm.setValue("vin", vin, { shouldValidate: true });
-                                       setVinScanned(true);
-                                       setTimeout(() => setVinScanned(false), 2000);
-                                       vinForm.handleSubmit(handleVINSubmit)();
-                                     }}
-                                   />
-                                   <p className="text-xs text-muted-foreground leading-relaxed">
-                                     Scan the VIN directly from the car, screenshot the listing page on your phone, or take a photo of a VIN from any other source like paper or a photo of your computer screen.
-                                   </p>
-                                 </div>
-                               )}
+                                  Find the VIN on the driver&apos;s side dashboard or door jamb.
+                                </FormDescription>
+                                <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
+                                  <VinCameraScanner
+                                    label="Scan, Screenshot or Photo"
+                                    onVinCaptured={(vin) => {
+                                      vinForm.setValue("vin", vin, { shouldValidate: true });
+                                      setVinScanned(true);
+                                      setTimeout(() => setVinScanned(false), 2000);
+                                      vinForm.handleSubmit(handleVINSubmit)();
+                                    }}
+                                  />
+                                  <p className="text-xs text-muted-foreground leading-relaxed">
+                                    Scan the VIN directly from the car, screenshot the listing page on your phone, or take a photo of a VIN from any other source like paper or a photo of your computer screen.
+                                  </p>
+                                </div>
                                {vinDecodeError && (
                                  <motion.p
                                    initial={{ opacity: 0, y: -4 }}
