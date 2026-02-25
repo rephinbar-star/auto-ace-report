@@ -874,7 +874,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
   const mismatchWarning = getMismatchWarning();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full overflow-hidden">
       {/* URL Tutorial */}
       <URLTutorial open={showHelpVideo} onClose={() => setShowHelpVideo(false)} />
       <div>
@@ -1365,9 +1365,9 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                                  VIN
                                  <VinLocationTooltip />
                                </FormLabel>
-                               <div className="flex gap-2 w-full">
-                                 <FormControl className="min-w-0 flex-1">
-                                   <div className="relative min-w-0">
+                               <div className="flex w-full min-w-0 gap-2">
+                                 <div className="relative min-w-0 flex-1">
+                                   <FormControl>
                                      <Input 
                                        placeholder="Enter 17-character VIN" 
                                        {...field}
@@ -1375,18 +1375,18 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                                        maxLength={17}
                                        onChange={(e) => field.onChange(e.target.value.toUpperCase())}
                                      />
-                                     {vinScanned && (
-                                       <motion.div
-                                         initial={{ opacity: 0, scale: 0.5 }}
-                                         animate={{ opacity: 1, scale: 1 }}
-                                         exit={{ opacity: 0, scale: 0.5 }}
-                                         className="absolute right-2.5 top-1/2 -translate-y-1/2 text-success"
-                                       >
-                                         <CheckCircle className="h-4 w-4" />
-                                       </motion.div>
-                                     )}
-                                   </div>
-                                 </FormControl>
+                                   </FormControl>
+                                   {vinScanned && (
+                                     <motion.div
+                                       initial={{ opacity: 0, scale: 0.5 }}
+                                       animate={{ opacity: 1, scale: 1 }}
+                                       exit={{ opacity: 0, scale: 0.5 }}
+                                       className="absolute right-2.5 top-1/2 -translate-y-1/2 text-success pointer-events-none"
+                                     >
+                                       <CheckCircle className="h-4 w-4" />
+                                     </motion.div>
+                                   )}
+                                 </div>
                                  {isMobile && (
                                    <VinCameraScanner
                                      onVinCaptured={(vin) => {
@@ -1397,7 +1397,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                                      }}
                                    />
                                  )}
-                              </div>
+                               </div>
                                <FormDescription>
                                  {isMobile
                                    ? "Type your VIN or tap Scan to use your camera."
