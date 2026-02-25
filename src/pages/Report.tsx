@@ -1686,17 +1686,6 @@ export default function ReportPage() {
                     <p className="whitespace-pre-line">{riskAssessment.expertOpinion}</p>
                   </div>
                   
-                  {/* Analyze Another Vehicle - Only for saved reports */}
-                  {isSavedReport && (
-                    <div className="mt-6 pt-6 border-t">
-                      <Button asChild className="w-full">
-                        <Link to="/analyze">
-                          <Car className="mr-2 h-4 w-4" />
-                          Analyze Another Vehicle
-                        </Link>
-                      </Button>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
 
@@ -1765,6 +1754,16 @@ export default function ReportPage() {
                     </p>
                   </CardContent>
                 </Card>
+              )}
+
+              {/* Analyze Another Vehicle - Only for saved reports */}
+              {isSavedReport && (
+                <Button asChild className="w-full">
+                  <Link to="/analyze">
+                    <Car className="mr-2 h-4 w-4" />
+                    Analyze Another Vehicle
+                  </Link>
+                </Button>
               )}
 
               {/* Action Buttons */}
