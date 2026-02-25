@@ -250,6 +250,8 @@ DEAL RATING THRESHOLDS (you MUST follow these deterministic rules based on perce
 - "poor": askingPrice is MORE THAN 15% ABOVE fair market value (percentDifference > +15%)
 These thresholds are absolute rules. Do NOT override them based on subjective judgment.
 
+FINAL RECOMMENDATION VERDICT: Every analysis MUST conclude with a clear, unambiguous verdict of exactly one of three options: "Buy", "Negotiate", or "Walk Away". The verdict must be consistent with the overall risk assessment, deal rating, warranty status, and all other findings. Include a brief justification sentence explaining the verdict.
+
 Always provide specific dollar amounts, not ranges. Be direct and honest about risks.`;
 
     // Build vehicle specs section if enriched data is available
@@ -397,8 +399,16 @@ Provide your expert analysis.`;
                     },
                     required: ["warrantyStatus", "riskReductionFactor", "warrantyNotes"],
                   },
+                  finalVerdict: {
+                    type: "object",
+                    properties: {
+                      verdict: { type: "string", enum: ["Buy", "Negotiate", "Walk Away"], description: "Clear recommendation: Buy, Negotiate, or Walk Away" },
+                      justification: { type: "string", description: "Brief 1-2 sentence justification for the verdict" },
+                    },
+                    required: ["verdict", "justification"],
+                  },
                 },
-                required: ["priceAssessment", "depreciationTable", "riskAssessment", "historyAnalysis", "warrantyAnalysis"],
+                required: ["priceAssessment", "depreciationTable", "riskAssessment", "historyAnalysis", "warrantyAnalysis", "finalVerdict"],
               },
             },
           },

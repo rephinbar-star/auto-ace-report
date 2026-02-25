@@ -50,6 +50,10 @@ import {
   Bot,
   RefreshCw,
   ShieldAlert,
+  ShieldCheck,
+  ThumbsUp,
+  ThumbsDown,
+  HandCoins,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -117,6 +121,16 @@ interface Analysis {
     healthScore: number;
     positives: string[];
     concerns: string[];
+  };
+  warrantyAnalysis?: {
+    warrantyStatus: "active" | "expired" | "unknown";
+    warrantyMonthsRemaining?: number | null;
+    riskReductionFactor: number;
+    warrantyNotes: string;
+  };
+  finalVerdict?: {
+    verdict: "Buy" | "Negotiate" | "Walk Away";
+    justification: string;
   };
 }
 
@@ -1969,34 +1983,105 @@ export default function ReportPage() {
                 onAnalysisComplete={setDealerAnalysis}
               />
 
-              {/* Recommendation */}
-              <Card className={cn(
-                "border-2",
-                uvprsResult
-                  ? uvprsResult.riskLevel === "low" ? "border-success bg-success/5"
-                    : uvprsResult.riskLevel === "moderate" ? "border-warning bg-warning/5"
+              {/* Warranty Status Card */}
+              {analysis.warrantyAnalysis && (
+                <Card className={cn(
+                  "border-2",
+                  analysis.warrantyAnalysis.warrantyStatus === "active" ? "border-success bg-success/5"
+                    : analysis.warrantyAnalysis.warrantyStatus === "expired" ? "border-danger bg-danger/5"
+                    : "border-warning bg-warning/5"
+                )}>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <ShieldCheck className="h-5 w-5" />
+                      Warranty Analysis
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Status</span>
+                      <Badge variant={analysis.warrantyAnalysis.warrantyStatus === "active" ? "default" : "destructive"}>
+                        {analysis.warrantyAnalysis.warrantyStatus === "active" ? "Active" : analysis.warrantyAnalysis.warrantyStatus === "expired" ? "Expired" : "Unknown"}
+                      </Badge>
+                    </div>
+                    {analysis.warrantyAnalysis.warrantyMonthsRemaining != null && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-muted-foreground">Months Remaining</span>
+                        <span className="font-semibold">{analysis.warrantyAnalysis.warrantyMonthsRemaining}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Risk Reduction</span>
+                      <span className="font-semibold">{analysis.warrantyAnalysis.riskReductionFactor}%</span>
+                    </div>
+                    <Progress value={analysis.warrantyAnalysis.riskReductionFactor} className="h-2" />
+                    <p className="text-sm text-muted-foreground">{analysis.warrantyAnalysis.warrantyNotes}</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Final Verdict Card */}
+              {analysis.finalVerdict ? (
+                <Card className={cn(
+                  "border-2",
+                  analysis.finalVerdict.verdict === "Buy" ? "border-success bg-success/5"
+                    : analysis.finalVerdict.verdict === "Negotiate" ? "border-warning bg-warning/5"
                     : "border-danger bg-danger/5"
-                  : riskAssessment.level === "low" ? "border-success bg-success/5"
-                    : riskAssessment.level === "medium" ? "border-warning bg-warning/5"
-                    : "border-danger bg-danger/5"
-              )}>
-                <CardContent className="p-6 text-center">
-                  <Badge className={cn("mb-4",
-                    uvprsResult
-                      ? uvprsResult.riskLevel === "low" ? "bg-success text-success-foreground"
-                        : uvprsResult.riskLevel === "moderate" ? "bg-warning text-warning-foreground"
+                )}>
+                  <CardContent className="p-6 text-center">
+                    <div className="mb-3">
+                      {analysis.finalVerdict.verdict === "Buy" ? (
+                        <ThumbsUp className="mx-auto h-10 w-10 text-success" />
+                      ) : analysis.finalVerdict.verdict === "Negotiate" ? (
+                        <HandCoins className="mx-auto h-10 w-10 text-warning" />
+                      ) : (
+                        <ThumbsDown className="mx-auto h-10 w-10 text-danger" />
+                      )}
+                    </div>
+                    <Badge className={cn("mb-3 text-lg px-4 py-1",
+                      analysis.finalVerdict.verdict === "Buy" ? "bg-success text-success-foreground"
+                        : analysis.finalVerdict.verdict === "Negotiate" ? "bg-warning text-warning-foreground"
                         : "bg-danger text-danger-foreground"
-                      : riskLevelColors[riskAssessment.level]
-                  )}>
-                    {uvprsResult ? uvprsResult.riskLabel.toUpperCase() : `${riskAssessment.level.toUpperCase()} RISK`}
-                  </Badge>
-                  <p className="mb-2 text-lg font-semibold">Fair Offer Price</p>
-                  <p className="text-3xl font-bold">${riskAssessment.fairOfferPrice.toLocaleString()}</p>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Based on condition, market data, and risk factors
-                  </p>
-                </CardContent>
-              </Card>
+                    )}>
+                      {analysis.finalVerdict.verdict.toUpperCase()}
+                    </Badge>
+                    <p className="mt-2 text-sm text-muted-foreground">{analysis.finalVerdict.justification}</p>
+                    <div className="mt-4 border-t pt-4">
+                      <p className="mb-1 text-lg font-semibold">Fair Offer Price</p>
+                      <p className="text-3xl font-bold">${riskAssessment.fairOfferPrice.toLocaleString()}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                /* Fallback: original recommendation card if no finalVerdict */
+                <Card className={cn(
+                  "border-2",
+                  uvprsResult
+                    ? uvprsResult.riskLevel === "low" ? "border-success bg-success/5"
+                      : uvprsResult.riskLevel === "moderate" ? "border-warning bg-warning/5"
+                      : "border-danger bg-danger/5"
+                    : riskAssessment.level === "low" ? "border-success bg-success/5"
+                      : riskAssessment.level === "medium" ? "border-warning bg-warning/5"
+                      : "border-danger bg-danger/5"
+                )}>
+                  <CardContent className="p-6 text-center">
+                    <Badge className={cn("mb-4",
+                      uvprsResult
+                        ? uvprsResult.riskLevel === "low" ? "bg-success text-success-foreground"
+                          : uvprsResult.riskLevel === "moderate" ? "bg-warning text-warning-foreground"
+                          : "bg-danger text-danger-foreground"
+                        : riskLevelColors[riskAssessment.level]
+                    )}>
+                      {uvprsResult ? uvprsResult.riskLabel.toUpperCase() : `${riskAssessment.level.toUpperCase()} RISK`}
+                    </Badge>
+                    <p className="mb-2 text-lg font-semibold">Fair Offer Price</p>
+                    <p className="text-3xl font-bold">${riskAssessment.fairOfferPrice.toLocaleString()}</p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Based on condition, market data, and risk factors
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Ad Placeholder */}
               <div className="rounded-lg border-2 border-dashed border-muted bg-muted/20 p-4 text-center">
