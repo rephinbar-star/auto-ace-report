@@ -48,6 +48,9 @@ import {
   ShieldAlert,
   Star,
   Scale,
+  ThumbsUp,
+  ThumbsDown,
+  HandCoins,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SEO } from "@/components/seo/SEO";
@@ -1088,6 +1091,27 @@ export default function SampleReportPage() {
                           {source}
                         </Badge>
                       ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              {/* Verdict Card */}
+              <motion.div variants={itemVariants} whileHover={{ y: -5 }} transition={{ duration: 0.2 }}>
+                <Card className="border-2 border-warning bg-warning/5">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col items-center gap-4">
+                      <HandCoins className="h-10 w-10 text-warning" />
+                      <Badge className="text-lg px-4 py-1 bg-warning text-warning-foreground">
+                        NEGOTIATE
+                      </Badge>
+                      <p className="text-sm text-muted-foreground text-center">
+                        The asking price is approximately $1,000 above fair market value. Low risk and strong reliability support a purchase, but negotiate toward the fair offer price for the best deal.
+                      </p>
+                      <div className="border-t pt-4 w-full text-center">
+                        <p className="mb-1 text-sm font-semibold">Fair Offer Price</p>
+                        <p className="text-3xl font-bold">${riskAssessment.fairOfferPrice.toLocaleString()}</p>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
