@@ -176,6 +176,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
   const [isExtractingScreenshot, setIsExtractingScreenshot] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [vinScanned, setVinScanned] = useState(false);
+  const [vinDecodeError, setVinDecodeError] = useState<string | null>(null);
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
@@ -486,6 +487,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
 
   const handleVINSubmit = async (data: z.infer<typeof vinSchema>) => {
     setIsLoading(true);
+    setVinDecodeError(null);
     try {
       const vehicle = await decodeVIN(data.vin);
       if (vehicle) {
@@ -523,6 +525,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
           description: `Found: ${enrichedVehicle.year} ${enrichedVehicle.make} ${enrichedVehicle.model}`,
         });
       } else {
+        setVinDecodeError("Could not decode this VIN. Check the number and try again.");
         toast({
           title: "VIN Not Found",
           description: "Could not decode this VIN. Please try manual entry.",
@@ -530,6 +533,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
         });
       }
     } catch (error) {
+      setVinDecodeError("Decode failed. Please check your connection and try again.");
       toast({
         title: "Error",
         description: "Failed to decode VIN. Please try again.",
@@ -1371,9 +1375,18 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                                      <Input 
                                        placeholder="Enter 17-character VIN" 
                                        {...field}
-                                       className={`font-mono uppercase transition-all duration-300 w-full ${vinScanned ? "ring-2 ring-success border-success bg-success/5" : ""}`}
+                                       className={`font-mono uppercase transition-all duration-300 w-full ${
+                                         vinScanned
+                                           ? "ring-2 ring-success border-success bg-success/5"
+                                           : vinDecodeError
+                                           ? "ring-2 ring-destructive border-destructive bg-destructive/5"
+                                           : ""
+                                       }`}
                                        maxLength={17}
-                                       onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                                       onChange={(e) => {
+                                         field.onChange(e.target.value.toUpperCase());
+                                         if (vinDecodeError) setVinDecodeError(null);
+                                       }}
                                      />
                                    </FormControl>
                                    {vinScanned && (
@@ -1384,6 +1397,15 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-success pointer-events-none"
                                      >
                                        <CheckCircle className="h-4 w-4" />
+                                     </motion.div>
+                                   )}
+                                   {vinDecodeError && !vinScanned && (
+                                     <motion.div
+                                       initial={{ opacity: 0, scale: 0.5 }}
+                                       animate={{ opacity: 1, scale: 1 }}
+                                       className="absolute right-2.5 top-1/2 -translate-y-1/2 text-destructive pointer-events-none"
+                                     >
+                                       <AlertCircle className="h-4 w-4" />
                                      </motion.div>
                                    )}
                                  </div>
@@ -1399,11 +1421,21 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                                  )}
                                </div>
                                <FormDescription>
-                                 {isMobile
-                                   ? "Type your VIN or tap Scan to use your camera."
-                                   : "Find the VIN on the driver's side dashboard or door jamb."}
-                               </FormDescription>
-                              <FormMessage />
+                                  {isMobile
+                                    ? "Type your VIN or tap Scan to use your camera."
+                                    : "Find the VIN on the driver's side dashboard or door jamb."}
+                                </FormDescription>
+                               {vinDecodeError && (
+                                 <motion.p
+                                   initial={{ opacity: 0, y: -4 }}
+                                   animate={{ opacity: 1, y: 0 }}
+                                   className="flex items-center gap-1.5 text-sm font-medium text-destructive"
+                                 >
+                                   <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                                   {vinDecodeError}
+                                 </motion.p>
+                               )}
+                               <FormMessage />
                             </FormItem>
                           )}
                         />
