@@ -211,7 +211,7 @@ export function ScreenshotTooltip() {
           aria-label="How to take a screenshot"
         >
           <HelpCircle className="h-3.5 w-3.5" />
-          <span className="underline underline-offset-2">How to take a screenshot?</span>
+          <span className="underline underline-offset-2">How to screenshot?</span>
         </button>
       </PopoverTrigger>
       <PopoverContent side="bottom" align="start" className="w-72 p-0 overflow-hidden">
