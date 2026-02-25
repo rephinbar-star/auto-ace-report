@@ -1422,7 +1422,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                                     />
                                   </div>
                                   <p className="text-sm text-muted-foreground leading-relaxed">
-                                    <strong>Scan</strong> the <strong>VIN</strong> directly from the car &nbsp;<strong>OR</strong>&nbsp; screenshot the listing page on your phone &nbsp;<strong>OR</strong>&nbsp; take a photo of the VIN from any other source like paper or a photo of your computer screen.
+                                    <strong>Scan</strong> the <strong>VIN</strong> directly from the car &nbsp;<strong>OR</strong>&nbsp; screenshot the vehicle listing page on your phone &nbsp;<strong>OR</strong>&nbsp; take a photo of the VIN from any other source like paper or a photo of your computer screen.
                                   </p>
                                 </div>
                                {vinDecodeError && (
