@@ -785,6 +785,101 @@ export async function generateComparisonPDF(data: ComparisonPDFData): Promise<vo
   });
 
   // ══════════════════════════════════════════════
+  // PER-VEHICLE VERDICT (Buy / Negotiate / Walk Away)
+  // ══════════════════════════════════════════════
+  addSection("Verdict & Recommendation");
+
+  const formatCurrencyLocal = (v: number) => `$${v.toLocaleString()}`;
+
+  vehicles.forEach((v) => {
+    if (yPosition > pageHeight - margin - 35) {
+      pdf.addPage();
+      yPosition = margin;
+    }
+
+    // Derive verdict from risk level
+    const riskLevel = v.risk_level || "medium";
+    let verdict: "Buy" | "Negotiate" | "Walk Away";
+    let justification: string;
+
+    if (riskLevel === "low") {
+      verdict = "Buy";
+      justification = "Low risk indicators across pricing, history, and reliability. A sound purchase opportunity.";
+    } else if (riskLevel === "medium") {
+      verdict = "Negotiate";
+      justification = "Moderate risk factors warrant negotiation. Leverage concerns to get a better price.";
+    } else {
+      verdict = "Walk Away";
+      justification = "Significant risk flags in pricing, history, or reliability outweigh the value.";
+    }
+
+    // Use AI verdict if available
+    if (v.final_verdict) {
+      const fv = v.final_verdict.toLowerCase();
+      if (fv.includes("buy") && !fv.includes("walk")) {
+        verdict = "Buy";
+      } else if (fv.includes("negotiate")) {
+        verdict = "Negotiate";
+      } else if (fv.includes("walk")) {
+        verdict = "Walk Away";
+      }
+      if (v.final_verdict_justification) {
+        justification = v.final_verdict_justification;
+      }
+    }
+
+    const verdictColor: [number, number, number] = verdict === "Buy" ? [34, 197, 94]
+      : verdict === "Negotiate" ? [234, 179, 8] : [239, 68, 68];
+
+    // Vehicle name
+    pdf.setFontSize(10);
+    pdf.setFont("helvetica", "bold");
+    pdf.setTextColor(0, 0, 0);
+    pdf.text(`${v.year} ${v.make} ${v.model}`, margin, yPosition);
+    yPosition += 5;
+
+    // Verdict card
+    pdf.setDrawColor(...verdictColor);
+    pdf.setLineWidth(0.6);
+    pdf.roundedRect(margin, yPosition, pageWidth - 2 * margin, 22, 2, 2, "S");
+
+    // Badge
+    const badgeText = verdict.toUpperCase();
+    pdf.setFillColor(...verdictColor);
+    pdf.roundedRect(margin + 4, yPosition + 3, 28, 7, 2, 2, "F");
+    pdf.setFontSize(7);
+    pdf.setFont("helvetica", "bold");
+    pdf.setTextColor(255, 255, 255);
+    pdf.text(badgeText, margin + 6, yPosition + 8);
+
+    // Fair offer price on right
+    if (v.fair_offer_price) {
+      pdf.setFontSize(7);
+      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(100, 100, 100);
+      pdf.text("Fair Offer", pageWidth - margin - 30, yPosition + 5);
+      pdf.setFontSize(11);
+      pdf.setFont("helvetica", "bold");
+      pdf.setTextColor(0, 0, 0);
+      pdf.text(formatCurrencyLocal(Number(v.fair_offer_price)), pageWidth - margin - 30, yPosition + 12);
+    }
+
+    // Justification text
+    pdf.setFontSize(8);
+    pdf.setFont("helvetica", "normal");
+    pdf.setTextColor(80, 80, 80);
+    const justLines = pdf.splitTextToSize(justification, pageWidth - 2 * margin - 80);
+    pdf.text(justLines[0] || "", margin + 36, yPosition + 8);
+    if (justLines[1]) {
+      pdf.text(justLines[1], margin + 36, yPosition + 12);
+    }
+
+    yPosition += 28;
+  });
+
+  yPosition += 4;
+
+  // ══════════════════════════════════════════════
   // DATA SOURCES
   // ══════════════════════════════════════════════
   const allSources = vehicles.flatMap(v => v.pricing_sources || []);
