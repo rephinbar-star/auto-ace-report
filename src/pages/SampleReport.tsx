@@ -1100,15 +1100,19 @@ export default function SampleReportPage() {
               <motion.div variants={itemVariants} whileHover={{ y: -5 }} transition={{ duration: 0.2 }}>
                 <Card className="border-2 border-warning bg-warning/5">
                   <CardContent className="p-6">
-                    <div className="flex flex-col items-center gap-4">
-                      <HandCoins className="h-10 w-10 text-warning" />
-                      <Badge className="text-lg px-4 py-1 bg-warning text-warning-foreground">
-                        NEGOTIATE
-                      </Badge>
-                      <p className="text-sm text-muted-foreground text-center">
-                        The asking price is approximately $1,000 above fair market value. Low risk and strong reliability support a purchase, but negotiate toward the fair offer price for the best deal.
-                      </p>
-                      <div className="border-t pt-4 w-full text-center">
+                    <div className="flex flex-col sm:flex-row items-center gap-6">
+                      <div className="flex flex-col items-center gap-2 shrink-0">
+                        <HandCoins className="h-10 w-10 text-warning" />
+                        <Badge className="text-lg px-4 py-1 bg-warning text-warning-foreground">
+                          NEGOTIATE
+                        </Badge>
+                      </div>
+                      <div className="flex-1 text-center sm:text-left">
+                        <p className="text-sm text-muted-foreground">
+                          The asking price is approximately $1,000 above fair market value. Low risk and strong reliability support a purchase, but negotiate toward the fair offer price for the best deal.
+                        </p>
+                      </div>
+                      <div className="shrink-0 text-center sm:border-l sm:pl-6">
                         <p className="mb-1 text-sm font-semibold">Fair Offer Price</p>
                         <p className="text-3xl font-bold">${riskAssessment.fairOfferPrice.toLocaleString()}</p>
                       </div>
