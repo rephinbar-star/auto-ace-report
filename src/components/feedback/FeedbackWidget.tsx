@@ -97,11 +97,11 @@ export function FeedbackWidget() {
       {!isOpen && (
         <button
           onClick={handleOpen}
-          className="flex items-center gap-1.5 rounded-l-lg bg-primary px-2.5 py-3 text-xs font-semibold text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors"
+          className="flex items-center gap-2 rounded-l-xl bg-primary px-3.5 py-4 text-sm font-semibold text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors"
           style={{ writingMode: "vertical-rl", textOrientation: "mixed" }}
         >
-          <MessageSquarePlus className="h-3.5 w-3.5" />
-          Feedback
+          <MessageSquarePlus className="h-4 w-4" />
+          Suggestions / Support
         </button>
       )}
 
