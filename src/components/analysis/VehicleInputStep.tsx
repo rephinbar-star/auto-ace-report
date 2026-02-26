@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -554,6 +555,8 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
   };
 
   const [isCachingImages, setIsCachingImages] = useState(false);
+  const [cachingProgress, setCachingProgress] = useState<{ cached: number; total: number } | null>(null);
+  const cachingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const confirmImportedListing = async () => {
     if (!importedListing) return;
@@ -586,21 +589,38 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
     
     // Cache images to Lovable Cloud storage for persistence
     if (v.images && v.images.length > 0) {
+      const total = v.images.length;
       setIsCachingImages(true);
+      setCachingProgress({ cached: 0, total });
+
+      // Simulate incremental progress (batch size is 5, ~1.5s per batch)
+      let simulated = 0;
+      const batchSize = 5;
+      const batchDuration = 1500;
+      cachingIntervalRef.current = setInterval(() => {
+        simulated = Math.min(simulated + batchSize, total - 1);
+        setCachingProgress({ cached: simulated, total });
+      }, batchDuration);
+
       try {
         const cacheResult = await cacheImages(v.images);
+        if (cachingIntervalRef.current) clearInterval(cachingIntervalRef.current);
+        // Show real final count briefly before continuing
+        const finalCached = cacheResult.cached ?? total;
+        setCachingProgress({ cached: finalCached, total });
         if (cacheResult.success && cacheResult.images) {
           scrapedCondition.images = getCachedUrls(cacheResult);
           console.log(`Cached ${cacheResult.cached}/${cacheResult.total} vehicle images`);
         } else {
-          // Fallback to original images if caching fails
           scrapedCondition.images = v.images;
         }
       } catch (error) {
+        if (cachingIntervalRef.current) clearInterval(cachingIntervalRef.current);
         console.error("Image caching failed, using original URLs:", error);
         scrapedCondition.images = v.images;
       } finally {
         setIsCachingImages(false);
+        setCachingProgress(null);
       }
     }
     
@@ -1298,6 +1318,25 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
             )}
 
             <Separator />
+
+            {/* Caching progress bar */}
+            {isCachingImages && cachingProgress && (
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1.5">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Caching photos for faster loading…
+                  </span>
+                  <span className="font-medium tabular-nums">
+                    {cachingProgress.cached} / {cachingProgress.total}
+                  </span>
+                </div>
+                <Progress
+                  value={cachingProgress.total > 0 ? (cachingProgress.cached / cachingProgress.total) * 100 : 0}
+                  className="h-1.5"
+                />
+              </div>
+            )}
 
             <div className="flex flex-col sm:flex-row gap-3">
               <Button onClick={confirmImportedListing} disabled={isCachingImages} className="w-full sm:w-auto sm:flex-1">
