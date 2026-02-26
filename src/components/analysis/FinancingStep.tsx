@@ -72,6 +72,18 @@ export function FinancingStep({ onComplete, onBack, askingPrice }: FinancingStep
     },
   });
 
+  // Sync askingPrice prop into form when it changes (e.g. from listing import)
+  useEffect(() => {
+    if (!askingPrice) return;
+    const currentAsking = loanForm.getValues("askingPrice");
+    const currentNegotiated = loanForm.getValues("salesPrice");
+    loanForm.setValue("askingPrice", askingPrice);
+    // Only update negotiated price if it still mirrors the old asking price (user hasn't touched it)
+    if (!currentAsking || currentNegotiated === currentAsking) {
+      loanForm.setValue("salesPrice", askingPrice);
+    }
+  }, [askingPrice]);
+
   // Update counties when state changes
   useEffect(() => {
     if (selectedState) {
