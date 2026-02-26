@@ -54,6 +54,7 @@ interface FinancingStepProps {
 }
 
 export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: FinancingStepProps) {
+  const [countyLookupLoading, setCountyLookupLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("loan");
   const [selectedState, setSelectedState] = useState<string>("");
   const [zipAutoFilled, setZipAutoFilled] = useState<boolean>(false);
@@ -86,14 +87,51 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
     }
   }, [askingPrice]);
 
-  // Auto-select state from ZIP code whenever it changes
+  // Auto-select state AND county from ZIP code using forward geocoding
   useEffect(() => {
-    if (!zipCode) return;
+    if (!zipCode || zipCode.length !== 5) return;
+
+    // First set state from ZIP prefix as immediate fallback
     const stateAbbr = getStateFromZip(zipCode);
-    if (stateAbbr && stateAbbr !== selectedState) {
+    if (stateAbbr) {
       setSelectedState(stateAbbr);
       setZipAutoFilled(true);
     }
+
+    // Then look up the actual county via Nominatim
+    setCountyLookupLoading(true);
+    fetch(
+      `https://nominatim.openstreetmap.org/search?postalcode=${zipCode}&country=US&format=json&addressdetails=1&limit=1`,
+      { headers: { "Accept-Language": "en" } }
+    )
+      .then((r) => r.json())
+      .then((results) => {
+        const addr = results?.[0]?.address;
+        if (!addr) return;
+
+        // Nominatim returns county as addr.county (e.g. "Los Angeles County")
+        const countyRaw: string = addr.county || addr.state_district || "";
+        const resolvedState: string = stateAbbr || "";
+
+        if (!resolvedState || !countyRaw) return;
+
+        const counties = getCountiesForState(resolvedState);
+        // Try to match county name (normalize by lowercasing & stripping "county"/"parish")
+        const normalize = (s: string) =>
+          s.toLowerCase().replace(/\s*(county|parish|borough|census area)\s*/g, "").trim();
+
+        const matched = counties.find(
+          (c) => normalize(c.name) === normalize(countyRaw)
+        );
+
+        if (matched) {
+          setSelectedCounty(matched.name);
+        }
+      })
+      .catch(() => {
+        // Silently fall back to state-level rate
+      })
+      .finally(() => setCountyLookupLoading(false));
   }, [zipCode]);
 
   // Update counties when state changes
@@ -327,13 +365,17 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
                         </Select>
                         {zipAutoFilled && zipCode && (
                           <p className="text-xs text-muted-foreground mt-1">
-                            ✓ Auto-filled from ZIP {zipCode}
+                            {countyLookupLoading
+                              ? "⏳ Looking up county from ZIP…"
+                              : selectedCounty
+                                ? `✓ County auto-detected from ZIP ${zipCode}`
+                                : `✓ State auto-filled from ZIP ${zipCode}`}
                           </p>
                         )}
                       </div>
                       
                       <div className="space-y-2">
-                        <label className="text-sm font-medium">County (Optional)</label>
+                        <label className="text-sm font-medium">County</label>
                         <Select
                           value={selectedCounty}
                           onValueChange={setSelectedCounty}
