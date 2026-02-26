@@ -102,26 +102,30 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
       const counties = getCountiesForState(selectedState);
       setAvailableCounties(counties);
       setSelectedCounty("");
-      
-      // Set tax rate to state combined rate (state + avg local)
-      const rate = getStateCombinedRate(selectedState);
+      // Default to state-only rate until county is chosen
+      const stateData = STATE_TAX_DATA.find(s => s.abbreviation === selectedState);
+      const rate = stateData ? stateData.stateRate : 0;
       loanForm.setValue("salesTaxRate", parseFloat(rate.toFixed(3)));
     } else {
       setAvailableCounties([]);
       setSelectedCounty("");
+      loanForm.setValue("salesTaxRate", 0);
     }
   }, [selectedState]);
 
   // Update tax rate when county changes
   useEffect(() => {
-    if (selectedState && selectedCounty) {
+    if (!selectedState) return;
+    if (selectedCounty) {
       const rate = getCountyRate(selectedState, selectedCounty);
       loanForm.setValue("salesTaxRate", parseFloat(rate.toFixed(3)));
-    } else if (selectedState) {
-      const rate = getStateCombinedRate(selectedState);
+    } else {
+      // County cleared — fall back to state-only rate
+      const stateData = STATE_TAX_DATA.find(s => s.abbreviation === selectedState);
+      const rate = stateData ? stateData.stateRate : 0;
       loanForm.setValue("salesTaxRate", parseFloat(rate.toFixed(3)));
     }
-  }, [selectedCounty, selectedState]);
+  }, [selectedCounty]);
 
   // Watch loan fields for auto-calculation
   const askingPriceVal = Number(loanForm.watch("askingPrice") || 0);
@@ -379,7 +383,7 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
                               </div>
                             </FormControl>
                             <FormDescription>
-                              Or enter manually
+                              {selectedCounty ? "County rate (state + county)" : selectedState ? "State base rate — select county to refine" : "Or enter manually"}
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
