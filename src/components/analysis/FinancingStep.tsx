@@ -22,12 +22,13 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CreditCard, Banknote, Car, Calculator } from "lucide-react";
+import { CreditCard, Banknote, Car, Calculator, Tag, BadgePercent } from "lucide-react";
 import { FinancingInfo } from "@/types/vehicle";
 import { STATE_TAX_DATA, getCountiesForState, getCountyRate, getStateCombinedRate, CountyTax } from "@/lib/sales-tax-data";
 
 const loanSchema = z.object({
-  salesPrice: z.coerce.number().min(1, "Sales price is required"),
+  askingPrice: z.coerce.number().min(1, "Asking price is required"),
+  salesPrice: z.coerce.number().min(1, "Negotiated price is required"),
   salesTaxRate: z.coerce.number().min(0).max(20),
   fees: z.coerce.number().min(0),
   downPayment: z.coerce.number().min(0),
@@ -60,6 +61,7 @@ export function FinancingStep({ onComplete, onBack, askingPrice }: FinancingStep
   const loanForm = useForm<z.infer<typeof loanSchema>>({
     resolver: zodResolver(loanSchema),
     defaultValues: {
+      askingPrice: askingPrice,
       salesPrice: askingPrice,
       salesTaxRate: 0,
       fees: 0,
@@ -98,10 +100,15 @@ export function FinancingStep({ onComplete, onBack, askingPrice }: FinancingStep
   }, [selectedCounty, selectedState]);
 
   // Watch loan fields for auto-calculation
+  const askingPriceVal = Number(loanForm.watch("askingPrice") || 0);
   const salesPrice = Number(loanForm.watch("salesPrice") || 0);
   const salesTaxRate = Number(loanForm.watch("salesTaxRate") || 0);
   const fees = Number(loanForm.watch("fees") || 0);
   const downPayment = Number(loanForm.watch("downPayment") || 0);
+
+  // Discount calculation
+  const savingsAmount = askingPriceVal > 0 ? parseFloat((askingPriceVal - salesPrice).toFixed(2)) : 0;
+  const discountPct = askingPriceVal > 0 ? parseFloat(((savingsAmount / askingPriceVal) * 100).toFixed(1)) : 0;
 
   // Calculate sales tax amount from rate (rounded to 2 decimal places)
   const salesTaxAmount = parseFloat(((salesPrice || 0) * ((salesTaxRate || 0) / 100)).toFixed(2));
@@ -198,32 +205,71 @@ export function FinancingStep({ onComplete, onBack, askingPrice }: FinancingStep
             <CardContent>
               <Form {...loanForm}>
                 <form onSubmit={loanForm.handleSubmit(handleLoanSubmit)} className="space-y-6">
-                  {/* Sales Price */}
-                  <FormField
-                    control={loanForm.control}
-                    name="salesPrice"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Sales Price</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-                              $
-                            </span>
-                            <Input 
-                              type="number" 
-                              className="pl-7"
-                              {...field} 
-                            />
-                          </div>
-                        </FormControl>
-                        <FormDescription>
-                          Vehicle selling price before taxes and fees
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
+                  {/* Asking Price + Negotiated Price + Discount */}
+                  <div className="space-y-4">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {/* Asking Price */}
+                      <FormField
+                        control={loanForm.control}
+                        name="askingPrice"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="flex items-center gap-1.5">
+                              <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+                              Asking Price
+                            </FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                                <Input type="number" className="pl-7" {...field} />
+                              </div>
+                            </FormControl>
+                            <FormDescription>Dealer or seller's listed price</FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Negotiated Price */}
+                      <FormField
+                        control={loanForm.control}
+                        name="salesPrice"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="flex items-center gap-1.5">
+                              <BadgePercent className="h-3.5 w-3.5 text-muted-foreground" />
+                              Negotiated Price
+                            </FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                                <Input type="number" className="pl-7" {...field} />
+                              </div>
+                            </FormControl>
+                            <FormDescription>Agreed final sales price</FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* Discount summary */}
+                    {askingPriceVal > 0 && salesPrice > 0 && (
+                      <div className={`flex items-center justify-between rounded-lg border px-4 py-3 text-sm ${savingsAmount > 0 ? "border-green-500/30 bg-green-500/5" : savingsAmount < 0 ? "border-destructive/30 bg-destructive/5" : "border-border bg-muted/30"}`}>
+                        <span className="text-muted-foreground">
+                          {savingsAmount > 0 ? "Discount" : savingsAmount < 0 ? "Over asking" : "No discount"}
+                        </span>
+                        <div className="flex items-center gap-3">
+                          <span className={`font-semibold tabular-nums ${savingsAmount > 0 ? "text-green-600 dark:text-green-400" : savingsAmount < 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                            {savingsAmount !== 0 ? (savingsAmount > 0 ? "−" : "+") : ""}${Math.abs(savingsAmount).toLocaleString()}
+                          </span>
+                          <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${savingsAmount > 0 ? "bg-green-500/15 text-green-700 dark:text-green-400" : savingsAmount < 0 ? "bg-destructive/15 text-destructive" : "bg-muted text-muted-foreground"}`}>
+                            {savingsAmount > 0 ? "-" : savingsAmount < 0 ? "+" : ""}{Math.abs(discountPct)}%
+                          </span>
+                        </div>
+                      </div>
                     )}
-                  />
+                  </div>
 
                   {/* Sales Tax Calculator */}
                   <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
@@ -318,7 +364,7 @@ export function FinancingStep({ onComplete, onBack, askingPrice }: FinancingStep
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Based on ${salesPrice?.toLocaleString() || 0} × {salesTaxRate || 0}%
+                          Based on ${salesPrice?.toLocaleString() || 0} (negotiated) × {salesTaxRate || 0}%
                         </p>
                       </div>
                     </div>
