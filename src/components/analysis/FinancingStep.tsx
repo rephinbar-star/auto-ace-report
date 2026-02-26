@@ -24,7 +24,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CreditCard, Banknote, Car, Calculator, Tag, BadgePercent } from "lucide-react";
 import { FinancingInfo } from "@/types/vehicle";
-import { STATE_TAX_DATA, getCountiesForState, getCountyRate, getStateCombinedRate, CountyTax } from "@/lib/sales-tax-data";
+import { STATE_TAX_DATA, getCountiesForState, getCountyRate, getStateCombinedRate, getStateFromZip, CountyTax } from "@/lib/sales-tax-data";
 
 const loanSchema = z.object({
   askingPrice: z.coerce.number().min(1, "Asking price is required"),
@@ -50,11 +50,13 @@ interface FinancingStepProps {
   onComplete: (financing: FinancingInfo) => void;
   onBack: () => void;
   askingPrice: number;
+  zipCode?: string;
 }
 
-export function FinancingStep({ onComplete, onBack, askingPrice }: FinancingStepProps) {
+export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: FinancingStepProps) {
   const [activeTab, setActiveTab] = useState<string>("loan");
   const [selectedState, setSelectedState] = useState<string>("");
+  const [zipAutoFilled, setZipAutoFilled] = useState<boolean>(false);
   const [selectedCounty, setSelectedCounty] = useState<string>("");
   const [availableCounties, setAvailableCounties] = useState<CountyTax[]>([]);
 
@@ -83,6 +85,16 @@ export function FinancingStep({ onComplete, onBack, askingPrice }: FinancingStep
       loanForm.setValue("salesPrice", askingPrice);
     }
   }, [askingPrice]);
+
+  // Auto-select state from ZIP code (only when state hasn't been manually chosen)
+  useEffect(() => {
+    if (!zipCode || selectedState) return;
+    const stateAbbr = getStateFromZip(zipCode);
+    if (stateAbbr) {
+      setSelectedState(stateAbbr);
+      setZipAutoFilled(true);
+    }
+  }, [zipCode]);
 
   // Update counties when state changes
   useEffect(() => {
@@ -308,6 +320,11 @@ export function FinancingStep({ onComplete, onBack, askingPrice }: FinancingStep
                             ))}
                           </SelectContent>
                         </Select>
+                        {zipAutoFilled && zipCode && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            ✓ Auto-filled from ZIP {zipCode}
+                          </p>
+                        )}
                       </div>
                       
                       <div className="space-y-2">
