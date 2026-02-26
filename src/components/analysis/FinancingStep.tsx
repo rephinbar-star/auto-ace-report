@@ -24,7 +24,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CreditCard, Banknote, Car, Calculator, Tag, BadgePercent } from "lucide-react";
 import { FinancingInfo } from "@/types/vehicle";
-import { STATE_TAX_DATA, getCountiesForState, getCountyRate, getStateCombinedRate, getStateFromZip, CountyTax } from "@/lib/sales-tax-data";
+import { STATE_TAX_DATA, getCountiesForState, getCountyRate, getStateCombinedRate, getStateFromZip, getCountyFromZip, CountyTax } from "@/lib/sales-tax-data";
 
 const loanSchema = z.object({
   askingPrice: z.coerce.number().min(1, "Asking price is required"),
@@ -91,14 +91,27 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
   useEffect(() => {
     if (!zipCode || zipCode.length !== 5) return;
 
-    // First set state from ZIP prefix as immediate fallback
+    // 1. Immediately set state from ZIP prefix
     const stateAbbr = getStateFromZip(zipCode);
     if (stateAbbr) {
       setSelectedState(stateAbbr);
       setZipAutoFilled(true);
     }
 
-    // Then look up the actual county via Nominatim
+    // 2. Try static ZIP→county lookup first (instant, works offline)
+    const staticCounty = getCountyFromZip(zipCode);
+    if (staticCounty && stateAbbr) {
+      const counties = getCountiesForState(stateAbbr);
+      const normalize = (s: string) =>
+        s.toLowerCase().replace(/\s*(county|parish|borough|census area)\s*/g, "").trim();
+      const matched = counties.find((c) => normalize(c.name) === normalize(staticCounty));
+      if (matched) {
+        setSelectedCounty(matched.name);
+        return; // Static lookup succeeded — no API call needed
+      }
+    }
+
+    // 3. Fall back to Nominatim API for counties not covered by static table
     setCountyLookupLoading(true);
     fetch(
       `https://nominatim.openstreetmap.org/search?postalcode=${zipCode}&country=US&format=json&addressdetails=1&limit=1`,
@@ -109,14 +122,12 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
         const addr = results?.[0]?.address;
         if (!addr) return;
 
-        // Nominatim returns county as addr.county (e.g. "Los Angeles County")
         const countyRaw: string = addr.county || addr.state_district || "";
         const resolvedState: string = stateAbbr || "";
 
         if (!resolvedState || !countyRaw) return;
 
         const counties = getCountiesForState(resolvedState);
-        // Try to match county name (normalize by lowercasing & stripping "county"/"parish")
         const normalize = (s: string) =>
           s.toLowerCase().replace(/\s*(county|parish|borough|census area)\s*/g, "").trim();
 
