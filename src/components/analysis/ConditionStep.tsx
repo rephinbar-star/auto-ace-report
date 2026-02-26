@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { VehicleCondition } from "@/types/vehicle";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { HelpCircle } from "lucide-react";
+import { HelpCircle, MapPin } from "lucide-react";
 import { useSubscription } from "@/hooks/useSubscription";
 import { DealerTrustPreview } from "./DealerTrustPreview";
 
@@ -48,6 +48,8 @@ interface ConditionStepProps {
 export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary }: ConditionStepProps) {
   const { tier } = useSubscription();
   const isPro = tier === "pro";
+  const [geoLoading, setGeoLoading] = useState(false);
+  const [geoError, setGeoError] = useState<string | null>(null);
   
   const form = useForm<z.infer<typeof conditionSchema>>({
     resolver: zodResolver(conditionSchema),
@@ -79,6 +81,42 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
 
   const watchSellerType = form.watch("sellerType");
   const watchSellerName = form.watch("sellerName");
+
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      setGeoError("Geolocation is not supported by your browser.");
+      return;
+    }
+    setGeoLoading(true);
+    setGeoError(null);
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=json`,
+            { headers: { "Accept-Language": "en" } }
+          );
+          const data = await res.json();
+          const zip = data?.address?.postcode?.replace(/\D/g, "").substring(0, 5);
+          if (zip && zip.length === 5) {
+            form.setValue("zipCode", zip, { shouldValidate: true });
+            setGeoError(null);
+          } else {
+            setGeoError("Couldn't determine ZIP from location. Enter manually.");
+          }
+        } catch {
+          setGeoError("Location lookup failed. Enter ZIP manually.");
+        } finally {
+          setGeoLoading(false);
+        }
+      },
+      () => {
+        setGeoError("Location access denied. Enter ZIP manually.");
+        setGeoLoading(false);
+      },
+      { timeout: 8000 }
+    );
+  };
 
   const handleSubmit = (data: z.infer<typeof conditionSchema>) => {
     onComplete({
@@ -228,19 +266,35 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
                             <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
                           </TooltipTrigger>
                           <TooltipContent className="max-w-xs">
-                            <p className="text-sm">Improves pricing accuracy, local gas prices, and total cost of ownership calculations with region-specific market data.</p>
+                            <p className="text-sm">Improves pricing accuracy, local gas prices, and sales tax auto-fill with region-specific data.</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
                     </FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="e.g., 92008" 
-                        maxLength={5}
-                        className="max-w-[200px]"
-                        {...field} 
-                      />
+                      <div className="flex items-center gap-2 max-w-[280px]">
+                        <Input 
+                          placeholder="e.g., 92008" 
+                          maxLength={5}
+                          {...field} 
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="shrink-0 gap-1.5"
+                          disabled={geoLoading}
+                          onClick={handleDetectLocation}
+                          title="Detect my location"
+                        >
+                          <MapPin className={`h-3.5 w-3.5 ${geoLoading ? "animate-pulse" : ""}`} />
+                          {geoLoading ? "Locating…" : "Use location"}
+                        </Button>
+                      </div>
                     </FormControl>
+                    {geoError && (
+                      <p className="text-xs text-muted-foreground">{geoError}</p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
