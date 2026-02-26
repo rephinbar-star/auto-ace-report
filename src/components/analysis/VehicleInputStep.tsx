@@ -1299,8 +1299,8 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
 
             <Separator />
 
-            <div className="flex gap-3">
-              <Button onClick={confirmImportedListing} disabled={isCachingImages} className="flex-1 sm:flex-none">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button onClick={confirmImportedListing} disabled={isCachingImages} className="w-full sm:w-auto sm:flex-1">
                 {isCachingImages ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1313,7 +1313,7 @@ export function VehicleInputStep({ onComplete, initialData }: VehicleInputStepPr
                   </>
                 )}
               </Button>
-              <Button variant="outline" onClick={resetImportedListing} disabled={isCachingImages}>
+              <Button variant="outline" onClick={resetImportedListing} disabled={isCachingImages} className="w-full sm:w-auto">
                 Try Different Listing
               </Button>
             </div>
