@@ -104,7 +104,8 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
       setSelectedCounty("");
       // Default to state-only rate until county is chosen
       const stateData = STATE_TAX_DATA.find(s => s.abbreviation === selectedState);
-      const rate = stateData ? stateData.stateRate : 0;
+      // Use combined rate (state + avg local) as the default when no county is selected
+      const rate = stateData ? stateData.stateRate + stateData.avgLocalRate : 0;
       loanForm.setValue("salesTaxRate", parseFloat(rate.toFixed(3)));
     } else {
       setAvailableCounties([]);
@@ -120,9 +121,9 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
       const rate = getCountyRate(selectedState, selectedCounty);
       loanForm.setValue("salesTaxRate", parseFloat(rate.toFixed(3)));
     } else {
-      // County cleared — fall back to state-only rate
+      // County cleared — fall back to combined state + avg local rate
       const stateData = STATE_TAX_DATA.find(s => s.abbreviation === selectedState);
-      const rate = stateData ? stateData.stateRate : 0;
+      const rate = stateData ? stateData.stateRate + stateData.avgLocalRate : 0;
       loanForm.setValue("salesTaxRate", parseFloat(rate.toFixed(3)));
     }
   }, [selectedCounty]);
@@ -383,7 +384,7 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
                               </div>
                             </FormControl>
                             <FormDescription>
-                              {selectedCounty ? "County rate (state + county)" : selectedState ? "State base rate — select county to refine" : "Or enter manually"}
+                              {selectedCounty ? "County rate (state + county)" : selectedState ? "State + avg local rate — select county to refine" : "Or enter manually"}
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
