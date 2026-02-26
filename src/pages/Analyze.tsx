@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { VehicleInputStep } from "@/components/analysis/VehicleInputStep";
@@ -30,6 +30,11 @@ export default function AnalyzePage() {
   const [financing, setFinancing] = useState<FinancingInfo | null>(null);
 
   const progress = (currentStep / steps.length) * 100;
+
+  // Scroll to top whenever the step changes (single-route wizard)
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [currentStep]);
 
   const vehicleSummary = vehicle 
     ? `${vehicle.year} ${vehicle.make} ${vehicle.model}${vehicle.trim ? ` ${vehicle.trim}` : ""}`
