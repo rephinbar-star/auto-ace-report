@@ -163,6 +163,7 @@ export default function AnalyzePage() {
               onComplete={handleFinancingComplete}
               onBack={() => setCurrentStep(3)}
               askingPrice={condition.askingPrice}
+              zipCode={condition.zipCode}
             />
           )}
         </div>
