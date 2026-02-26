@@ -86,11 +86,11 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
     }
   }, [askingPrice]);
 
-  // Auto-select state from ZIP code (only when state hasn't been manually chosen)
+  // Auto-select state from ZIP code whenever it changes
   useEffect(() => {
-    if (!zipCode || selectedState) return;
+    if (!zipCode) return;
     const stateAbbr = getStateFromZip(zipCode);
-    if (stateAbbr) {
+    if (stateAbbr && stateAbbr !== selectedState) {
       setSelectedState(stateAbbr);
       setZipAutoFilled(true);
     }
