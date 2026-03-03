@@ -158,7 +158,7 @@ function sourceLabel(s: string) {
 
 function ListingCard({ listing, onClick }: { listing: Listing; onClick: () => void }) {
   const hasImage = listing.images && listing.images.length > 0;
-  const img = hasImage ? listing.images![0] : null;
+  const img = hasImage ? listing.images![0] : vehiclePlaceholderImage(listing);
   const location = [listing.city, listing.state].filter(Boolean).join(", ") || listing.zip_code;
 
   return (
