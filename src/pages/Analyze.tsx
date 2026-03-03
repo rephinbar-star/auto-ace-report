@@ -7,9 +7,9 @@ import { HistoryStep } from "@/components/analysis/HistoryStep";
 import { FinancingStep } from "@/components/analysis/FinancingStep";
 import { Progress } from "@/components/ui/progress";
 import { VehicleInfo, VehicleCondition, VehicleHistory, FinancingInfo } from "@/types/vehicle";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { setWithExpiry } from "@/lib/storage-utils";
+import { setWithExpiry, getWithExpiry } from "@/lib/storage-utils";
 
 const steps = [
   { id: 1, name: "Vehicle Info" },
