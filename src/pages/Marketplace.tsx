@@ -114,44 +114,50 @@ function conditionColor(c: string | null) {
   }
 }
 
-// Generate a reliable placeholder image for a vehicle using source.unsplash.com (no API key needed)
+// Generate a reliable placeholder image for a vehicle
+// Uses a curated set of working car photos from Wikimedia/public domain
 function vehiclePlaceholderImage(listing: Listing): string {
-  // source.unsplash.com/featured/{width}x{height}?{keyword} works without API key
   const make = listing.make.toLowerCase().split("-")[0].split(" ")[0];
   const bodyStyle = (listing.body_style || "").toLowerCase();
   const model = listing.model.toLowerCase();
 
-  // Map make + body style to specific search terms for accurate images
-  const isPickup = bodyStyle.includes("truck") || bodyStyle.includes("pickup") || model.includes("f-150") || model.includes("silverado") || model.includes("tacoma") || model.includes("tundra") || model.includes("ranger") || model.includes("colorado") || model.includes("ram");
+  const isPickup = bodyStyle.includes("truck") || bodyStyle.includes("pickup")
+    || ["f-150","silverado","tacoma","tundra","ranger","colorado","ram 1500","frontier"].some(m => model.includes(m));
   const isSUV = bodyStyle.includes("suv") || bodyStyle.includes("crossover") || bodyStyle.includes("wagon");
   const isElectric = (listing.fuel_type || "").toLowerCase().includes("electric") || make === "tesla";
 
-  // Deterministic seed so same vehicle always shows same image
-  const seed = `${listing.year}-${make}-${listing.model}`.replace(/\s+/g, "-");
+  // Curated working car photos by make/type (Wikimedia Commons - public domain)
+  const images: Record<string, string> = {
+    toyota_truck: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/2019_Toyota_Tacoma_TRD_Sport_%28facelift%2C_sand%29%2C_front_8.26.19.jpg/640px-2019_Toyota_Tacoma_TRD_Sport_%28facelift%2C_sand%29%2C_front_8.26.19.jpg",
+    toyota:       "https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/2021_Toyota_Camry_%28facelift%2C_silver%29%2C_front_8.3.21.jpg/640px-2021_Toyota_Camry_%28facelift%2C_silver%29%2C_front_8.3.21.jpg",
+    honda:        "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/2022_Honda_Civic_Sport%2C_front_7.4.22.jpg/640px-2022_Honda_Civic_Sport%2C_front_7.4.22.jpg",
+    honda_suv:    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/2022_Honda_CR-V_Sport%2C_front_7.4.22.jpg/640px-2022_Honda_CR-V_Sport%2C_front_7.4.22.jpg",
+    ford_truck:   "https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/2021_Ford_F-150_XLT%2C_front_9.5.21.jpg/640px-2021_Ford_F-150_XLT%2C_front_9.5.21.jpg",
+    ford:         "https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/2020_Ford_Mustang_GT_%28facelift%2C_gray%29%2C_front_8.13.20.jpg/640px-2020_Ford_Mustang_GT_%28facelift%2C_gray%29%2C_front_8.13.20.jpg",
+    chevrolet:    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/2020_Chevrolet_Silverado_1500_LT%2C_front_7.19.20.jpg/640px-2020_Chevrolet_Silverado_1500_LT%2C_front_7.19.20.jpg",
+    tesla:        "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/Tesla_Model_3_facelift%2C_front_8.13.22.jpg/640px-Tesla_Model_3_facelift%2C_front_8.13.22.jpg",
+    bmw:          "https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/2021_BMW_330i_%28G20%2C_facelift%29%2C_front_8.5.21.jpg/640px-2021_BMW_330i_%28G20%2C_facelift%29%2C_front_8.5.21.jpg",
+    mercedes:     "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/2021_Mercedes-Benz_C300_4Matic_%28W206%29%2C_front_10.3.21.jpg/640px-2021_Mercedes-Benz_C300_4Matic_%28W206%29%2C_front_10.3.21.jpg",
+    audi:         "https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/2020_Audi_A4_S_line_TDI_%28B9%29%2C_front_7.19.20.jpg/640px-2020_Audi_A4_S_line_TDI_%28B9%29%2C_front_7.19.20.jpg",
+    jeep:         "https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/2021_Jeep_Wrangler_Unlimited_Rubicon%2C_front_9.5.21.jpg/640px-2021_Jeep_Wrangler_Unlimited_Rubicon%2C_front_9.5.21.jpg",
+    subaru:       "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/2020_Subaru_Outback_Limited_XT%2C_front_9.6.19.jpg/640px-2020_Subaru_Outback_Limited_XT%2C_front_9.6.19.jpg",
+    hyundai:      "https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/2022_Hyundai_Tucson_SE%2C_front_10.3.21.jpg/640px-2022_Hyundai_Tucson_SE%2C_front_10.3.21.jpg",
+    nissan:       "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/2019_Nissan_Altima_2.5_SV%2C_front_9.7.19.jpg/640px-2019_Nissan_Altima_2.5_SV%2C_front_9.7.19.jpg",
+    kia:          "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/2022_Kia_Telluride_LX%2C_front_10.3.21.jpg/640px-2022_Kia_Telluride_LX%2C_front_10.3.21.jpg",
+    mazda:        "https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/2021_Mazda_CX-5_Grand_Touring%2C_front_7.4.21.jpg/640px-2021_Mazda_CX-5_Grand_Touring%2C_front_7.4.21.jpg",
+    volkswagen:   "https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/2022_Volkswagen_Jetta_SE%2C_front_7.4.22.jpg/640px-2022_Volkswagen_Jetta_SE%2C_front_7.4.22.jpg",
+    truck:        "https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/2021_Ford_F-150_XLT%2C_front_9.5.21.jpg/640px-2021_Ford_F-150_XLT%2C_front_9.5.21.jpg",
+    suv:          "https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/2021_Jeep_Wrangler_Unlimited_Rubicon%2C_front_9.5.21.jpg/640px-2021_Jeep_Wrangler_Unlimited_Rubicon%2C_front_9.5.21.jpg",
+    default:      "https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/2021_Toyota_Camry_%28facelift%2C_silver%29%2C_front_8.3.21.jpg/640px-2021_Toyota_Camry_%28facelift%2C_silver%29%2C_front_8.3.21.jpg",
+  };
 
-  let keyword = "car";
-  if (isElectric) keyword = "electric+car";
-  else if (isPickup) keyword = "pickup+truck";
-  else if (isSUV) keyword = "suv+car";
-  else if (make === "toyota") keyword = "toyota+car";
-  else if (make === "honda") keyword = "honda+car";
-  else if (make === "ford") keyword = "ford+car";
-  else if (make === "chevrolet" || make === "chevy") keyword = "chevrolet+car";
-  else if (make === "bmw") keyword = "bmw+car";
-  else if (make === "mercedes") keyword = "mercedes+car";
-  else if (make === "audi") keyword = "audi+car";
-  else if (make === "jeep") keyword = "jeep+car";
-  else if (make === "subaru") keyword = "subaru+car";
-  else if (make === "hyundai") keyword = "hyundai+car";
-  else if (make === "kia") keyword = "kia+car";
-  else if (make === "nissan") keyword = "nissan+car";
-  else if (make === "mazda") keyword = "mazda+car";
-  else if (make === "volkswagen" || make === "vw") keyword = "volkswagen+car";
-  else if (make === "lexus") keyword = "lexus+car";
-  else if (make === "porsche") keyword = "porsche+car";
-
-  void seed; // suppress unused warning
-  return `https://source.unsplash.com/featured/640x400?${keyword}`;
+  if (isElectric || make === "tesla") return images.tesla;
+  if (make === "toyota" && isPickup) return images.toyota_truck;
+  if (make === "honda" && isSUV) return images.honda_suv;
+  if (make === "ford" && isPickup) return images.ford_truck;
+  if (isPickup) return images.truck;
+  if (isSUV && !images[make]) return images.suv;
+  return images[make] || images.default;
 }
 
 function sourceLabel(s: string) {
