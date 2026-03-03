@@ -442,7 +442,7 @@ function FilterPanel({ filters, onChange, onReset, makes, activeCount }: FilterP
 
 // ─── Main Page ──────────────────────────────────────────────────────────────
 
-export default function Marketplace(): JSX.Element {
+export default function Marketplace() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
