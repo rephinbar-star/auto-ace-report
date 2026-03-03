@@ -798,7 +798,7 @@ export default function Marketplace() {
                       <ListingCard
                         key={l.id}
                         listing={l}
-                        onClick={() => {
+        onClick={() => {
                           if (l.listing_url) {
                             window.open(l.listing_url, "_blank", "noopener");
                           } else {
