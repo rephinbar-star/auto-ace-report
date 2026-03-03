@@ -195,7 +195,7 @@ function ListingCard({ listing, onClick }: { listing: Listing; onClick: () => vo
             alt={`${listing.year} ${listing.make} ${listing.model}`}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             loading="lazy"
-            onError={(e) => { (e.target as HTMLImageElement).src = vehiclePlaceholderImage(listing); }}
+            onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=640&q=75&fit=crop"; (e.target as HTMLImageElement).onerror = null; }}
           />
           {/* Source badge */}
           <div className="absolute top-2 left-2">
