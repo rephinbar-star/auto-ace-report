@@ -798,13 +798,7 @@ export default function Marketplace() {
                       <ListingCard
                         key={l.id}
                         listing={l}
-        onClick={() => {
-                          if (l.listing_url) {
-                            window.open(l.listing_url, "_blank", "noopener");
-                          } else {
-                            navigate(`/analyze?listingId=${l.id}`);
-                          }
-                        }}
+        onClick={() => navigate(`/marketplace/${l.id}`)}
                       />
                     ))}
                   </motion.div>
