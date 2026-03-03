@@ -461,7 +461,39 @@ export default function Marketplace() {
   const [loading, setLoading] = useState(true);
   const [makes, setMakes] = useState<string[]>([]);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [locationDetecting, setLocationDetecting] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Auto-detect user location via geolocation on mount (only if no ZIP in URL)
+  useEffect(() => {
+    if (filters.zipCode.length === 5) return; // already set from URL
+    if (!navigator.geolocation) return;
+
+    setLocationDetecting(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          // Reverse-geocode with Nominatim (same as analysis flow)
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json`,
+            { headers: { "Accept-Language": "en-US" } }
+          );
+          if (!res.ok) return;
+          const data = await res.json();
+          const zip = data.address?.postcode?.slice(0, 5);
+          if (zip && /^\d{5}$/.test(zip)) {
+            setFilters(prev => ({ ...prev, zipCode: zip }));
+          }
+        } catch {
+          // silently ignore
+        } finally {
+          setLocationDetecting(false);
+        }
+      },
+      () => setLocationDetecting(false), // denied — no-op
+      { timeout: 8000 }
+    );
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load makes
   useEffect(() => {
