@@ -116,35 +116,51 @@ function conditionColor(c: string | null) {
 
 // Generate a deterministic placeholder image URL for a vehicle
 function vehiclePlaceholderImage(listing: Listing): string {
-  // Use a hash of make+model+year for a consistent image per vehicle type
-  const seed = `${listing.year}-${listing.make}-${listing.model}`.replace(/\s+/g, "-").toLowerCase();
-  // Use unsplash source with car-related keywords for visual variety
-  const seeds: Record<string, string> = {
-    toyota: "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=640&q=80",
-    honda: "https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=640&q=80",
-    ford: "https://images.unsplash.com/photo-1612825173281-9a193378527e?w=640&q=80",
-    chevrolet: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=640&q=80",
-    tesla: "https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=640&q=80",
-    bmw: "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=640&q=80",
-    mercedes: "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=640&q=80",
-    audi: "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=640&q=80",
-    jeep: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=640&q=80",
-    subaru: "https://images.unsplash.com/photo-1609521263047-f8f205293f24?w=640&q=80",
-    nissan: "https://images.unsplash.com/photo-1609521263047-f8f205293f24?w=640&q=80",
-    hyundai: "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=640&q=80",
-    kia: "https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=640&q=80",
-    truck: "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=640&q=80",
-    suv: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=640&q=80",
-    default: "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=640&q=80",
+  // Accurate make-specific placeholder photos
+  const makeImages: Record<string, string> = {
+    toyota:     "https://images.unsplash.com/photo-1559416523-140ddc3d238c?w=640&q=80",   // Toyota Camry
+    honda:      "https://images.unsplash.com/photo-1606152421802-db97b9c7a11b?w=640&q=80", // Honda Civic
+    ford:       "https://images.unsplash.com/photo-1551830820-330a71b99659?w=640&q=80",    // Ford F-150
+    chevrolet:  "https://images.unsplash.com/photo-1637780576891-8b92a2ede895?w=640&q=80", // Chevrolet truck
+    chevy:      "https://images.unsplash.com/photo-1637780576891-8b92a2ede895?w=640&q=80",
+    tesla:      "https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=640&q=80",   // Tesla Model 3
+    bmw:        "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=640&q=80",   // BMW sedan
+    mercedes:   "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=640&q=80",// Mercedes sedan
+    audi:       "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=640&q=80",// Audi
+    jeep:       "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=640&q=80", // Jeep Wrangler
+    subaru:     "https://images.unsplash.com/photo-1626072778346-0ab6604d39c4?w=640&q=80", // Subaru Outback
+    nissan:     "https://images.unsplash.com/photo-1606611013016-969c19ba27bb?w=640&q=80", // Nissan sedan
+    hyundai:    "https://images.unsplash.com/photo-1568844293986-ca4c2836e09a?w=640&q=80", // Hyundai
+    kia:        "https://images.unsplash.com/photo-1631542632862-61c9dfa32677?w=640&q=80", // Kia
+    volkswagen: "https://images.unsplash.com/photo-1588196749597-9ff075ee6b5b?w=640&q=80", // VW
+    vw:         "https://images.unsplash.com/photo-1588196749597-9ff075ee6b5b?w=640&q=80",
+    lexus:      "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=640&q=80", // Lexus
+    acura:      "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=640&q=80",
+    mazda:      "https://images.unsplash.com/photo-1617531653332-bd46c16f7d57?w=640&q=80", // Mazda
+    dodge:      "https://images.unsplash.com/photo-1612825173281-9a193378527e?w=640&q=80", // Dodge
+    ram:        "https://images.unsplash.com/photo-1551830820-330a71b99659?w=640&q=80",    // Ram truck
+    gmc:        "https://images.unsplash.com/photo-1637780576891-8b92a2ede895?w=640&q=80", // GMC truck
+    cadillac:   "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=640&q=80",
+    infiniti:   "https://images.unsplash.com/photo-1606611013016-969c19ba27bb?w=640&q=80",
+    volvo:      "https://images.unsplash.com/photo-1588196749597-9ff075ee6b5b?w=640&q=80",
+    porsche:    "https://images.unsplash.com/photo-1503736334956-4c8f8e92946d?w=640&q=80", // Porsche
+    // Body-style fallbacks
+    truck:      "https://images.unsplash.com/photo-1551830820-330a71b99659?w=640&q=80",
+    suv:        "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=640&q=80",
+    sedan:      "https://images.unsplash.com/photo-1559416523-140ddc3d238c?w=640&q=80",
+    coupe:      "https://images.unsplash.com/photo-1503736334956-4c8f8e92946d?w=640&q=80",
+    hatchback:  "https://images.unsplash.com/photo-1588196749597-9ff075ee6b5b?w=640&q=80",
+    default:    "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=640&q=80",
   };
   const make = listing.make.toLowerCase().split("-")[0].split(" ")[0];
   const bodyStyle = (listing.body_style || "").toLowerCase();
-  if (seeds[make]) return seeds[make];
-  if (bodyStyle.includes("truck") || bodyStyle.includes("pickup")) return seeds.truck;
-  if (bodyStyle.includes("suv") || bodyStyle.includes("crossover")) return seeds.suv;
-  // Deterministic fallback using seed hash
-  void seed;
-  return seeds.default;
+  if (makeImages[make]) return makeImages[make];
+  if (bodyStyle.includes("truck") || bodyStyle.includes("pickup")) return makeImages.truck;
+  if (bodyStyle.includes("suv") || bodyStyle.includes("crossover")) return makeImages.suv;
+  if (bodyStyle.includes("sedan")) return makeImages.sedan;
+  if (bodyStyle.includes("coupe") || bodyStyle.includes("convertible")) return makeImages.coupe;
+  if (bodyStyle.includes("hatchback")) return makeImages.hatchback;
+  return makeImages.default;
 }
 
 function sourceLabel(s: string) {
@@ -596,23 +612,16 @@ export default function Marketplace() {
         case "mileage_asc": result.sort((a, b) => (a.mileage ?? 0) - (b.mileage ?? 0)); break;
         case "year_desc":   result.sort((a, b) => b.year - a.year); break;
         case "distance": {
-          // Sort by same state first, then same first 3 digits of zip (SCF area),
-          // then same first digit of zip, then listings with no zip last.
-          const userZip = f.zipCode.length === 5 ? f.zipCode : null;
-          const userState = result.find(l => l.zip_code === userZip)?.state ?? null;
-          const userScf = userZip ? userZip.slice(0, 3) : null;
-          const userZipPrefix = userZip ? userZip[0] : null;
-          if (userZip) {
+          // Sort by numeric ZIP proximity: smaller absolute difference = closer.
+          // Ties broken by state match. Listings with no ZIP go last.
+          const userZip = f.zipCode.length === 5 ? Number(f.zipCode) : null;
+          if (userZip !== null) {
             result.sort((a, b) => {
-              function score(l: Listing) {
-                if (!l.zip_code) return 100;
-                if (l.zip_code === userZip) return 0;
-                if (l.zip_code.slice(0, 3) === userScf) return 1;
-                if (userState && l.state === userState) return 2;
-                if (l.zip_code[0] === userZipPrefix) return 3;
-                return 10;
-              }
-              return score(a) - score(b);
+              const da = a.zip_code && /^\d{5}$/.test(a.zip_code)
+                ? Math.abs(Number(a.zip_code) - userZip) : 999999;
+              const db = b.zip_code && /^\d{5}$/.test(b.zip_code)
+                ? Math.abs(Number(b.zip_code) - userZip) : 999999;
+              return da - db;
             });
           }
           break;
