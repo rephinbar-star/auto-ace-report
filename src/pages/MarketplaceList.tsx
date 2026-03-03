@@ -661,9 +661,9 @@ function MarketplaceListForm() {
               <div>
                 <h2 className="text-xl font-bold leading-tight">{previewTitle}</h2>
                 {previewPrice && (
-                  <p className="text-2xl font-bold text-green-600 dark:text-green-400 mt-0.5">
+                   <p className="text-2xl font-bold text-primary mt-0.5">
                     {previewPrice}
-                  </p>
+                   </p>
                 )}
               </div>
 
@@ -721,7 +721,7 @@ function MarketplaceListForm() {
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur border-t border-border px-4 py-3 flex items-center gap-3">
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-sm truncate">{previewTitle !== "Your Vehicle" ? previewTitle : "Complete required fields"}</p>
-          {previewPrice && <p className="text-xs text-green-600 dark:text-green-400 font-medium">{previewPrice}</p>}
+          {previewPrice && <p className="text-xs text-primary font-medium">{previewPrice}</p>}
         </div>
         <Button
           type="submit"
