@@ -264,14 +264,21 @@ export function Header() {
                 key={item.name}
                 to={item.href}
                 className={cn(
-                  "block rounded-lg px-3 py-2 text-base font-medium transition-colors",
-                  location.pathname === item.href
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted"
+                  "flex items-center gap-1.5 rounded-lg px-3 py-2 text-base font-medium transition-colors",
+                  (item as any).accent
+                    ? "text-blue-500 font-semibold"
+                    : location.pathname === item.href
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-muted"
                 )}
                 onClick={() => setMobileMenuOpen(false)}
               >
                 {item.name}
+                {(item as any).accent && (
+                  <span className="rounded-full bg-blue-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-blue-500 ring-1 ring-blue-500/30">
+                    New
+                  </span>
+                )}
               </Link>
             ))}
             <div className="flex flex-col gap-2 pt-4">
