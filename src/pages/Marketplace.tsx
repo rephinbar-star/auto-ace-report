@@ -745,6 +745,7 @@ export default function Marketplace() {
                     onReset={resetFilters}
                     makes={makes}
                     activeCount={activeFilterCount}
+                    locationDetecting={locationDetecting}
                   />
                   <Button className="w-full mt-6" onClick={() => setMobileFiltersOpen(false)}>
                     Show {total} results
