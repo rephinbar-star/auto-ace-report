@@ -175,20 +175,13 @@ function ListingCard({ listing, onClick }: { listing: Listing; onClick: () => vo
       >
         {/* Image */}
         <div className="relative aspect-[16/10] bg-muted overflow-hidden">
-          {img ? (
-            <img
-              src={img}
-              alt={`${listing.year} ${listing.make} ${listing.model}`}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-              loading="lazy"
-              onError={(e) => { (e.target as HTMLImageElement).src = "/placeholder.svg"; }}
-            />
-          ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted-foreground">
-              <Car className="h-10 w-10 opacity-30" />
-              <span className="text-xs">No photo</span>
-            </div>
-          )}
+          <img
+            src={img}
+            alt={`${listing.year} ${listing.make} ${listing.model}`}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            loading="lazy"
+            onError={(e) => { (e.target as HTMLImageElement).src = vehiclePlaceholderImage(listing); }}
+          />
           {/* Source badge */}
           <div className="absolute top-2 left-2">
             <Badge variant="secondary" className="text-xs font-medium backdrop-blur-sm bg-background/80">
