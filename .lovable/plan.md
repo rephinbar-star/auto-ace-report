@@ -1,55 +1,43 @@
 
-# Style the "Marketplace" Header Navigation Link
+## Auto-populate Sales Tax from ZIP Code
 
-## What Changes
+### What the user wants
+When a ZIP code has been entered in Step 2 (Condition), the Sales Tax Calculator in Step 4 (Financing) should automatically pre-select the correct state and set the tax rate — no manual state selection needed.
 
-A single file edit to `src/components/layout/Header.tsx` to make the "Marketplace" nav link visually distinct from the other navigation items.
+### How it works today
+- `ConditionStep` collects `zipCode` (stored in `VehicleCondition`)
+- `FinancingStep` receives only `askingPrice` as a prop
+- The Sales Tax Calculator has State + County dropdowns the user must manually choose
 
-## Approach
+### The plan
 
-The `navigation` array drives both the desktop nav links and the mobile menu. The cleanest approach is to add an `accent` flag to the Marketplace entry and use it to conditionally apply different styling in both render locations.
+**1. Add a ZIP → State lookup utility in `src/lib/sales-tax-data.ts`**
 
-## Specific Changes to `src/components/layout/Header.tsx`
+Add a `getStateFromZip(zip: string): string | null` function. ZIP code prefixes reliably map to states — e.g. ZIPs starting with `900`–`961` are California, `100`–`119` are New York, etc. We'll add a compact prefix-range lookup table covering all 50 states + DC.
 
-**1. Update the `navigation` array** to mark the Marketplace link:
-```tsx
-const navigation = [
-  { name: "Home", href: "/" },
-  { name: "Marketplace", href: "/marketplace", accent: true },
-  { name: "Sample Report", href: "/sample-report" },
-  { name: "How It Works", href: "/how-it-works" },
-  { name: "Pricing", href: "/pricing" },
-];
-```
+**2. Update `FinancingStep` props**
 
-**2. Desktop nav links** — replace the single `cn(...)` className with a conditional that applies blue + animation styles when `item.accent` is true:
-```tsx
-className={cn(
-  "text-sm font-medium transition-colors hover:text-primary relative",
-  item.accent
-    ? "text-blue-500 font-semibold animate-[pulse_2.5s_ease-in-out_infinite] hover:text-blue-400"
-    : location.pathname === item.href
-      ? "text-primary"
-      : "text-muted-foreground"
-)}
-```
+Add an optional `zipCode?: string` prop to `FinancingStepProps`.
 
-A small "NEW" badge can also be added inline:
-```tsx
-{item.name}
-{item.accent && (
-  <span className="ml-1.5 rounded-full bg-blue-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-blue-500 ring-1 ring-blue-500/30">
-    New
-  </span>
-)}
-```
+**3. Auto-select state on mount / when ZIP changes**
 
-**3. Mobile menu links** — apply the same conditional styling to the mobile `Link` blocks so the treatment is consistent on all screen sizes.
+Add a `useEffect` in `FinancingStep` that:
+- Runs when `zipCode` prop is received
+- Calls `getStateFromZip(zipCode)` to determine the state abbreviation
+- Sets `selectedState` to that abbreviation (which already triggers the existing `useEffect` that populates the tax rate)
+- Shows a subtle "Auto-filled from ZIP XXXXX" hint below the State selector so the user knows it was set automatically
 
-## Visual Result
+**4. Pass `zipCode` from `Analyze.tsx`**
 
-- The "Marketplace" link renders in **blue** (`text-blue-500`) with slightly bolder weight
-- A gentle **pulse animation** draws the eye without being distracting (same `animate-[pulse_2.5s_ease-in-out_infinite]` pattern already used on the Beta badge in this file)
-- A small **"New" badge** (matching the existing Beta badge style) appears next to the label
-- All other nav links are completely unchanged
-- Active/hover states still work correctly
+In `src/pages/Analyze.tsx`, pass `condition?.zipCode` to `<FinancingStep>`.
+
+### Files to change
+- `src/lib/sales-tax-data.ts` — add `getStateFromZip()` helper
+- `src/components/analysis/FinancingStep.tsx` — accept `zipCode` prop, auto-select state
+- `src/pages/Analyze.tsx` — pass `zipCode={condition?.zipCode}` to `FinancingStep`
+
+### Technical notes
+- The ZIP prefix table will cover 3-digit prefix ranges (e.g., `"060"-"069" → CT`). This is a well-established mapping used by USPS.
+- The existing `useEffect` for `selectedState` already handles setting the tax rate when state changes — so no duplication needed.
+- The auto-fill is non-destructive: if the user already manually chose a state, the ZIP effect won't override it (we'll only apply it when `selectedState` is still empty on mount).
+- County will remain unselected (defaulting to state average rate) since ZIP alone can't reliably determine county.
