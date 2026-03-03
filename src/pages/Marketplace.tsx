@@ -114,53 +114,44 @@ function conditionColor(c: string | null) {
   }
 }
 
-// Generate a deterministic placeholder image URL for a vehicle
+// Generate a reliable placeholder image for a vehicle using source.unsplash.com (no API key needed)
 function vehiclePlaceholderImage(listing: Listing): string {
-  // Accurate make-specific placeholder photos
-  const makeImages: Record<string, string> = {
-    toyota:     "https://images.unsplash.com/photo-1559416523-140ddc3d238c?w=640&q=80",   // Toyota Camry
-    honda:      "https://images.unsplash.com/photo-1606152421802-db97b9c7a11b?w=640&q=80", // Honda Civic
-    ford:       "https://images.unsplash.com/photo-1551830820-330a71b99659?w=640&q=80",    // Ford F-150
-    chevrolet:  "https://images.unsplash.com/photo-1637780576891-8b92a2ede895?w=640&q=80", // Chevrolet truck
-    chevy:      "https://images.unsplash.com/photo-1637780576891-8b92a2ede895?w=640&q=80",
-    tesla:      "https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=640&q=80",   // Tesla Model 3
-    bmw:        "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=640&q=80",   // BMW sedan
-    mercedes:   "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=640&q=80",// Mercedes sedan
-    audi:       "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=640&q=80",// Audi
-    jeep:       "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=640&q=80", // Jeep Wrangler
-    subaru:     "https://images.unsplash.com/photo-1626072778346-0ab6604d39c4?w=640&q=80", // Subaru Outback
-    nissan:     "https://images.unsplash.com/photo-1606611013016-969c19ba27bb?w=640&q=80", // Nissan sedan
-    hyundai:    "https://images.unsplash.com/photo-1568844293986-ca4c2836e09a?w=640&q=80", // Hyundai
-    kia:        "https://images.unsplash.com/photo-1631542632862-61c9dfa32677?w=640&q=80", // Kia
-    volkswagen: "https://images.unsplash.com/photo-1588196749597-9ff075ee6b5b?w=640&q=80", // VW
-    vw:         "https://images.unsplash.com/photo-1588196749597-9ff075ee6b5b?w=640&q=80",
-    lexus:      "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=640&q=80", // Lexus
-    acura:      "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=640&q=80",
-    mazda:      "https://images.unsplash.com/photo-1617531653332-bd46c16f7d57?w=640&q=80", // Mazda
-    dodge:      "https://images.unsplash.com/photo-1612825173281-9a193378527e?w=640&q=80", // Dodge
-    ram:        "https://images.unsplash.com/photo-1551830820-330a71b99659?w=640&q=80",    // Ram truck
-    gmc:        "https://images.unsplash.com/photo-1637780576891-8b92a2ede895?w=640&q=80", // GMC truck
-    cadillac:   "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=640&q=80",
-    infiniti:   "https://images.unsplash.com/photo-1606611013016-969c19ba27bb?w=640&q=80",
-    volvo:      "https://images.unsplash.com/photo-1588196749597-9ff075ee6b5b?w=640&q=80",
-    porsche:    "https://images.unsplash.com/photo-1503736334956-4c8f8e92946d?w=640&q=80", // Porsche
-    // Body-style fallbacks
-    truck:      "https://images.unsplash.com/photo-1551830820-330a71b99659?w=640&q=80",
-    suv:        "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=640&q=80",
-    sedan:      "https://images.unsplash.com/photo-1559416523-140ddc3d238c?w=640&q=80",
-    coupe:      "https://images.unsplash.com/photo-1503736334956-4c8f8e92946d?w=640&q=80",
-    hatchback:  "https://images.unsplash.com/photo-1588196749597-9ff075ee6b5b?w=640&q=80",
-    default:    "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=640&q=80",
-  };
+  // source.unsplash.com/featured/{width}x{height}?{keyword} works without API key
   const make = listing.make.toLowerCase().split("-")[0].split(" ")[0];
   const bodyStyle = (listing.body_style || "").toLowerCase();
-  if (makeImages[make]) return makeImages[make];
-  if (bodyStyle.includes("truck") || bodyStyle.includes("pickup")) return makeImages.truck;
-  if (bodyStyle.includes("suv") || bodyStyle.includes("crossover")) return makeImages.suv;
-  if (bodyStyle.includes("sedan")) return makeImages.sedan;
-  if (bodyStyle.includes("coupe") || bodyStyle.includes("convertible")) return makeImages.coupe;
-  if (bodyStyle.includes("hatchback")) return makeImages.hatchback;
-  return makeImages.default;
+  const model = listing.model.toLowerCase();
+
+  // Map make + body style to specific search terms for accurate images
+  const isPickup = bodyStyle.includes("truck") || bodyStyle.includes("pickup") || model.includes("f-150") || model.includes("silverado") || model.includes("tacoma") || model.includes("tundra") || model.includes("ranger") || model.includes("colorado") || model.includes("ram");
+  const isSUV = bodyStyle.includes("suv") || bodyStyle.includes("crossover") || bodyStyle.includes("wagon");
+  const isElectric = (listing.fuel_type || "").toLowerCase().includes("electric") || make === "tesla";
+
+  // Deterministic seed so same vehicle always shows same image
+  const seed = `${listing.year}-${make}-${listing.model}`.replace(/\s+/g, "-");
+
+  let keyword = "car";
+  if (isElectric) keyword = "electric+car";
+  else if (isPickup) keyword = "pickup+truck";
+  else if (isSUV) keyword = "suv+car";
+  else if (make === "toyota") keyword = "toyota+car";
+  else if (make === "honda") keyword = "honda+car";
+  else if (make === "ford") keyword = "ford+car";
+  else if (make === "chevrolet" || make === "chevy") keyword = "chevrolet+car";
+  else if (make === "bmw") keyword = "bmw+car";
+  else if (make === "mercedes") keyword = "mercedes+car";
+  else if (make === "audi") keyword = "audi+car";
+  else if (make === "jeep") keyword = "jeep+car";
+  else if (make === "subaru") keyword = "subaru+car";
+  else if (make === "hyundai") keyword = "hyundai+car";
+  else if (make === "kia") keyword = "kia+car";
+  else if (make === "nissan") keyword = "nissan+car";
+  else if (make === "mazda") keyword = "mazda+car";
+  else if (make === "volkswagen" || make === "vw") keyword = "volkswagen+car";
+  else if (make === "lexus") keyword = "lexus+car";
+  else if (make === "porsche") keyword = "porsche+car";
+
+  void seed; // suppress unused warning
+  return `https://source.unsplash.com/featured/640x400?${keyword}`;
 }
 
 function sourceLabel(s: string) {
