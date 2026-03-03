@@ -799,6 +799,7 @@ export default function Marketplace() {
                   onReset={resetFilters}
                   makes={makes}
                   activeCount={activeFilterCount}
+                  locationDetecting={locationDetecting}
                 />
               </div>
             </aside>
