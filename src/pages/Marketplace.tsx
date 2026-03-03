@@ -87,6 +87,7 @@ const BODY_STYLES = ["Sedan", "SUV", "Truck", "Coupe", "Convertible", "Hatchback
 const CONDITIONS = ["excellent", "good", "fair", "poor"];
 const SORT_OPTIONS = [
   { value: "newest", label: "Newest First" },
+  { value: "distance", label: "Distance: Nearest First" },
   { value: "price_asc", label: "Price: Low to High" },
   { value: "price_desc", label: "Price: High to Low" },
   { value: "mileage_asc", label: "Mileage: Low to High" },
