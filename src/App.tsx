@@ -30,6 +30,7 @@ const FAQPage = lazy(() => import("./pages/FAQ"));
 const HelpCenterPage = lazy(() => import("./pages/HelpCenter"));
 const AdminPage = lazy(() => import("./pages/Admin"));
 const RoadmapPage = lazy(() => import("./pages/Roadmap"));
+const MarketplacePage = lazy(() => import("./pages/Marketplace"));
 const MarketplaceListPage = lazy(() => import("./pages/MarketplaceList"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
