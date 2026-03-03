@@ -414,13 +414,21 @@ function FilterPanel({ filters, onChange, onReset, makes, activeCount, locationD
       {/* Location */}
       <div className="space-y-2">
         <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Location</Label>
-        <Input
-          placeholder="ZIP code"
-          value={filters.zipCode}
-          onChange={e => onChange({ zipCode: e.target.value })}
-          maxLength={5}
-          className="h-9 text-sm"
-        />
+        <div className="relative">
+          <Input
+            placeholder={locationDetecting ? "Detecting location…" : "ZIP code"}
+            value={filters.zipCode}
+            onChange={e => onChange({ zipCode: e.target.value })}
+            maxLength={5}
+            className="h-9 text-sm"
+            disabled={locationDetecting}
+          />
+          {locationDetecting && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              <div className="h-3.5 w-3.5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+            </div>
+          )}
+        </div>
         {filters.zipCode.length === 5 && (
           <Select
             value={String(filters.radiusMiles)}
