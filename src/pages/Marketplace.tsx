@@ -263,7 +263,7 @@ interface FilterPanelProps {
   locationDetecting?: boolean;
 }
 
-function FilterPanel({ filters, onChange, onReset, makes, activeCount }: FilterPanelProps) {
+function FilterPanel({ filters, onChange, onReset, makes, activeCount, locationDetecting }: FilterPanelProps) {
   return (
     <div className="space-y-5">
       {/* Header */}
