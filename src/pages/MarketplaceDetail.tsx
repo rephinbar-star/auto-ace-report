@@ -309,7 +309,8 @@ export default function MarketplaceDetail() {
 
   const title = `${listing.year} ${listing.make} ${listing.model}${listing.trim ? ` ${listing.trim}` : ""}`;
   const location = [listing.city, listing.state].filter(Boolean).join(", ") || listing.zip_code || "Location unknown";
-  const images = listing.images?.filter(Boolean) ?? [];
+  const rawImages = listing.images?.filter(Boolean) ?? [];
+  const images = rawImages.length > 0 ? rawImages : [vehiclePlaceholderImage(listing)];
 
   return (
     <>
