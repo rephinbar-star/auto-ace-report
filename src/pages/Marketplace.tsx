@@ -80,7 +80,7 @@ const DEFAULT_FILTERS: SearchFilters = {
   radiusMiles: 100,
   bodyStyle: "",
   condition: "",
-  sortBy: "newest",
+  sortBy: "distance",
 };
 
 const BODY_STYLES = ["Sedan", "SUV", "Truck", "Coupe", "Convertible", "Hatchback", "Van", "Wagon", "Minivan"];
