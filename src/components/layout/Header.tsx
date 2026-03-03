@@ -60,13 +60,20 @@ export function Header() {
               key={item.name}
               to={item.href}
               className={cn(
-                "text-sm font-medium transition-colors hover:text-primary",
-                location.pathname === item.href
-                  ? "text-primary"
-                  : "text-muted-foreground"
+                "text-sm font-medium transition-colors relative flex items-center gap-1",
+                (item as any).accent
+                  ? "text-blue-500 font-semibold animate-[pulse_2.5s_ease-in-out_infinite] hover:text-blue-400"
+                  : location.pathname === item.href
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-primary"
               )}
             >
               {item.name}
+              {(item as any).accent && (
+                <span className="rounded-full bg-blue-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-blue-500 ring-1 ring-blue-500/30">
+                  New
+                </span>
+              )}
             </Link>
           ))}
         </div>
