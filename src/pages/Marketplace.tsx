@@ -87,6 +87,7 @@ const BODY_STYLES = ["Sedan", "SUV", "Truck", "Coupe", "Convertible", "Hatchback
 const CONDITIONS = ["excellent", "good", "fair", "poor"];
 const SORT_OPTIONS = [
   { value: "newest", label: "Newest First" },
+  { value: "distance", label: "Distance: Nearest First" },
   { value: "price_asc", label: "Price: Low to High" },
   { value: "price_desc", label: "Price: High to Low" },
   { value: "mileage_asc", label: "Mileage: Low to High" },
@@ -518,7 +519,7 @@ export default function Marketplace() {
           const data = await res.json();
           const zip = data.address?.postcode?.slice(0, 5);
           if (zip && /^\d{5}$/.test(zip)) {
-            setFilters(prev => ({ ...prev, zipCode: zip }));
+            setFilters(prev => ({ ...prev, zipCode: zip, sortBy: "distance" }));
           }
         } catch {
           // silently ignore
@@ -590,10 +591,22 @@ export default function Marketplace() {
 
       // Sort
       switch (f.sortBy) {
-        case "price_asc":  result.sort((a, b) => a.asking_price - b.asking_price); break;
-        case "price_desc": result.sort((a, b) => b.asking_price - a.asking_price); break;
+        case "price_asc":   result.sort((a, b) => a.asking_price - b.asking_price); break;
+        case "price_desc":  result.sort((a, b) => b.asking_price - a.asking_price); break;
         case "mileage_asc": result.sort((a, b) => (a.mileage ?? 0) - (b.mileage ?? 0)); break;
-        case "year_desc":  result.sort((a, b) => b.year - a.year); break;
+        case "year_desc":   result.sort((a, b) => b.year - a.year); break;
+        case "distance": {
+          // Sort by numeric proximity of zip code to the user's zip
+          const userZip = f.zipCode.length === 5 ? Number(f.zipCode) : null;
+          if (userZip !== null) {
+            result.sort((a, b) => {
+              const da = a.zip_code ? Math.abs(Number(a.zip_code) - userZip) : Infinity;
+              const db = b.zip_code ? Math.abs(Number(b.zip_code) - userZip) : Infinity;
+              return da - db;
+            });
+          }
+          break;
+        }
         default: break; // newest — already ordered by DB
       }
 
