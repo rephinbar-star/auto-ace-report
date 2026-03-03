@@ -260,6 +260,7 @@ interface FilterPanelProps {
   onReset: () => void;
   makes: string[];
   activeCount: number;
+  locationDetecting?: boolean;
 }
 
 function FilterPanel({ filters, onChange, onReset, makes, activeCount }: FilterPanelProps) {
