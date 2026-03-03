@@ -9,7 +9,7 @@ import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import { ThemeProvider } from "next-themes";
 import { FeedbackWidget } from "@/components/feedback/FeedbackWidget";
 
-// Critical path - load immediately
+// Critical path - load immediately (non-lazy)
 import Index from "./pages/Index";
 
 // Lazy load non-critical routes to reduce initial bundle size
