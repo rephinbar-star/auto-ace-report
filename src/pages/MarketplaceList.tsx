@@ -300,12 +300,12 @@ function MarketplaceListForm() {
                     maxLength={17}
                     className={cn(
                       "font-mono tracking-wider pr-10",
-                      vinDecoded && "border-green-500 focus-visible:ring-green-500",
+                      vinDecoded && "border-primary focus-visible:ring-primary",
                       vinError && "border-destructive"
                     )}
                   />
                   {vinDecoded && (
-                    <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500" />
+                    <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
                   )}
                 </div>
                 <Button
@@ -320,7 +320,7 @@ function MarketplaceListForm() {
               </div>
 
               {vinDecoded && (
-                <p className="text-sm text-green-600 dark:text-green-400 flex items-center gap-1.5">
+                <p className="text-sm text-primary flex items-center gap-1.5">
                   <CheckCircle2 className="h-3.5 w-3.5" />
                   VIN decoded: <strong>{vinDecoded}</strong>
                 </p>
