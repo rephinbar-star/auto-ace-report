@@ -201,11 +201,8 @@ Deno.serve(async (req) => {
     if (params.minPrice) query = query.gte("asking_price", params.minPrice);
     if (params.maxMileage) query = query.lte("mileage", params.maxMileage);
     if (params.bodyStyle) query = query.ilike("body_style", `%${params.bodyStyle}%`);
-    if (params.zipCode && !fetchedFromMarketCheck) {
-      // Local ZIP filter: match state from seed/user listings when no MarketCheck data
-      // (best-effort — proper geo search requires PostGIS or MarketCheck)
-      query = query.eq("zip_code", params.zipCode);
-    }
+    // Note: We don't filter by zip_code locally — seed/cached data spans all regions.
+    // Location filtering is handled by MarketCheck API when fetching fresh data.
 
     const { data: listings, count, error } = await query;
 
