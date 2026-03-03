@@ -7,9 +7,9 @@ import { HistoryStep } from "@/components/analysis/HistoryStep";
 import { FinancingStep } from "@/components/analysis/FinancingStep";
 import { Progress } from "@/components/ui/progress";
 import { VehicleInfo, VehicleCondition, VehicleHistory, FinancingInfo } from "@/types/vehicle";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { setWithExpiry } from "@/lib/storage-utils";
+import { setWithExpiry, getWithExpiry } from "@/lib/storage-utils";
 
 const steps = [
   { id: 1, name: "Vehicle Info" },
@@ -20,6 +20,7 @@ const steps = [
 
 export default function AnalyzePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAuthenticated } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   
@@ -30,6 +31,27 @@ export default function AnalyzePage() {
   const [financing, setFinancing] = useState<FinancingInfo | null>(null);
 
   const progress = (currentStep / steps.length) * 100;
+
+  // Consume marketplace prefill on mount
+  useEffect(() => {
+    // Check navigation state first (fastest), then fallback to storage
+    const prefill =
+      (location.state as { prefill?: { vehicleInfo: VehicleInfo; conditionInfo: VehicleCondition } } | null)?.prefill
+      ?? getWithExpiry<{ vehicleInfo: VehicleInfo; conditionInfo: VehicleCondition }>("marketplacePrefill")
+      ?? (() => {
+        const raw = sessionStorage.getItem("marketplacePrefill");
+        return raw ? JSON.parse(raw) : null;
+      })();
+
+    if (prefill?.vehicleInfo && prefill?.conditionInfo) {
+      setVehicle(prefill.vehicleInfo);
+      setCondition(prefill.conditionInfo);
+      // Start at step 2 (condition pre-filled, but let user review it)
+      setCurrentStep(2);
+      // Clear storage so it doesn't re-apply on back navigation
+      sessionStorage.removeItem("marketplacePrefill");
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Scroll to top whenever the step changes (single-route wizard)
   useEffect(() => {

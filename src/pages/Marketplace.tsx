@@ -260,9 +260,10 @@ interface FilterPanelProps {
   onReset: () => void;
   makes: string[];
   activeCount: number;
+  locationDetecting?: boolean;
 }
 
-function FilterPanel({ filters, onChange, onReset, makes, activeCount }: FilterPanelProps) {
+function FilterPanel({ filters, onChange, onReset, makes, activeCount, locationDetecting }: FilterPanelProps) {
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -413,13 +414,21 @@ function FilterPanel({ filters, onChange, onReset, makes, activeCount }: FilterP
       {/* Location */}
       <div className="space-y-2">
         <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Location</Label>
-        <Input
-          placeholder="ZIP code"
-          value={filters.zipCode}
-          onChange={e => onChange({ zipCode: e.target.value })}
-          maxLength={5}
-          className="h-9 text-sm"
-        />
+        <div className="relative">
+          <Input
+            placeholder={locationDetecting ? "Detecting location…" : "ZIP code"}
+            value={filters.zipCode}
+            onChange={e => onChange({ zipCode: e.target.value })}
+            maxLength={5}
+            className="h-9 text-sm"
+            disabled={locationDetecting}
+          />
+          {locationDetecting && (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+              <div className="h-3.5 w-3.5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+            </div>
+          )}
+        </div>
         {filters.zipCode.length === 5 && (
           <Select
             value={String(filters.radiusMiles)}
@@ -461,7 +470,39 @@ export default function Marketplace() {
   const [loading, setLoading] = useState(true);
   const [makes, setMakes] = useState<string[]>([]);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [locationDetecting, setLocationDetecting] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Auto-detect user location via geolocation on mount (only if no ZIP in URL)
+  useEffect(() => {
+    if (filters.zipCode.length === 5) return; // already set from URL
+    if (!navigator.geolocation) return;
+
+    setLocationDetecting(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          // Reverse-geocode with Nominatim (same as analysis flow)
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json`,
+            { headers: { "Accept-Language": "en-US" } }
+          );
+          if (!res.ok) return;
+          const data = await res.json();
+          const zip = data.address?.postcode?.slice(0, 5);
+          if (zip && /^\d{5}$/.test(zip)) {
+            setFilters(prev => ({ ...prev, zipCode: zip }));
+          }
+        } catch {
+          // silently ignore
+        } finally {
+          setLocationDetecting(false);
+        }
+      },
+      () => setLocationDetecting(false), // denied — no-op
+      { timeout: 8000 }
+    );
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load makes
   useEffect(() => {
@@ -704,6 +745,7 @@ export default function Marketplace() {
                     onReset={resetFilters}
                     makes={makes}
                     activeCount={activeFilterCount}
+                    locationDetecting={locationDetecting}
                   />
                   <Button className="w-full mt-6" onClick={() => setMobileFiltersOpen(false)}>
                     Show {total} results
@@ -757,6 +799,7 @@ export default function Marketplace() {
                   onReset={resetFilters}
                   makes={makes}
                   activeCount={activeFilterCount}
+                  locationDetecting={locationDetecting}
                 />
               </div>
             </aside>
@@ -798,13 +841,7 @@ export default function Marketplace() {
                       <ListingCard
                         key={l.id}
                         listing={l}
-                        onClick={() => {
-                          if (l.listing_url) {
-                            window.open(l.listing_url, "_blank", "noopener");
-                          } else {
-                            navigate(`/analyze?listingId=${l.id}`);
-                          }
-                        }}
+        onClick={() => navigate(`/marketplace/${l.id}`)}
                       />
                     ))}
                   </motion.div>

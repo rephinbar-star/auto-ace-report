@@ -32,6 +32,7 @@ const AdminPage = lazy(() => import("./pages/Admin"));
 const RoadmapPage = lazy(() => import("./pages/Roadmap"));
 const MarketplacePage = lazy(() => import("./pages/Marketplace"));
 const MarketplaceListPage = lazy(() => import("./pages/MarketplaceList"));
+const MarketplaceDetailPage = lazy(() => import("./pages/MarketplaceDetail"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Loading fallback component
@@ -74,6 +75,7 @@ const App = () => (
                 <Route path="/roadmap" element={<RoadmapPage />} />
                 <Route path="/marketplace" element={<MarketplacePage />} />
                 <Route path="/marketplace/list" element={<MarketplaceListPage />} />
+                <Route path="/marketplace/:id" element={<MarketplaceDetailPage />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
