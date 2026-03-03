@@ -46,6 +46,7 @@ export type Database = {
           asking_price: number
           body_style: string | null
           city: string | null
+          condition: string | null
           created_at: string
           description: string | null
           drivetrain: string | null
@@ -75,6 +76,7 @@ export type Database = {
           asking_price: number
           body_style?: string | null
           city?: string | null
+          condition?: string | null
           created_at?: string
           description?: string | null
           drivetrain?: string | null
@@ -104,6 +106,7 @@ export type Database = {
           asking_price?: number
           body_style?: string | null
           city?: string | null
+          condition?: string | null
           created_at?: string
           description?: string | null
           drivetrain?: string | null
