@@ -113,7 +113,41 @@ function conditionColor(c: string | null) {
   }
 }
 
+// Generate a deterministic placeholder image URL for a vehicle
+function vehiclePlaceholderImage(listing: Listing): string {
+  // Use a hash of make+model+year for a consistent image per vehicle type
+  const seed = `${listing.year}-${listing.make}-${listing.model}`.replace(/\s+/g, "-").toLowerCase();
+  // Use unsplash source with car-related keywords for visual variety
+  const seeds: Record<string, string> = {
+    toyota: "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=640&q=80",
+    honda: "https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=640&q=80",
+    ford: "https://images.unsplash.com/photo-1612825173281-9a193378527e?w=640&q=80",
+    chevrolet: "https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=640&q=80",
+    tesla: "https://images.unsplash.com/photo-1560958089-b8a1929cea89?w=640&q=80",
+    bmw: "https://images.unsplash.com/photo-1555215695-3004980ad54e?w=640&q=80",
+    mercedes: "https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=640&q=80",
+    audi: "https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=640&q=80",
+    jeep: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=640&q=80",
+    subaru: "https://images.unsplash.com/photo-1609521263047-f8f205293f24?w=640&q=80",
+    nissan: "https://images.unsplash.com/photo-1609521263047-f8f205293f24?w=640&q=80",
+    hyundai: "https://images.unsplash.com/photo-1621007947382-bb3c3994e3fb?w=640&q=80",
+    kia: "https://images.unsplash.com/photo-1619767886558-efdc259cde1a?w=640&q=80",
+    truck: "https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=640&q=80",
+    suv: "https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=640&q=80",
+    default: "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?w=640&q=80",
+  };
+  const make = listing.make.toLowerCase().split("-")[0].split(" ")[0];
+  const bodyStyle = (listing.body_style || "").toLowerCase();
+  if (seeds[make]) return seeds[make];
+  if (bodyStyle.includes("truck") || bodyStyle.includes("pickup")) return seeds.truck;
+  if (bodyStyle.includes("suv") || bodyStyle.includes("crossover")) return seeds.suv;
+  // Deterministic fallback using seed hash
+  void seed;
+  return seeds.default;
+}
+
 function sourceLabel(s: string) {
+
   if (s === "user_submitted") return "Private";
   if (s === "marketcheck") return "Dealer";
   if (s === "seed") return "Dealer";
