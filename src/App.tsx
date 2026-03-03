@@ -30,6 +30,7 @@ const FAQPage = lazy(() => import("./pages/FAQ"));
 const HelpCenterPage = lazy(() => import("./pages/HelpCenter"));
 const AdminPage = lazy(() => import("./pages/Admin"));
 const RoadmapPage = lazy(() => import("./pages/Roadmap"));
+const MarketplacePage = lazy(() => import("./pages/Marketplace"));
 const MarketplaceListPage = lazy(() => import("./pages/MarketplaceList"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -71,6 +72,7 @@ const App = () => (
                 <Route path="/help" element={<HelpCenterPage />} />
                 <Route path="/admin" element={<AdminPage />} />
                 <Route path="/roadmap" element={<RoadmapPage />} />
+                <Route path="/marketplace" element={<MarketplacePage />} />
                 <Route path="/marketplace/list" element={<MarketplaceListPage />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />

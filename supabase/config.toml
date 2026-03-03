@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.send-feedback]
 verify_jwt = false
+
+[functions.search-marketplace]
+verify_jwt = false
