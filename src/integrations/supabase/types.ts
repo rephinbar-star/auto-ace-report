@@ -41,6 +41,117 @@ export type Database = {
         }
         Relationships: []
       }
+      marketplace_listings: {
+        Row: {
+          asking_price: number
+          body_style: string | null
+          city: string | null
+          created_at: string
+          description: string | null
+          drivetrain: string | null
+          exterior_color: string | null
+          external_id: string | null
+          fetched_at: string | null
+          fuel_type: string | null
+          id: string
+          images: string[] | null
+          listing_url: string | null
+          make: string
+          mileage: number | null
+          model: string
+          seller_name: string | null
+          seller_type: string | null
+          source: string
+          state: string | null
+          status: string
+          transmission: string | null
+          trim: string | null
+          user_id: string | null
+          vin: string | null
+          year: number
+          zip_code: string | null
+        }
+        Insert: {
+          asking_price: number
+          body_style?: string | null
+          city?: string | null
+          created_at?: string
+          description?: string | null
+          drivetrain?: string | null
+          exterior_color?: string | null
+          external_id?: string | null
+          fetched_at?: string | null
+          fuel_type?: string | null
+          id?: string
+          images?: string[] | null
+          listing_url?: string | null
+          make: string
+          mileage?: number | null
+          model: string
+          seller_name?: string | null
+          seller_type?: string | null
+          source?: string
+          state?: string | null
+          status?: string
+          transmission?: string | null
+          trim?: string | null
+          user_id?: string | null
+          vin?: string | null
+          year: number
+          zip_code?: string | null
+        }
+        Update: {
+          asking_price?: number
+          body_style?: string | null
+          city?: string | null
+          created_at?: string
+          description?: string | null
+          drivetrain?: string | null
+          exterior_color?: string | null
+          external_id?: string | null
+          fetched_at?: string | null
+          fuel_type?: string | null
+          id?: string
+          images?: string[] | null
+          listing_url?: string | null
+          make?: string
+          mileage?: number | null
+          model?: string
+          seller_name?: string | null
+          seller_type?: string | null
+          source?: string
+          state?: string | null
+          status?: string
+          transmission?: string | null
+          trim?: string | null
+          user_id?: string | null
+          vin?: string | null
+          year?: number
+          zip_code?: string | null
+        }
+        Relationships: []
+      }
+      marketplace_search_cache: {
+        Row: {
+          id: string
+          last_fetched_at: string
+          search_key: string
+          total_results: number | null
+        }
+        Insert: {
+          id?: string
+          last_fetched_at?: string
+          search_key: string
+          total_results?: number | null
+        }
+        Update: {
+          id?: string
+          last_fetched_at?: string
+          search_key?: string
+          total_results?: number | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
