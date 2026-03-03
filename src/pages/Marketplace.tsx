@@ -115,7 +115,7 @@ function conditionColor(c: string | null) {
 }
 
 // Generate a reliable placeholder image for a vehicle
-// Uses a curated set of working car photos from Wikimedia/public domain
+// Uses curated Unsplash photos by make/type (stable photo IDs)
 function vehiclePlaceholderImage(listing: Listing): string {
   const make = listing.make.toLowerCase().split("-")[0].split(" ")[0];
   const bodyStyle = (listing.body_style || "").toLowerCase();
@@ -126,29 +126,30 @@ function vehiclePlaceholderImage(listing: Listing): string {
   const isSUV = bodyStyle.includes("suv") || bodyStyle.includes("crossover") || bodyStyle.includes("wagon");
   const isElectric = (listing.fuel_type || "").toLowerCase().includes("electric") || make === "tesla";
 
-  // Curated working car photos by make/type (Wikimedia Commons - public domain)
+  // Stable Unsplash photo IDs by make/type
+  const BASE = "https://images.unsplash.com/photo-";
   const images: Record<string, string> = {
-    toyota_truck: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/2019_Toyota_Tacoma_TRD_Sport_%28facelift%2C_sand%29%2C_front_8.26.19.jpg/640px-2019_Toyota_Tacoma_TRD_Sport_%28facelift%2C_sand%29%2C_front_8.26.19.jpg",
-    toyota:       "https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/2021_Toyota_Camry_%28facelift%2C_silver%29%2C_front_8.3.21.jpg/640px-2021_Toyota_Camry_%28facelift%2C_silver%29%2C_front_8.3.21.jpg",
-    honda:        "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/2022_Honda_Civic_Sport%2C_front_7.4.22.jpg/640px-2022_Honda_Civic_Sport%2C_front_7.4.22.jpg",
-    honda_suv:    "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6c/2022_Honda_CR-V_Sport%2C_front_7.4.22.jpg/640px-2022_Honda_CR-V_Sport%2C_front_7.4.22.jpg",
-    ford_truck:   "https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/2021_Ford_F-150_XLT%2C_front_9.5.21.jpg/640px-2021_Ford_F-150_XLT%2C_front_9.5.21.jpg",
-    ford:         "https://upload.wikimedia.org/wikipedia/commons/thumb/6/60/2020_Ford_Mustang_GT_%28facelift%2C_gray%29%2C_front_8.13.20.jpg/640px-2020_Ford_Mustang_GT_%28facelift%2C_gray%29%2C_front_8.13.20.jpg",
-    chevrolet:    "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/2020_Chevrolet_Silverado_1500_LT%2C_front_7.19.20.jpg/640px-2020_Chevrolet_Silverado_1500_LT%2C_front_7.19.20.jpg",
-    tesla:        "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/Tesla_Model_3_facelift%2C_front_8.13.22.jpg/640px-Tesla_Model_3_facelift%2C_front_8.13.22.jpg",
-    bmw:          "https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/2021_BMW_330i_%28G20%2C_facelift%29%2C_front_8.5.21.jpg/640px-2021_BMW_330i_%28G20%2C_facelift%29%2C_front_8.5.21.jpg",
-    mercedes:     "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/2021_Mercedes-Benz_C300_4Matic_%28W206%29%2C_front_10.3.21.jpg/640px-2021_Mercedes-Benz_C300_4Matic_%28W206%29%2C_front_10.3.21.jpg",
-    audi:         "https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/2020_Audi_A4_S_line_TDI_%28B9%29%2C_front_7.19.20.jpg/640px-2020_Audi_A4_S_line_TDI_%28B9%29%2C_front_7.19.20.jpg",
-    jeep:         "https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/2021_Jeep_Wrangler_Unlimited_Rubicon%2C_front_9.5.21.jpg/640px-2021_Jeep_Wrangler_Unlimited_Rubicon%2C_front_9.5.21.jpg",
-    subaru:       "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/2020_Subaru_Outback_Limited_XT%2C_front_9.6.19.jpg/640px-2020_Subaru_Outback_Limited_XT%2C_front_9.6.19.jpg",
-    hyundai:      "https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/2022_Hyundai_Tucson_SE%2C_front_10.3.21.jpg/640px-2022_Hyundai_Tucson_SE%2C_front_10.3.21.jpg",
-    nissan:       "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/2019_Nissan_Altima_2.5_SV%2C_front_9.7.19.jpg/640px-2019_Nissan_Altima_2.5_SV%2C_front_9.7.19.jpg",
-    kia:          "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/2022_Kia_Telluride_LX%2C_front_10.3.21.jpg/640px-2022_Kia_Telluride_LX%2C_front_10.3.21.jpg",
-    mazda:        "https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/2021_Mazda_CX-5_Grand_Touring%2C_front_7.4.21.jpg/640px-2021_Mazda_CX-5_Grand_Touring%2C_front_7.4.21.jpg",
-    volkswagen:   "https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/2022_Volkswagen_Jetta_SE%2C_front_7.4.22.jpg/640px-2022_Volkswagen_Jetta_SE%2C_front_7.4.22.jpg",
-    truck:        "https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/2021_Ford_F-150_XLT%2C_front_9.5.21.jpg/640px-2021_Ford_F-150_XLT%2C_front_9.5.21.jpg",
-    suv:          "https://upload.wikimedia.org/wikipedia/commons/thumb/2/25/2021_Jeep_Wrangler_Unlimited_Rubicon%2C_front_9.5.21.jpg/640px-2021_Jeep_Wrangler_Unlimited_Rubicon%2C_front_9.5.21.jpg",
-    default:      "https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/2021_Toyota_Camry_%28facelift%2C_silver%29%2C_front_8.3.21.jpg/640px-2021_Toyota_Camry_%28facelift%2C_silver%29%2C_front_8.3.21.jpg",
+    toyota_truck: `${BASE}1590362891991-f776e747a588?w=640&q=75&fit=crop`,   // Tacoma
+    toyota:       `${BASE}1621007947382-bb3c3994e3fb?w=640&q=75&fit=crop`,   // Camry
+    honda:        `${BASE}1619767886558-6d7d1a77b674?w=640&q=75&fit=crop`,   // Civic
+    honda_suv:    `${BASE}1606016461689-9ab60d2e96e6?w=640&q=75&fit=crop`,   // CR-V
+    ford_truck:   `${BASE}1558383739-0cb57a72e8c3?w=640&q=75&fit=crop`,      // F-150
+    ford:         `${BASE}1494976388531-d1058494cdd8?w=640&q=75&fit=crop`,   // Mustang
+    chevrolet:    `${BASE}1552519507-da3b142b6f3b?w=640&q=75&fit=crop`,      // Silverado / truck
+    tesla:        `${BASE}1560958089-b8a1929cea89?w=640&q=75&fit=crop`,      // Model 3
+    bmw:          `${BASE}1555215695-3004980ad54e?w=640&q=75&fit=crop`,      // BMW sedan
+    mercedes:     `${BASE}1618843986629-f8474daae3ca?w=640&q=75&fit=crop`,   // Mercedes
+    audi:         `${BASE}1606152421802-db274fc15069?w=640&q=75&fit=crop`,   // Audi
+    jeep:         `${BASE}1603584173870-7f23fdae1b7a?w=640&q=75&fit=crop`,   // Jeep Wrangler
+    subaru:       `${BASE}1544636331-e26879cd4d9b?w=640&q=75&fit=crop`,      // Subaru
+    hyundai:      `${BASE}1609521263047-f8f205293f24?w=640&q=75&fit=crop`,   // Hyundai
+    nissan:       `${BASE}1583121274602-3e2820c35153?w=640&q=75&fit=crop`,   // Nissan
+    kia:          `${BASE}1609521263047-f8f205293f24?w=640&q=75&fit=crop`,   // Kia
+    mazda:        `${BASE}1617531773010-37b6a32e2038?w=640&q=75&fit=crop`,   // Mazda
+    volkswagen:   `${BASE}1471444928343-8ec92fa5b86e?w=640&q=75&fit=crop`,   // VW
+    truck:        `${BASE}1558383739-0cb57a72e8c3?w=640&q=75&fit=crop`,
+    suv:          `${BASE}1603584173870-7f23fdae1b7a?w=640&q=75&fit=crop`,
+    default:      `${BASE}1621007947382-bb3c3994e3fb?w=640&q=75&fit=crop`,
   };
 
   if (isElectric || make === "tesla") return images.tesla;
