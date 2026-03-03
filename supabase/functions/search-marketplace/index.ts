@@ -226,7 +226,7 @@ Deno.serve(async (req) => {
           total: totalResults,
           page,
           limit,
-          cached: isCacheFresh && !fetchedFromMarketCheck,
+          cached: !!(isCacheFresh && !fetchedFromMarketCheck),
           source: fetchedFromMarketCheck ? "marketcheck" : "cache",
         },
       }),
