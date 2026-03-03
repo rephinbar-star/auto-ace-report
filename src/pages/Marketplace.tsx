@@ -596,13 +596,23 @@ export default function Marketplace() {
         case "mileage_asc": result.sort((a, b) => (a.mileage ?? 0) - (b.mileage ?? 0)); break;
         case "year_desc":   result.sort((a, b) => b.year - a.year); break;
         case "distance": {
-          // Sort by numeric proximity of zip code to the user's zip
-          const userZip = f.zipCode.length === 5 ? Number(f.zipCode) : null;
-          if (userZip !== null) {
+          // Sort by same state first, then same first 3 digits of zip (SCF area),
+          // then same first digit of zip, then listings with no zip last.
+          const userZip = f.zipCode.length === 5 ? f.zipCode : null;
+          const userState = result.find(l => l.zip_code === userZip)?.state ?? null;
+          const userScf = userZip ? userZip.slice(0, 3) : null;
+          const userZipPrefix = userZip ? userZip[0] : null;
+          if (userZip) {
             result.sort((a, b) => {
-              const da = a.zip_code ? Math.abs(Number(a.zip_code) - userZip) : Infinity;
-              const db = b.zip_code ? Math.abs(Number(b.zip_code) - userZip) : Infinity;
-              return da - db;
+              function score(l: Listing) {
+                if (!l.zip_code) return 100;
+                if (l.zip_code === userZip) return 0;
+                if (l.zip_code.slice(0, 3) === userScf) return 1;
+                if (userState && l.state === userState) return 2;
+                if (l.zip_code[0] === userZipPrefix) return 3;
+                return 10;
+              }
+              return score(a) - score(b);
             });
           }
           break;
