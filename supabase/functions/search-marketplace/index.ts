@@ -282,11 +282,10 @@ Deno.serve(async (req) => {
     // without geo-filtering as it returns random results from all over the country.
     if ((!isCacheFresh || !dbHasData) && marketCheckApiKey && params.zipCode) {
       try {
-        const ROWS_PER_BATCH = 100;
-        // Only 3 batches — stay well within MarketCheck's 500-row pagination limit
-        // and avoid rate limiting. 3 × 100 = 300 diverse candidates.
-        const NUM_BATCHES = 3;
-        const MAX_PER_DEALER = 10; // tighter cap for more diversity with fewer listings
+        const ROWS_PER_BATCH = 50;
+        // 6 batches × 50 rows = up to 300 candidates across diverse offsets
+        const NUM_BATCHES = 6;
+        const MAX_PER_DEALER = 20; // allow more per dealer so we get enough total volume
         let totalCount = 0;
         let allFetchedListings: Record<string, unknown>[] = [];
 
@@ -316,14 +315,22 @@ Deno.serve(async (req) => {
           console.log(`MarketCheck probe: num_found=${totalCount} for ZIP ${params.zipCode}`);
         }
 
-        // --- Step 2: 3 random offsets within 0–390 (safe for 500-row limit) ---
-        // Always include offset 0 (freshest results) + 2 random offsets for diversity
-        const safeMax = Math.max(0, Math.min(totalCount - ROWS_PER_BATCH, 390));
-        const offsets: number[] = [0];
-        const attempts = new Set<number>([0]);
-        while (offsets.length < NUM_BATCHES && safeMax > 0) {
-          const candidate = Math.floor(Math.random() * safeMax);
-          if (!attempts.has(candidate)) {
+        // --- Step 2: spread offsets across the full available range ---
+        // Use evenly-spaced + jittered offsets to maximize make/dealer diversity
+        const safeMax = Math.max(0, Math.min(totalCount - ROWS_PER_BATCH, 450));
+        const offsets: number[] = [];
+        const attempts = new Set<number>();
+        if (safeMax === 0) {
+          offsets.push(0);
+        } else {
+          // Evenly-spaced buckets with random jitter for maximum spread
+          for (let i = 0; i < NUM_BATCHES; i++) {
+            const bucketStart = Math.floor((safeMax / NUM_BATCHES) * i);
+            const bucketEnd = Math.floor((safeMax / NUM_BATCHES) * (i + 1));
+            let candidate = bucketStart + Math.floor(Math.random() * (bucketEnd - bucketStart + 1));
+            candidate = Math.min(candidate, safeMax);
+            // dedupe
+            while (attempts.has(candidate) && candidate < safeMax) candidate++;
             attempts.add(candidate);
             offsets.push(candidate);
           }
@@ -525,9 +532,8 @@ Deno.serve(async (req) => {
 
     console.log(`DB pool: ${pool.length} from ${dealerBuckets.size} dealers, serving page ${page} (${listings.length} listings)`);
 
-    // Use actual DB pool size for pagination — MarketCheck's num_found is a national
-    // count and would create thousands of phantom pages.
-    const totalResults = pool.length;
+    // Use actual DB row count for pagination so the UI knows how many pages exist.
+    const totalResults = count ?? pool.length;
 
     return new Response(
       JSON.stringify({

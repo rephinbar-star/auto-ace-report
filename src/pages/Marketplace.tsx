@@ -670,34 +670,31 @@ export default function Marketplace() {
     }
   }, []);
 
-  // Debounced refetch when filters/search change (resets to page 1)
+  // Debounced refetch when filters/search change (always resets to page 1)
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
+      setPage(1);
       fetchListings(filters, 1, searchQuery);
     }, 300);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [filters, searchQuery, fetchListings]);
 
-  // Fetch when page changes (only when page > 1 to avoid double-fetch on filter change)
+  // Fetch + scroll to top when page changes
   const prevPageRef = useRef(1);
   useEffect(() => {
     if (page !== prevPageRef.current) {
       prevPageRef.current = page;
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
       fetchListings(filters, page, searchQuery);
-      window.scrollTo({ top: 0, behavior: "instant" });
     }
-  }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [page, filters, searchQuery, fetchListings]);
 
   const updateFilters = (partial: Partial<SearchFilters>) => {
-    prevPageRef.current = 1;
-    setPage(1);
     setFilters(prev => ({ ...prev, ...partial }));
   };
 
   const resetFilters = () => {
-    prevPageRef.current = 1;
-    setPage(1);
     setFilters(DEFAULT_FILTERS);
     setSearchQuery("");
   };
