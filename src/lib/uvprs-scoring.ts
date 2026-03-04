@@ -433,14 +433,16 @@ export function calculateUVPRS(input: UVPRSInput): UVPRSResult {
   });
 
   // 7. Owner Count
-  const owners = scoreOwnerCount(input.ownerCount);
+  const owners = input.isBrandNew
+    ? { score: 0, known: true }
+    : scoreOwnerCount(input.ownerCount);
   factorResults.push({
     key: "owners", label: "Owner Count",
     score: owners.score, weight: WEIGHTS.owners, weighted: 0,
     known: owners.known,
-    description: owners.known
-      ? `${input.ownerCount} owner(s)`
-      : "Unknown — neutral score applied",
+    description: input.isBrandNew
+      ? "Brand new — first owner"
+      : (owners.known ? `${input.ownerCount} owner(s)` : "Unknown — neutral score applied"),
   });
 
   // 8. Vehicle Age
