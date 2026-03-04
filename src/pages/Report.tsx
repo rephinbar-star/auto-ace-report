@@ -1458,7 +1458,7 @@ export default function ReportPage() {
                       const relevantTargets = targets.filter(t => ratingOrder.indexOf(t.rating) > currentIdx);
                       if (relevantTargets.length === 0) return null;
                       const primaryTarget = relevantTargets[0]; // closest achievable upgrade
-                      const savings = effectivePrice - primaryTarget.price;
+                      const savings = (financing?.negotiatedPrice ?? condition.askingPrice) - primaryTarget.price;
 
                       return (
                         <div className="rounded-lg border border-success/30 bg-success/5 p-4">
