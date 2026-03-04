@@ -1345,6 +1345,25 @@ export default function ReportPage() {
                                      );
                                    })()}
 
+                                   {/* Negotiated price floating label (shown above bar when different from asking) */}
+                                   {financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice && (() => {
+                                     const negPct = toPct(financing.negotiatedPrice);
+                                     const clampStyle = negPct > 80
+                                       ? { left: `${negPct}%`, transform: "translateX(-80%)" }
+                                       : negPct < 20
+                                         ? { left: `${negPct}%`, transform: "translateX(-20%)" }
+                                         : { left: `${negPct}%`, transform: "translateX(-50%)" };
+                                     return (
+                                       <div className="absolute top-0" style={clampStyle}>
+                                         <p className="text-[10px] text-success text-center mb-0.5 font-medium">Negotiated Price</p>
+                                         <div className="rounded-lg border border-success/40 bg-success/10 px-3 py-1.5 text-sm font-bold shadow-sm whitespace-nowrap text-success">
+                                           ${financing.negotiatedPrice.toLocaleString()}
+                                         </div>
+                                         <div className="mx-auto mt-1 h-3 w-px bg-success/50" />
+                                       </div>
+                                     );
+                                   })()}
+
                                   {/* Gradient bar */}
                                   <div className="relative h-2.5 w-full rounded-full overflow-hidden">
                                     <div className="absolute inset-0 rounded-full" style={{
