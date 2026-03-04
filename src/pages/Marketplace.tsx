@@ -689,14 +689,16 @@ export default function Marketplace() {
   }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateFilters = (partial: Partial<SearchFilters>) => {
-    setFilters(prev => ({ ...prev, ...partial }));
+    prevPageRef.current = 1;
     setPage(1);
+    setFilters(prev => ({ ...prev, ...partial }));
   };
 
   const resetFilters = () => {
+    prevPageRef.current = 1;
+    setPage(1);
     setFilters(DEFAULT_FILTERS);
     setSearchQuery("");
-    setPage(1);
   };
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
