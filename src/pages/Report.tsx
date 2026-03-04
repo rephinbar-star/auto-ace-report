@@ -565,7 +565,7 @@ export default function ReportPage() {
         year: vehicle.year,
         make: vehicle.make,
         mileage: condition.mileage,
-        askingPrice: condition.askingPrice,
+        askingPrice: vehicleData.financing?.negotiatedPrice ?? condition.askingPrice,
         titleStatus: history?.titleStatus || null,
         accidentCount: history?.accidentCount ?? null,
         ownerCount: history?.ownerCount ?? null,
