@@ -204,8 +204,8 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
                   control={form.control}
                   name="condition"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Overall Condition</FormLabel>
+                  <FormItem>
+                      <FormLabel>Condition</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
@@ -213,6 +213,7 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                          <SelectItem value="excellent">Brand New</SelectItem>
                           <SelectItem value="excellent">Excellent - Like new</SelectItem>
                           <SelectItem value="good">Good - Minor wear</SelectItem>
                           <SelectItem value="fair">Fair - Some issues</SelectItem>
