@@ -390,21 +390,24 @@ Deno.serve(async (req) => {
     if (params.maxMileage) query = query.lte("mileage", params.maxMileage);
     if (params.bodyStyle) query = query.ilike("body_style", `%${params.bodyStyle}%`);
 
-    // Filter by fetched_for_zip OR user-submitted in the same state.
-    // PostgREST's nested and() inside or() is unreliable — use in() for user_submitted fallback.
+    // Filter by fetched_for_zip (MarketCheck) OR user-submitted listings in same state.
+    // Build an explicit list of conditions to avoid PostgREST nested and() syntax issues.
     if (params.zipCode) {
       if (userState) {
-        // fetched_for_zip = ZIP  OR  source = user_submitted AND state = userState
-        query = query.or(
-          `fetched_for_zip.eq.${params.zipCode},source.eq.user_submitted`
-        ).or(
-          `fetched_for_zip.eq.${params.zipCode},state.eq.${userState}`
-        );
+        // Two valid row types:
+        //   1. fetched_for_zip = ZIP (MarketCheck listings fetched for this exact ZIP)
+        //   2. source = user_submitted AND state = userState (user listings in same state)
+        // We query these separately and merge, but since Supabase JS doesn't support UNION,
+        // use a raw OR string that PostgREST can handle:
+        // "fetched_for_zip=ZIP" OR "(source=user_submitted AND state=STATE)"
+        // PostgREST supports: col.eq.val for simple OR — nested and() requires parentheses which work in some versions.
+        // Safest approach: use .or() for the two MarketCheck-vs-user split only:
+        query = query.or(`fetched_for_zip.eq.${params.zipCode},and(source.eq.user_submitted,state.eq.${userState})`);
       } else {
         query = query.eq("fetched_for_zip", params.zipCode);
       }
     } else {
-      // No ZIP: only show user-submitted listings (don't show MarketCheck data globally)
+      // No ZIP: only show user-submitted listings
       query = query.eq("source", "user_submitted");
     }
 
