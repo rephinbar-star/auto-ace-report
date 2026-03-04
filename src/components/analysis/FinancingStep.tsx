@@ -214,6 +214,7 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
   const handleLoanSubmit = (data: z.infer<typeof loanSchema>) => {
     onComplete({
       type: "loan",
+      negotiatedPrice: data.salesPrice,
       loanAmount: data.amountFinanced,
       loanTerm: data.loanTerm,
       apr: data.apr,

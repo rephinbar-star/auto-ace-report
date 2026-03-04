@@ -57,6 +57,8 @@ export interface VehicleHistory {
 
 export interface FinancingInfo {
   type: "loan" | "lease" | "cash";
+  // Negotiated price (may differ from asking price)
+  negotiatedPrice?: number;
   // Loan fields
   loanAmount?: number;
   loanTerm?: number; // months
