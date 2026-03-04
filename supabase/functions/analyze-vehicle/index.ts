@@ -23,6 +23,7 @@ interface VehicleData {
   };
   financing: {
     type: string;
+    negotiatedPrice?: number;
     loanAmount?: number;
     loanTerm?: number;
     apr?: number;
