@@ -441,95 +441,76 @@ Deno.serve(async (req) => {
       }
     }
 
-    // --- Query marketplace_listings with filters ---
-    // Filter by fetched_for_zip so only listings fetched for the user's ZIP are returned.
-    // This ensures geo-accuracy: listings from different search regions never bleed into
-    // each other, regardless of how MarketCheck distributes dealer locations.
+    // --- Query via RPC with ORDER BY RANDOM() for true dealer diversity ---
     let userState: string | null = null;
     if (params.zipCode && params.zipCode.length === 5) {
       userState = getStateFromZip(params.zipCode);
-      console.log(`ZIP ${params.zipCode} → state ${userState}, filtering DB to fetched_for_zip=${params.zipCode}`);
+      console.log(`ZIP ${params.zipCode} → state ${userState}`);
     }
 
-    // Fetch ALL active listings for this ZIP then interleave by dealer so every page
-    // shows a diverse mix of makes. PostgREST doesn't support ORDER BY RANDOM().
-    const POOL_SIZE = 1000;
-    let query = adminClient
+    // Count query for pagination
+    let countQuery = adminClient
       .from("marketplace_listings")
-      .select("*", { count: "exact" })
-      .eq("status", "active")
-      .order("id", { ascending: true }) // stable order for consistent pool
-      .range(0, POOL_SIZE - 1);
+      .select("id", { count: "exact", head: true })
+      .eq("status", "active");
 
-    if (params.minYear) query = query.gte("year", params.minYear);
-    if (params.maxYear) query = query.lte("year", params.maxYear);
-    if (params.make) query = query.ilike("make", `%${params.make}%`);
-    if (params.model) query = query.ilike("model", `%${params.model}%`);
-    if (params.maxPrice) query = query.lte("asking_price", params.maxPrice);
-    if (params.minPrice) query = query.gte("asking_price", params.minPrice);
-    if (params.maxMileage) query = query.lte("mileage", params.maxMileage);
-    if (params.bodyStyle) query = query.ilike("body_style", `%${params.bodyStyle}%`);
+    if (params.minYear) countQuery = countQuery.gte("year", params.minYear);
+    if (params.maxYear) countQuery = countQuery.lte("year", params.maxYear);
+    if (params.make) countQuery = countQuery.ilike("make", `%${params.make}%`);
+    if (params.model) countQuery = countQuery.ilike("model", `%${params.model}%`);
+    if (params.maxPrice) countQuery = countQuery.lte("asking_price", params.maxPrice);
+    if (params.minPrice) countQuery = countQuery.gte("asking_price", params.minPrice);
+    if (params.maxMileage) countQuery = countQuery.lte("mileage", params.maxMileage);
+    if (params.bodyStyle) countQuery = countQuery.ilike("body_style", `%${params.bodyStyle}%`);
 
-    // Strictly filter by fetched_for_zip when ZIP provided.
-    // Never fall back to a broad OR that includes unrelated listings.
     if (params.zipCode) {
-      // MarketCheck listings for this exact ZIP, or user-submitted in the same state.
       if (userState) {
-        query = query.or(
+        countQuery = countQuery.or(
           `fetched_for_zip.eq.${params.zipCode},and(source.eq.user_submitted,state.eq.${userState})`
         );
       } else {
-        query = query.eq("fetched_for_zip", params.zipCode);
+        countQuery = countQuery.eq("fetched_for_zip", params.zipCode);
       }
     } else {
-      // No ZIP provided: only show user-submitted listings (no random national MarketCheck results)
-      query = query.eq("source", "user_submitted");
+      countQuery = countQuery.eq("source", "user_submitted");
     }
 
-    const { data: rawListings, count, error } = await query;
+    const { count } = await countQuery;
 
-    if (error) {
-      console.error("DB query error:", JSON.stringify(error));
-      throw new Error(`DB query failed: ${error.message ?? error.code ?? JSON.stringify(error)}`);
-    }
-
-    // Round-robin interleave by dealer/seller so every page has maximum dealer diversity.
-    // Then slice for the requested page.
-    const rawPool = rawListings ?? [];
-
-    // Group by seller_name (fallback to a unique key per listing)
-    const dealerMap = new Map<string, typeof rawPool>();
-    for (const listing of rawPool) {
-      const key = (listing.seller_name as string | null) ?? listing.id as string;
-      if (!dealerMap.has(key)) dealerMap.set(key, []);
-      dealerMap.get(key)!.push(listing);
-    }
-
-    // Round-robin interleave: pick one from each dealer at a time
-    const dealerQueues = Array.from(dealerMap.values());
-    const pool: typeof rawPool = [];
-    let i = 0;
-    while (pool.length < rawPool.length) {
-      for (const queue of dealerQueues) {
-        if (i < queue.length) pool.push(queue[i]);
+    // Use RPC for ORDER BY RANDOM() — true DB-level randomization
+    const { data: listings, error: rpcError } = await adminClient.rpc(
+      "get_marketplace_listings",
+      {
+        p_zip_code: params.zipCode ?? null,
+        p_user_state: userState ?? null,
+        p_min_year: params.minYear ?? null,
+        p_max_year: params.maxYear ?? null,
+        p_make: params.make ?? null,
+        p_model: params.model ?? null,
+        p_max_price: params.maxPrice ?? null,
+        p_min_price: params.minPrice ?? null,
+        p_max_mileage: params.maxMileage ?? null,
+        p_body_style: params.bodyStyle ?? null,
+        p_limit: limit,
+        p_offset: offset,
       }
-      i++;
+    );
+
+    if (rpcError) {
+      console.error("RPC error:", JSON.stringify(rpcError));
+      throw new Error(`DB query failed: ${rpcError.message ?? JSON.stringify(rpcError)}`);
     }
 
-    const listings = pool.slice(offset, offset + limit);
-
-    console.log(`DB pool: ${pool.length} listings (round-robin interleaved, ${dealerMap.size} dealers), serving page ${page} (${listings.length} listings)`);
-
-    // Use actual DB row count for pagination so the UI knows how many pages exist.
-    const totalResults = count ?? pool.length;
+    const totalResults = count ?? (listings?.length ?? 0);
+    console.log(`DB: ${totalResults} total, serving ${listings?.length ?? 0} listings via ORDER BY RANDOM()`);
 
     return new Response(
       JSON.stringify({
         success: true,
         data: {
-          listings,
+          listings: listings ?? [],
           total: totalResults,
-          dbCount: count ?? pool.length, // actual rows in DB matching filters
+          dbCount: totalResults,
           page,
           limit,
           cached: !!(isCacheFresh && !fetchedFromMarketCheck),
