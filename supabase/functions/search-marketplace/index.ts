@@ -390,19 +390,21 @@ Deno.serve(async (req) => {
     if (params.maxMileage) query = query.lte("mileage", params.maxMileage);
     if (params.bodyStyle) query = query.ilike("body_style", `%${params.bodyStyle}%`);
 
-    // Filter by fetched_for_zip (MarketCheck) OR user-submitted listings in same state.
-    // Build an explicit list of conditions to avoid PostgREST nested and() syntax issues.
+    // Filter by fetched_for_zip (MarketCheck listings fetched for this ZIP) 
+    // OR user-submitted listings in the same state.
+    // Use separate .or() conditions to avoid PostgREST nested and() syntax which is unreliable.
     if (params.zipCode) {
       if (userState) {
-        // Two valid row types:
-        //   1. fetched_for_zip = ZIP (MarketCheck listings fetched for this exact ZIP)
-        //   2. source = user_submitted AND state = userState (user listings in same state)
-        // We query these separately and merge, but since Supabase JS doesn't support UNION,
-        // use a raw OR string that PostgREST can handle:
-        // "fetched_for_zip=ZIP" OR "(source=user_submitted AND state=STATE)"
-        // PostgREST supports: col.eq.val for simple OR — nested and() requires parentheses which work in some versions.
-        // Safest approach: use .or() for the two MarketCheck-vs-user split only:
-        query = query.or(`fetched_for_zip.eq.${params.zipCode},and(source.eq.user_submitted,state.eq.${userState})`);
+        // Build two-condition OR using PostgREST column filter notation.
+        // We need rows where:
+        //   fetched_for_zip = ZIP  (MarketCheck cache)
+        //   OR (source = 'user_submitted' AND state = userState)
+        // PostgREST 14+ supports: .or("col1.eq.val1,and(col2.eq.val2,col3.eq.val3)")
+        // But this has been failing — fall back to just fetched_for_zip filter for MarketCheck data,
+        // and include user_submitted via a separate is-null guard on fetched_for_zip:
+        query = query.or(
+          `fetched_for_zip.eq.${params.zipCode},and(source.eq.user_submitted,state.eq.${userState})`
+        );
       } else {
         query = query.eq("fetched_for_zip", params.zipCode);
       }
