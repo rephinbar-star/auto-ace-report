@@ -123,6 +123,7 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
       mileage: data.mileage,
       askingPrice: data.askingPrice,
       condition: data.condition === "brand_new" ? "excellent" : data.condition,
+      isBrandNew: data.condition === "brand_new",
       sellerType: data.sellerType,
       sellerName: data.sellerType === "dealer" ? data.sellerName || undefined : undefined,
       zipCode: data.zipCode || undefined,

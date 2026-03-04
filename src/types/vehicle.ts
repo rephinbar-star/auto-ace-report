@@ -34,6 +34,7 @@ export interface VehicleCondition {
   zipCode?: string;
   images?: string[];
   isCPO?: boolean;
+  isBrandNew?: boolean;
 }
 
 export interface VehicleHistory {
