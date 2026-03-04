@@ -541,6 +541,7 @@ export default function Marketplace() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [makes, setMakes] = useState<string[]>([]);
+  const [models, setModels] = useState<string[]>([]);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [locationDetecting, setLocationDetecting] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -585,8 +586,8 @@ export default function Marketplace() {
   const activeFilterCount = [
     filters.make,
     filters.model,
-    filters.year,
-    filters.condition,
+    filters.minYear,
+    filters.maxYear,
     filters.bodyStyle,
     filters.zipCode.length === 5,
     filters.minPrice > 0,
@@ -603,7 +604,8 @@ export default function Marketplace() {
         body: {
           make: f.make || undefined,
           model: f.model || undefined,
-          year: f.year ? Number(f.year) : undefined,
+          minYear: f.minYear ? Number(f.minYear) : undefined,
+          maxYear: f.maxYear ? Number(f.maxYear) : undefined,
           zipCode: f.zipCode.length === 5 ? f.zipCode : undefined,
           radiusMiles: f.radiusMiles,
           minPrice: f.minPrice > 0 ? f.minPrice : undefined,
@@ -620,16 +622,12 @@ export default function Marketplace() {
       let result: Listing[] = data?.data?.listings ?? [];
       let resultTotal: number = data?.data?.total ?? 0;
 
-      // Apply local filters that the edge function doesn't handle
+      // Apply local text search filter
       if (q) {
         const lower = q.toLowerCase();
         result = result.filter(l =>
           `${l.year} ${l.make} ${l.model} ${l.trim ?? ""}`.toLowerCase().includes(lower)
         );
-        resultTotal = result.length;
-      }
-      if (f.condition) {
-        result = result.filter(l => l.condition === f.condition);
         resultTotal = result.length;
       }
 
@@ -826,11 +824,12 @@ export default function Marketplace() {
                   <SheetHeader className="mb-4">
                     <SheetTitle>Filter Vehicles</SheetTitle>
                   </SheetHeader>
-                  <FilterPanel
+                   <FilterPanel
                     filters={filters}
                     onChange={updateFilters}
                     onReset={resetFilters}
                     makes={makes}
+                    models={models}
                     activeCount={activeFilterCount}
                     locationDetecting={locationDetecting}
                   />
@@ -847,11 +846,14 @@ export default function Marketplace() {
                 {filters.make && (
                   <ActiveChip label={filters.make} onRemove={() => updateFilters({ make: "", model: "" })} />
                 )}
-                {filters.year && (
-                  <ActiveChip label={filters.year} onRemove={() => updateFilters({ year: "" })} />
+                {filters.model && (
+                  <ActiveChip label={filters.model} onRemove={() => updateFilters({ model: "" })} />
                 )}
-                {filters.condition && (
-                  <ActiveChip label={`Condition: ${filters.condition}`} onRemove={() => updateFilters({ condition: "" })} />
+                {(filters.minYear || filters.maxYear) && (
+                  <ActiveChip
+                    label={filters.minYear && filters.maxYear ? `${filters.minYear}–${filters.maxYear}` : filters.minYear ? `From ${filters.minYear}` : `Up to ${filters.maxYear}`}
+                    onRemove={() => updateFilters({ minYear: "", maxYear: "" })}
+                  />
                 )}
                 {filters.bodyStyle && (
                   <ActiveChip label={filters.bodyStyle} onRemove={() => updateFilters({ bodyStyle: "" })} />
@@ -885,6 +887,7 @@ export default function Marketplace() {
                   onChange={updateFilters}
                   onReset={resetFilters}
                   makes={makes}
+                  models={models}
                   activeCount={activeFilterCount}
                   locationDetecting={locationDetecting}
                 />
