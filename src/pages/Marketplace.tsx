@@ -691,14 +691,10 @@ export default function Marketplace() {
   }, [page, filters, searchQuery, fetchListings]);
 
   const updateFilters = (partial: Partial<SearchFilters>) => {
-    prevPageRef.current = 1;
-    setPage(1);
     setFilters(prev => ({ ...prev, ...partial }));
   };
 
   const resetFilters = () => {
-    prevPageRef.current = 1;
-    setPage(1);
     setFilters(DEFAULT_FILTERS);
     setSearchQuery("");
   };
