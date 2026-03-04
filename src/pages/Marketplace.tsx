@@ -58,28 +58,28 @@ interface Listing {
 interface SearchFilters {
   make: string;
   model: string;
-  year: string;
+  minYear: string;
+  maxYear: string;
   minPrice: number;
   maxPrice: number;
   maxMileage: number;
   zipCode: string;
   radiusMiles: number;
   bodyStyle: string;
-  condition: string;
   sortBy: string;
 }
 
 const DEFAULT_FILTERS: SearchFilters = {
   make: "",
   model: "",
-  year: "",
+  minYear: "",
+  maxYear: "",
   minPrice: 0,
   maxPrice: 150000,
   maxMileage: 200000,
   zipCode: "",
   radiusMiles: 100,
   bodyStyle: "",
-  condition: "",
   sortBy: "distance",
 };
 
