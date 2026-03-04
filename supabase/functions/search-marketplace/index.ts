@@ -437,11 +437,15 @@ Deno.serve(async (req) => {
       console.log(`ZIP ${params.zipCode} → state ${userState}, filtering DB to fetched_for_zip=${params.zipCode}`);
     }
 
+    // Use random ordering by default to prevent dealer clustering in browse mode.
+    // When the user explicitly sorts (price, mileage, year), the frontend handles it
+    // client-side from the returned page results. ORDER BY RANDOM() ensures no two
+    // page loads show the same batch of listings from the same dealer.
     let query = adminClient
       .from("marketplace_listings")
       .select("*", { count: "exact" })
       .eq("status", "active")
-      .order("created_at", { ascending: false })
+      .order("random()" as never)
       .range(offset, offset + limit - 1);
 
     if (params.minYear) query = query.gte("year", params.minYear);
