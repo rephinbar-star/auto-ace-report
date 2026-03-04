@@ -83,7 +83,7 @@ export default function AnalyzePage() {
 
   const handleConditionComplete = (c: VehicleCondition) => {
     setCondition(c);
-    if (c.condition === "excellent" && c.isBrandNew) {
+    if (c.isBrandNew) {
       // Brand New: skip history (assume 0 owners, no history report needed)
       setHistory({ accidentCount: 0, ownerCount: 0, titleStatus: "clean", serviceRecords: false, issues: [], positives: [] });
       setCurrentStep(4);
