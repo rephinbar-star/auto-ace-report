@@ -134,28 +134,6 @@ const ZIP_PREFIX_TO_STATE: Record<string, string> = {
   "995": "AK", "996": "AK", "997": "AK", "998": "AK", "999": "AK",
 };
 
-// Nearby states for radius-based filtering (avoid filtering too strictly)
-const STATE_NEIGHBORS: Record<string, string[]> = {
-  "CA": ["CA", "NV", "OR", "AZ"],
-  "NV": ["NV", "CA", "OR", "ID", "UT", "AZ"],
-  "OR": ["OR", "CA", "WA", "NV", "ID"],
-  "WA": ["WA", "OR", "ID"],
-  "AZ": ["AZ", "CA", "NV", "NM", "UT"],
-  "TX": ["TX", "OK", "AR", "LA", "NM"],
-  "FL": ["FL", "GA", "AL"],
-  "NY": ["NY", "NJ", "CT", "PA", "MA"],
-  "IL": ["IL", "WI", "IN", "MO", "IA"],
-  "GA": ["GA", "FL", "AL", "TN", "SC", "NC"],
-  "CO": ["CO", "WY", "NE", "KS", "OK", "NM", "UT"],
-  "WI": ["WI", "MN", "IA", "IL", "MI"],
-  "MI": ["MI", "OH", "IN", "WI"],
-  "OH": ["OH", "PA", "WV", "KY", "IN", "MI"],
-  "PA": ["PA", "NY", "NJ", "DE", "MD", "WV", "OH"],
-  "VA": ["VA", "MD", "DC", "WV", "KY", "TN", "NC"],
-  "NC": ["NC", "VA", "TN", "SC", "GA"],
-  "TN": ["TN", "KY", "VA", "NC", "GA", "AL", "MS", "AR", "MO"],
-};
-
 function getStateFromZip(zip: string): string | null {
   if (!zip || zip.length < 3) return null;
   const prefix = zip.substring(0, 3);
@@ -372,13 +350,15 @@ Deno.serve(async (req) => {
     }
 
     // --- Query marketplace_listings with filters ---
-    // Determine state filter from ZIP code for geographic relevance
-    let stateFilter: string[] | null = null;
+    // Determine state filter from ZIP code.
+    // Since MarketCheck already enforces the radius when fetching, stored listings
+    // are already within range. We filter the DB to the user's exact state only
+    // to exclude listings from previous searches in distant states/regions.
+    let userState: string | null = null;
     if (params.zipCode && params.zipCode.length === 5) {
-      const userState = getStateFromZip(params.zipCode);
+      userState = getStateFromZip(params.zipCode);
       if (userState) {
-        stateFilter = getNeighborStates(userState, radiusMiles);
-        console.log(`ZIP ${params.zipCode} → state ${userState}, filtering to: ${stateFilter.join(",")}`);
+        console.log(`ZIP ${params.zipCode} → state ${userState}, filtering DB to state=${userState}`);
       }
     }
 
@@ -398,9 +378,10 @@ Deno.serve(async (req) => {
     if (params.maxMileage) query = query.lte("mileage", params.maxMileage);
     if (params.bodyStyle) query = query.ilike("body_style", `%${params.bodyStyle}%`);
 
-    // Apply state-based geo-filter when ZIP is provided and radius < 500 miles
-    if (stateFilter && stateFilter.length > 0) {
-      query = query.in("state", stateFilter);
+    // Filter strictly to user's state — neighbor expansion caused out-of-radius results
+    // (e.g. NV/AZ are "neighbors" of CA but 270-350 miles from San Diego)
+    if (userState) {
+      query = query.eq("state", userState);
     }
 
     const { data: listings, count, error } = await query;
