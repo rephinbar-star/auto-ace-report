@@ -26,7 +26,7 @@ import {
   ArrowUpDown, RefreshCw, ExternalLink, ChevronRight, Tag, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getMakes } from "@/lib/nhtsa";
+import { getMakes, getModels } from "@/lib/nhtsa";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -58,33 +58,32 @@ interface Listing {
 interface SearchFilters {
   make: string;
   model: string;
-  year: string;
+  minYear: string;
+  maxYear: string;
   minPrice: number;
   maxPrice: number;
   maxMileage: number;
   zipCode: string;
   radiusMiles: number;
   bodyStyle: string;
-  condition: string;
   sortBy: string;
 }
 
 const DEFAULT_FILTERS: SearchFilters = {
   make: "",
   model: "",
-  year: "",
+  minYear: "",
+  maxYear: "",
   minPrice: 0,
   maxPrice: 150000,
   maxMileage: 200000,
   zipCode: "",
   radiusMiles: 100,
   bodyStyle: "",
-  condition: "",
   sortBy: "distance",
 };
 
 const BODY_STYLES = ["Sedan", "SUV", "Truck", "Coupe", "Convertible", "Hatchback", "Van", "Wagon", "Minivan"];
-const CONDITIONS = ["excellent", "good", "fair", "poor"];
 const SORT_OPTIONS = [
   { value: "newest", label: "Newest First" },
   { value: "distance", label: "Distance: Nearest First" },
@@ -282,11 +281,12 @@ interface FilterPanelProps {
   onChange: (f: Partial<SearchFilters>) => void;
   onReset: () => void;
   makes: string[];
+  models: string[];
   activeCount: number;
   locationDetecting?: boolean;
 }
 
-function FilterPanel({ filters, onChange, onReset, makes, activeCount, locationDetecting }: FilterPanelProps) {
+function FilterPanel({ filters, onChange, onReset, makes, models, activeCount, locationDetecting }: FilterPanelProps) {
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -321,18 +321,53 @@ function FilterPanel({ filters, onChange, onReset, makes, activeCount, locationD
         </Select>
       </div>
 
-      {/* Year */}
+      {/* Model */}
       <div className="space-y-2">
-        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Year</Label>
-        <Select value={filters.year || "all"} onValueChange={v => onChange({ year: v === "all" ? "" : v })}>
+        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Model</Label>
+        <Select
+          value={filters.model || "all"}
+          onValueChange={v => onChange({ model: v === "all" ? "" : v })}
+          disabled={!filters.make}
+        >
           <SelectTrigger className="h-9 text-sm">
-            <SelectValue placeholder="Any year" />
+            <SelectValue placeholder={filters.make ? "Any model" : "Select make first"} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Any year</SelectItem>
-            {YEARS.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+            <SelectItem value="all">Any model</SelectItem>
+            {models.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
           </SelectContent>
         </Select>
+      </div>
+
+      {/* Year range */}
+      <div className="space-y-2">
+        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Year</Label>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <Label className="text-xs text-muted-foreground">From</Label>
+            <Select value={filters.minYear || "all"} onValueChange={v => onChange({ minYear: v === "all" ? "" : v })}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Any" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Any</SelectItem>
+                {YEARS.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">To</Label>
+            <Select value={filters.maxYear || "all"} onValueChange={v => onChange({ maxYear: v === "all" ? "" : v })}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Any" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Any</SelectItem>
+                {YEARS.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </div>
 
       {/* Price range */}
@@ -385,7 +420,7 @@ function FilterPanel({ filters, onChange, onReset, makes, activeCount, locationD
           </span>
         </Label>
         <Slider
-          min={10000}
+          min={0}
           max={200000}
           step={5000}
           value={[filters.maxMileage]}
@@ -393,7 +428,7 @@ function FilterPanel({ filters, onChange, onReset, makes, activeCount, locationD
           className="w-full"
         />
         <div className="flex justify-between text-xs text-muted-foreground">
-          <span>10k mi</span>
+          <span>0 mi</span>
           <span>200k+ mi</span>
         </div>
       </div>
@@ -410,28 +445,6 @@ function FilterPanel({ filters, onChange, onReset, makes, activeCount, locationD
             {BODY_STYLES.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
           </SelectContent>
         </Select>
-      </div>
-
-      {/* Condition */}
-      <div className="space-y-2">
-        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Condition</Label>
-        <div className="grid grid-cols-2 gap-1.5">
-          {CONDITIONS.map(c => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => onChange({ condition: filters.condition === c ? "" : c })}
-              className={cn(
-                "h-8 rounded-md border text-xs font-medium capitalize transition-all",
-                filters.condition === c
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
-              )}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* Location */}
@@ -519,7 +532,6 @@ export default function Marketplace() {
     ...DEFAULT_FILTERS,
     make: searchParams.get("make") || "",
     model: searchParams.get("model") || "",
-    year: searchParams.get("year") || "",
     zipCode: searchParams.get("zip") || "",
   }));
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
@@ -528,6 +540,7 @@ export default function Marketplace() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [makes, setMakes] = useState<string[]>([]);
+  const [models, setModels] = useState<string[]>([]);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [locationDetecting, setLocationDetecting] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -568,12 +581,18 @@ export default function Marketplace() {
     getMakes(CURRENT_YEAR).then(setMakes);
   }, []);
 
+  // Load models when make changes
+  useEffect(() => {
+    if (!filters.make) { setModels([]); return; }
+    getModels(filters.make, CURRENT_YEAR).then(setModels);
+  }, [filters.make]);
+
   // Count active filters
   const activeFilterCount = [
     filters.make,
     filters.model,
-    filters.year,
-    filters.condition,
+    filters.minYear,
+    filters.maxYear,
     filters.bodyStyle,
     filters.zipCode.length === 5,
     filters.minPrice > 0,
@@ -590,7 +609,8 @@ export default function Marketplace() {
         body: {
           make: f.make || undefined,
           model: f.model || undefined,
-          year: f.year ? Number(f.year) : undefined,
+          minYear: f.minYear ? Number(f.minYear) : undefined,
+          maxYear: f.maxYear ? Number(f.maxYear) : undefined,
           zipCode: f.zipCode.length === 5 ? f.zipCode : undefined,
           radiusMiles: f.radiusMiles,
           minPrice: f.minPrice > 0 ? f.minPrice : undefined,
@@ -607,16 +627,12 @@ export default function Marketplace() {
       let result: Listing[] = data?.data?.listings ?? [];
       let resultTotal: number = data?.data?.total ?? 0;
 
-      // Apply local filters that the edge function doesn't handle
+      // Apply local text search filter
       if (q) {
         const lower = q.toLowerCase();
         result = result.filter(l =>
           `${l.year} ${l.make} ${l.model} ${l.trim ?? ""}`.toLowerCase().includes(lower)
         );
-        resultTotal = result.length;
-      }
-      if (f.condition) {
-        result = result.filter(l => l.condition === f.condition);
         resultTotal = result.length;
       }
 
@@ -813,11 +829,12 @@ export default function Marketplace() {
                   <SheetHeader className="mb-4">
                     <SheetTitle>Filter Vehicles</SheetTitle>
                   </SheetHeader>
-                  <FilterPanel
+                   <FilterPanel
                     filters={filters}
                     onChange={updateFilters}
                     onReset={resetFilters}
                     makes={makes}
+                    models={models}
                     activeCount={activeFilterCount}
                     locationDetecting={locationDetecting}
                   />
@@ -834,11 +851,14 @@ export default function Marketplace() {
                 {filters.make && (
                   <ActiveChip label={filters.make} onRemove={() => updateFilters({ make: "", model: "" })} />
                 )}
-                {filters.year && (
-                  <ActiveChip label={filters.year} onRemove={() => updateFilters({ year: "" })} />
+                {filters.model && (
+                  <ActiveChip label={filters.model} onRemove={() => updateFilters({ model: "" })} />
                 )}
-                {filters.condition && (
-                  <ActiveChip label={`Condition: ${filters.condition}`} onRemove={() => updateFilters({ condition: "" })} />
+                {(filters.minYear || filters.maxYear) && (
+                  <ActiveChip
+                    label={filters.minYear && filters.maxYear ? `${filters.minYear}–${filters.maxYear}` : filters.minYear ? `From ${filters.minYear}` : `Up to ${filters.maxYear}`}
+                    onRemove={() => updateFilters({ minYear: "", maxYear: "" })}
+                  />
                 )}
                 {filters.bodyStyle && (
                   <ActiveChip label={filters.bodyStyle} onRemove={() => updateFilters({ bodyStyle: "" })} />
@@ -872,6 +892,7 @@ export default function Marketplace() {
                   onChange={updateFilters}
                   onReset={resetFilters}
                   makes={makes}
+                  models={models}
                   activeCount={activeFilterCount}
                   locationDetecting={locationDetecting}
                 />
