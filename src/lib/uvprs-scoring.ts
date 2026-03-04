@@ -387,23 +387,29 @@ export function calculateUVPRS(input: UVPRSInput): UVPRSResult {
   });
 
   // 3. Service History
-  const svc = scoreServiceHistory(input.hasServiceRecords, input.healthScore, input.historyIssues, input.historyPositives, input.serviceGapMiles, input.majorServicesDue, input.majorServicesDone, input.chronicRepairSystems);
+  const svc = input.isBrandNew
+    ? { score: 0, known: true }
+    : scoreServiceHistory(input.hasServiceRecords, input.healthScore, input.historyIssues, input.historyPositives, input.serviceGapMiles, input.majorServicesDue, input.majorServicesDone, input.chronicRepairSystems);
   factorResults.push({
     key: "service", label: "Service History",
     score: svc.score, weight: WEIGHTS.service, weighted: 0,
     known: svc.known,
-    description: svc.known
-      ? (input.hasServiceRecords ? "Service records available" : "No service records")
-      : "Unknown — neutral score applied",
+    description: input.isBrandNew
+      ? "Brand new — no service history"
+      : (svc.known
+        ? (input.hasServiceRecords ? "Service records available" : "No service records")
+        : "Unknown — neutral score applied"),
   });
 
   // 4. Mileage-for-Age
-  const mfa = scoreMileageForAge(input.mileage, input.year);
+  const mfa = input.isBrandNew ? 0 : scoreMileageForAge(input.mileage, input.year);
   factorResults.push({
     key: "mileageForAge", label: "Mileage for Age",
     score: mfa, weight: WEIGHTS.mileageForAge, weighted: 0,
     known: true,
-    description: `${Math.round(input.mileage / Math.max(1, new Date().getFullYear() - input.year)).toLocaleString()} mi/year vs ${EXPECTED_MILES_PER_YEAR.toLocaleString()} avg`,
+    description: input.isBrandNew
+      ? "Brand new — delivery mileage only"
+      : `${Math.round(input.mileage / Math.max(1, new Date().getFullYear() - input.year)).toLocaleString()} mi/year vs ${EXPECTED_MILES_PER_YEAR.toLocaleString()} avg`,
   });
 
   // 5. Brand Reliability
