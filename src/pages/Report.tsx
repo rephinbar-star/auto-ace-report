@@ -792,8 +792,9 @@ export default function ReportPage() {
         sellerType: condition.sellerType,
         tcoData: (() => {
           const annualMiles = userAnnualMiles;
+          const effectivePrice = financing.negotiatedPrice ?? condition.askingPrice;
           const tco = calculateTCO(
-            condition.askingPrice,
+            effectivePrice,
             mpgData?.mpgCombined ?? null,
             mpgData?.fuelType ?? null,
             depreciationTable,
