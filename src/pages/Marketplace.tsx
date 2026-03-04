@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Header } from "@/components/layout/Header";
@@ -282,11 +282,12 @@ interface FilterPanelProps {
   onChange: (f: Partial<SearchFilters>) => void;
   onReset: () => void;
   makes: string[];
+  models: string[];
   activeCount: number;
   locationDetecting?: boolean;
 }
 
-function FilterPanel({ filters, onChange, onReset, makes, activeCount, locationDetecting }: FilterPanelProps) {
+function FilterPanel({ filters, onChange, onReset, makes, models, activeCount, locationDetecting }: FilterPanelProps) {
   return (
     <div className="space-y-5">
       {/* Header */}
