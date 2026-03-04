@@ -22,6 +22,9 @@ export interface UVPRSInput {
   mileage: number;
   askingPrice: number;
 
+  // Brand new flag — overrides service/mileage/owner scoring to 0
+  isBrandNew?: boolean | null;
+
   // History
   titleStatus?: "clean" | "salvage" | "rebuilt" | "lemon" | null;
   accidentCount?: number | null;
