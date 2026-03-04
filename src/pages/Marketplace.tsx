@@ -933,9 +933,6 @@ export default function Marketplace() {
   );
 }
 
-// ─── Active filter chip ──────────────────────────────────────────────────────
-
-function ActiveChip({ label, onRemove }: { label: string; onRemove: () => void }) {
   return (
     <span className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border border-primary/30 bg-primary/8 text-xs font-medium text-primary">
       {label}
