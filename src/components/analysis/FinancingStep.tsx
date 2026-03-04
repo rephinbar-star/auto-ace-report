@@ -233,8 +233,12 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
     });
   };
 
+  const [cashNegotiatedPrice, setCashNegotiatedPrice] = useState<number>(askingPrice);
+  const cashSavings = askingPrice > 0 ? askingPrice - cashNegotiatedPrice : 0;
+  const cashDiscountPct = askingPrice > 0 ? parseFloat(((cashSavings / askingPrice) * 100).toFixed(1)) : 0;
+
   const handleCash = () => {
-    onComplete({ type: "cash" });
+    onComplete({ type: "cash", negotiatedPrice: cashNegotiatedPrice });
   };
 
   // Calculate monthly payment estimate for loan
@@ -783,6 +787,59 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
                     payments and immediate full equity in your vehicle.
                   </p>
                 </div>
+
+                {/* Asking vs Negotiated Price */}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-1.5">
+                      <Tag className="h-3.5 w-3.5 text-muted-foreground" />
+                      Asking Price
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                      <input
+                        type="number"
+                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 pl-7 text-sm shadow-sm transition-colors"
+                        value={askingPrice}
+                        readOnly
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">Dealer or seller's listed price</p>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium flex items-center gap-1.5">
+                      <BadgePercent className="h-3.5 w-3.5 text-muted-foreground" />
+                      Negotiated Price
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                      <input
+                        type="number"
+                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 pl-7 text-sm shadow-sm transition-colors"
+                        value={cashNegotiatedPrice}
+                        onChange={(e) => setCashNegotiatedPrice(Number(e.target.value) || askingPrice)}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">Agreed final sales price</p>
+                  </div>
+                </div>
+
+                {/* Discount summary */}
+                {askingPrice > 0 && cashNegotiatedPrice > 0 && (
+                  <div className={`flex items-center justify-between rounded-lg border px-4 py-3 text-sm ${cashSavings > 0 ? "border-green-500/30 bg-green-500/5" : cashSavings < 0 ? "border-destructive/30 bg-destructive/5" : "border-border bg-muted/30"}`}>
+                    <span className="text-muted-foreground">
+                      {cashSavings > 0 ? "Discount" : cashSavings < 0 ? "Over asking" : "No discount"}
+                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className={`font-semibold tabular-nums ${cashSavings > 0 ? "text-green-600 dark:text-green-400" : cashSavings < 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                        {cashSavings !== 0 ? (cashSavings > 0 ? "−" : "+") : ""}${Math.abs(cashSavings).toLocaleString()}
+                      </span>
+                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${cashSavings > 0 ? "bg-green-500/15 text-green-700 dark:text-green-400" : cashSavings < 0 ? "bg-destructive/15 text-destructive" : "bg-muted text-muted-foreground"}`}>
+                        {cashSavings > 0 ? "-" : cashSavings < 0 ? "+" : ""}{Math.abs(cashDiscountPct)}%
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex gap-4">
                   <Button type="button" variant="outline" onClick={onBack}>
