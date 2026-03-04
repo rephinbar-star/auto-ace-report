@@ -1,57 +1,43 @@
 
-The root cause is clear from the code. The DB query uses `.order("id", { ascending: true })` — a stable alphabetical UUID sort — which means listings always come back grouped by insert batch (i.e. all cars from one dealer fetch together). The round-robin interleave then fights against this but it's purely in-memory and deterministic, so the display order on the page never truly randomizes.
+## Auto-populate Sales Tax from ZIP Code
 
-The simplest fix: **use PostgreSQL's native `ORDER BY RANDOM()`** directly via a raw RPC function. PostgREST's `.order()` doesn't support `RANDOM()`, but we can create a SQL function in a migration that returns shuffled listings with all the same filters, then call it via `supabase.rpc()` from the edge function.
+### What the user wants
+When a ZIP code has been entered in Step 2 (Condition), the Sales Tax Calculator in Step 4 (Financing) should automatically pre-select the correct state and set the tax rate — no manual state selection needed.
 
-**Plan:**
+### How it works today
+- `ConditionStep` collects `zipCode` (stored in `VehicleCondition`)
+- `FinancingStep` receives only `askingPrice` as a prop
+- The Sales Tax Calculator has State + County dropdowns the user must manually choose
 
-1. **Create a DB migration** — add a `get_marketplace_listings` PostgreSQL function that accepts all the filter params and returns rows with `ORDER BY RANDOM()`. This is the only way to get true random order from the DB.
+### The plan
 
-2. **Update the edge function** — replace the current `.from("marketplace_listings").select(...).order("id")...` block with a call to `adminClient.rpc("get_marketplace_listings", { ... })`. Remove the round-robin interleave logic entirely since the DB randomizes the order natively.
+**1. Add a ZIP → State lookup utility in `src/lib/sales-tax-data.ts`**
 
-**Migration SQL (new function):**
-```sql
-CREATE OR REPLACE FUNCTION public.get_marketplace_listings(
-  p_zip_code text DEFAULT NULL,
-  p_user_state text DEFAULT NULL,
-  p_min_year int DEFAULT NULL,
-  p_max_year int DEFAULT NULL,
-  p_make text DEFAULT NULL,
-  p_model text DEFAULT NULL,
-  p_max_price numeric DEFAULT NULL,
-  p_min_price numeric DEFAULT NULL,
-  p_max_mileage int DEFAULT NULL,
-  p_body_style text DEFAULT NULL,
-  p_limit int DEFAULT 20,
-  p_offset int DEFAULT 0
-)
-RETURNS SETOF marketplace_listings
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT * FROM marketplace_listings
-  WHERE status = 'active'
-    AND (p_min_year IS NULL OR year >= p_min_year)
-    AND (p_max_year IS NULL OR year <= p_max_year)
-    AND (p_make IS NULL OR make ILIKE '%' || p_make || '%')
-    AND (p_model IS NULL OR model ILIKE '%' || p_model || '%')
-    AND (p_max_price IS NULL OR asking_price <= p_max_price)
-    AND (p_min_price IS NULL OR asking_price >= p_min_price)
-    AND (p_max_mileage IS NULL OR mileage <= p_max_mileage)
-    AND (p_body_style IS NULL OR body_style ILIKE '%' || p_body_style || '%')
-    AND (
-      p_zip_code IS NULL OR (
-        fetched_for_zip = p_zip_code
-        OR (source = 'user_submitted' AND (p_user_state IS NULL OR state = p_user_state))
-      )
-    )
-  ORDER BY RANDOM()
-  LIMIT p_limit OFFSET p_offset;
-$$;
-```
+Add a `getStateFromZip(zip: string): string | null` function. ZIP code prefixes reliably map to states — e.g. ZIPs starting with `900`–`961` are California, `100`–`119` are New York, etc. We'll add a compact prefix-range lookup table covering all 50 states + DC.
 
-3. **Edge function change** — replace the query + interleave block (~lines 454–519) with a single `adminClient.rpc("get_marketplace_listings", params)` call. Also run a separate `count` query (standard `.select("id", { count: "exact", head: true })`) to get the total for pagination.
+**2. Update `FinancingStep` props**
 
-This gives true random order every request with zero in-memory shuffling needed.
+Add an optional `zipCode?: string` prop to `FinancingStepProps`.
+
+**3. Auto-select state on mount / when ZIP changes**
+
+Add a `useEffect` in `FinancingStep` that:
+- Runs when `zipCode` prop is received
+- Calls `getStateFromZip(zipCode)` to determine the state abbreviation
+- Sets `selectedState` to that abbreviation (which already triggers the existing `useEffect` that populates the tax rate)
+- Shows a subtle "Auto-filled from ZIP XXXXX" hint below the State selector so the user knows it was set automatically
+
+**4. Pass `zipCode` from `Analyze.tsx`**
+
+In `src/pages/Analyze.tsx`, pass `condition?.zipCode` to `<FinancingStep>`.
+
+### Files to change
+- `src/lib/sales-tax-data.ts` — add `getStateFromZip()` helper
+- `src/components/analysis/FinancingStep.tsx` — accept `zipCode` prop, auto-select state
+- `src/pages/Analyze.tsx` — pass `zipCode={condition?.zipCode}` to `FinancingStep`
+
+### Technical notes
+- The ZIP prefix table will cover 3-digit prefix ranges (e.g., `"060"-"069" → CT`). This is a well-established mapping used by USPS.
+- The existing `useEffect` for `selectedState` already handles setting the tax rate when state changes — so no duplication needed.
+- The auto-fill is non-destructive: if the user already manually chose a state, the ZIP effect won't override it (we'll only apply it when `selectedState` is still empty on mount).
+- County will remain unselected (defaulting to state average rate) since ZIP alone can't reliably determine county.
