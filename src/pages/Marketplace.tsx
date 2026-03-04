@@ -114,12 +114,9 @@ function conditionColor(c: string | null) {
   }
 }
 
-// Generate a reliable placeholder image via picsum (always allows hotlinking)
-// Seeds are stable so the same car always gets the same placeholder
+// No-op: placeholder handled by SVG data URI in the component
 function vehiclePlaceholderImage(listing: Listing): string {
-  // Use a deterministic seed so the same car always shows the same image
-  const seed = `${listing.make}-${listing.model}-${listing.year}`.toLowerCase().replace(/\s+/g, "-");
-  return `https://picsum.photos/seed/${encodeURIComponent(seed)}/640/400`;
+  return ""; // signals component to render SVG placeholder
 }
 
 function sourceLabel(s: string) {
@@ -132,13 +129,24 @@ function sourceLabel(s: string) {
 
 // ─── Listing Card ───────────────────────────────────────────────────────────
 
+// Hue derived from make name for consistent per-brand color
+function makeHue(make: string): number {
+  let h = 0;
+  for (let i = 0; i < make.length; i++) h = (h * 31 + make.charCodeAt(i)) % 360;
+  return h;
+}
+
 function ListingCard({ listing, onClick }: { listing: Listing; onClick: () => void }) {
-  // Only use stored images if they're not Wikimedia (which blocks hotlinking)
-  const hasUsableImage = listing.images && listing.images.length > 0 &&
-    !listing.images[0].includes("wikimedia.org") &&
-    !listing.images[0].includes("wikipedia.org");
-  const img = hasUsableImage ? listing.images![0] : vehiclePlaceholderImage(listing);
+  // Only use stored images if they're from a trusted, hotlink-friendly source
+  const isUsable = (url: string) =>
+    !url.includes("wikimedia.org") &&
+    !url.includes("wikipedia.org") &&
+    !url.includes("picsum.photos") &&
+    url.startsWith("http");
+
+  const img = listing.images?.find(isUsable) ?? null;
   const location = [listing.city, listing.state].filter(Boolean).join(", ") || listing.zip_code;
+  const hue = makeHue(listing.make);
 
   return (
     <motion.div
@@ -153,14 +161,23 @@ function ListingCard({ listing, onClick }: { listing: Listing; onClick: () => vo
         onClick={onClick}
       >
         {/* Image */}
-        <div className="relative aspect-[16/10] bg-muted overflow-hidden">
-          <img
-            src={img}
-            alt={`${listing.year} ${listing.make} ${listing.model}`}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            loading="lazy"
-            onError={(e) => { (e.target as HTMLImageElement).src = "https://picsum.photos/seed/car/640/400"; (e.target as HTMLImageElement).onerror = null; }}
-          />
+        <div className="relative aspect-[16/10] overflow-hidden" style={{ background: `hsl(${hue} 25% 14%)` }}>
+          {img ? (
+            <img
+              src={img}
+              alt={`${listing.year} ${listing.make} ${listing.model}`}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              loading="lazy"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+            />
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center gap-2 select-none">
+              <Car className="h-12 w-12 opacity-20" style={{ color: `hsl(${hue} 70% 70%)` }} />
+              <span className="text-xs font-semibold tracking-widest uppercase opacity-30" style={{ color: `hsl(${hue} 60% 80%)` }}>
+                {listing.make}
+              </span>
+            </div>
+          )}
           {/* Source badge */}
           <div className="absolute top-2 left-2">
             <Badge variant="secondary" className="text-xs font-medium backdrop-blur-sm bg-background/80">
