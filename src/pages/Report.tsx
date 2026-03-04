@@ -1250,18 +1250,19 @@ export default function ReportPage() {
                       const referenceValue = condition.sellerType === "dealer"
                         ? (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate)
                         : priceAssessment.fairMarketPrivate;
-                      const isBelow = condition.askingPrice <= referenceValue;
-                      const contextMsg = isBelow
-                        ? "This vehicle is priced below the current market average."
-                        : priceAssessment.dealRating === "fair"
-                          ? "This vehicle is within the current average market range."
-                          : "This vehicle is priced above the current market average.";
+                       const effectivePrice = financing?.negotiatedPrice ?? condition.askingPrice;
+                       const isBelow = effectivePrice <= referenceValue;
+                       const contextMsg = isBelow
+                         ? "This vehicle is priced below the current market average."
+                         : priceAssessment.dealRating === "fair"
+                           ? "This vehicle is within the current average market range."
+                           : "This vehicle is priced above the current market average.";
 
-                      // Calculate bar position: map askingPrice between tradeIn (0%) and dealer/private * 1.15 (100%)
-                      const low = priceAssessment.fairMarketTradeIn;
-                      const high = (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate) * 1.15;
-                      const range = high - low || 1;
-                      const pct = Math.max(2, Math.min(98, ((condition.askingPrice - low) / range) * 100));
+                       // Calculate bar position: map effectivePrice between tradeIn (0%) and dealer/private * 1.15 (100%)
+                       const low = priceAssessment.fairMarketTradeIn;
+                       const high = (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate) * 1.15;
+                       const range = high - low || 1;
+                       const pct = Math.max(2, Math.min(98, ((effectivePrice - low) / range) * 100));
 
                       // Market range markers
                       const marketLow = condition.sellerType === "dealer"
