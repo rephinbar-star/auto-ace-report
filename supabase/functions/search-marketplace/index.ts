@@ -298,7 +298,7 @@ Deno.serve(async (req) => {
           console.log(`MarketCheck returned ${listings.length} listings, total: ${totalCount}`);
 
           if (listings.length > 0) {
-            const rows = listings.map(mapMarketCheckListing);
+            const rows = listings.map(item => mapMarketCheckListing(item, params.zipCode));
 
             // Get existing external_ids to avoid duplicate inserts
             // (partial unique index doesn't support ON CONFLICT in PostgREST)
