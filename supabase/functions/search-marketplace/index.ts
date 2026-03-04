@@ -298,7 +298,9 @@ Deno.serve(async (req) => {
         if (params.model) mcUrl.searchParams.set("model", params.model);
         if (params.zipCode) {
           mcUrl.searchParams.set("zip", params.zipCode);
-          mcUrl.searchParams.set("radius", String(radiusMiles));
+          // MarketCheck subscription caps at 100 miles — cap here to avoid 422 errors
+          // Broader radius coverage is handled by the state-based DB filter
+          mcUrl.searchParams.set("radius", String(Math.min(radiusMiles, 100)));
         }
         if (params.maxPrice) mcUrl.searchParams.set("price_max", String(params.maxPrice));
         if (params.minPrice) mcUrl.searchParams.set("price_min", String(params.minPrice));
