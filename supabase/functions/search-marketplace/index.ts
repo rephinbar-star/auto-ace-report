@@ -437,16 +437,15 @@ Deno.serve(async (req) => {
       console.log(`ZIP ${params.zipCode} → state ${userState}, filtering DB to fetched_for_zip=${params.zipCode}`);
     }
 
-    // Fetch a larger pool then shuffle in JS — PostgREST doesn't support ORDER BY RANDOM().
-    // We fetch up to 200 rows (or the full count) and shuffle before slicing the page,
-    // ensuring no dealer clustering regardless of insert order.
-    const SHUFFLE_POOL = 200;
+    // Fetch ALL active listings for this ZIP then interleave by dealer so every page
+    // shows a diverse mix of makes. PostgREST doesn't support ORDER BY RANDOM().
+    const POOL_SIZE = 1000;
     let query = adminClient
       .from("marketplace_listings")
       .select("*", { count: "exact" })
       .eq("status", "active")
-      .order("fetched_at", { ascending: false })
-      .range(0, SHUFFLE_POOL - 1);
+      .order("id", { ascending: true }) // stable order for consistent pool
+      .range(0, POOL_SIZE - 1);
 
     if (params.minYear) query = query.gte("year", params.minYear);
     if (params.maxYear) query = query.lte("year", params.maxYear);
