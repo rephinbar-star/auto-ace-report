@@ -625,7 +625,9 @@ export default function Marketplace() {
       if (error) throw error;
 
       let result: Listing[] = data?.data?.listings ?? [];
-      let resultTotal: number = data?.data?.total ?? 0;
+      // Use the actual DB count (number of rows matching filters) for pagination,
+      // not MarketCheck's global num_found which is far larger than what's stored locally.
+      let resultTotal: number = data?.data?.dbCount ?? result.length;
 
       // Apply local text search filter
       if (q) {
@@ -643,8 +645,6 @@ export default function Marketplace() {
         case "mileage_asc": result.sort((a, b) => (a.mileage ?? 0) - (b.mileage ?? 0)); break;
         case "year_desc":   result.sort((a, b) => b.year - a.year); break;
         case "distance": {
-          // Sort by numeric ZIP proximity: smaller absolute difference = closer.
-          // Ties broken by state match. Listings with no ZIP go last.
           const userZip = f.zipCode.length === 5 ? Number(f.zipCode) : null;
           if (userZip !== null) {
             result.sort((a, b) => {
@@ -657,7 +657,7 @@ export default function Marketplace() {
           }
           break;
         }
-        default: break; // newest — already ordered by DB
+        default: break;
       }
 
       setListings(result);
