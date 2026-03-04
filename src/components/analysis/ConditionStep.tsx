@@ -213,7 +213,7 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="excellent">Brand New</SelectItem>
+                          <SelectItem value="brand_new">Brand New</SelectItem>
                           <SelectItem value="excellent">Excellent - Like new</SelectItem>
                           <SelectItem value="good">Good - Minor wear</SelectItem>
                           <SelectItem value="fair">Fair - Some issues</SelectItem>
