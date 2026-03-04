@@ -437,16 +437,16 @@ Deno.serve(async (req) => {
       console.log(`ZIP ${params.zipCode} → state ${userState}, filtering DB to fetched_for_zip=${params.zipCode}`);
     }
 
-    // Use random ordering by default to prevent dealer clustering in browse mode.
-    // When the user explicitly sorts (price, mileage, year), the frontend handles it
-    // client-side from the returned page results. ORDER BY RANDOM() ensures no two
-    // page loads show the same batch of listings from the same dealer.
+    // Fetch a larger pool then shuffle in JS — PostgREST doesn't support ORDER BY RANDOM().
+    // We fetch up to 200 rows (or the full count) and shuffle before slicing the page,
+    // ensuring no dealer clustering regardless of insert order.
+    const SHUFFLE_POOL = 200;
     let query = adminClient
       .from("marketplace_listings")
       .select("*", { count: "exact" })
       .eq("status", "active")
-      .order("random()" as never)
-      .range(offset, offset + limit - 1);
+      .order("fetched_at", { ascending: false })
+      .range(0, SHUFFLE_POOL - 1);
 
     if (params.minYear) query = query.gte("year", params.minYear);
     if (params.maxYear) query = query.lte("year", params.maxYear);
@@ -473,27 +473,35 @@ Deno.serve(async (req) => {
       query = query.eq("source", "user_submitted");
     }
 
-    const { data: listings, count, error } = await query;
+    const { data: rawListings, count, error } = await query;
 
     if (error) {
       console.error("DB query error:", JSON.stringify(error));
       throw new Error(`DB query failed: ${error.message ?? error.code ?? JSON.stringify(error)}`);
     }
 
-    console.log(`DB query returned ${listings?.length ?? 0} listings (count: ${count})`);
+    // Shuffle the pool in-place (Fisher-Yates) then slice the requested page
+    const pool = rawListings ?? [];
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
+    }
+    const listings = pool.slice(offset, offset + limit);
+
+    console.log(`DB query returned ${pool.length} pool listings, serving ${listings.length} for page ${page}`);
 
     const totalResults =
       cacheRow?.total_results ??
       count ??
-      (listings?.length ?? 0);
+      pool.length;
 
     return new Response(
       JSON.stringify({
         success: true,
         data: {
-          listings: listings ?? [],
+          listings,
           total: totalResults,
-          dbCount: count ?? (listings?.length ?? 0), // actual rows in DB matching filters
+          dbCount: count ?? pool.length, // actual rows in DB matching filters
           page,
           limit,
           cached: !!(isCacheFresh && !fetchedFromMarketCheck),
