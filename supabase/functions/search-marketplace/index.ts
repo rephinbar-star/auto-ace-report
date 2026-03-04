@@ -134,28 +134,6 @@ const ZIP_PREFIX_TO_STATE: Record<string, string> = {
   "995": "AK", "996": "AK", "997": "AK", "998": "AK", "999": "AK",
 };
 
-// Nearby states for radius-based filtering (avoid filtering too strictly)
-const STATE_NEIGHBORS: Record<string, string[]> = {
-  "CA": ["CA", "NV", "OR", "AZ"],
-  "NV": ["NV", "CA", "OR", "ID", "UT", "AZ"],
-  "OR": ["OR", "CA", "WA", "NV", "ID"],
-  "WA": ["WA", "OR", "ID"],
-  "AZ": ["AZ", "CA", "NV", "NM", "UT"],
-  "TX": ["TX", "OK", "AR", "LA", "NM"],
-  "FL": ["FL", "GA", "AL"],
-  "NY": ["NY", "NJ", "CT", "PA", "MA"],
-  "IL": ["IL", "WI", "IN", "MO", "IA"],
-  "GA": ["GA", "FL", "AL", "TN", "SC", "NC"],
-  "CO": ["CO", "WY", "NE", "KS", "OK", "NM", "UT"],
-  "WI": ["WI", "MN", "IA", "IL", "MI"],
-  "MI": ["MI", "OH", "IN", "WI"],
-  "OH": ["OH", "PA", "WV", "KY", "IN", "MI"],
-  "PA": ["PA", "NY", "NJ", "DE", "MD", "WV", "OH"],
-  "VA": ["VA", "MD", "DC", "WV", "KY", "TN", "NC"],
-  "NC": ["NC", "VA", "TN", "SC", "GA"],
-  "TN": ["TN", "KY", "VA", "NC", "GA", "AL", "MS", "AR", "MO"],
-};
-
 function getStateFromZip(zip: string): string | null {
   if (!zip || zip.length < 3) return null;
   const prefix = zip.substring(0, 3);
