@@ -584,6 +584,7 @@ export default function ReportPage() {
         resolvedRecallCount,
         warrantyMonthsRemaining: history?.warrantyMonthsRemaining ?? null,
         isCPO: condition?.isCPO || history?.isCPO || null,
+        isBrandNew: condition?.isBrandNew ?? null,
       });
       setUvprsResult(result);
     };
@@ -1856,7 +1857,7 @@ export default function ReportPage() {
               {uvprsResult && (
                 <RiskScoreBreakdown 
                   result={uvprsResult} 
-                  missingHistoryReport={!vehicleData?.history?.serviceRecords}
+                  missingHistoryReport={!vehicleData?.condition?.isBrandNew && !vehicleData?.history?.serviceRecords}
                   isUploadingHistory={isUploadingHistory}
                   vehicleYear={vehicleData?.vehicle?.year}
                   vehicleMake={vehicleData?.vehicle?.make}
@@ -1864,6 +1865,7 @@ export default function ReportPage() {
                   vehicleOwnerCount={vehicleData?.history?.ownerCount}
                   warrantyMonthsRemaining={vehicleData?.history?.warrantyMonthsRemaining}
                   isCPO={vehicleData?.condition?.isCPO || vehicleData?.history?.isCPO}
+                  isBrandNew={vehicleData?.condition?.isBrandNew}
                   onUploadHistory={async (file: File) => {
                     setIsUploadingHistory(true);
                     try {

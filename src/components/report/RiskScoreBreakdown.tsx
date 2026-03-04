@@ -63,6 +63,7 @@ interface RiskScoreBreakdownProps {
   vehicleOwnerCount?: number | null;
   warrantyMonthsRemaining?: number | null;
   isCPO?: boolean | null;
+  isBrandNew?: boolean | null;
 }
 
 const riskColors: Record<string, string> = {
