@@ -390,13 +390,15 @@ Deno.serve(async (req) => {
     if (params.maxMileage) query = query.lte("mileage", params.maxMileage);
     if (params.bodyStyle) query = query.ilike("body_style", `%${params.bodyStyle}%`);
 
-    // Filter by fetched_for_zip: only return listings fetched for this exact ZIP.
-    // Falls back to state filter for user-submitted listings (no fetched_for_zip).
+    // Filter by fetched_for_zip OR user-submitted in the same state.
+    // PostgREST's nested and() inside or() is unreliable — use in() for user_submitted fallback.
     if (params.zipCode) {
-      // Use PostgREST-compatible OR: fetched_for_zip matches OR (user_submitted in same state)
       if (userState) {
+        // fetched_for_zip = ZIP  OR  source = user_submitted AND state = userState
         query = query.or(
-          `fetched_for_zip.eq.${params.zipCode},and(source.eq.user_submitted,state.eq.${userState})`
+          `fetched_for_zip.eq.${params.zipCode},source.eq.user_submitted`
+        ).or(
+          `fetched_for_zip.eq.${params.zipCode},state.eq.${userState}`
         );
       } else {
         query = query.eq("fetched_for_zip", params.zipCode);
