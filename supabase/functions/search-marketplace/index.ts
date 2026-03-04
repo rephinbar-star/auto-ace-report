@@ -11,6 +11,8 @@ const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
 
 interface SearchParams {
   year?: number;
+  minYear?: number;
+  maxYear?: number;
   make?: string;
   model?: string;
   zipCode?: string;
