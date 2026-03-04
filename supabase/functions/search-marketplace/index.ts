@@ -283,12 +283,13 @@ Deno.serve(async (req) => {
     if ((!isCacheFresh || !dbHasData) && marketCheckApiKey && params.zipCode) {
       try {
         const ROWS_PER_BATCH = 100;
-        const NUM_BATCHES = 10; // 10 × 100 = up to 1,000 candidates
-        const MAX_PER_DEALER = 20; // cap per seller_name for diversity
+        // Only 3 batches — stay well within MarketCheck's 500-row pagination limit
+        // and avoid rate limiting. 3 × 100 = 300 diverse candidates.
+        const NUM_BATCHES = 3;
+        const MAX_PER_DEALER = 10; // tighter cap for more diversity with fewer listings
         let totalCount = 0;
         let allFetchedListings: Record<string, unknown>[] = [];
 
-        // --- Step 1: Probe call to get num_found ---
         const buildMcUrl = (start: number, rows: number) => {
           const u = new URL("https://api.marketcheck.com/v2/search/car/active");
           u.searchParams.set("api_key", marketCheckApiKey);
@@ -307,7 +308,7 @@ Deno.serve(async (req) => {
           return u.toString();
         };
 
-        // Probe: rows=1 just to get num_found
+        // --- Step 1: Probe call to get num_found ---
         const probeRes = await fetch(buildMcUrl(0, 1));
         if (probeRes.ok) {
           const probeData = await probeRes.json();
@@ -315,19 +316,25 @@ Deno.serve(async (req) => {
           console.log(`MarketCheck probe: num_found=${totalCount} for ZIP ${params.zipCode}`);
         }
 
-        // --- Step 2: Generate NUM_BATCHES random unique offsets ---
-        // Spread across the first min(num_found, 1000) results for good diversity
-        const maxOffset = Math.max(0, Math.min(totalCount - ROWS_PER_BATCH, 1000));
-        const offsets = new Set<number>();
-        offsets.add(0); // always include the top results
-        while (offsets.size < NUM_BATCHES && offsets.size <= maxOffset) {
-          offsets.add(Math.floor(Math.random() * maxOffset));
+        // --- Step 2: 3 random offsets within 0–390 (safe for 500-row limit) ---
+        // Always include offset 0 (freshest results) + 2 random offsets for diversity
+        const safeMax = Math.max(0, Math.min(totalCount - ROWS_PER_BATCH, 390));
+        const offsets: number[] = [0];
+        const attempts = new Set<number>([0]);
+        while (offsets.length < NUM_BATCHES && safeMax > 0) {
+          const candidate = Math.floor(Math.random() * safeMax);
+          if (!attempts.has(candidate)) {
+            attempts.add(candidate);
+            offsets.push(candidate);
+          }
         }
 
-        console.log(`Fetching ${offsets.size} batches at offsets: ${Array.from(offsets).join(', ')}`);
+        console.log(`Fetching ${offsets.length} batches at offsets: ${offsets.join(', ')}`);
 
-        // --- Step 3: Fetch all batches sequentially ---
-        for (const start of offsets) {
+        // --- Step 3: Fetch batches sequentially with a small delay to avoid rate limits ---
+        for (let i = 0; i < offsets.length; i++) {
+          const start = offsets[i];
+          if (i > 0) await new Promise(r => setTimeout(r, 300)); // 300ms gap
           const mcRes = await fetch(buildMcUrl(start, ROWS_PER_BATCH));
           if (!mcRes.ok) {
             const errText = await mcRes.text();
