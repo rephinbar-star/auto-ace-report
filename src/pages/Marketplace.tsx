@@ -322,18 +322,53 @@ function FilterPanel({ filters, onChange, onReset, makes, models, activeCount, l
         </Select>
       </div>
 
-      {/* Year */}
+      {/* Model */}
       <div className="space-y-2">
-        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Year</Label>
-        <Select value={filters.year || "all"} onValueChange={v => onChange({ year: v === "all" ? "" : v })}>
+        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Model</Label>
+        <Select
+          value={filters.model || "all"}
+          onValueChange={v => onChange({ model: v === "all" ? "" : v })}
+          disabled={!filters.make}
+        >
           <SelectTrigger className="h-9 text-sm">
-            <SelectValue placeholder="Any year" />
+            <SelectValue placeholder={filters.make ? "Any model" : "Select make first"} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Any year</SelectItem>
-            {YEARS.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+            <SelectItem value="all">Any model</SelectItem>
+            {models.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
           </SelectContent>
         </Select>
+      </div>
+
+      {/* Year range */}
+      <div className="space-y-2">
+        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Year</Label>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <Label className="text-xs text-muted-foreground">From</Label>
+            <Select value={filters.minYear || "all"} onValueChange={v => onChange({ minYear: v === "all" ? "" : v })}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Any" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Any</SelectItem>
+                {YEARS.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">To</Label>
+            <Select value={filters.maxYear || "all"} onValueChange={v => onChange({ maxYear: v === "all" ? "" : v })}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Any" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Any</SelectItem>
+                {YEARS.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </div>
 
       {/* Price range */}
@@ -386,7 +421,7 @@ function FilterPanel({ filters, onChange, onReset, makes, models, activeCount, l
           </span>
         </Label>
         <Slider
-          min={10000}
+          min={0}
           max={200000}
           step={5000}
           value={[filters.maxMileage]}
@@ -394,7 +429,7 @@ function FilterPanel({ filters, onChange, onReset, makes, models, activeCount, l
           className="w-full"
         />
         <div className="flex justify-between text-xs text-muted-foreground">
-          <span>10k mi</span>
+          <span>0 mi</span>
           <span>200k+ mi</span>
         </div>
       </div>
@@ -411,28 +446,6 @@ function FilterPanel({ filters, onChange, onReset, makes, models, activeCount, l
             {BODY_STYLES.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
           </SelectContent>
         </Select>
-      </div>
-
-      {/* Condition */}
-      <div className="space-y-2">
-        <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Condition</Label>
-        <div className="grid grid-cols-2 gap-1.5">
-          {CONDITIONS.map(c => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => onChange({ condition: filters.condition === c ? "" : c })}
-              className={cn(
-                "h-8 rounded-md border text-xs font-medium capitalize transition-all",
-                filters.condition === c
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
-              )}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* Location */}
@@ -520,7 +533,6 @@ export default function Marketplace() {
     ...DEFAULT_FILTERS,
     make: searchParams.get("make") || "",
     model: searchParams.get("model") || "",
-    year: searchParams.get("year") || "",
     zipCode: searchParams.get("zip") || "",
   }));
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
