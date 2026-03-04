@@ -321,14 +321,29 @@ Deno.serve(async (req) => {
           if (listings.length > 0) {
             const rows = listings.map(mapMarketCheckListing);
 
-            const { error: upsertError } = await adminClient
+            // Get existing external_ids to avoid duplicate inserts
+            // (partial unique index doesn't support ON CONFLICT in PostgREST)
+            const externalIds = rows.map(r => r.external_id);
+            const { data: existing } = await adminClient
               .from("marketplace_listings")
-              .upsert(rows, { onConflict: "external_id", ignoreDuplicates: false });
+              .select("external_id")
+              .in("external_id", externalIds);
 
-            if (upsertError) {
-              console.error("Upsert error:", JSON.stringify(upsertError));
+            const existingIds = new Set((existing ?? []).map((r: { external_id: string }) => r.external_id));
+            const newRows = rows.filter(r => !existingIds.has(r.external_id));
+
+            if (newRows.length > 0) {
+              const { error: insertError } = await adminClient
+                .from("marketplace_listings")
+                .insert(newRows);
+
+              if (insertError) {
+                console.error("Insert error:", JSON.stringify(insertError));
+              } else {
+                console.log(`Inserted ${newRows.length} new listings (${rows.length - newRows.length} already existed)`);
+              }
             } else {
-              console.log(`Upserted ${rows.length} listings successfully`);
+              console.log(`All ${rows.length} listings already exist in DB`);
             }
 
             // Only write cache when we actually got results
