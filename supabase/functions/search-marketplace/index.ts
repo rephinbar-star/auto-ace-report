@@ -525,10 +525,9 @@ Deno.serve(async (req) => {
 
     console.log(`DB pool: ${pool.length} from ${dealerBuckets.size} dealers, serving page ${page} (${listings.length} listings)`);
 
-    const totalResults =
-      cacheRow?.total_results ??
-      count ??
-      pool.length;
+    // Use actual DB pool size for pagination — MarketCheck's num_found is a national
+    // count and would create thousands of phantom pages.
+    const totalResults = pool.length;
 
     return new Response(
       JSON.stringify({
