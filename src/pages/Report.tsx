@@ -1305,9 +1305,9 @@ export default function ReportPage() {
                             if (condition.sellerType === "dealer") {
                               markers.push({ label: "Private Sale", value: priceAssessment.fairMarketPrivate });
                             }
-                            markers.push({ label: "Negotiated Price", value: effectivePrice, isAsking: true });
+                            markers.push({ label: "Asking Price", value: condition.askingPrice, isAsking: true });
                             if (financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice) {
-                              markers.push({ label: "Asking Price", value: condition.askingPrice });
+                              markers.push({ label: "Negotiated Price", value: financing.negotiatedPrice });
                             }
 
                             // Anchor gradient to actual values: trade-in = deep green (left), FMV = center green, overpriced = red (right)
@@ -1326,10 +1326,9 @@ export default function ReportPage() {
                               <>
                                 {/* Desktop: horizontal gradient bar */}
                                 <div className="relative pt-14 pb-14 mt-2 overflow-hidden hidden md:block desktop-only">
-                                   {/* Floating price label above bar */}
+                                 {/* Asking price floating label */}
                                    {(() => {
-                                     const askPct = toPct(effectivePrice);
-                                     const isNegotiated = financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice;
+                                     const askPct = toPct(condition.askingPrice);
                                      const clampStyle = askPct > 80
                                        ? { left: `${askPct}%`, transform: "translateX(-80%)" }
                                        : askPct < 20
@@ -1337,9 +1336,9 @@ export default function ReportPage() {
                                          : { left: `${askPct}%`, transform: "translateX(-50%)" };
                                      return (
                                        <div className="absolute top-0" style={clampStyle}>
-                                         <p className="text-[10px] text-muted-foreground text-center mb-0.5">{isNegotiated ? "Negotiated Price" : "Asking Price"}</p>
+                                         <p className="text-[10px] text-muted-foreground text-center mb-0.5">Asking Price</p>
                                          <div className="rounded-lg border bg-card px-3 py-1.5 text-sm font-bold shadow-sm whitespace-nowrap">
-                                           ${effectivePrice.toLocaleString()}
+                                           ${condition.askingPrice.toLocaleString()}
                                          </div>
                                          <div className="mx-auto mt-1 h-3 w-px bg-border" />
                                        </div>
@@ -1355,7 +1354,7 @@ export default function ReportPage() {
 
                                    {/* Dot indicator */}
                                    {(() => {
-                                     const askPct = toPct(effectivePrice);
+                                     const askPct = toPct(condition.askingPrice);
                                     return (
                                       <div
                                         className="absolute -translate-x-1/2"
