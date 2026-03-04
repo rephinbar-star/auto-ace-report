@@ -670,10 +670,11 @@ export default function Marketplace() {
     }
   }, []);
 
-  // Debounced refetch when filters/search change (resets to page 1)
+  // Debounced refetch when filters/search change (always resets to page 1)
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
+      setPage(1);
       fetchListings(filters, 1, searchQuery);
     }, 300);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
