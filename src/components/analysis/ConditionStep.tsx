@@ -31,7 +31,7 @@ import { DealerTrustPreview } from "./DealerTrustPreview";
 const conditionSchema = z.object({
   mileage: z.coerce.number().min(0, "Mileage must be positive").max(500000),
   askingPrice: z.coerce.number().min(0, "Price must be positive"),
-  condition: z.enum(["excellent", "good", "fair", "poor"]),
+  condition: z.enum(["brand_new", "excellent", "good", "fair", "poor"]),
   sellerType: z.enum(["private", "dealer"]),
   sellerName: z.string().max(100).optional().or(z.literal("")),
   zipCode: z.string().regex(/^\d{5}$/, "Enter a valid 5-digit ZIP code").optional().or(z.literal("")),
@@ -122,7 +122,7 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
     onComplete({
       mileage: data.mileage,
       askingPrice: data.askingPrice,
-      condition: data.condition,
+      condition: data.condition === "brand_new" ? "excellent" : data.condition,
       sellerType: data.sellerType,
       sellerName: data.sellerType === "dealer" ? data.sellerName || undefined : undefined,
       zipCode: data.zipCode || undefined,
@@ -204,8 +204,8 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
                   control={form.control}
                   name="condition"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Overall Condition</FormLabel>
+                  <FormItem>
+                      <FormLabel>Condition</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
@@ -213,6 +213,7 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                          <SelectItem value="brand_new">Brand New</SelectItem>
                           <SelectItem value="excellent">Excellent - Like new</SelectItem>
                           <SelectItem value="good">Good - Minor wear</SelectItem>
                           <SelectItem value="fair">Fair - Some issues</SelectItem>
