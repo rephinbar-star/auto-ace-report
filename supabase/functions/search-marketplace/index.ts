@@ -493,31 +493,32 @@ Deno.serve(async (req) => {
       throw new Error(`DB query failed: ${error.message ?? error.code ?? JSON.stringify(error)}`);
     }
 
-    // Seeded shuffle — same search params always produce the same order across pages,
-    // preventing duplicates and ensuring coherent pagination.
-    function seededRng(seed: number) {
-      let s = seed >>> 0;
-      return () => {
-        s = Math.imul(s ^ (s >>> 15), s | 1);
-        s ^= s + Math.imul(s ^ (s >>> 7), s | 61);
-        return ((s ^ (s >>> 14)) >>> 0) / 0xffffffff;
-      };
-    }
-    // Derive seed from cacheKey so same filters → same shuffle
-    let seedVal = 0;
-    for (let i = 0; i < cacheKey.length; i++) {
-      seedVal = (Math.imul(31, seedVal) + cacheKey.charCodeAt(i)) >>> 0;
-    }
-    const rng = seededRng(seedVal);
+    // Round-robin interleave by dealer/seller so every page has maximum dealer diversity.
+    // Then slice for the requested page.
+    const rawPool = rawListings ?? [];
 
-    const pool = rawListings ?? [];
-    for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(rng() * (i + 1));
-      [pool[i], pool[j]] = [pool[j], pool[i]];
+    // Group by seller_name (fallback to a unique key per listing)
+    const dealerMap = new Map<string, typeof rawPool>();
+    for (const listing of rawPool) {
+      const key = (listing.seller_name as string | null) ?? listing.id as string;
+      if (!dealerMap.has(key)) dealerMap.set(key, []);
+      dealerMap.get(key)!.push(listing);
     }
+
+    // Round-robin interleave: pick one from each dealer at a time
+    const dealerQueues = Array.from(dealerMap.values());
+    const pool: typeof rawPool = [];
+    let i = 0;
+    while (pool.length < rawPool.length) {
+      for (const queue of dealerQueues) {
+        if (i < queue.length) pool.push(queue[i]);
+      }
+      i++;
+    }
+
     const listings = pool.slice(offset, offset + limit);
 
-    console.log(`DB pool: ${pool.length} listings (seed ${seedVal}), serving page ${page} (${listings.length} listings)`);
+    console.log(`DB pool: ${pool.length} listings (round-robin interleaved, ${dealerMap.size} dealers), serving page ${page} (${listings.length} listings)`);
 
     // Use actual DB row count for pagination so the UI knows how many pages exist.
     const totalResults = count ?? pool.length;
