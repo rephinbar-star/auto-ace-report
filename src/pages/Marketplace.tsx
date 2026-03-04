@@ -933,35 +933,3 @@ export default function Marketplace() {
   );
 }
 
-  return (
-    <span className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border border-primary/30 bg-primary/8 text-xs font-medium text-primary">
-      {label}
-      <button onClick={onRemove} className="hover:text-destructive transition-colors">
-        <X className="h-3 w-3" />
-      </button>
-    </span>
-  );
-}
-
-// ─── Empty state ────────────────────────────────────────────────────────────
-
-function EmptyState({ onReset }: { onReset: () => void }) {
-  return (
-    <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
-      <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center">
-        <Car className="h-8 w-8 text-muted-foreground" />
-      </div>
-      <div>
-        <h3 className="font-semibold text-foreground">No listings found</h3>
-        <p className="text-sm text-muted-foreground mt-1 max-w-xs">
-          Try adjusting your filters or expanding your search radius.
-        </p>
-      </div>
-      <div className="flex gap-2">
-        <Button variant="outline" onClick={onReset} className="gap-2">
-          <RefreshCw className="h-4 w-4" /> Reset filters
-        </Button>
-      </div>
-    </div>
-  );
-}
