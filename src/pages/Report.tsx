@@ -584,6 +584,7 @@ export default function ReportPage() {
         resolvedRecallCount,
         warrantyMonthsRemaining: history?.warrantyMonthsRemaining ?? null,
         isCPO: condition?.isCPO || history?.isCPO || null,
+        isBrandNew: condition?.isBrandNew ?? null,
       });
       setUvprsResult(result);
     };
