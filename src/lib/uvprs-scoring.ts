@@ -475,6 +475,15 @@ export function calculateUVPRS(input: UVPRSInput): UVPRSResult {
   });
 
   // 10. Warranty Status
+  const warranty = input.isBrandNew
+    ? { score: 0, known: true, description: "Brand new — full factory warranty in effect" }
+    : scoreWarrantyStatus(input.make, input.year, input.mileage, input.ownerCount, input.warrantyMonthsRemaining, input.isCPO);
+  factorResults.push({
+    key: "warranty", label: "Warranty Status",
+    score: warranty.score, weight: WEIGHTS.warranty, weighted: 0,
+    known: warranty.known,
+    description: warranty.description,
+  });
   const warranty = scoreWarrantyStatus(input.make, input.year, input.mileage, input.ownerCount, input.warrantyMonthsRemaining, input.isCPO);
   factorResults.push({
     key: "warranty", label: "Warranty Status",
