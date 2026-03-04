@@ -518,7 +518,7 @@ Deno.serve(async (req) => {
 
     const listings = pool.slice(offset, offset + limit);
 
-    console.log(`DB pool: ${pool.length} listings (seed ${seedVal}), serving page ${page} (${listings.length} listings)`);
+    console.log(`DB pool: ${pool.length} listings (round-robin interleaved, ${dealerMap.size} dealers), serving page ${page} (${listings.length} listings)`);
 
     // Use actual DB row count for pagination so the UI knows how many pages exist.
     const totalResults = count ?? pool.length;
