@@ -282,74 +282,128 @@ Deno.serve(async (req) => {
     // without geo-filtering as it returns random results from all over the country.
     if ((!isCacheFresh || !dbHasData) && marketCheckApiKey && params.zipCode) {
       try {
-        const ROWS_PER_PAGE = 50;
-        const MAX_PAGES = 3; // Fetch up to 150 listings for diversity across dealers
+        const ROWS_PER_BATCH = 100;
+        const NUM_BATCHES = 10; // 10 × 100 = up to 1,000 candidates
+        const MAX_PER_DEALER = 20; // cap per seller_name for diversity
         let totalCount = 0;
         let allFetchedListings: Record<string, unknown>[] = [];
 
-        for (let mcPage = 0; mcPage < MAX_PAGES; mcPage++) {
-          const mcUrl = new URL("https://api.marketcheck.com/v2/search/car/active");
-          mcUrl.searchParams.set("api_key", marketCheckApiKey);
-          mcUrl.searchParams.set("rows", String(ROWS_PER_PAGE));
-          mcUrl.searchParams.set("start", String(mcPage * ROWS_PER_PAGE));
-          // Always apply zip + radius — never fetch without location
-          mcUrl.searchParams.set("zip", params.zipCode);
-          mcUrl.searchParams.set("radius", String(Math.min(radiusMiles, 100)));
-          if (params.minYear) mcUrl.searchParams.set("year_min", String(params.minYear));
-          if (params.maxYear) mcUrl.searchParams.set("year_max", String(params.maxYear));
-          if (params.make) mcUrl.searchParams.set("make", params.make);
-          if (params.model) mcUrl.searchParams.set("model", params.model);
-          if (params.maxPrice) mcUrl.searchParams.set("price_max", String(params.maxPrice));
-          if (params.minPrice) mcUrl.searchParams.set("price_min", String(params.minPrice));
-          if (params.maxMileage) mcUrl.searchParams.set("miles_max", String(params.maxMileage));
-          if (params.bodyStyle) mcUrl.searchParams.set("body_style", params.bodyStyle);
+        // --- Step 1: Probe call to get num_found ---
+        const buildMcUrl = (start: number, rows: number) => {
+          const u = new URL("https://api.marketcheck.com/v2/search/car/active");
+          u.searchParams.set("api_key", marketCheckApiKey);
+          u.searchParams.set("rows", String(rows));
+          u.searchParams.set("start", String(start));
+          u.searchParams.set("zip", params.zipCode);
+          u.searchParams.set("radius", String(Math.min(radiusMiles, 100)));
+          if (params.minYear) u.searchParams.set("year_min", String(params.minYear));
+          if (params.maxYear) u.searchParams.set("year_max", String(params.maxYear));
+          if (params.make) u.searchParams.set("make", params.make);
+          if (params.model) u.searchParams.set("model", params.model);
+          if (params.maxPrice) u.searchParams.set("price_max", String(params.maxPrice));
+          if (params.minPrice) u.searchParams.set("price_min", String(params.minPrice));
+          if (params.maxMileage) u.searchParams.set("miles_max", String(params.maxMileage));
+          if (params.bodyStyle) u.searchParams.set("body_style", params.bodyStyle);
+          return u.toString();
+        };
 
-          console.log(`Fetching MarketCheck page ${mcPage + 1}:`, mcUrl.toString().replace(marketCheckApiKey, "REDACTED"));
+        // Probe: rows=1 just to get num_found
+        const probeRes = await fetch(buildMcUrl(0, 1));
+        if (probeRes.ok) {
+          const probeData = await probeRes.json();
+          totalCount = probeData.num_found ?? 0;
+          console.log(`MarketCheck probe: num_found=${totalCount} for ZIP ${params.zipCode}`);
+        }
 
-          const mcRes = await fetch(mcUrl.toString());
+        // --- Step 2: Generate NUM_BATCHES random unique offsets ---
+        // Spread across the first min(num_found, 1000) results for good diversity
+        const maxOffset = Math.max(0, Math.min(totalCount - ROWS_PER_BATCH, 1000));
+        const offsets = new Set<number>();
+        offsets.add(0); // always include the top results
+        while (offsets.size < NUM_BATCHES && offsets.size <= maxOffset) {
+          offsets.add(Math.floor(Math.random() * maxOffset));
+        }
+
+        console.log(`Fetching ${offsets.size} batches at offsets: ${Array.from(offsets).join(', ')}`);
+
+        // --- Step 3: Fetch all batches sequentially ---
+        for (const start of offsets) {
+          const mcRes = await fetch(buildMcUrl(start, ROWS_PER_BATCH));
           if (!mcRes.ok) {
             const errText = await mcRes.text();
-            console.error(`MarketCheck page ${mcPage + 1} error:`, mcRes.status, errText.slice(0, 200));
-            break;
+            console.error(`MarketCheck batch start=${start} error:`, mcRes.status, errText.slice(0, 200));
+            continue;
           }
-
           const mcData = await mcRes.json();
           const pageListing = (mcData.listings ?? []) as Record<string, unknown>[];
           totalCount = mcData.num_found ?? totalCount;
-
-          console.log(`MarketCheck page ${mcPage + 1}: ${pageListing.length} listings, total available: ${totalCount}`);
-
+          console.log(`Batch start=${start}: ${pageListing.length} listings`);
           allFetchedListings = allFetchedListings.concat(pageListing);
-
-          // Stop early if we got fewer results than requested (no more pages)
-          if (pageListing.length < ROWS_PER_PAGE) break;
         }
+
+        // --- Step 4: Deduplicate by external_id ---
+        const seenIds = new Set<string>();
+        allFetchedListings = allFetchedListings.filter(item => {
+          const id = String(item.id);
+          if (seenIds.has(id)) return false;
+          seenIds.add(id);
+          return true;
+        });
+
+        // --- Step 5: Apply per-dealer cap (20 per seller_name) ---
+        const dealerCounts = new Map<string, number>();
+        allFetchedListings = allFetchedListings.filter(item => {
+          const dealer = (item.dealer as Record<string, unknown>) || {};
+          const name = String(dealer.name ?? "unknown");
+          const count = dealerCounts.get(name) ?? 0;
+          if (count >= MAX_PER_DEALER) return false;
+          dealerCounts.set(name, count + 1);
+          return true;
+        });
+
+        console.log(`After dedup + dealer cap: ${allFetchedListings.length} listings from ${dealerCounts.size} dealers`);
 
         if (allFetchedListings.length > 0) {
           const rows = allFetchedListings.map(item => mapMarketCheckListing(item, params.zipCode));
 
-          // Deduplicate against existing rows
+          // --- Step 6: Soft-expire old listings for this ZIP, then insert new batch ---
+          // Mark all existing marketcheck listings for this ZIP as expired first
+          await adminClient
+            .from("marketplace_listings")
+            .update({ status: "expired" })
+            .eq("source", "marketcheck")
+            .eq("fetched_for_zip", params.zipCode);
+
+          // Re-activate any that reappear in the new fetch (upsert by external_id)
           const externalIds = rows.map(r => r.external_id);
           const { data: existing } = await adminClient
             .from("marketplace_listings")
             .select("external_id")
             .in("external_id", externalIds);
 
-          const existingIds = new Set((existing ?? []).map((r: { external_id: string }) => r.external_id));
-          const newRows = rows.filter(r => !existingIds.has(r.external_id));
+          const existingIdSet = new Set((existing ?? []).map((r: { external_id: string }) => r.external_id));
 
+          // Reactivate existing rows that reappeared
+          if (existingIdSet.size > 0) {
+            await adminClient
+              .from("marketplace_listings")
+              .update({ status: "active", fetched_at: new Date().toISOString() })
+              .in("external_id", Array.from(existingIdSet));
+          }
+
+          // Insert truly new rows
+          const newRows = rows.filter(r => !existingIdSet.has(r.external_id));
           if (newRows.length > 0) {
             const { error: insertError } = await adminClient
               .from("marketplace_listings")
               .insert(newRows);
-
             if (insertError) {
               console.error("Insert error:", JSON.stringify(insertError));
             } else {
-              console.log(`Inserted ${newRows.length} new listings (${rows.length - newRows.length} already existed)`);
+              console.log(`Inserted ${newRows.length} new + reactivated ${existingIdSet.size} existing listings`);
             }
           } else {
-            console.log(`All ${rows.length} listings already exist in DB`);
+            console.log(`All ${rows.length} listings reactivated from existing DB rows`);
           }
 
           // Write cache
