@@ -53,6 +53,7 @@ export type Database = {
           exterior_color: string | null
           external_id: string | null
           fetched_at: string | null
+          fetched_for_zip: string | null
           fuel_type: string | null
           id: string
           images: string[] | null
@@ -83,6 +84,7 @@ export type Database = {
           exterior_color?: string | null
           external_id?: string | null
           fetched_at?: string | null
+          fetched_for_zip?: string | null
           fuel_type?: string | null
           id?: string
           images?: string[] | null
@@ -113,6 +115,7 @@ export type Database = {
           exterior_color?: string | null
           external_id?: string | null
           fetched_at?: string | null
+          fetched_for_zip?: string | null
           fuel_type?: string | null
           id?: string
           images?: string[] | null
