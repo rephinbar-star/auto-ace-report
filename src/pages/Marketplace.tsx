@@ -114,51 +114,12 @@ function conditionColor(c: string | null) {
   }
 }
 
-// Generate a reliable placeholder image for a vehicle
-// Uses curated Unsplash photos by make/type (stable photo IDs)
+// Generate a reliable placeholder image via picsum (always allows hotlinking)
+// Seeds are stable so the same car always gets the same placeholder
 function vehiclePlaceholderImage(listing: Listing): string {
-  const make = listing.make.toLowerCase().split("-")[0].split(" ")[0];
-  const bodyStyle = (listing.body_style || "").toLowerCase();
-  const model = listing.model.toLowerCase();
-
-  const isPickup = bodyStyle.includes("truck") || bodyStyle.includes("pickup")
-    || ["f-150","silverado","tacoma","tundra","ranger","colorado","ram 1500","frontier"].some(m => model.includes(m));
-  const isSUV = bodyStyle.includes("suv") || bodyStyle.includes("crossover") || bodyStyle.includes("wagon");
-  const isElectric = (listing.fuel_type || "").toLowerCase().includes("electric") || make === "tesla";
-
-  // Stable Unsplash photo IDs by make/type
-  const BASE = "https://images.unsplash.com/photo-";
-  const images: Record<string, string> = {
-    toyota_truck: `${BASE}1590362891991-f776e747a588?w=640&q=75&fit=crop`,   // Tacoma
-    toyota:       `${BASE}1621007947382-bb3c3994e3fb?w=640&q=75&fit=crop`,   // Camry
-    honda:        `${BASE}1619767886558-6d7d1a77b674?w=640&q=75&fit=crop`,   // Civic
-    honda_suv:    `${BASE}1606016461689-9ab60d2e96e6?w=640&q=75&fit=crop`,   // CR-V
-    ford_truck:   `${BASE}1558383739-0cb57a72e8c3?w=640&q=75&fit=crop`,      // F-150
-    ford:         `${BASE}1494976388531-d1058494cdd8?w=640&q=75&fit=crop`,   // Mustang
-    chevrolet:    `${BASE}1552519507-da3b142b6f3b?w=640&q=75&fit=crop`,      // Silverado / truck
-    tesla:        `${BASE}1560958089-b8a1929cea89?w=640&q=75&fit=crop`,      // Model 3
-    bmw:          `${BASE}1555215695-3004980ad54e?w=640&q=75&fit=crop`,      // BMW sedan
-    mercedes:     `${BASE}1618843986629-f8474daae3ca?w=640&q=75&fit=crop`,   // Mercedes
-    audi:         `${BASE}1606152421802-db274fc15069?w=640&q=75&fit=crop`,   // Audi
-    jeep:         `${BASE}1603584173870-7f23fdae1b7a?w=640&q=75&fit=crop`,   // Jeep Wrangler
-    subaru:       `${BASE}1544636331-e26879cd4d9b?w=640&q=75&fit=crop`,      // Subaru
-    hyundai:      `${BASE}1609521263047-f8f205293f24?w=640&q=75&fit=crop`,   // Hyundai
-    nissan:       `${BASE}1583121274602-3e2820c35153?w=640&q=75&fit=crop`,   // Nissan
-    kia:          `${BASE}1609521263047-f8f205293f24?w=640&q=75&fit=crop`,   // Kia
-    mazda:        `${BASE}1617531773010-37b6a32e2038?w=640&q=75&fit=crop`,   // Mazda
-    volkswagen:   `${BASE}1471444928343-8ec92fa5b86e?w=640&q=75&fit=crop`,   // VW
-    truck:        `${BASE}1558383739-0cb57a72e8c3?w=640&q=75&fit=crop`,
-    suv:          `${BASE}1603584173870-7f23fdae1b7a?w=640&q=75&fit=crop`,
-    default:      `${BASE}1621007947382-bb3c3994e3fb?w=640&q=75&fit=crop`,
-  };
-
-  if (isElectric || make === "tesla") return images.tesla;
-  if (make === "toyota" && isPickup) return images.toyota_truck;
-  if (make === "honda" && isSUV) return images.honda_suv;
-  if (make === "ford" && isPickup) return images.ford_truck;
-  if (isPickup) return images.truck;
-  if (isSUV && !images[make]) return images.suv;
-  return images[make] || images.default;
+  // Use a deterministic seed so the same car always shows the same image
+  const seed = `${listing.make}-${listing.model}-${listing.year}`.toLowerCase().replace(/\s+/g, "-");
+  return `https://picsum.photos/seed/${encodeURIComponent(seed)}/640/400`;
 }
 
 function sourceLabel(s: string) {
