@@ -237,6 +237,15 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
   const cashSavings = askingPrice > 0 ? askingPrice - cashNegotiatedPrice : 0;
   const cashDiscountPct = askingPrice > 0 ? parseFloat(((cashSavings / askingPrice) * 100).toFixed(1)) : 0;
 
+  // Sync cashNegotiatedPrice when askingPrice changes (listing import), unless user has edited it
+  const prevAskingRef = useRef(askingPrice);
+  useEffect(() => {
+    if (prevAskingRef.current !== askingPrice) {
+      setCashNegotiatedPrice((prev) => (prev === prevAskingRef.current ? askingPrice : prev));
+      prevAskingRef.current = askingPrice;
+    }
+  }, [askingPrice]);
+
   const handleCash = () => {
     onComplete({ type: "cash", negotiatedPrice: cashNegotiatedPrice });
   };
