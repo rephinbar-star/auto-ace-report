@@ -31,7 +31,7 @@ import { DealerTrustPreview } from "./DealerTrustPreview";
 const conditionSchema = z.object({
   mileage: z.coerce.number().min(0, "Mileage must be positive").max(500000),
   askingPrice: z.coerce.number().min(0, "Price must be positive"),
-  condition: z.enum(["new", "excellent", "good", "fair", "poor"]),
+  condition: z.enum(["excellent", "good", "fair", "poor"]),
   sellerType: z.enum(["private", "dealer"]),
   sellerName: z.string().max(100).optional().or(z.literal("")),
   zipCode: z.string().regex(/^\d{5}$/, "Enter a valid 5-digit ZIP code").optional().or(z.literal("")),
