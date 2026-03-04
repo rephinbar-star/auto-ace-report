@@ -1,43 +1,69 @@
 
-## Auto-populate Sales Tax from ZIP Code
+## Answers to your questions, then the plan
 
-### What the user wants
-When a ZIP code has been entered in Step 2 (Condition), the Sales Tax Calculator in Step 4 (Financing) should automatically pre-select the correct state and set the tax rate — no manual state selection needed.
+### Can we fetch 5,000 vehicles?
 
-### How it works today
-- `ConditionStep` collects `zipCode` (stored in `VehicleCondition`)
-- `FinancingStep` receives only `askingPrice` as a prop
-- The Sales Tax Calculator has State + County dropdowns the user must manually choose
+**MarketCheck API constraint:** The `rows` parameter maxes out at **100 per request**. So to get 5,000 vehicles we'd need 50 API calls. Each call hits the MarketCheck server and costs API quota. This is technically feasible in a single edge function invocation, but has trade-offs:
 
-### The plan
+- Edge function timeout: Supabase edge functions timeout at **150 seconds**. 50 sequential API calls at ~300–500ms each = 15–25 seconds total — actually fine.
+- MarketCheck rate limits: Most tiers allow hundreds of requests per day, so 50 calls per user search would burn through quota quickly if many users search simultaneously.
+- **Recommended compromise:** Fetch **500–1,000 vehicles** (5–10 calls of 100 each) with randomized offsets. This gives strong diversity without hammering the API.
 
-**1. Add a ZIP → State lookup utility in `src/lib/sales-tax-data.ts`**
+### Database refresh strategy (with future favorites in mind)
 
-Add a `getStateFromZip(zip: string): string | null` function. ZIP code prefixes reliably map to states — e.g. ZIPs starting with `900`–`961` are California, `100`–`119` are New York, etc. We'll add a compact prefix-range lookup table covering all 50 states + DC.
+Good forward-thinking question. The right approach is a **soft-delete / TTL pattern**:
 
-**2. Update `FinancingStep` props**
+1. Each listing has a `fetched_at` timestamp.
+2. On refresh, instead of deleting all listings, mark listings older than X days as `status = 'expired'` — **except** listings that have been favorited.
+3. The favorites table (future) will have a FK to `marketplace_listings.id`. Any listing with a favorite reference is never expired, just re-fetched and updated in place.
+4. The browse query already filters `status = 'active'`, so expired listings naturally disappear.
 
-Add an optional `zipCode?: string` prop to `FinancingStepProps`.
+This means: **no favorites are ever broken by a cache refresh.**
 
-**3. Auto-select state on mount / when ZIP changes**
+---
 
-Add a `useEffect` in `FinancingStep` that:
-- Runs when `zipCode` prop is received
-- Calls `getStateFromZip(zipCode)` to determine the state abbreviation
-- Sets `selectedState` to that abbreviation (which already triggers the existing `useEffect` that populates the tax rate)
-- Shows a subtle "Auto-filled from ZIP XXXXX" hint below the State selector so the user knows it was set automatically
+## Plan
 
-**4. Pass `zipCode` from `Analyze.tsx`**
+### 1. Fetch Strategy — Randomized offsets, 100 rows each
 
-In `src/pages/Analyze.tsx`, pass `condition?.zipCode` to `<FinancingStep>`.
+```text
+Step 1: Probe call (rows=1) → get num_found (e.g. 2,400 local listings)
+Step 2: Generate 10 random unique start offsets in [0, min(num_found-100, 1000)]
+Step 3: Fetch 10 batches × 100 rows = up to 1,000 candidates
+Step 4: Deduplicate by external_id
+Step 5: Cap at 20 listings per seller_name
+Step 6: Insert net-new rows only
+```
 
-### Files to change
-- `src/lib/sales-tax-data.ts` — add `getStateFromZip()` helper
-- `src/components/analysis/FinancingStep.tsx` — accept `zipCode` prop, auto-select state
-- `src/pages/Analyze.tsx` — pass `zipCode={condition?.zipCode}` to `FinancingStep`
+This gives ~1,000 listings from many different dealers.
 
-### Technical notes
-- The ZIP prefix table will cover 3-digit prefix ranges (e.g., `"060"-"069" → CT`). This is a well-established mapping used by USPS.
-- The existing `useEffect` for `selectedState` already handles setting the tax rate when state changes — so no duplication needed.
-- The auto-fill is non-destructive: if the user already manually chose a state, the ZIP effect won't override it (we'll only apply it when `selectedState` is still empty on mount).
-- County will remain unselected (defaulting to state average rate) since ZIP alone can't reliably determine county.
+### 2. Randomized DB serving
+
+When serving listings from the DB to the user (the `SELECT` query), add `ORDER BY RANDOM()` instead of `ORDER BY created_at DESC`. This ensures browsing page 1 vs page 2 vs reloading shows different cars in different orders — no dealer clustering in the browse UI.
+
+**Caveat:** User's explicit sort selection (price, miles, year) still overrides `RANDOM()`. Only when no explicit sort is chosen does `RANDOM()` apply.
+
+### 3. 100-mile geo guarantee
+
+The MarketCheck call already uses `radius=100`. The DB query filters `fetched_for_zip = params.zipCode`, so only listings fetched for the user's ZIP are served. This is already correct — no changes needed here.
+
+### 4. DB refresh strategy (favorites-safe)
+
+Add a `status` transition on re-fetch:
+- When re-fetching a ZIP, mark all existing `marketcheck` listings for that ZIP as `status = 'expired'` **before** inserting the new batch.
+- After inserting, any listing that reappeared (matched by `external_id`) gets set back to `active`.
+- Future favorites table: listings with favorites are never transitioned to `expired` — the refresh logic will check for FK references before expiring.
+
+---
+
+## Files Changed
+
+- `supabase/functions/search-marketplace/index.ts`
+  - Probe call to get `num_found`
+  - 10 random offset fetches at `rows=100`
+  - Per-dealer cap of 20
+  - `ORDER BY RANDOM()` in DB query when no user sort specified
+  - Soft-expire old listings on re-fetch instead of keeping stale data
+
+- No DB schema changes needed — `status` column already exists with `'active'`/`'expired'` values.
+- No frontend changes needed.
