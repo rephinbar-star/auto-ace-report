@@ -84,7 +84,6 @@ const DEFAULT_FILTERS: SearchFilters = {
 };
 
 const BODY_STYLES = ["Sedan", "SUV", "Truck", "Coupe", "Convertible", "Hatchback", "Van", "Wagon", "Minivan"];
-const CONDITIONS = ["excellent", "good", "fair", "poor"];
 const SORT_OPTIONS = [
   { value: "newest", label: "Newest First" },
   { value: "distance", label: "Distance: Nearest First" },
