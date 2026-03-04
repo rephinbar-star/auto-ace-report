@@ -278,23 +278,22 @@ Deno.serve(async (req) => {
     let fetchedFromMarketCheck = false;
 
     // --- STALE or empty DB: fetch from MarketCheck ---
-    if ((!isCacheFresh || !dbHasData) && marketCheckApiKey) {
+    // IMPORTANT: Only fetch if a zipCode is provided — never do a national fetch
+    // without geo-filtering as it returns random results from all over the country.
+    if ((!isCacheFresh || !dbHasData) && marketCheckApiKey && params.zipCode) {
       try {
         const mcUrl = new URL("https://api.marketcheck.com/v2/search/car/active");
         mcUrl.searchParams.set("api_key", marketCheckApiKey);
         // Always fetch 50 fresh results starting from 0 (not UI page offset)
         mcUrl.searchParams.set("rows", "50");
         mcUrl.searchParams.set("start", "0");
+        // Always apply zip + radius — this is required, never fetch without location
+        mcUrl.searchParams.set("zip", params.zipCode);
+        mcUrl.searchParams.set("radius", String(Math.min(radiusMiles, 100)));
         if (params.minYear) mcUrl.searchParams.set("year_min", String(params.minYear));
         if (params.maxYear) mcUrl.searchParams.set("year_max", String(params.maxYear));
         if (params.make) mcUrl.searchParams.set("make", params.make);
         if (params.model) mcUrl.searchParams.set("model", params.model);
-        if (params.zipCode) {
-          mcUrl.searchParams.set("zip", params.zipCode);
-          // MarketCheck subscription caps at 100 miles — cap here to avoid 422 errors
-          // Broader radius coverage is handled by the state-based DB filter
-          mcUrl.searchParams.set("radius", String(Math.min(radiusMiles, 100)));
-        }
         if (params.maxPrice) mcUrl.searchParams.set("price_max", String(params.maxPrice));
         if (params.minPrice) mcUrl.searchParams.set("price_min", String(params.minPrice));
         if (params.maxMileage) mcUrl.searchParams.set("miles_max", String(params.maxMileage));
@@ -390,23 +389,19 @@ Deno.serve(async (req) => {
     if (params.maxMileage) query = query.lte("mileage", params.maxMileage);
     if (params.bodyStyle) query = query.ilike("body_style", `%${params.bodyStyle}%`);
 
-    // Filter listings by fetched_for_zip (MarketCheck) or user-submitted in same state.
-    // Avoid complex nested and() in PostgREST or() — use simple eq for the primary case.
+    // Strictly filter by fetched_for_zip when ZIP provided.
+    // Never fall back to a broad OR that includes unrelated listings.
     if (params.zipCode) {
+      // MarketCheck listings for this exact ZIP, or user-submitted in the same state.
       if (userState) {
-        // Include MarketCheck listings fetched for this ZIP AND user-submitted in same state.
-        // Use in() for source and filter state separately to avoid nested and() bugs:
-        // Approach: filter where fetched_for_zip=ZIP OR source is user_submitted with matching state.
-        // Simplest working approach: two separate conditions chained via .or():
-        // fetched_for_zip.eq.ZIP  ||  (source=user_submitted && state=STATE)
-        query = query.or(`fetched_for_zip.eq.${params.zipCode},source.eq.user_submitted`);
-        // Narrow user_submitted rows to same state only (via additional filter on that branch)
-        // Since we can't do nested logic cleanly, accept user_submitted from any state for now.
+        query = query.or(
+          `fetched_for_zip.eq.${params.zipCode},and(source.eq.user_submitted,state.eq.${userState})`
+        );
       } else {
         query = query.eq("fetched_for_zip", params.zipCode);
       }
     } else {
-      // No ZIP: only show user-submitted listings
+      // No ZIP provided: only show user-submitted listings (no random national MarketCheck results)
       query = query.eq("source", "user_submitted");
     }
 
