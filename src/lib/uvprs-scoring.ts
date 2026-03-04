@@ -484,13 +484,6 @@ export function calculateUVPRS(input: UVPRSInput): UVPRSResult {
     known: warranty.known,
     description: warranty.description,
   });
-  const warranty = scoreWarrantyStatus(input.make, input.year, input.mileage, input.ownerCount, input.warrantyMonthsRemaining, input.isCPO);
-  factorResults.push({
-    key: "warranty", label: "Warranty Status",
-    score: warranty.score, weight: WEIGHTS.warranty, weighted: 0,
-    known: warranty.known,
-    description: warranty.description,
-  });
 
   // Renormalize weights over known factors
   const knownWeightSum = factorResults
