@@ -29,7 +29,8 @@ function buildCacheKey(p: SearchParams, radiusMiles: number): string {
   return [
     p.make || "any",
     p.model || "any",
-    p.year || "any",
+    p.year || p.minYear || "any",
+    p.maxYear || "any",
     p.zipCode || "any",
     radiusMiles,
     p.maxPrice || "any",
