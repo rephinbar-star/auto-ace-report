@@ -485,6 +485,59 @@ export type Database = {
     }
     Functions: {
       cleanup_expired_otps: { Args: never; Returns: undefined }
+      get_marketplace_listings: {
+        Args: {
+          p_body_style?: string
+          p_limit?: number
+          p_make?: string
+          p_max_mileage?: number
+          p_max_price?: number
+          p_max_year?: number
+          p_min_price?: number
+          p_min_year?: number
+          p_model?: string
+          p_offset?: number
+          p_user_state?: string
+          p_zip_code?: string
+        }
+        Returns: {
+          asking_price: number
+          body_style: string | null
+          city: string | null
+          condition: string | null
+          created_at: string
+          description: string | null
+          drivetrain: string | null
+          exterior_color: string | null
+          external_id: string | null
+          fetched_at: string | null
+          fetched_for_zip: string | null
+          fuel_type: string | null
+          id: string
+          images: string[] | null
+          listing_url: string | null
+          make: string
+          mileage: number | null
+          model: string
+          seller_name: string | null
+          seller_type: string | null
+          source: string
+          state: string | null
+          status: string
+          transmission: string | null
+          trim: string | null
+          user_id: string | null
+          vin: string | null
+          year: number
+          zip_code: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "marketplace_listings"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
