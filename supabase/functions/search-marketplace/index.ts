@@ -278,23 +278,22 @@ Deno.serve(async (req) => {
     let fetchedFromMarketCheck = false;
 
     // --- STALE or empty DB: fetch from MarketCheck ---
-    if ((!isCacheFresh || !dbHasData) && marketCheckApiKey) {
+    // IMPORTANT: Only fetch if a zipCode is provided — never do a national fetch
+    // without geo-filtering as it returns random results from all over the country.
+    if ((!isCacheFresh || !dbHasData) && marketCheckApiKey && params.zipCode) {
       try {
         const mcUrl = new URL("https://api.marketcheck.com/v2/search/car/active");
         mcUrl.searchParams.set("api_key", marketCheckApiKey);
         // Always fetch 50 fresh results starting from 0 (not UI page offset)
         mcUrl.searchParams.set("rows", "50");
         mcUrl.searchParams.set("start", "0");
+        // Always apply zip + radius — this is required, never fetch without location
+        mcUrl.searchParams.set("zip", params.zipCode);
+        mcUrl.searchParams.set("radius", String(Math.min(radiusMiles, 100)));
         if (params.minYear) mcUrl.searchParams.set("year_min", String(params.minYear));
         if (params.maxYear) mcUrl.searchParams.set("year_max", String(params.maxYear));
         if (params.make) mcUrl.searchParams.set("make", params.make);
         if (params.model) mcUrl.searchParams.set("model", params.model);
-        if (params.zipCode) {
-          mcUrl.searchParams.set("zip", params.zipCode);
-          // MarketCheck subscription caps at 100 miles — cap here to avoid 422 errors
-          // Broader radius coverage is handled by the state-based DB filter
-          mcUrl.searchParams.set("radius", String(Math.min(radiusMiles, 100)));
-        }
         if (params.maxPrice) mcUrl.searchParams.set("price_max", String(params.maxPrice));
         if (params.minPrice) mcUrl.searchParams.set("price_min", String(params.minPrice));
         if (params.maxMileage) mcUrl.searchParams.set("miles_max", String(params.maxMileage));
