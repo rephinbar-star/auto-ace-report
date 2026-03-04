@@ -137,9 +137,12 @@ Deno.serve(async (req) => {
       try {
         const mcUrl = new URL("https://api.marketcheck.com/v2/search/car/active");
         mcUrl.searchParams.set("api_key", marketCheckApiKey);
-        mcUrl.searchParams.set("rows", String(limit));
+        // Always fetch max allowed rows per call to populate cache with as many results as possible
+        mcUrl.searchParams.set("rows", "50");
         mcUrl.searchParams.set("start", String(offset));
         if (params.year) mcUrl.searchParams.set("year", String(params.year));
+        if (params.minYear) mcUrl.searchParams.set("year_min", String(params.minYear));
+        if (params.maxYear) mcUrl.searchParams.set("year_max", String(params.maxYear));
         if (params.make) mcUrl.searchParams.set("make", params.make);
         if (params.model) mcUrl.searchParams.set("model", params.model);
         if (params.zipCode) {
@@ -198,6 +201,8 @@ Deno.serve(async (req) => {
       .range(offset, offset + limit - 1);
 
     if (params.year) query = query.eq("year", params.year);
+    if (params.minYear) query = query.gte("year", params.minYear);
+    if (params.maxYear) query = query.lte("year", params.maxYear);
     if (params.make) query = query.ilike("make", `%${params.make}%`);
     if (params.model) query = query.ilike("model", `%${params.model}%`);
     if (params.maxPrice) query = query.lte("asking_price", params.maxPrice);
