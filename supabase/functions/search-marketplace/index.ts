@@ -261,10 +261,24 @@ Deno.serve(async (req) => {
       cacheRow &&
       Date.now() - new Date(cacheRow.last_fetched_at).getTime() < CACHE_TTL_MS;
 
+    // Check if we actually have DB rows for this ZIP before trusting the cache
+    let dbHasData = false;
+    if (isCacheFresh && params.zipCode) {
+      const { count: existingCount } = await adminClient
+        .from("marketplace_listings")
+        .select("id", { count: "exact", head: true })
+        .eq("fetched_for_zip", params.zipCode)
+        .eq("status", "active");
+      dbHasData = (existingCount ?? 0) > 0;
+      if (!dbHasData) {
+        console.log(`Cache says fresh but DB has 0 rows for ZIP ${params.zipCode} — forcing re-fetch`);
+      }
+    }
+
     let fetchedFromMarketCheck = false;
 
-    // --- STALE: fetch from MarketCheck ---
-    if (!isCacheFresh && marketCheckApiKey) {
+    // --- STALE or empty DB: fetch from MarketCheck ---
+    if ((!isCacheFresh || !dbHasData) && marketCheckApiKey) {
       try {
         const mcUrl = new URL("https://api.marketcheck.com/v2/search/car/active");
         mcUrl.searchParams.set("api_key", marketCheckApiKey);
