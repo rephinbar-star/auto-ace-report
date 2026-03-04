@@ -239,9 +239,10 @@ ${hasMaintenance ? "\nIMPORTANT: You have been provided with REAL-TIME REPAIR AN
 WARRANTY ANALYSIS: The effect of an in-force factory warranty is a significant risk reduction, pro-rated by how much time/mileage is left on the bumper-to-bumper factory warranty. Conversely, the absence of any factory warranty or CPO warranty must be correlated with the service history of the vehicle to analyze whether repairs made are preventative or indicative of inevitable upcoming repairs (which increases risk). Cross-reference with RepairPal/CarEdge/TrueDelta data on common repairs at specific mileage windows and their estimated costs.
 
 IMPORTANT: The seller type is "${condition.sellerType}".
-- If "dealer": calculate priceDifference and dealRating by comparing askingPrice to fairMarketDealer (dealer retail value). Dealers include overhead, reconditioning, and sometimes warranties, so their prices are naturally higher than private party prices.
-- If "private": calculate priceDifference and dealRating by comparing askingPrice to fairMarketPrivate (private party sale value).
+- If "dealer": calculate priceDifference and dealRating by comparing ${financing.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice ? "negotiatedPrice" : "askingPrice"} to fairMarketDealer (dealer retail value). Dealers include overhead, reconditioning, and sometimes warranties, so their prices are naturally higher than private party prices.
+- If "private": calculate priceDifference and dealRating by comparing ${financing.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice ? "negotiatedPrice" : "askingPrice"} to fairMarketPrivate (private party sale value).
 - Always provide ALL three values: fairMarketPrivate, fairMarketDealer, and fairMarketTradeIn regardless of seller type.
+${financing.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice ? `- CRITICAL: The buyer has negotiated the price down to $${financing.negotiatedPrice.toLocaleString()} from the asking price of $${condition.askingPrice.toLocaleString()}. Use $${financing.negotiatedPrice.toLocaleString()} as the effective purchase price for priceDifference, percentDifference, dealRating, and all TCO/depreciation calculations.` : ""}
 
 DEAL RATING THRESHOLDS (you MUST follow these deterministic rules based on percentDifference):
 - "excellent": askingPrice is MORE THAN 10% BELOW the appropriate fair market value (percentDifference < -10%)
