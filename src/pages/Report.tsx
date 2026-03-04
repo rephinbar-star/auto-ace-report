@@ -1250,18 +1250,19 @@ export default function ReportPage() {
                       const referenceValue = condition.sellerType === "dealer"
                         ? (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate)
                         : priceAssessment.fairMarketPrivate;
-                      const isBelow = condition.askingPrice <= referenceValue;
-                      const contextMsg = isBelow
-                        ? "This vehicle is priced below the current market average."
-                        : priceAssessment.dealRating === "fair"
-                          ? "This vehicle is within the current average market range."
-                          : "This vehicle is priced above the current market average.";
+                       const effectivePrice = financing?.negotiatedPrice ?? condition.askingPrice;
+                       const isBelow = effectivePrice <= referenceValue;
+                       const contextMsg = isBelow
+                         ? "This vehicle is priced below the current market average."
+                         : priceAssessment.dealRating === "fair"
+                           ? "This vehicle is within the current average market range."
+                           : "This vehicle is priced above the current market average.";
 
-                      // Calculate bar position: map askingPrice between tradeIn (0%) and dealer/private * 1.15 (100%)
-                      const low = priceAssessment.fairMarketTradeIn;
-                      const high = (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate) * 1.15;
-                      const range = high - low || 1;
-                      const pct = Math.max(2, Math.min(98, ((condition.askingPrice - low) / range) * 100));
+                       // Calculate bar position: map effectivePrice between tradeIn (0%) and dealer/private * 1.15 (100%)
+                       const low = priceAssessment.fairMarketTradeIn;
+                       const high = (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate) * 1.15;
+                       const range = high - low || 1;
+                       const pct = Math.max(2, Math.min(98, ((effectivePrice - low) / range) * 100));
 
                       // Market range markers
                       const marketLow = condition.sellerType === "dealer"
@@ -1304,7 +1305,7 @@ export default function ReportPage() {
                             if (condition.sellerType === "dealer") {
                               markers.push({ label: "Private Sale", value: priceAssessment.fairMarketPrivate });
                             }
-                            markers.push({ label: "Asking Price", value: condition.askingPrice, isAsking: true });
+                            markers.push({ label: financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice ? "Negotiated Price" : "Asking Price", value: effectivePrice, isAsking: true });
 
                             // Anchor gradient to actual values: trade-in = deep green (left), FMV = center green, overpriced = red (right)
                             const tradeInVal = priceAssessment.fairMarketTradeIn;
@@ -1322,24 +1323,25 @@ export default function ReportPage() {
                               <>
                                 {/* Desktop: horizontal gradient bar */}
                                 <div className="relative pt-14 pb-14 mt-2 overflow-hidden hidden md:block desktop-only">
-                                  {/* Asking price floating label */}
-                                  {(() => {
-                                    const askPct = toPct(condition.askingPrice);
-                                    const clampStyle = askPct > 80
-                                      ? { left: `${askPct}%`, transform: "translateX(-80%)" }
-                                      : askPct < 20
-                                        ? { left: `${askPct}%`, transform: "translateX(-20%)" }
-                                        : { left: `${askPct}%`, transform: "translateX(-50%)" };
-                                    return (
-                                      <div className="absolute top-0" style={clampStyle}>
-                                        <p className="text-[10px] text-muted-foreground text-center mb-0.5">Asking Price</p>
-                                        <div className="rounded-lg border bg-card px-3 py-1.5 text-sm font-bold shadow-sm whitespace-nowrap">
-                                          ${condition.askingPrice.toLocaleString()}
-                                        </div>
-                                        <div className="mx-auto mt-1 h-3 w-px bg-border" />
-                                      </div>
-                                    );
-                                  })()}
+                                   {/* Floating price label above bar */}
+                                   {(() => {
+                                     const askPct = toPct(effectivePrice);
+                                     const isNegotiated = financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice;
+                                     const clampStyle = askPct > 80
+                                       ? { left: `${askPct}%`, transform: "translateX(-80%)" }
+                                       : askPct < 20
+                                         ? { left: `${askPct}%`, transform: "translateX(-20%)" }
+                                         : { left: `${askPct}%`, transform: "translateX(-50%)" };
+                                     return (
+                                       <div className="absolute top-0" style={clampStyle}>
+                                         <p className="text-[10px] text-muted-foreground text-center mb-0.5">{isNegotiated ? "Negotiated Price" : "Asking Price"}</p>
+                                         <div className="rounded-lg border bg-card px-3 py-1.5 text-sm font-bold shadow-sm whitespace-nowrap">
+                                           ${effectivePrice.toLocaleString()}
+                                         </div>
+                                         <div className="mx-auto mt-1 h-3 w-px bg-border" />
+                                       </div>
+                                     );
+                                   })()}
 
                                   {/* Gradient bar */}
                                   <div className="relative h-2.5 w-full rounded-full overflow-hidden">
@@ -1348,9 +1350,9 @@ export default function ReportPage() {
                                     }} />
                                   </div>
 
-                                  {/* Dot indicator */}
-                                  {(() => {
-                                    const askPct = toPct(condition.askingPrice);
+                                   {/* Dot indicator */}
+                                   {(() => {
+                                     const askPct = toPct(effectivePrice);
                                     return (
                                       <div
                                         className="absolute -translate-x-1/2"
@@ -1456,7 +1458,7 @@ export default function ReportPage() {
                       const relevantTargets = targets.filter(t => ratingOrder.indexOf(t.rating) > currentIdx);
                       if (relevantTargets.length === 0) return null;
                       const primaryTarget = relevantTargets[0]; // closest achievable upgrade
-                      const savings = condition.askingPrice - primaryTarget.price;
+                      const savings = (financing?.negotiatedPrice ?? condition.askingPrice) - primaryTarget.price;
 
                       return (
                         <div className="rounded-lg border border-success/30 bg-success/5 p-4">
