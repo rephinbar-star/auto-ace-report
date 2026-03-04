@@ -277,86 +277,96 @@ Deno.serve(async (req) => {
 
     let fetchedFromMarketCheck = false;
 
-    // --- STALE or empty DB: fetch from MarketCheck ---
+    // --- STALE or empty DB: fetch from MarketCheck (multiple pages for diversity) ---
     // IMPORTANT: Only fetch if a zipCode is provided — never do a national fetch
     // without geo-filtering as it returns random results from all over the country.
     if ((!isCacheFresh || !dbHasData) && marketCheckApiKey && params.zipCode) {
       try {
-        const mcUrl = new URL("https://api.marketcheck.com/v2/search/car/active");
-        mcUrl.searchParams.set("api_key", marketCheckApiKey);
-        // Always fetch 50 fresh results starting from 0 (not UI page offset)
-        mcUrl.searchParams.set("rows", "50");
-        mcUrl.searchParams.set("start", "0");
-        // Always apply zip + radius — this is required, never fetch without location
-        mcUrl.searchParams.set("zip", params.zipCode);
-        mcUrl.searchParams.set("radius", String(Math.min(radiusMiles, 100)));
-        if (params.minYear) mcUrl.searchParams.set("year_min", String(params.minYear));
-        if (params.maxYear) mcUrl.searchParams.set("year_max", String(params.maxYear));
-        if (params.make) mcUrl.searchParams.set("make", params.make);
-        if (params.model) mcUrl.searchParams.set("model", params.model);
-        if (params.maxPrice) mcUrl.searchParams.set("price_max", String(params.maxPrice));
-        if (params.minPrice) mcUrl.searchParams.set("price_min", String(params.minPrice));
-        if (params.maxMileage) mcUrl.searchParams.set("miles_max", String(params.maxMileage));
-        if (params.bodyStyle) mcUrl.searchParams.set("body_style", params.bodyStyle);
+        const ROWS_PER_PAGE = 50;
+        const MAX_PAGES = 3; // Fetch up to 150 listings for diversity across dealers
+        let totalCount = 0;
+        let allFetchedListings: Record<string, unknown>[] = [];
 
-        console.log("Fetching from MarketCheck:", mcUrl.toString().replace(marketCheckApiKey, "REDACTED"));
+        for (let mcPage = 0; mcPage < MAX_PAGES; mcPage++) {
+          const mcUrl = new URL("https://api.marketcheck.com/v2/search/car/active");
+          mcUrl.searchParams.set("api_key", marketCheckApiKey);
+          mcUrl.searchParams.set("rows", String(ROWS_PER_PAGE));
+          mcUrl.searchParams.set("start", String(mcPage * ROWS_PER_PAGE));
+          // Always apply zip + radius — never fetch without location
+          mcUrl.searchParams.set("zip", params.zipCode);
+          mcUrl.searchParams.set("radius", String(Math.min(radiusMiles, 100)));
+          if (params.minYear) mcUrl.searchParams.set("year_min", String(params.minYear));
+          if (params.maxYear) mcUrl.searchParams.set("year_max", String(params.maxYear));
+          if (params.make) mcUrl.searchParams.set("make", params.make);
+          if (params.model) mcUrl.searchParams.set("model", params.model);
+          if (params.maxPrice) mcUrl.searchParams.set("price_max", String(params.maxPrice));
+          if (params.minPrice) mcUrl.searchParams.set("price_min", String(params.minPrice));
+          if (params.maxMileage) mcUrl.searchParams.set("miles_max", String(params.maxMileage));
+          if (params.bodyStyle) mcUrl.searchParams.set("body_style", params.bodyStyle);
 
-        const mcRes = await fetch(mcUrl.toString());
+          console.log(`Fetching MarketCheck page ${mcPage + 1}:`, mcUrl.toString().replace(marketCheckApiKey, "REDACTED"));
 
-        if (mcRes.ok) {
-          const mcData = await mcRes.json();
-          const listings = (mcData.listings ?? []) as Record<string, unknown>[];
-          const totalCount = mcData.num_found ?? listings.length;
-
-          console.log(`MarketCheck returned ${listings.length} listings, total: ${totalCount}`);
-
-          if (listings.length > 0) {
-            const rows = listings.map(item => mapMarketCheckListing(item, params.zipCode));
-
-            // Get existing external_ids to avoid duplicate inserts
-            // (partial unique index doesn't support ON CONFLICT in PostgREST)
-            const externalIds = rows.map(r => r.external_id);
-            const { data: existing } = await adminClient
-              .from("marketplace_listings")
-              .select("external_id")
-              .in("external_id", externalIds);
-
-            const existingIds = new Set((existing ?? []).map((r: { external_id: string }) => r.external_id));
-            const newRows = rows.filter(r => !existingIds.has(r.external_id));
-
-            if (newRows.length > 0) {
-              const { error: insertError } = await adminClient
-                .from("marketplace_listings")
-                .insert(newRows);
-
-              if (insertError) {
-                console.error("Insert error:", JSON.stringify(insertError));
-              } else {
-                console.log(`Inserted ${newRows.length} new listings (${rows.length - newRows.length} already existed)`);
-              }
-            } else {
-              console.log(`All ${rows.length} listings already exist in DB`);
-            }
-
-            // Only write cache when we actually got results
-            await adminClient
-              .from("marketplace_search_cache")
-              .upsert(
-                {
-                  search_key: cacheKey,
-                  last_fetched_at: new Date().toISOString(),
-                  total_results: totalCount,
-                },
-                { onConflict: "search_key" }
-              );
-
-            fetchedFromMarketCheck = true;
-          } else {
-            console.log("MarketCheck returned 0 listings — not writing cache to allow retry");
+          const mcRes = await fetch(mcUrl.toString());
+          if (!mcRes.ok) {
+            const errText = await mcRes.text();
+            console.error(`MarketCheck page ${mcPage + 1} error:`, mcRes.status, errText.slice(0, 200));
+            break;
           }
+
+          const mcData = await mcRes.json();
+          const pageListing = (mcData.listings ?? []) as Record<string, unknown>[];
+          totalCount = mcData.num_found ?? totalCount;
+
+          console.log(`MarketCheck page ${mcPage + 1}: ${pageListing.length} listings, total available: ${totalCount}`);
+
+          allFetchedListings = allFetchedListings.concat(pageListing);
+
+          // Stop early if we got fewer results than requested (no more pages)
+          if (pageListing.length < ROWS_PER_PAGE) break;
+        }
+
+        if (allFetchedListings.length > 0) {
+          const rows = allFetchedListings.map(item => mapMarketCheckListing(item, params.zipCode));
+
+          // Deduplicate against existing rows
+          const externalIds = rows.map(r => r.external_id);
+          const { data: existing } = await adminClient
+            .from("marketplace_listings")
+            .select("external_id")
+            .in("external_id", externalIds);
+
+          const existingIds = new Set((existing ?? []).map((r: { external_id: string }) => r.external_id));
+          const newRows = rows.filter(r => !existingIds.has(r.external_id));
+
+          if (newRows.length > 0) {
+            const { error: insertError } = await adminClient
+              .from("marketplace_listings")
+              .insert(newRows);
+
+            if (insertError) {
+              console.error("Insert error:", JSON.stringify(insertError));
+            } else {
+              console.log(`Inserted ${newRows.length} new listings (${rows.length - newRows.length} already existed)`);
+            }
+          } else {
+            console.log(`All ${rows.length} listings already exist in DB`);
+          }
+
+          // Write cache
+          await adminClient
+            .from("marketplace_search_cache")
+            .upsert(
+              {
+                search_key: cacheKey,
+                last_fetched_at: new Date().toISOString(),
+                total_results: totalCount,
+              },
+              { onConflict: "search_key" }
+            );
+
+          fetchedFromMarketCheck = true;
         } else {
-          const errText = await mcRes.text();
-          console.error("MarketCheck API error:", mcRes.status, errText.slice(0, 200));
+          console.log("MarketCheck returned 0 listings — not writing cache to allow retry");
         }
       } catch (mcErr) {
         console.error("MarketCheck fetch failed:", mcErr);
