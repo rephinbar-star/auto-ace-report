@@ -26,7 +26,7 @@ import {
   ArrowUpDown, RefreshCw, ExternalLink, ChevronRight, Tag, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getMakes } from "@/lib/nhtsa";
+import { getMakes, getModels } from "@/lib/nhtsa";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -581,6 +581,12 @@ export default function Marketplace() {
   useEffect(() => {
     getMakes(CURRENT_YEAR).then(setMakes);
   }, []);
+
+  // Load models when make changes
+  useEffect(() => {
+    if (!filters.make) { setModels([]); return; }
+    getModels(filters.make, CURRENT_YEAR).then(setModels);
+  }, [filters.make]);
 
   // Count active filters
   const activeFilterCount = [
