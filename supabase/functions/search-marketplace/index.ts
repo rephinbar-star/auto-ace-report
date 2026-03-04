@@ -493,44 +493,16 @@ Deno.serve(async (req) => {
       throw new Error(`DB query failed: ${error.message ?? error.code ?? JSON.stringify(error)}`);
     }
 
-    // Round-robin interleave by dealer — ensures every page shows a diverse mix of makes.
-    // Group pool by seller_name, then pull one from each group in rotation.
+    // Full Fisher-Yates shuffle of the entire pool for true random ordering.
+    // This ensures no two consecutive cards come from the same dealer.
     const pool = rawListings ?? [];
-    const dealerBuckets = new Map<string, typeof pool>();
-    for (const listing of pool) {
-      const key = (listing as Record<string, unknown>).seller_name as string ?? "unknown";
-      if (!dealerBuckets.has(key)) dealerBuckets.set(key, []);
-      dealerBuckets.get(key)!.push(listing);
-    }
-    // Shuffle within each dealer bucket for variety, then interleave across buckets
-    const buckets = Array.from(dealerBuckets.values()).map(b => {
-      for (let i = b.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [b[i], b[j]] = [b[j], b[i]];
-      }
-      return b;
-    });
-    // Also shuffle dealer order so no one dealer leads every page
-    for (let i = buckets.length - 1; i > 0; i--) {
+    for (let i = pool.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [buckets[i], buckets[j]] = [buckets[j], buckets[i]];
+      [pool[i], pool[j]] = [pool[j], pool[i]];
     }
-    const interleaved: typeof pool = [];
-    let round = 0;
-    while (interleaved.length < pool.length) {
-      let added = 0;
-      for (const bucket of buckets) {
-        if (round < bucket.length) {
-          interleaved.push(bucket[round]);
-          added++;
-        }
-      }
-      if (added === 0) break;
-      round++;
-    }
-    const listings = interleaved.slice(offset, offset + limit);
+    const listings = pool.slice(offset, offset + limit);
 
-    console.log(`DB pool: ${pool.length} from ${dealerBuckets.size} dealers, serving page ${page} (${listings.length} listings)`);
+    console.log(`DB pool: ${pool.length} listings, serving page ${page} (${listings.length} listings)`);
 
     // Use actual DB row count for pagination so the UI knows how many pages exist.
     const totalResults = count ?? pool.length;
