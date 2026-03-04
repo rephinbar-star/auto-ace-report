@@ -679,15 +679,15 @@ export default function Marketplace() {
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
   }, [filters, searchQuery, fetchListings]);
 
-  // Fetch when page changes (only when page > 1 to avoid double-fetch on filter change)
+  // Fetch + scroll to top when page changes
   const prevPageRef = useRef(1);
   useEffect(() => {
     if (page !== prevPageRef.current) {
       prevPageRef.current = page;
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
       fetchListings(filters, page, searchQuery);
-      window.scrollTo({ top: 0, behavior: "instant" });
     }
-  }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [page, filters, searchQuery, fetchListings]);
 
   const updateFilters = (partial: Partial<SearchFilters>) => {
     prevPageRef.current = 1;
