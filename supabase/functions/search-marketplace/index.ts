@@ -351,16 +351,13 @@ Deno.serve(async (req) => {
     }
 
     // --- Query marketplace_listings with filters ---
-    // Determine state filter from ZIP code.
-    // Since MarketCheck already enforces the radius when fetching, stored listings
-    // are already within range. We filter the DB to the user's exact state only
-    // to exclude listings from previous searches in distant states/regions.
+    // Filter by fetched_for_zip so only listings fetched for the user's ZIP are returned.
+    // This ensures geo-accuracy: listings from different search regions never bleed into
+    // each other, regardless of how MarketCheck distributes dealer locations.
     let userState: string | null = null;
     if (params.zipCode && params.zipCode.length === 5) {
       userState = getStateFromZip(params.zipCode);
-      if (userState) {
-        console.log(`ZIP ${params.zipCode} → state ${userState}, filtering DB to state=${userState}`);
-      }
+      console.log(`ZIP ${params.zipCode} → state ${userState}, filtering DB to fetched_for_zip=${params.zipCode}`);
     }
 
     let query = adminClient
@@ -379,10 +376,16 @@ Deno.serve(async (req) => {
     if (params.maxMileage) query = query.lte("mileage", params.maxMileage);
     if (params.bodyStyle) query = query.ilike("body_style", `%${params.bodyStyle}%`);
 
-    // Filter strictly to user's state — neighbor expansion caused out-of-radius results
-    // (e.g. NV/AZ are "neighbors" of CA but 270-350 miles from San Diego)
-    if (userState) {
-      query = query.eq("state", userState);
+    // Filter by fetched_for_zip: only return listings fetched for this exact ZIP.
+    // Falls back to state filter for user-submitted listings (no fetched_for_zip).
+    if (params.zipCode) {
+      // Include listings fetched for this zip OR user-submitted listings in the same state
+      query = query.or(
+        `fetched_for_zip.eq.${params.zipCode}${userState ? `,and(source.eq.user_submitted,state.eq.${userState})` : ""}`
+      );
+    } else if (!params.zipCode) {
+      // No ZIP: only show user-submitted listings (don't show MarketCheck data globally)
+      query = query.eq("source", "user_submitted");
     }
 
     const { data: listings, count, error } = await query;
