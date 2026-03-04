@@ -638,7 +638,7 @@ export default function Marketplace() {
         resultTotal = result.length;
       }
 
-      // Sort
+      // Sort — "featured" preserves DB ORDER BY (dealer-interleaved random), all others re-sort
       switch (f.sortBy) {
         case "price_asc":   result.sort((a, b) => a.asking_price - b.asking_price); break;
         case "price_desc":  result.sort((a, b) => b.asking_price - a.asking_price); break;
@@ -657,6 +657,7 @@ export default function Marketplace() {
           }
           break;
         }
+        // "featured" or default: preserve DB interleaved order — do not sort
         default: break;
       }
 
