@@ -1305,7 +1305,10 @@ export default function ReportPage() {
                             if (condition.sellerType === "dealer") {
                               markers.push({ label: "Private Sale", value: priceAssessment.fairMarketPrivate });
                             }
-                            markers.push({ label: financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice ? "Negotiated Price" : "Asking Price", value: effectivePrice, isAsking: true });
+                            markers.push({ label: "Negotiated Price", value: effectivePrice, isAsking: true });
+                            if (financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice) {
+                              markers.push({ label: "Asking Price", value: condition.askingPrice });
+                            }
 
                             // Anchor gradient to actual values: trade-in = deep green (left), FMV = center green, overpriced = red (right)
                             const tradeInVal = priceAssessment.fairMarketTradeIn;
