@@ -502,41 +502,35 @@ export type Database = {
         }
         Returns: {
           asking_price: number
-          body_style: string | null
-          city: string | null
-          condition: string | null
+          body_style: string
+          city: string
+          condition: string
           created_at: string
-          description: string | null
-          drivetrain: string | null
-          exterior_color: string | null
-          external_id: string | null
-          fetched_at: string | null
-          fetched_for_zip: string | null
-          fuel_type: string | null
+          description: string
+          drivetrain: string
+          exterior_color: string
+          external_id: string
+          fetched_at: string
+          fetched_for_zip: string
+          fuel_type: string
           id: string
-          images: string[] | null
-          listing_url: string | null
+          images: string[]
+          listing_url: string
           make: string
-          mileage: number | null
+          mileage: number
           model: string
-          seller_name: string | null
-          seller_type: string | null
+          seller_name: string
+          seller_type: string
           source: string
-          state: string | null
+          state: string
           status: string
-          transmission: string | null
-          trim: string | null
-          user_id: string | null
-          vin: string | null
+          transmission: string
+          trim: string
+          user_id: string
+          vin: string
           year: number
-          zip_code: string | null
+          zip_code: string
         }[]
-        SetofOptions: {
-          from: "*"
-          to: "marketplace_listings"
-          isOneToOne: false
-          isSetofReturn: true
-        }
       }
       has_role: {
         Args: {
