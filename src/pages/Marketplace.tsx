@@ -114,12 +114,9 @@ function conditionColor(c: string | null) {
   }
 }
 
-// Generate a reliable placeholder image via picsum (always allows hotlinking)
-// Seeds are stable so the same car always gets the same placeholder
+// No-op: placeholder handled by SVG data URI in the component
 function vehiclePlaceholderImage(listing: Listing): string {
-  // Use a deterministic seed so the same car always shows the same image
-  const seed = `${listing.make}-${listing.model}-${listing.year}`.toLowerCase().replace(/\s+/g, "-");
-  return `https://picsum.photos/seed/${encodeURIComponent(seed)}/640/400`;
+  return ""; // signals component to render SVG placeholder
 }
 
 function sourceLabel(s: string) {
