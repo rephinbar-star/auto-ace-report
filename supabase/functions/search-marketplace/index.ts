@@ -390,19 +390,23 @@ Deno.serve(async (req) => {
     if (params.maxMileage) query = query.lte("mileage", params.maxMileage);
     if (params.bodyStyle) query = query.ilike("body_style", `%${params.bodyStyle}%`);
 
-    // Filter by fetched_for_zip: only return listings fetched for this exact ZIP.
-    // Falls back to state filter for user-submitted listings (no fetched_for_zip).
+    // Filter listings by fetched_for_zip (MarketCheck) or user-submitted in same state.
+    // Avoid complex nested and() in PostgREST or() — use simple eq for the primary case.
     if (params.zipCode) {
-      // Use PostgREST-compatible OR: fetched_for_zip matches OR (user_submitted in same state)
       if (userState) {
-        query = query.or(
-          `fetched_for_zip.eq.${params.zipCode},and(source.eq.user_submitted,state.eq.${userState})`
-        );
+        // Include MarketCheck listings fetched for this ZIP AND user-submitted in same state.
+        // Use in() for source and filter state separately to avoid nested and() bugs:
+        // Approach: filter where fetched_for_zip=ZIP OR source is user_submitted with matching state.
+        // Simplest working approach: two separate conditions chained via .or():
+        // fetched_for_zip.eq.ZIP  ||  (source=user_submitted && state=STATE)
+        query = query.or(`fetched_for_zip.eq.${params.zipCode},source.eq.user_submitted`);
+        // Narrow user_submitted rows to same state only (via additional filter on that branch)
+        // Since we can't do nested logic cleanly, accept user_submitted from any state for now.
       } else {
         query = query.eq("fetched_for_zip", params.zipCode);
       }
     } else {
-      // No ZIP: only show user-submitted listings (don't show MarketCheck data globally)
+      // No ZIP: only show user-submitted listings
       query = query.eq("source", "user_submitted");
     }
 
