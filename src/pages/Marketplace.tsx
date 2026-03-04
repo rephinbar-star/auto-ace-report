@@ -685,6 +685,7 @@ export default function Marketplace() {
     if (page !== prevPageRef.current) {
       prevPageRef.current = page;
       fetchListings(filters, page, searchQuery);
+      window.scrollTo({ top: 0, behavior: "instant" });
     }
   }, [page]); // eslint-disable-line react-hooks/exhaustive-deps
 
