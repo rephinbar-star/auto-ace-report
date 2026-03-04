@@ -85,7 +85,7 @@ export default function AnalyzePage() {
     setCondition(c);
     if (c.condition === "excellent" && c.isBrandNew) {
       // Brand New: skip history (assume 0 owners, no history report needed)
-      setHistory({ ownerCount: 0, titleStatus: "clean", hasServiceRecords: false, issues: [], positives: [] });
+      setHistory({ accidentCount: 0, ownerCount: 0, titleStatus: "clean", serviceRecords: false, issues: [], positives: [] });
       setCurrentStep(4);
     } else {
       setCurrentStep(3);
