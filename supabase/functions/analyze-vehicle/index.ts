@@ -279,7 +279,7 @@ ${vehicleSpecsBlock}
 
 CONDITION:
 - Mileage: ${condition.mileage.toLocaleString()} miles
-- Asking Price: $${condition.askingPrice.toLocaleString()}
+- Asking Price: $${condition.askingPrice.toLocaleString()}${financing.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice ? `\n- Negotiated Price: $${financing.negotiatedPrice.toLocaleString()} (USE THIS as the effective purchase price for deal rating and TCO calculations)` : ""}
 - Condition Rating: ${condition.condition}
 - Seller Type: ${condition.sellerType}
 
