@@ -423,6 +423,7 @@ Deno.serve(async (req) => {
         data: {
           listings: listings ?? [],
           total: totalResults,
+          dbCount: count ?? (listings?.length ?? 0), // actual rows in DB matching filters
           page,
           limit,
           cached: !!(isCacheFresh && !fetchedFromMarketCheck),
