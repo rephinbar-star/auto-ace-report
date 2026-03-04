@@ -1306,9 +1306,6 @@ export default function ReportPage() {
                               markers.push({ label: "Private Sale", value: priceAssessment.fairMarketPrivate });
                             }
                             markers.push({ label: "Asking Price", value: condition.askingPrice, isAsking: true });
-                            if (financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice) {
-                              markers.push({ label: "Negotiated Price", value: financing.negotiatedPrice });
-                            }
 
                             // Anchor gradient to actual values: trade-in = deep green (left), FMV = center green, overpriced = red (right)
                             const tradeInVal = priceAssessment.fairMarketTradeIn;
