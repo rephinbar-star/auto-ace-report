@@ -207,7 +207,8 @@ Deno.serve(async (req) => {
     const { data: listings, count, error } = await query;
 
     if (error) {
-      throw new Error(`DB query failed: ${error.message}`);
+      console.error("DB query error:", JSON.stringify(error));
+      throw new Error(`DB query failed: ${error.message ?? error.code ?? JSON.stringify(error)}`);
     }
 
     const totalResults =
