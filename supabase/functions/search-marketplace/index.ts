@@ -171,7 +171,7 @@ function buildCacheKey(p: SearchParams, radiusMiles: number): string {
   ].join(":");
 }
 
-function mapMarketCheckListing(item: Record<string, unknown>) {
+function mapMarketCheckListing(item: Record<string, unknown>, fetchedForZip?: string) {
   const build = (item.build as Record<string, unknown>) || {};
   const price = item.price ?? item.dp_price ?? null;
   const dealer = (item.dealer as Record<string, unknown>) || {};
@@ -202,6 +202,7 @@ function mapMarketCheckListing(item: Record<string, unknown>) {
     exterior_color: item.exterior_color ? String(item.exterior_color) : null,
     condition: "good",
     fetched_at: new Date().toISOString(),
+    fetched_for_zip: fetchedForZip ?? null,
   };
 }
 
