@@ -1382,7 +1382,7 @@ export default function ReportPage() {
                                            className="absolute -translate-x-1/2 -translate-y-1/2"
                                            style={{ left: `${askPct}%`, top: "50%" }}
                                          >
-                                           <div className="h-5 w-5 rounded-full border-[3px] border-primary bg-background shadow-md" />
+                                           <div className="h-5 w-5 rounded-full border-[3px] border-warning bg-background shadow-md" />
                                          </div>
                                        );
                                      })()}
