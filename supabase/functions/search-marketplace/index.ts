@@ -534,7 +534,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         data: {
-          listings: interleaved,
+          listings: pageSlice,
           total: totalResults,
           dbCount: totalResults,
           page,
