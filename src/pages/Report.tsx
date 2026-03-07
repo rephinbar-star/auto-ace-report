@@ -1325,7 +1325,7 @@ export default function ReportPage() {
                               <>
                                 {/* Desktop: horizontal gradient bar */}
                                 {/* Extra top padding when negotiated price is present so both rows of labels have room */}
-                                <div className={cn("relative pb-14 mt-2 overflow-hidden hidden md:block desktop-only", financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice ? "pt-24" : "pt-14")}>
+                                <div className={cn("relative pb-14 mt-2 overflow-hidden", financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice ? "pt-24" : "pt-14")}>
                                  {/* Asking price floating label — sits on the lower row (closer to the bar) */}
                                    {(() => {
                                      const askPct = toPct(condition.askingPrice);
@@ -1413,50 +1413,6 @@ export default function ReportPage() {
                                   </div>
                                 </div>
 
-                                {/* Mobile: vertical bar chart */}
-                                <div className="mt-4 space-y-2.5 md:hidden mobile-only">
-                                  {(() => {
-                                    const allMarkers = [...markers].sort((a, b) => a.value - b.value);
-                                    const maxVal = Math.max(...allMarkers.map(m => m.value));
-                                    const barColor = (m: typeof allMarkers[0]) => {
-                                      if (m.isAsking) return "bg-primary";
-                                      if (m.isFairMarket) return "bg-success";
-                                      return "bg-muted-foreground/30";
-                                    };
-                                    const shortLabel = (label: string) =>
-                                      label === "Fair Market Value" ? "Fair Market Value"
-                                      : label === "Private Sale" ? "Private Sale"
-                                      : label === "Dealer Retail" ? "Dealer Retail"
-                                      : label;
-                                    return allMarkers.map((m) => {
-                                      const widthPct = Math.max(8, (m.value / maxVal) * 100);
-                                      return (
-                                        <div key={m.label}>
-                                          <div className="flex items-center justify-between mb-0.5">
-                                            <span className={cn(
-                                              "text-xs font-medium",
-                                              m.isAsking ? "text-foreground" : m.isFairMarket ? "text-primary" : "text-muted-foreground"
-                                            )}>
-                                              {shortLabel(m.label)}
-                                            </span>
-                                            <span className={cn(
-                                              "text-xs font-semibold",
-                                              m.isAsking ? "text-foreground" : m.isFairMarket ? "text-primary" : "text-muted-foreground"
-                                            )}>
-                                              ${Math.round(m.value).toLocaleString()}
-                                            </span>
-                                          </div>
-                                          <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                                            <div
-                                              className={cn("h-full rounded-full transition-all", barColor(m))}
-                                              style={{ width: `${widthPct}%` }}
-                                            />
-                                          </div>
-                                        </div>
-                                      );
-                                    });
-                                  })()}
-                                </div>
                               </>
                             );
                           })()}
