@@ -471,9 +471,8 @@ Deno.serve(async (req) => {
       } else {
         countQuery = countQuery.eq("fetched_for_zip", params.zipCode);
       }
-    } else {
-      countQuery = countQuery.eq("source", "user_submitted");
     }
+    // No zip = no geo filter; count all active listings (matches RPC behavior)
 
     const { count } = await countQuery;
 
