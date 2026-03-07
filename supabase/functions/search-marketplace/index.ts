@@ -476,7 +476,12 @@ Deno.serve(async (req) => {
 
     const { count } = await countQuery;
 
-    // Use RPC for ORDER BY RANDOM() — true DB-level randomization
+    // Fetch a large pool from DB so we have enough diversity to interleave.
+    // We fetch up to 5× the requested limit to ensure we have rows from all dealers,
+    // then interleave by seller and slice to the requested page window.
+    const POOL_MULTIPLIER = 5;
+    const poolSize = limit * POOL_MULTIPLIER;
+
     const { data: listings, error: rpcError } = await adminClient.rpc(
       "get_marketplace_listings",
       {
@@ -490,8 +495,8 @@ Deno.serve(async (req) => {
         p_min_price: params.minPrice ?? null,
         p_max_mileage: params.maxMileage ?? null,
         p_body_style: params.bodyStyle ?? null,
-        p_limit: limit,
-        p_offset: offset,
+        p_limit: poolSize,
+        p_offset: 0, // always start from 0, we'll handle pagination after interleaving
       }
     );
 
@@ -502,9 +507,8 @@ Deno.serve(async (req) => {
 
     const totalResults = count ?? (listings?.length ?? 0);
 
-    // Interleave listings by seller so no dealer dominates a page.
-    // Group by seller_name (or id for private/unknown), then round-robin pick one
-    // from each group in turn — guarantees max 1 consecutive listing per dealer.
+    // Interleave the full pool by seller so no dealer dominates any page.
+    // Group by seller_name (or id for private/unknown), then round-robin.
     const rawListings = listings ?? [];
     const groups = new Map<string, typeof rawListings>();
     for (const l of rawListings) {
@@ -514,20 +518,23 @@ Deno.serve(async (req) => {
     }
     const buckets = Array.from(groups.values());
     const interleaved: typeof rawListings = [];
-    let maxLen = Math.max(...buckets.map(b => b.length), 0);
+    const maxLen = Math.max(...buckets.map(b => b.length), 0);
     for (let i = 0; i < maxLen; i++) {
       for (const bucket of buckets) {
         if (i < bucket.length) interleaved.push(bucket[i]);
       }
     }
 
-    console.log(`DB: ${totalResults} total, serving ${interleaved.length} listings (interleaved across ${buckets.size} sellers)`);
+    // Slice to the requested page window from the interleaved pool
+    const pageSlice = interleaved.slice(offset, offset + limit);
+
+    console.log(`DB pool: ${rawListings.length} rows from ${buckets.length} sellers → interleaved ${interleaved.length}, serving page ${page} (${pageSlice.length} items, offset ${offset})`);
 
     return new Response(
       JSON.stringify({
         success: true,
         data: {
-          listings: interleaved,
+          listings: pageSlice,
           total: totalResults,
           dbCount: totalResults,
           page,
