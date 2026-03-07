@@ -1008,29 +1008,6 @@ export default function ReportPage() {
             </div>
           </div>
 
-          {/* Negotiated Savings Banner */}
-          {(() => {
-            const negotiated = financing?.negotiatedPrice;
-            const asking = condition?.askingPrice;
-            if (!negotiated || !asking || negotiated >= asking) return null;
-            const saved = asking - negotiated;
-            const pct = ((saved / asking) * 100).toFixed(1);
-            return (
-              <div className="mb-4 flex items-center gap-3 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-green-500/20">
-                  <HandCoins className="h-4 w-4 text-green-600 dark:text-green-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-green-700 dark:text-green-400">
-                    You negotiated ${saved.toLocaleString()} off the asking price
-                  </p>
-                  <p className="text-xs text-green-600/80 dark:text-green-500/80">
-                    Paying ${negotiated.toLocaleString()} instead of ${asking.toLocaleString()} — a {pct}% discount. Deal rating and TCO reflect your negotiated price.
-                  </p>
-                </div>
-              </div>
-            );
-          })()}
 
           {/* Vehicle Info & Options Card */}
           <Card className="mb-8">
@@ -1181,6 +1158,30 @@ export default function ReportPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Negotiated Savings Banner */}
+          {(() => {
+            const negotiated = financing?.negotiatedPrice;
+            const asking = condition?.askingPrice;
+            if (!negotiated || !asking || negotiated >= asking) return null;
+            const saved = asking - negotiated;
+            const pct = ((saved / asking) * 100).toFixed(1);
+            return (
+              <div className="mb-4 flex items-center gap-3 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-green-500/20">
+                  <HandCoins className="h-4 w-4 text-green-600 dark:text-green-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-green-700 dark:text-green-400">
+                    You negotiated ${saved.toLocaleString()} off the asking price
+                  </p>
+                  <p className="text-xs text-green-600/80 dark:text-green-500/80">
+                    Paying ${negotiated.toLocaleString()} instead of ${asking.toLocaleString()} — a {pct}% discount. Deal rating and TCO reflect your negotiated price.
+                  </p>
+                </div>
+              </div>
+            );
+          })()}
 
           <div className="grid gap-8 lg:grid-cols-3 min-w-0">
             {/* Left Column - Main Content */}
