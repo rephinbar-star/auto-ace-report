@@ -671,25 +671,38 @@ export default function Marketplace() {
     }
   }, []);
 
-  // Debounced refetch when filters/search change (always resets to page 1)
-  useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      setPage(1);
-      fetchListings(filters, 1, searchQuery);
-    }, 300);
-    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [filters, searchQuery, fetchListings]);
+  // Single unified fetch effect: debounce filter/search changes (reset to p1),
+  // but page changes fire immediately.
+  const isFirstRender = useRef(true);
+  const prevFiltersRef = useRef(filters);
+  const prevSearchRef = useRef(searchQuery);
 
-  // Fetch + scroll to top when page changes
-  const prevPageRef = useRef(1);
   useEffect(() => {
-    if (page !== prevPageRef.current) {
-      prevPageRef.current = page;
+    const filtersChanged = prevFiltersRef.current !== filters || prevSearchRef.current !== searchQuery;
+    prevFiltersRef.current = filters;
+    prevSearchRef.current = searchQuery;
+
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      // Initial load
+      fetchListings(filters, page, searchQuery);
+      return;
+    }
+
+    if (filtersChanged) {
+      // Filters/search changed — debounce and reset to page 1
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        setPage(1);
+        fetchListings(filters, 1, searchQuery);
+      }, 300);
+      return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+    } else {
+      // Page changed — fetch immediately and scroll to top
       window.scrollTo({ top: 0, left: 0, behavior: "instant" });
       fetchListings(filters, page, searchQuery);
     }
-  }, [page, filters, searchQuery, fetchListings]);
+  }, [filters, searchQuery, page, fetchListings]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateFilters = (partial: Partial<SearchFilters>) => {
     setFilters(prev => ({ ...prev, ...partial }));
