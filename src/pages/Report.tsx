@@ -1325,7 +1325,7 @@ export default function ReportPage() {
                               <>
                                 {/* Desktop: horizontal gradient bar */}
                                 {/* Extra top padding when negotiated price is present so both rows of labels have room */}
-                                <div className={cn("relative pb-14 mt-2 overflow-hidden hidden md:block desktop-only", financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice ? "pt-24" : "pt-14")}>
+                                <div className={cn("relative pb-14 mt-2 overflow-hidden", financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice ? "pt-24" : "pt-14")}>
                                  {/* Asking price floating label — sits on the lower row (closer to the bar) */}
                                    {(() => {
                                      const askPct = toPct(condition.askingPrice);
