@@ -1323,17 +1323,21 @@ export default function ReportPage() {
                             return (
                               <>
                                 {/* Desktop: horizontal gradient bar */}
-                                <div className="relative pt-14 pb-14 mt-2 overflow-hidden hidden md:block desktop-only">
-                                 {/* Asking price floating label */}
+                                {/* Extra top padding when negotiated price is present so both rows of labels have room */}
+                                <div className={cn("relative pb-14 mt-2 overflow-hidden hidden md:block desktop-only", financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice ? "pt-24" : "pt-14")}>
+                                 {/* Asking price floating label — sits on the lower row (closer to the bar) */}
                                    {(() => {
                                      const askPct = toPct(condition.askingPrice);
+                                     const hasNegotiated = !!(financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice);
                                      const clampStyle = askPct > 80
                                        ? { left: `${askPct}%`, transform: "translateX(-80%)" }
                                        : askPct < 20
                                          ? { left: `${askPct}%`, transform: "translateX(-20%)" }
                                          : { left: `${askPct}%`, transform: "translateX(-50%)" };
+                                     // When negotiated is shown, push asking down to the lower row (top: ~2.5rem)
+                                     const topStyle = hasNegotiated ? { top: "2.6rem" } : { top: 0 };
                                      return (
-                                       <div className="absolute top-0" style={clampStyle}>
+                                       <div className="absolute" style={{ ...clampStyle, ...topStyle }}>
                                          <p className="text-[10px] text-muted-foreground text-center mb-0.5">Asking Price</p>
                                          <div className="rounded-lg border bg-card px-3 py-1.5 text-sm font-bold shadow-sm whitespace-nowrap">
                                            ${condition.askingPrice.toLocaleString()}
@@ -1343,7 +1347,7 @@ export default function ReportPage() {
                                      );
                                    })()}
 
-                                   {/* Negotiated price floating label (shown above bar when different from asking) */}
+                                   {/* Negotiated price floating label — sits on the upper row (top: 0) */}
                                    {financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice && (() => {
                                      const negPct = toPct(financing.negotiatedPrice);
                                      const clampStyle = negPct > 80
