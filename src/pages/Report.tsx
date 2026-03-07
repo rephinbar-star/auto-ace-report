@@ -1374,18 +1374,30 @@ export default function ReportPage() {
                                         background: `linear-gradient(to right, hsl(145 60% 36%) 0%, hsl(var(--success)) ${fmvPct * 0.5}%, hsl(var(--success)) ${fmvPct}%, hsl(var(--warning)) ${fmvPct + (100 - fmvPct) * 0.6}%, hsl(var(--danger)) 100%)`
                                       }} />
                                     </div>
-                                    {/* Dot indicator — always centered on the bar */}
-                                    {(() => {
-                                      const askPct = toPct(condition.askingPrice);
-                                      return (
-                                        <div
-                                          className="absolute -translate-x-1/2 -translate-y-1/2"
-                                          style={{ left: `${askPct}%`, top: "50%" }}
-                                        >
-                                          <div className="h-5 w-5 rounded-full border-[3px] border-primary bg-background shadow-md" />
-                                        </div>
-                                      );
-                                    })()}
+                                     {/* Asking price dot indicator */}
+                                     {(() => {
+                                       const askPct = toPct(condition.askingPrice);
+                                       return (
+                                         <div
+                                           className="absolute -translate-x-1/2 -translate-y-1/2"
+                                           style={{ left: `${askPct}%`, top: "50%" }}
+                                         >
+                                           <div className="h-5 w-5 rounded-full border-[3px] border-primary bg-background shadow-md" />
+                                         </div>
+                                       );
+                                     })()}
+                                     {/* Negotiated price dot indicator */}
+                                     {financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice && (() => {
+                                       const negPct = toPct(financing.negotiatedPrice);
+                                       return (
+                                         <div
+                                           className="absolute -translate-x-1/2 -translate-y-1/2"
+                                           style={{ left: `${negPct}%`, top: "50%" }}
+                                         >
+                                           <div className="h-5 w-5 rounded-full border-[3px] border-success bg-background shadow-md" />
+                                         </div>
+                                       );
+                                     })()}
                                   </div>
 
                                   {/* Desktop markers */}
