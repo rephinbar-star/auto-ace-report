@@ -673,18 +673,23 @@ export default function Marketplace() {
 
   // Single unified fetch effect: debounce filter/search changes (reset to p1),
   // but page changes fire immediately.
+  // Use serialized values so we compare by content, not object reference.
   const isFirstRender = useRef(true);
-  const prevFiltersRef = useRef(filters);
+  const prevFiltersKey = useRef(JSON.stringify(filters));
   const prevSearchRef = useRef(searchQuery);
+  const prevPageRef = useRef(page);
 
   useEffect(() => {
-    const filtersChanged = prevFiltersRef.current !== filters || prevSearchRef.current !== searchQuery;
-    prevFiltersRef.current = filters;
+    const filtersKey = JSON.stringify(filters);
+    const filtersChanged = prevFiltersKey.current !== filtersKey || prevSearchRef.current !== searchQuery;
+    const pageChanged = prevPageRef.current !== page;
+
+    prevFiltersKey.current = filtersKey;
     prevSearchRef.current = searchQuery;
+    prevPageRef.current = page;
 
     if (isFirstRender.current) {
       isFirstRender.current = false;
-      // Initial load
       fetchListings(filters, page, searchQuery);
       return;
     }
@@ -697,7 +702,7 @@ export default function Marketplace() {
         fetchListings(filters, 1, searchQuery);
       }, 300);
       return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-    } else {
+    } else if (pageChanged) {
       // Page changed — fetch immediately and scroll to top
       window.scrollTo({ top: 0, left: 0, behavior: "instant" });
       fetchListings(filters, page, searchQuery);
