@@ -563,7 +563,7 @@ export default function Marketplace() {
           const data = await res.json();
           const zip = data.address?.postcode?.slice(0, 5);
           if (zip && /^\d{5}$/.test(zip)) {
-            setFilters(prev => ({ ...prev, zipCode: zip, sortBy: "distance" }));
+            setFilters(prev => ({ ...prev, zipCode: zip }));
           }
         } catch {
           // silently ignore
