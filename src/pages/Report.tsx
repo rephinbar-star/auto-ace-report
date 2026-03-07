@@ -1348,7 +1348,7 @@ export default function ReportPage() {
                                      );
                                    })()}
 
-                                   {/* Negotiated price floating label — connector line stops at bar */}
+                                   {/* Negotiated price floating label — connector line runs from label down to bar */}
                                    {financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice && (() => {
                                      const negPct = toPct(financing.negotiatedPrice);
                                      const clampStyle = negPct > 80
@@ -1357,12 +1357,12 @@ export default function ReportPage() {
                                          ? { left: `${negPct}%`, transform: "translateX(-20%)" }
                                          : { left: `${negPct}%`, transform: "translateX(-50%)" };
                                      return (
-                                       <div className="absolute top-0 flex flex-col items-center" style={clampStyle}>
+                                       <div className="absolute top-0 flex flex-col items-center" style={{ ...clampStyle, bottom: "3.5rem" }}>
                                          <p className="text-[10px] text-success text-center mb-0.5 font-medium">Negotiated Price</p>
                                          <div className="rounded-lg border border-success/40 bg-success/10 px-3 py-1.5 text-sm font-bold shadow-sm whitespace-nowrap text-success">
                                            ${financing.negotiatedPrice.toLocaleString()}
                                          </div>
-                                         <div className="mt-1 w-px bg-success/50" style={{ height: "calc(6rem - 100% + 1px)" }} />
+                                         <div className="flex-1 mt-1 w-px bg-success/60" />
                                        </div>
                                      );
                                    })()}
