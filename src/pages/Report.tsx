@@ -1366,25 +1366,26 @@ export default function ReportPage() {
                                      );
                                    })()}
 
-                                  {/* Gradient bar */}
-                                  <div className="relative h-2.5 w-full rounded-full overflow-hidden">
-                                    <div className="absolute inset-0 rounded-full" style={{
-                                      background: `linear-gradient(to right, hsl(145 60% 36%) 0%, hsl(var(--success)) ${fmvPct * 0.5}%, hsl(var(--success)) ${fmvPct}%, hsl(var(--warning)) ${fmvPct + (100 - fmvPct) * 0.6}%, hsl(var(--danger)) 100%)`
-                                    }} />
+                                  {/* Gradient bar + dot — wrapped together so dot is always centered on the bar */}
+                                  <div className="relative h-2.5 w-full">
+                                    <div className="absolute inset-0 rounded-full overflow-hidden">
+                                      <div className="absolute inset-0 rounded-full" style={{
+                                        background: `linear-gradient(to right, hsl(145 60% 36%) 0%, hsl(var(--success)) ${fmvPct * 0.5}%, hsl(var(--success)) ${fmvPct}%, hsl(var(--warning)) ${fmvPct + (100 - fmvPct) * 0.6}%, hsl(var(--danger)) 100%)`
+                                      }} />
+                                    </div>
+                                    {/* Dot indicator — always centered on the bar */}
+                                    {(() => {
+                                      const askPct = toPct(condition.askingPrice);
+                                      return (
+                                        <div
+                                          className="absolute -translate-x-1/2 -translate-y-1/2"
+                                          style={{ left: `${askPct}%`, top: "50%" }}
+                                        >
+                                          <div className="h-5 w-5 rounded-full border-[3px] border-primary bg-background shadow-md" />
+                                        </div>
+                                      );
+                                    })()}
                                   </div>
-
-                                   {/* Dot indicator */}
-                                   {(() => {
-                                     const askPct = toPct(condition.askingPrice);
-                                    return (
-                                      <div
-                                        className="absolute -translate-x-1/2"
-                                        style={{ left: `${askPct}%`, top: "3.85rem" }}
-                                      >
-                                        <div className="h-5 w-5 rounded-full border-[3px] border-primary bg-background shadow-md" />
-                                      </div>
-                                    );
-                                  })()}
 
                                   {/* Desktop markers */}
                                   <div className="relative mt-5">
