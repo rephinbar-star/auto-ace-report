@@ -316,6 +316,7 @@ export type Database = {
           mpg_city: number | null
           mpg_combined: number | null
           mpg_highway: number | null
+          negotiated_price: number | null
           owner_count: number | null
           price_difference: number | null
           pricing_last_updated: string | null
@@ -384,6 +385,7 @@ export type Database = {
           mpg_city?: number | null
           mpg_combined?: number | null
           mpg_highway?: number | null
+          negotiated_price?: number | null
           owner_count?: number | null
           price_difference?: number | null
           pricing_last_updated?: string | null
@@ -452,6 +454,7 @@ export type Database = {
           mpg_city?: number | null
           mpg_combined?: number | null
           mpg_highway?: number | null
+          negotiated_price?: number | null
           owner_count?: number | null
           price_difference?: number | null
           pricing_last_updated?: string | null

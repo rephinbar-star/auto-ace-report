@@ -1,0 +1,1 @@
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS negotiated_price numeric NULL;
