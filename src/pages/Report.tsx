@@ -218,6 +218,7 @@ export default function ReportPage() {
         monthly_payment: financing.monthlyPayment || null,
         lease_term_months: financing.leaseTermMonths || null,
         residual_value: financing.residualValue || null,
+        negotiated_price: financing.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice ? financing.negotiatedPrice : null,
         accident_count: history?.accidentCount ?? null,
         owner_count: history?.ownerCount ?? null,
         title_status: history?.titleStatus || null,
@@ -331,6 +332,7 @@ export default function ReportPage() {
               monthlyPayment: report.monthly_payment,
               leaseTermMonths: report.lease_term_months,
               residualValue: report.residual_value,
+              negotiatedPrice: report.negotiated_price ?? undefined,
             },
             history: {
               accidentCount: report.accident_count ?? 0,
