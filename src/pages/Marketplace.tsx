@@ -671,43 +671,39 @@ export default function Marketplace() {
     }
   }, []);
 
-  // Single unified fetch effect: debounce filter/search changes (reset to p1),
-  // but page changes fire immediately.
-  // Use serialized values so we compare by content, not object reference.
-  const isFirstRender = useRef(true);
-  const prevFiltersKey = useRef(JSON.stringify(filters));
-  const prevSearchRef = useRef(searchQuery);
-  const prevPageRef = useRef(page);
+  // Stable ref to always-current fetch params — avoids stale closures
+  const fetchParamsRef = useRef({ filters, page, searchQuery });
+  fetchParamsRef.current = { filters, page, searchQuery };
+
+  // Track previous serialized filter+search key and page separately
+  const prevFiltersKey = useRef<string | null>(null);
+  const prevPage = useRef<number | null>(null);
 
   useEffect(() => {
-    const filtersKey = JSON.stringify(filters);
-    const filtersChanged = prevFiltersKey.current !== filtersKey || prevSearchRef.current !== searchQuery;
-    const pageChanged = prevPageRef.current !== page;
+    const filtersKey = JSON.stringify(filters) + "|" + searchQuery;
+    const filtersChanged = prevFiltersKey.current !== filtersKey;
+    const pageChanged = prevPage.current !== page;
 
+    const wasInitial = prevFiltersKey.current === null;
     prevFiltersKey.current = filtersKey;
-    prevSearchRef.current = searchQuery;
-    prevPageRef.current = page;
+    prevPage.current = page;
 
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      fetchListings(filters, page, searchQuery);
-      return;
-    }
-
-    if (filtersChanged) {
-      // Filters/search changed — debounce and reset to page 1
+    if (wasInitial || filtersChanged) {
+      // First load or filter/search change — debounce, reset to page 1
       if (debounceRef.current) clearTimeout(debounceRef.current);
       debounceRef.current = setTimeout(() => {
+        // Always reset page to 1 on filter change; fetch with current params
+        const { filters: f, searchQuery: q } = fetchParamsRef.current;
         setPage(1);
-        fetchListings(filters, 1, searchQuery);
-      }, 300);
-      return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+        prevPage.current = 1;
+        fetchListings(f, 1, q);
+      }, wasInitial ? 0 : 300);
     } else if (pageChanged) {
-      // Page changed — fetch immediately and scroll to top
+      // Only page changed — fetch immediately, scroll to top
       window.scrollTo({ top: 0, left: 0, behavior: "instant" });
       fetchListings(filters, page, searchQuery);
     }
-  }, [filters, searchQuery, page, fetchListings]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [filters, searchQuery, page]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const updateFilters = (partial: Partial<SearchFilters>) => {
     setFilters(prev => ({ ...prev, ...partial }));
