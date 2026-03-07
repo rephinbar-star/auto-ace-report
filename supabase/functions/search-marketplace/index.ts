@@ -501,13 +501,33 @@ Deno.serve(async (req) => {
     }
 
     const totalResults = count ?? (listings?.length ?? 0);
-    console.log(`DB: ${totalResults} total, serving ${listings?.length ?? 0} listings via ORDER BY RANDOM()`);
+
+    // Interleave listings by seller so no dealer dominates a page.
+    // Group by seller_name (or id for private/unknown), then round-robin pick one
+    // from each group in turn — guarantees max 1 consecutive listing per dealer.
+    const rawListings = listings ?? [];
+    const groups = new Map<string, typeof rawListings>();
+    for (const l of rawListings) {
+      const key = (l.seller_name as string | null) ?? (l.id as string);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(l);
+    }
+    const buckets = Array.from(groups.values());
+    const interleaved: typeof rawListings = [];
+    let maxLen = Math.max(...buckets.map(b => b.length), 0);
+    for (let i = 0; i < maxLen; i++) {
+      for (const bucket of buckets) {
+        if (i < bucket.length) interleaved.push(bucket[i]);
+      }
+    }
+
+    console.log(`DB: ${totalResults} total, serving ${interleaved.length} listings (interleaved across ${buckets.size} sellers)`);
 
     return new Response(
       JSON.stringify({
         success: true,
         data: {
-          listings: listings ?? [],
+          listings: interleaved,
           total: totalResults,
           dbCount: totalResults,
           page,
