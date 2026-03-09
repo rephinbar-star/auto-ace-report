@@ -176,6 +176,12 @@ export default function ReportPage() {
   const [isRefreshingPricing, setIsRefreshingPricing] = useState(false);
   const [uvprsResult, setUvprsResult] = useState<UVPRSResult | null>(null);
   const [isUploadingHistory, setIsUploadingHistory] = useState(false);
+  const [recallData, setRecallData] = useState<{
+    count: number;
+    openCount: number;
+    recalls: RecallItem[];
+    isLoading: boolean;
+  } | null>(null);
   
   // Check if coming from comparison
   const fromComparison = searchParams.get("from") === "compare";
