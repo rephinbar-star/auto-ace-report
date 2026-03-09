@@ -150,9 +150,16 @@ export async function getModels(make: string, year: number): Promise<string[]> {
 }
 
 // Look up open recalls by year/make/model via NHTSA Recalls API
+export interface RecallItem {
+  component: string;
+  summary: string;
+  campaignNumber?: string;
+  remedyDescription?: string;
+}
+
 export interface RecallResult {
   count: number;
-  recalls: { component: string; summary: string }[];
+  recalls: RecallItem[];
 }
 
 export async function lookupRecalls(year: number, make: string, model: string): Promise<RecallResult> {
@@ -171,6 +178,8 @@ export async function lookupRecalls(year: number, make: string, model: string): 
       recalls: results.map((r: any) => ({
         component: r.Component || "",
         summary: r.Summary || "",
+        campaignNumber: r.NHTSACampaignNumber || undefined,
+        remedyDescription: r.Remedy || undefined,
       })),
     };
   } catch (error) {
