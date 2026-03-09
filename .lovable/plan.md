@@ -1,55 +1,43 @@
 
-## Plan: Prominent NHTSA Recall Banner on Report Page
+## Auto-populate Sales Tax from ZIP Code
 
-### What's currently happening
-- `lookupRecalls()` in `src/lib/nhtsa.ts` fetches recalls by **year/make/model** (not VIN-specific) from NHTSA's free public API
-- The recall data is already fetched inside `computeUVPRS()` (lines 550–564) but is **only fed into the UVPRS risk score** — it is never displayed directly to the user
-- The NHTSA API returns each recall as `{ component: string, summary: string }` but currently those individual recall details are discarded (only the count is kept)
+### What the user wants
+When a ZIP code has been entered in Step 2 (Condition), the Sales Tax Calculator in Step 4 (Financing) should automatically pre-select the correct state and set the tax rate — no manual state selection needed.
 
-### What needs changing
+### How it works today
+- `ConditionStep` collects `zipCode` (stored in `VehicleCondition`)
+- `FinancingStep` receives only `askingPrice` as a prop
+- The Sales Tax Calculator has State + County dropdowns the user must manually choose
 
-**1. Upgrade `RecallResult` type in `src/lib/nhtsa.ts`**
-Add a `NHTSACampaignNumber` and `RemedyDescription` to the recalled items so users can look up official campaign numbers.
+### The plan
 
-**2. Add recall state to `Report.tsx`**
-- Add `recallData` state: `{ count: number; open: number; resolved: number; recalls: { component: string; summary: string }[] } | null`
-- In `computeUVPRS()`, save the full recall list (not just counts) to this state alongside the UVPRS computation
+**1. Add a ZIP → State lookup utility in `src/lib/sales-tax-data.ts`**
 
-**3. Add a dedicated NHTSA Recall Card in the sidebar (right column)**
-Place it after the Vehicle Health card and before Service History Timeline. The card will:
+Add a `getStateFromZip(zip: string): string | null` function. ZIP code prefixes reliably map to states — e.g. ZIPs starting with `900`–`961` are California, `100`–`119` are New York, etc. We'll add a compact prefix-range lookup table covering all 50 states + DC.
 
-- **If `recallData` is null** (no VIN or NHTSA unavailable): show nothing / skeleton
-- **If `open > 0`**: render a red/destructive alert banner at the top — "⚠ X Open Recalls Found" with a prominent red border, then expand each recall in a collapsible list
-- **If `open === 0` but `count > 0`**: show a green "All X Recalls Resolved" confirmation
-- **If `count === 0`**: show a green "No Recalls on Record" badge
+**2. Update `FinancingStep` props**
 
-Each recall item shows:
-- Component name (bolded)
-- Summary text (truncated, expandable)
-- Link to `https://www.nhtsa.gov/vehicle/${vin}/complaints` if VIN is available, otherwise to the NHTSA search page
+Add an optional `zipCode?: string` prop to `FinancingStepProps`.
 
-**4. Note on VIN vs Year/Make/Model**
-NHTSA's free **recallsByVehicle** endpoint only supports year/make/model filtering — not VIN-level lookup. However, NHTSA does have a separate VIN-specific complaints endpoint. We'll use year/make/model for recalls (what's already implemented), but add a "Check VIN-specific complaints" link using the VIN if available.
+**3. Auto-select state on mount / when ZIP changes**
 
-### Card placement in sidebar
-```text
-Right column (sidebar):
-  ├── VehicleImageGallery
-  ├── RiskScoreBreakdown (UVPRS)
-  ├── *** NEW: NHTSA Recall Card ***  ← inserted here
-  ├── Vehicle Health
-  ├── ServiceHistoryTimeline
-  ├── Risk Factors
-  ├── DealerReview
-  └── Warranty Analysis
-```
+Add a `useEffect` in `FinancingStep` that:
+- Runs when `zipCode` prop is received
+- Calls `getStateFromZip(zipCode)` to determine the state abbreviation
+- Sets `selectedState` to that abbreviation (which already triggers the existing `useEffect` that populates the tax rate)
+- Shows a subtle "Auto-filled from ZIP XXXXX" hint below the State selector so the user knows it was set automatically
+
+**4. Pass `zipCode` from `Analyze.tsx`**
+
+In `src/pages/Analyze.tsx`, pass `condition?.zipCode` to `<FinancingStep>`.
 
 ### Files to change
-1. **`src/pages/Report.tsx`** — add `recallData` state, populate it in `computeUVPRS`, add the recall card JSX in the sidebar
-2. **`src/lib/nhtsa.ts`** — optionally extend `RecallResult` to include `remedyDescription` field
+- `src/lib/sales-tax-data.ts` — add `getStateFromZip()` helper
+- `src/components/analysis/FinancingStep.tsx` — accept `zipCode` prop, auto-select state
+- `src/pages/Analyze.tsx` — pass `zipCode={condition?.zipCode}` to `FinancingStep`
 
-### Visual design
-- **Open recalls**: `border-danger bg-danger/5` card, `ShieldAlert` icon in red, each recall in a collapsible `Accordion`
-- **All resolved**: `border-success bg-success/5` card, `ShieldCheck` icon in green  
-- **No recalls**: `border-success bg-success/5` card with a simple green badge
-- Loading state: `Loader2` spinner while NHTSA data is being fetched
+### Technical notes
+- The ZIP prefix table will cover 3-digit prefix ranges (e.g., `"060"-"069" → CT`). This is a well-established mapping used by USPS.
+- The existing `useEffect` for `selectedState` already handles setting the tax rate when state changes — so no duplication needed.
+- The auto-fill is non-destructive: if the user already manually chose a state, the ZIP effect won't override it (we'll only apply it when `selectedState` is still empty on mount).
+- County will remain unselected (defaulting to state average rate) since ZIP alone can't reliably determine county.

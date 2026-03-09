@@ -55,6 +55,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import type { RecallItem } from "@/lib/nhtsa";
 import { getWithExpiry, removeExpirableItem } from "@/lib/storage-utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -174,6 +176,12 @@ export default function ReportPage() {
   const [isRefreshingPricing, setIsRefreshingPricing] = useState(false);
   const [uvprsResult, setUvprsResult] = useState<UVPRSResult | null>(null);
   const [isUploadingHistory, setIsUploadingHistory] = useState(false);
+  const [recallData, setRecallData] = useState<{
+    count: number;
+    openCount: number;
+    recalls: RecallItem[];
+    isLoading: boolean;
+  } | null>(null);
   
   // Check if coming from comparison
   const fromComparison = searchParams.get("from") === "compare";
@@ -552,15 +560,29 @@ export default function ReportPage() {
       let openRecallCount: number | null = null;
       let nhtsaTotalRecalls: number | null = null;
       let resolvedRecallCount: number | null = history?.resolvedRecallCount ?? null;
+      let recallItems: RecallItem[] = [];
+      
+      // Set loading state
+      setRecallData({ count: 0, openCount: 0, recalls: [], isLoading: true });
+      
       try {
         const recallResult = await lookupRecalls(vehicle.year, vehicle.make, vehicle.model);
         nhtsaTotalRecalls = recallResult.count;
+        recallItems = recallResult.recalls;
         const resolved = resolvedRecallCount ?? 0;
         // Open = NHTSA total minus CarFax-confirmed resolved (floor at 0)
         openRecallCount = Math.max(0, nhtsaTotalRecalls - resolved);
+        
+        setRecallData({
+          count: nhtsaTotalRecalls,
+          openCount: openRecallCount,
+          recalls: recallItems,
+          isLoading: false,
+        });
       } catch {
         // If NHTSA fails, fall back to CarFax-only data
         openRecallCount = history?.openRecallCount ?? null;
+        setRecallData({ count: 0, openCount: 0, recalls: [], isLoading: false });
       }
 
       const result = calculateUVPRS({
@@ -1932,6 +1954,116 @@ export default function ReportPage() {
                     }
                   }}
                 />
+              )}
+
+              {/* NHTSA Recall Card */}
+              {recallData && !recallData.isLoading && (
+                <Card className={cn(
+                  "border-2",
+                  recallData.openCount > 0
+                    ? "border-danger bg-danger/5"
+                    : "border-success bg-success/5"
+                )}>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      {recallData.openCount > 0 ? (
+                        <ShieldAlert className="h-5 w-5 text-danger" />
+                      ) : (
+                        <ShieldCheck className="h-5 w-5 text-success" />
+                      )}
+                      Safety Recalls
+                      <Badge
+                        className={cn(
+                          "ml-auto text-xs",
+                          recallData.openCount > 0
+                            ? "bg-danger text-danger-foreground"
+                            : "bg-success text-success-foreground"
+                        )}
+                      >
+                        {recallData.openCount > 0
+                          ? `${recallData.openCount} Open`
+                          : recallData.count > 0
+                          ? "All Resolved"
+                          : "None on Record"}
+                      </Badge>
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground">
+                      Via NHTSA · {vehicle.year} {vehicle.make} {vehicle.model}
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-3 pt-0">
+                    {recallData.openCount > 0 && (
+                      <div className="flex items-start gap-2 rounded-md border border-danger/30 bg-danger/10 px-3 py-2">
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-danger" />
+                        <p className="text-xs text-danger font-medium">
+                          {recallData.openCount} open {recallData.openCount === 1 ? "recall" : "recalls"} found for this vehicle. Ensure they have been resolved before purchasing.
+                        </p>
+                      </div>
+                    )}
+                    {recallData.count === 0 && (
+                      <div className="flex items-center gap-2 rounded-md border border-success/30 bg-success/10 px-3 py-2">
+                        <CheckCircle className="h-4 w-4 shrink-0 text-success" />
+                        <p className="text-xs text-success font-medium">No recalls on record for this year/make/model.</p>
+                      </div>
+                    )}
+                    {recallData.recalls.length > 0 && (
+                      <Accordion type="multiple" className="w-full">
+                        {recallData.recalls.map((recall, i) => (
+                          <AccordionItem key={i} value={`recall-${i}`} className="border-b border-border/50 last:border-0">
+                            <AccordionTrigger className="py-2 text-left hover:no-underline">
+                              <span className="text-xs font-semibold leading-snug pr-2">{recall.component || `Recall #${i + 1}`}</span>
+                            </AccordionTrigger>
+                            <AccordionContent className="pb-3 space-y-2">
+                              {recall.campaignNumber && (
+                                <p className="text-xs text-muted-foreground">
+                                  <span className="font-medium">Campaign:</span> {recall.campaignNumber}
+                                </p>
+                              )}
+                              <p className="text-xs text-muted-foreground leading-relaxed">{recall.summary}</p>
+                              {recall.remedyDescription && (
+                                <div className="rounded-md bg-muted px-3 py-2">
+                                  <p className="text-xs font-medium mb-0.5">Remedy</p>
+                                  <p className="text-xs text-muted-foreground">{recall.remedyDescription}</p>
+                                </div>
+                              )}
+                            </AccordionContent>
+                          </AccordionItem>
+                        ))}
+                      </Accordion>
+                    )}
+                    <div className="flex flex-wrap gap-2 pt-1">
+                      {vehicle.vin ? (
+                        <a
+                          href={`https://www.nhtsa.gov/vehicle/${vehicle.vin}/complaints`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          VIN Complaints on NHTSA
+                        </a>
+                      ) : (
+                        <a
+                          href={`https://www.nhtsa.gov/vehicle-safety/recalls#recall--${encodeURIComponent(vehicle.make)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          Search Recalls on NHTSA
+                        </a>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+              {recallData?.isLoading && (
+                <Card>
+                  <CardContent className="flex items-center gap-3 p-4">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">Checking NHTSA recall database...</p>
+                  </CardContent>
+                </Card>
               )}
 
               {/* Vehicle Health Score */}
