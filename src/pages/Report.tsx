@@ -560,15 +560,29 @@ export default function ReportPage() {
       let openRecallCount: number | null = null;
       let nhtsaTotalRecalls: number | null = null;
       let resolvedRecallCount: number | null = history?.resolvedRecallCount ?? null;
+      let recallItems: RecallItem[] = [];
+      
+      // Set loading state
+      setRecallData({ count: 0, openCount: 0, recalls: [], isLoading: true });
+      
       try {
         const recallResult = await lookupRecalls(vehicle.year, vehicle.make, vehicle.model);
         nhtsaTotalRecalls = recallResult.count;
+        recallItems = recallResult.recalls;
         const resolved = resolvedRecallCount ?? 0;
         // Open = NHTSA total minus CarFax-confirmed resolved (floor at 0)
         openRecallCount = Math.max(0, nhtsaTotalRecalls - resolved);
+        
+        setRecallData({
+          count: nhtsaTotalRecalls,
+          openCount: openRecallCount,
+          recalls: recallItems,
+          isLoading: false,
+        });
       } catch {
         // If NHTSA fails, fall back to CarFax-only data
         openRecallCount = history?.openRecallCount ?? null;
+        setRecallData({ count: 0, openCount: 0, recalls: [], isLoading: false });
       }
 
       const result = calculateUVPRS({
