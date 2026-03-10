@@ -182,7 +182,7 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   const contentW = W - 2 * M;
   let y = 0;
 
-  const { vehicle, priceAssessment, riskAssessment, historyAnalysis, depreciationTable, images, dealerReview, serviceHistory, uvprsResult, tcoData, sellerType, pricingSources, hasServiceRecords, warrantyAnalysis, finalVerdict } = data;
+  const { vehicle, priceAssessment, riskAssessment, historyAnalysis, depreciationTable, images, dealerReview, serviceHistory, uvprsResult, tcoData, sellerType, pricingSources, hasServiceRecords, warrantyAnalysis, finalVerdict, recallData, vin } = data;
 
   // Helper to deduplicate sources by domain
   const getDeduplicatedSources = (sources: string[]): { displayName: string; url: string }[] => {
