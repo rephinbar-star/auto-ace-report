@@ -832,6 +832,12 @@ export default function ReportPage() {
         hasServiceRecords: vehicleData?.history?.serviceRecords ?? false,
         warrantyAnalysis: analysis.warrantyAnalysis,
         finalVerdict: analysis.finalVerdict,
+        recallData: recallData && !recallData.isLoading ? {
+          count: recallData.count,
+          openCount: recallData.openCount,
+          recalls: recallData.recalls,
+        } : undefined,
+        vin: vehicle.vin || undefined,
       });
       sonnerToast.success("PDF downloaded successfully!");
     } catch (error) {

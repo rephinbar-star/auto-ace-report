@@ -281,6 +281,7 @@ export default function SampleReportPage() {
           );
           return { tco, annualMiles };
         })(),
+        recallData: { count: 0, openCount: 0, recalls: [] },
       });
       toast.success("PDF downloaded successfully!");
     } catch (error) {
