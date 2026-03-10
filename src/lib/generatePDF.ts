@@ -80,6 +80,19 @@ interface FinalVerdict {
   justification: string;
 }
 
+interface RecallItemData {
+  component: string;
+  summary: string;
+  campaignNumber?: string;
+  remedyDescription?: string;
+}
+
+interface RecallData {
+  count: number;
+  openCount: number;
+  recalls: RecallItemData[];
+}
+
 interface ReportData {
   vehicle: VehicleData;
   priceAssessment: PriceAssessment;
@@ -96,6 +109,8 @@ interface ReportData {
   hasServiceRecords?: boolean;
   warrantyAnalysis?: WarrantyAnalysis;
   finalVerdict?: FinalVerdict;
+  recallData?: RecallData;
+  vin?: string;
 }
 
 // ── Color palette matching the website (teal primary) ──
@@ -167,7 +182,7 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   const contentW = W - 2 * M;
   let y = 0;
 
-  const { vehicle, priceAssessment, riskAssessment, historyAnalysis, depreciationTable, images, dealerReview, serviceHistory, uvprsResult, tcoData, sellerType, pricingSources, hasServiceRecords, warrantyAnalysis, finalVerdict } = data;
+  const { vehicle, priceAssessment, riskAssessment, historyAnalysis, depreciationTable, images, dealerReview, serviceHistory, uvprsResult, tcoData, sellerType, pricingSources, hasServiceRecords, warrantyAnalysis, finalVerdict, recallData, vin } = data;
 
   // Helper to deduplicate sources by domain
   const getDeduplicatedSources = (sources: string[]): { displayName: string; url: string }[] => {
@@ -1095,9 +1110,99 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   }
 
   // ══════════════════════════════════════════════
-  // FINAL VERDICT & RECOMMENDATION
+  // NHTSA SAFETY RECALLS
   // ══════════════════════════════════════════════
-  ensureSpace(42);
+  if (recallData) {
+    sectionTitle("NHTSA Safety Recalls");
+
+    const hasOpenRecalls = recallData.openCount > 0;
+    const recallStatusColor: [number, number, number] = hasOpenRecalls ? RED : GREEN;
+
+    // Status banner
+    ensureSpace(12);
+    pdf.setFillColor(...(hasOpenRecalls ? [255, 240, 240] as [number, number, number] : [240, 255, 245] as [number, number, number]));
+    pdf.roundedRect(M, y, contentW, 10, 2, 2, "F");
+    pdf.setDrawColor(...recallStatusColor);
+    pdf.setLineWidth(0.5);
+    pdf.roundedRect(M, y, contentW, 10, 2, 2, "S");
+    pdf.setFontSize(9);
+    pdf.setFont("helvetica", "bold");
+    pdf.setTextColor(...recallStatusColor);
+    const recallStatusText = hasOpenRecalls
+      ? `⚠  ${recallData.openCount} Open ${recallData.openCount === 1 ? "Recall" : "Recalls"} Found`
+      : recallData.count > 0
+      ? `✓  All ${recallData.count} Recall${recallData.count !== 1 ? "s" : ""} Resolved`
+      : "✓  No Recalls on Record";
+    pdf.text(recallStatusText, M + 4, y + 7);
+    pdf.setFont("helvetica", "normal");
+    y += 14;
+
+    if (hasOpenRecalls) {
+      ensureSpace(8);
+      pdf.setFontSize(8);
+      pdf.setTextColor(...SLATE);
+      pdf.text("Ensure all open recalls have been resolved before purchasing.", M, y);
+      y += 6;
+    }
+
+    // Individual recalls
+    recallData.recalls.forEach((recall, idx) => {
+      ensureSpace(20);
+      // Alternating row bg
+      if (idx % 2 === 0) {
+        pdf.setFillColor(...BG_MUTED);
+        pdf.roundedRect(M, y - 1, contentW, 14, 1, 1, "F");
+      }
+      pdf.setFontSize(8);
+      pdf.setFont("helvetica", "bold");
+      pdf.setTextColor(...BLACK);
+      const component = recall.component || `Recall #${idx + 1}`;
+      pdf.text(component, M + 3, y + 5);
+
+      if (recall.campaignNumber) {
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(7);
+        pdf.setTextColor(...SLATE);
+        pdf.text(`Campaign: ${recall.campaignNumber}`, M + contentW - 65, y + 5);
+      }
+      y += 7;
+
+      // Summary
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(7.5);
+      pdf.setTextColor(...SLATE);
+      const summaryLines = pdf.splitTextToSize(recall.summary || "", contentW - 6);
+      ensureSpace(summaryLines.length * 3.5 + 2);
+      pdf.text(summaryLines, M + 3, y);
+      y += summaryLines.length * 3.5 + 3;
+
+      // Remedy
+      if (recall.remedyDescription) {
+        ensureSpace(10);
+        pdf.setFillColor(245, 248, 250);
+        const remLines = pdf.splitTextToSize(`Remedy: ${recall.remedyDescription}`, contentW - 10);
+        pdf.roundedRect(M + 3, y - 1, contentW - 3, remLines.length * 3.5 + 5, 1, 1, "F");
+        pdf.setFontSize(7);
+        pdf.setTextColor(...SLATE);
+        pdf.text(remLines, M + 6, y + 3);
+        y += remLines.length * 3.5 + 6;
+      }
+      y += 2;
+    });
+
+    // NHTSA link note
+    const nhtsaUrl = vin
+      ? `nhtsa.gov/vehicle/${vin}/complaints`
+      : "nhtsa.gov/vehicle-safety/recalls";
+    pdf.setFontSize(7);
+    pdf.setTextColor(...SLATE);
+    pdf.setFont("helvetica", "normal");
+    pdf.text(`Source: ${nhtsaUrl}`, M, y);
+    y += 6;
+  }
+
+  // ══════════════════════════════════════════════
+  // FINAL VERDICT & RECOMMENDATION
   y += 5;
 
   if (finalVerdict) {
