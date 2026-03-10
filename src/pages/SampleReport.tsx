@@ -934,6 +934,41 @@ export default function SampleReportPage() {
                 <RiskScoreBreakdown result={sampleUVPRS} />
               </motion.div>
 
+              {/* NHTSA Safety Recalls */}
+              <motion.div variants={itemVariants} whileHover={{ y: -5 }} transition={{ duration: 0.2 }}>
+                <Card className="border-2 border-success bg-success/5">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <ShieldCheck className="h-5 w-5 text-success" />
+                      Safety Recalls
+                      <Badge className="ml-auto text-xs bg-success text-success-foreground">
+                        None on Record
+                      </Badge>
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground">
+                      Via NHTSA · {sampleVehicle.year} {sampleVehicle.make} {sampleVehicle.model}
+                    </p>
+                  </CardHeader>
+                  <CardContent className="space-y-3 pt-0">
+                    <div className="flex items-center gap-2 rounded-md border border-success/30 bg-success/10 px-3 py-2">
+                      <CheckCircle className="h-4 w-4 shrink-0 text-success" />
+                      <p className="text-xs text-success font-medium">No recalls on record for this year/make/model.</p>
+                    </div>
+                    <div className="pt-1">
+                      <a
+                        href={`https://www.nhtsa.gov/vehicle-safety/recalls#recall--Toyota`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        Search Recalls on NHTSA
+                      </a>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
               {/* Service History Timeline */}
               <motion.div variants={itemVariants} whileHover={{ y: -5 }} transition={{ duration: 0.2 }}>
                 <ServiceHistoryTimeline

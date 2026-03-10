@@ -80,6 +80,19 @@ interface FinalVerdict {
   justification: string;
 }
 
+interface RecallItemData {
+  component: string;
+  summary: string;
+  campaignNumber?: string;
+  remedyDescription?: string;
+}
+
+interface RecallData {
+  count: number;
+  openCount: number;
+  recalls: RecallItemData[];
+}
+
 interface ReportData {
   vehicle: VehicleData;
   priceAssessment: PriceAssessment;
@@ -96,6 +109,8 @@ interface ReportData {
   hasServiceRecords?: boolean;
   warrantyAnalysis?: WarrantyAnalysis;
   finalVerdict?: FinalVerdict;
+  recallData?: RecallData;
+  vin?: string;
 }
 
 // ── Color palette matching the website (teal primary) ──
