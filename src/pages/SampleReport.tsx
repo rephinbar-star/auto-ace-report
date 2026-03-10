@@ -51,6 +51,7 @@ import {
   ThumbsUp,
   ThumbsDown,
   HandCoins,
+  ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SEO } from "@/components/seo/SEO";
