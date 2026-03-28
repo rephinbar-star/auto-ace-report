@@ -318,7 +318,7 @@ export default function SampleReportPage() {
                   <Sparkles className="h-5 w-5 text-primary" />
                 </motion.div>
                 <div>
-                  <p className="font-medium">Sample Comparison Report</p>
+                  <p className="font-medium">This is a sample report</p>
                   <p className="text-sm text-muted-foreground">
                     See what insights you'll get when you analyze a vehicle
                   </p>
