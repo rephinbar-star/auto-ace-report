@@ -338,11 +338,11 @@ export default function SampleReportPage() {
           {/* Report Type Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
             <TabsList className="grid w-full grid-cols-2 max-w-md">
-              <TabsTrigger value="vehicle" className="gap-2">
+              <TabsTrigger value="vehicle" className="gap-2 font-bold text-primary data-[state=active]:text-primary">
                 <Car className="h-4 w-4" />
                 Vehicle Report
               </TabsTrigger>
-              <TabsTrigger value="comparison" className="gap-2">
+              <TabsTrigger value="comparison" className="gap-2 font-bold text-primary data-[state=active]:text-primary">
                 <Scale className="h-4 w-4" />
                 Comparison Report
               </TabsTrigger>
