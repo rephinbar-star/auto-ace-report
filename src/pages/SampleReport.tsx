@@ -302,38 +302,6 @@ export default function SampleReportPage() {
       
       <main className="flex-1 bg-gradient-to-b from-primary/5 to-background py-8">
         <div className="container mx-auto max-w-6xl px-4 overflow-x-hidden">
-          {/* Sample Banner */}
-          <motion.div 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="mb-6 rounded-lg border border-primary/20 bg-primary/5 p-4"
-          >
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <motion.div
-                  animate={{ rotate: [0, 15, -15, 0] }}
-                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-                >
-                  <Sparkles className="h-5 w-5 text-primary" />
-                </motion.div>
-                <div>
-                  <p className="font-medium">This is a sample report</p>
-                  <p className="text-sm text-muted-foreground">
-                    See what insights you'll get when you analyze a vehicle
-                  </p>
-                </div>
-              </div>
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Button asChild>
-                  <Link to="/analyze">
-                    Analyze Your Vehicle
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-              </motion.div>
-            </div>
-          </motion.div>
 
           {/* Report Type Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
