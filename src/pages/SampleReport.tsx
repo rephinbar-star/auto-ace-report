@@ -188,7 +188,7 @@ export default function SampleReportPage() {
   const { priceAssessment, depreciationTable, riskAssessment, historyAnalysis, dealerReview } = sampleAnalysis;
   const [includeRepairs, setIncludeRepairs] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [activeTab, setActiveTab] = useState("vehicle");
+  const [activeTab, setActiveTab] = useState("comparison");
 
   // Sample granular service data
   const sampleServiceHistory = {
@@ -295,8 +295,8 @@ export default function SampleReportPage() {
   return (
     <div className="flex min-h-screen flex-col overflow-x-hidden">
       <SEO
-        title="Sample Report - CarWise"
-        description="See an example of what a CarWise vehicle analysis report looks like."
+        title="Sample Comparison Report - CarWise"
+        description="See an example of how CarWise compares multiple vehicles side-by-side to find the best deal."
       />
       <Header />
       
@@ -318,7 +318,7 @@ export default function SampleReportPage() {
                   <Sparkles className="h-5 w-5 text-primary" />
                 </motion.div>
                 <div>
-                  <p className="font-medium">This is a sample report</p>
+                  <p className="font-medium">Sample Comparison Report</p>
                   <p className="text-sm text-muted-foreground">
                     See what insights you'll get when you analyze a vehicle
                   </p>
