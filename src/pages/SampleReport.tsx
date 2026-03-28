@@ -302,19 +302,10 @@ export default function SampleReportPage() {
       
       <main className="flex-1 bg-gradient-to-b from-primary/5 to-background py-8">
         <div className="container mx-auto max-w-6xl px-4 overflow-x-hidden">
-          {/* CTA Button */}
-          <div className="mb-6 flex justify-end">
-            <Button asChild>
-              <Link to="/analyze">
-                Analyze Your Vehicle
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-
-          {/* Report Type Tabs */}
+          {/* Tabs + CTA on same row */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
-            <TabsList className="grid w-full grid-cols-2 max-w-lg h-14 shadow-md">
+            <div className="flex items-center justify-between gap-4">
+            <TabsList className="grid grid-cols-2 max-w-lg h-14 shadow-md">
               <TabsTrigger value="vehicle" className="gap-2 text-base font-bold text-blue-600 data-[state=active]:text-blue-700 transition-transform duration-200 hover:scale-105 shadow-sm rounded-md">
                 <Car className="h-5 w-5" />
                 Vehicle Report
@@ -324,6 +315,13 @@ export default function SampleReportPage() {
                 Comparison Report
               </TabsTrigger>
             </TabsList>
+              <Button asChild>
+                <Link to="/analyze">
+                  Analyze Your Vehicle
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
 
             {/* Vehicle Report Tab */}
             <TabsContent value="vehicle" className="mt-6">
