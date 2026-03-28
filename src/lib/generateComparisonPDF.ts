@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import type { Tables } from "@/integrations/supabase/types";
+import { lookupRecalls } from "@/lib/nhtsa";
 import { calculateTCO, calculateMonthlyOwnershipCost } from "@/lib/tco-calculations";
 import { scoreAndRankVehicles, getYearFiveEquity } from "@/components/compare/scoring-utils";
 import { calculateUVPRS, type UVPRSResult } from "@/lib/uvprs-scoring";
@@ -624,6 +625,98 @@ export async function generateComparisonPDF(data: ComparisonPDFData): Promise<vo
       yPosition += 3;
     });
   }
+
+  // ══════════════════════════════════════════════
+  // NHTSA SAFETY RECALLS PER VEHICLE
+  // ══════════════════════════════════════════════
+  addSection("NHTSA Safety Recalls");
+
+  for (const v of vehicles) {
+    if (yPosition > pageHeight - margin - 30) {
+      pdf.addPage();
+      yPosition = margin;
+    }
+
+    addText(`${v.year} ${v.make} ${v.model}`, 11, true);
+
+    try {
+      const recallResult = await lookupRecalls(v.year, v.make, v.model);
+      const recallCount = recallResult?.count ?? 0;
+      const recalls = recallResult?.recalls ?? [];
+
+      if (recallCount === 0) {
+        // Green status
+        pdf.setFillColor(240, 255, 245);
+        pdf.setDrawColor(34, 197, 94);
+        pdf.setLineWidth(0.4);
+        pdf.roundedRect(margin, yPosition, pageWidth - 2 * margin, 8, 2, 2, "FD");
+        pdf.setFontSize(8);
+        pdf.setFont("helvetica", "bold");
+        pdf.setTextColor(34, 197, 94);
+        pdf.text("✓  No Recalls on Record", margin + 4, yPosition + 5);
+        pdf.setFont("helvetica", "normal");
+        yPosition += 12;
+      } else {
+        // Red/amber status — show count
+        pdf.setFillColor(255, 240, 240);
+        pdf.setDrawColor(239, 68, 68);
+        pdf.setLineWidth(0.4);
+        pdf.roundedRect(margin, yPosition, pageWidth - 2 * margin, 8, 2, 2, "FD");
+        pdf.setFontSize(8);
+        pdf.setFont("helvetica", "bold");
+        pdf.setTextColor(239, 68, 68);
+        pdf.text(`⚠  ${recallCount} Recall${recallCount !== 1 ? "s" : ""} Found`, margin + 4, yPosition + 5);
+        pdf.setFont("helvetica", "normal");
+        yPosition += 10;
+
+        // List individual recalls (max 5)
+        recalls.slice(0, 5).forEach((recall) => {
+          if (yPosition > pageHeight - margin - 12) {
+            pdf.addPage();
+            yPosition = margin;
+          }
+
+          pdf.setFontSize(8);
+          pdf.setFont("helvetica", "bold");
+          pdf.setTextColor(0, 0, 0);
+          const component = recall.component || "Unknown Component";
+          pdf.text(component.substring(0, 60), margin + 3, yPosition);
+
+          if (recall.campaignNumber) {
+            pdf.setFont("helvetica", "normal");
+            pdf.setFontSize(7);
+            pdf.setTextColor(100, 100, 100);
+            pdf.text(`Campaign: ${recall.campaignNumber}`, pageWidth - margin - 55, yPosition);
+          }
+          yPosition += 4;
+
+          // Summary
+          pdf.setFont("helvetica", "normal");
+          pdf.setFontSize(7);
+          pdf.setTextColor(100, 100, 100);
+          const summaryLines = pdf.splitTextToSize(recall.summary || "", pageWidth - 2 * margin - 6);
+          pdf.text(summaryLines.slice(0, 2), margin + 3, yPosition);
+          yPosition += summaryLines.slice(0, 2).length * 3 + 3;
+        });
+
+        if (recalls.length > 5) {
+          pdf.setFontSize(7);
+          pdf.setTextColor(100, 100, 100);
+          pdf.text(`... and ${recalls.length - 5} more`, margin + 3, yPosition);
+          yPosition += 4;
+        }
+      }
+    } catch {
+      pdf.setFontSize(8);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text("Recall data unavailable", margin + 3, yPosition);
+      yPosition += 6;
+    }
+
+    yPosition += 2;
+  }
+
+  yPosition += 4;
 
   // UVPRS Risk Score & TCO per vehicle
   addSection("UVPRS Risk Score & Ownership Cost");
