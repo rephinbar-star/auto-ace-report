@@ -306,11 +306,11 @@ export default function SampleReportPage() {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
             <div className="flex items-center justify-between gap-4">
             <TabsList className="grid grid-cols-2 max-w-lg h-14 bg-transparent gap-3 p-0">
-              <TabsTrigger value="vehicle" className="gap-2 text-base font-bold text-blue-600 data-[state=active]:text-blue-700 data-[state=active]:bg-white transition-transform duration-200 hover:scale-105 shadow-md rounded-lg bg-white border">
+              <TabsTrigger value="vehicle" className="gap-2 text-base font-bold text-blue-600 bg-white border shadow-md rounded-lg transition-all duration-200 hover:scale-105 hover:bg-blue-600 hover:text-white data-[state=active]:bg-blue-600 data-[state=active]:text-white">
                 <Car className="h-5 w-5" />
                 Vehicle Report
               </TabsTrigger>
-              <TabsTrigger value="comparison" className="gap-2 text-base font-bold text-blue-600 data-[state=active]:text-blue-700 data-[state=active]:bg-white transition-transform duration-200 hover:scale-105 shadow-md rounded-lg bg-white border">
+              <TabsTrigger value="comparison" className="gap-2 text-base font-bold text-blue-600 bg-white border shadow-md rounded-lg transition-all duration-200 hover:scale-105 hover:bg-blue-600 hover:text-white data-[state=active]:bg-blue-600 data-[state=active]:text-white">
                 <Scale className="h-5 w-5" />
                 Comparison Report
               </TabsTrigger>
