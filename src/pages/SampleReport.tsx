@@ -302,6 +302,15 @@ export default function SampleReportPage() {
       
       <main className="flex-1 bg-gradient-to-b from-primary/5 to-background py-8">
         <div className="container mx-auto max-w-6xl px-4 overflow-x-hidden">
+          {/* CTA Button */}
+          <div className="mb-6 flex justify-end">
+            <Button asChild>
+              <Link to="/analyze">
+                Analyze Your Vehicle
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
 
           {/* Report Type Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
