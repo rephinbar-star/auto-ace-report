@@ -315,7 +315,7 @@ export default function SampleReportPage() {
                 Comparison Report
               </TabsTrigger>
             </TabsList>
-              <Button asChild className="shadow-md">
+              <Button asChild className="shadow-md transition-all duration-200 hover:scale-110 hover:shadow-xl">
                 <Link to="/analyze">
                   Analyze Your Vehicle
                   <ArrowRight className="ml-2 h-4 w-4" />
