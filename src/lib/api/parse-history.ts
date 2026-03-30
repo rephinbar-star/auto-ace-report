@@ -6,6 +6,7 @@ export interface ParseHistoryResponse {
   error?: string;
   history?: VehicleHistory & { summary?: string; vin?: string | null };
   storagePath?: string;
+  scrapeBlocked?: boolean;
 }
 
 export async function parseHistoryReport(
