@@ -97,21 +97,43 @@ const EXPECTED_MILES_PER_YEAR = 11000;
 // Individual Factor Scoring Functions (each returns 0-100)
 // ============================================================================
 
-/** A) Mileage-for-Age */
+/** A) Mileage-for-Age
+ * Combines two factors:
+ *   1. Ratio-based score: how annual mileage compares to 11k avg
+ *   2. Absolute mileage penalty: high-mileage vehicles carry inherent
+ *      wear risk regardless of how evenly those miles were spread.
+ *
+ * Absolute thresholds (cumulative penalty added on top of ratio score):
+ *   75k–100k  → +5   (entering high-mileage territory)
+ *   100k–125k → +15  (powertrain wear increases)
+ *   125k–150k → +25  (significant component fatigue)
+ *   150k+     → +35  (major systems at end of life)
+ */
 export function scoreMileageForAge(mileage: number, year: number): number {
   const currentYear = new Date().getFullYear();
   const age = Math.max(1, currentYear - year);
   const expected = EXPECTED_MILES_PER_YEAR * age;
   const r = mileage / expected;
 
-  // Near-average mileage: very low risk
-  if (r >= 0.75 && r <= 1.25) return 10;
-  // High mileage: scales up aggressively
-  if (r > 1.25) return Math.min(100, 10 + 120 * (r - 1.25));
-  // Low mileage: mild "sitting risk" — capped at 20
-  // Very low mileage (garage queen) has some risk from dried seals/fluids
-  // but far less than high-mileage wear
-  return Math.min(20, 5 + 20 * (0.75 - r) / 0.75);
+  // --- Ratio-based component ---
+  let ratioScore: number;
+  if (r >= 0.75 && r <= 1.25) {
+    ratioScore = 10;
+  } else if (r > 1.25) {
+    ratioScore = Math.min(100, 10 + 120 * (r - 1.25));
+  } else {
+    // Low annual mileage: mild "sitting risk" — capped at 20
+    ratioScore = Math.min(20, 5 + 20 * (0.75 - r) / 0.75);
+  }
+
+  // --- Absolute mileage penalty ---
+  let absPenalty = 0;
+  if (mileage >= 150_000) absPenalty = 35;
+  else if (mileage >= 125_000) absPenalty = 25;
+  else if (mileage >= 100_000) absPenalty = 15;
+  else if (mileage >= 75_000) absPenalty = 5;
+
+  return Math.min(100, ratioScore + absPenalty);
 }
 
 /** B) Accident / Damage history */
