@@ -435,10 +435,10 @@ serve(async (req) => {
       );
     }
 
-    const analysisPrompt = `Analyze this vehicle history report and extract key information. If the content is limited, make reasonable estimates based on typical vehicle history patterns.
+    const analysisPrompt = `Analyze this vehicle history report and extract key information. Pay close attention to accident reports, damage records, vehicle scores, and any red flags. Do NOT default to "clean" or "no accidents" unless the report explicitly confirms this. If the report mentions ANY accident, damage, or collision, you MUST report it accurately.
 
 Report Content:
-${textContent.slice(0, 10000)}
+${textContent.slice(0, 15000)}
 
 Extract structured information about accidents, ownership, title status, and service history.`;
 
