@@ -421,8 +421,17 @@ serve(async (req) => {
         }
       }
 
-      if (!textContent) {
-        textContent = `CarFax/AutoCheck report URL: ${validatedUrl}`;
+      if (!textContent || textContent.length < 100) {
+        // Scraping failed completely - most likely anti-bot protection (AutoTrader, CarFax, etc.)
+        console.log("URL scraping failed - no usable content retrieved");
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: "Unable to retrieve report data from this URL. The website is blocking automated access. Please take screenshots of the report and upload them instead.",
+            scrapeBlocked: true
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
     }
 
