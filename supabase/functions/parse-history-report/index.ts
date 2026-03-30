@@ -437,30 +437,44 @@ serve(async (req) => {
             const html = await directRes.text();
             console.log(`Direct fetch got ${html.length} chars`);
             if (html.length > 200) {
-              // Strip HTML tags for a rough text extraction
               const stripped = html
                 .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
                 .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
                 .replace(/<[^>]+>/g, " ")
                 .replace(/\s{2,}/g, " ")
                 .trim();
-              if (stripped.length > 100) {
+              
+              // Detect error/blocked pages vs actual report content
+              const errorPagePatterns = /page unavailable|page not found|access denied|403 forbidden|404 not found|captcha|please verify you.re|are you a robot|blocked|cloudflare|just a moment/i;
+              const reportDataPatterns = /accident|damage|collision|recall|title|salvage|owner|service|maintenance|autocheck|carfax|vehicle\s*score|vin|mileage/i;
+              
+              if (stripped.length > 100 && reportDataPatterns.test(stripped) && !errorPagePatterns.test(stripped.slice(0, 1000))) {
                 textContent = stripped.slice(0, 15000);
+                console.log("Direct fetch content contains valid report data");
+              } else {
+                console.log("Direct fetch returned error/blocked page, discarding");
               }
             }
           } else {
             console.log(`Direct fetch returned ${directRes.status}`);
-            await directRes.text(); // consume body
+            await directRes.text();
           }
         } catch (e) {
           console.error("Direct fetch fallback error:", e);
         }
       }
 
-      // Final fallback: pass the URL itself as context so the AI knows what to analyze
+      // If all scraping methods failed, return scrapeBlocked so the UI shows upload instructions
       if (!textContent || textContent.length < 100) {
-        console.log("All scraping methods failed, passing URL as context to AI");
-        textContent = `Vehicle history report URL: ${reportUrl}\nThe report page could not be scraped directly. Please analyze based on whatever information is available from this URL. The URL may reference an AutoCheck, CarFax, or Experian report.`;
+        console.log("All scraping methods failed - returning scrapeBlocked");
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: "Unable to retrieve report data from this URL. The website is blocking automated access. Please take screenshots of the report and upload them instead.",
+            scrapeBlocked: true
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
     }
 
