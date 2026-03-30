@@ -848,13 +848,6 @@ export default function ReportPage() {
     }
   };
 
-  const dealRatingColors = {
-    excellent: "bg-success text-success-foreground",
-    good: "bg-success/80 text-success-foreground",
-    fair: "bg-warning text-warning-foreground",
-    overpriced: "bg-orange-500 text-white",
-    poor: "bg-danger text-danger-foreground",
-  };
 
   const riskLevelColors = {
     low: "bg-success text-success-foreground",
@@ -1269,56 +1262,22 @@ export default function ReportPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-6">
-                    {/* Deal rating headline */}
+                    {/* Price vs. Market visualization */}
                     {(() => {
-                      const dealRatingConfig: Record<string, { label: string; color: string }> = {
-                        excellent: { label: "great deal", color: "text-success" },
-                        good: { label: "good deal", color: "text-success" },
-                        fair: { label: "fair deal", color: "text-warning" },
-                        overpriced: { label: "overpriced", color: "text-orange-500" },
-                        poor: { label: "poor deal", color: "text-danger" },
-                      };
-                      const cfg = dealRatingConfig[priceAssessment.dealRating] || dealRatingConfig.fair;
-                      const referenceValue = condition.sellerType === "dealer"
-                        ? (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate)
-                        : priceAssessment.fairMarketPrivate;
-                       const effectivePrice = financing?.negotiatedPrice ?? condition.askingPrice;
-                       const isBelow = effectivePrice <= referenceValue;
-                       const contextMsg = isBelow
-                         ? "This vehicle is priced below the current market average."
-                         : priceAssessment.dealRating === "fair"
-                           ? "This vehicle is within the current average market range."
-                           : "This vehicle is priced above the current market average.";
-
-                       // Calculate bar position: map effectivePrice between tradeIn (0%) and dealer/private * 1.15 (100%)
-                       const low = priceAssessment.fairMarketTradeIn;
-                       const high = (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate) * 1.15;
-                       const range = high - low || 1;
-                       const pct = Math.max(2, Math.min(98, ((effectivePrice - low) / range) * 100));
-
-                      // Market range markers
-                      const marketLow = condition.sellerType === "dealer"
-                        ? (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate) * 0.95
-                        : priceAssessment.fairMarketPrivate * 0.95;
-                      const marketHigh = condition.sellerType === "dealer"
-                        ? (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate) * 1.05
-                        : priceAssessment.fairMarketPrivate * 1.05;
-                      const pctLow = Math.max(5, Math.min(90, ((marketLow - low) / range) * 100));
-                      const pctHigh = Math.max(10, Math.min(95, ((marketHigh - low) / range) * 100));
+                      const low = priceAssessment.fairMarketTradeIn;
+                      const high = (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate) * 1.15;
+                      const range = high - low || 1;
 
                       return (
                         <div className="space-y-4">
                           <div>
-                            <h3 className="text-2xl font-bold">
-                              This vehicle is a{" "}
-                              <span className={cfg.color}>{cfg.label}</span>
-                            </h3>
+                            <h3 className="text-lg font-semibold">Price vs. Market</h3>
                             <p className="mt-1 text-sm text-muted-foreground">
-                              {contextMsg} Asking price is{" "}
+                              Asking price is{" "}
                               <span className={cn("font-semibold", priceAssessment.priceDifference > 0 ? "text-danger" : "text-success")}>
-                                {priceAssessment.priceDifference > 0 ? "higher" : "lower"} by ${Math.abs(priceAssessment.priceDifference).toLocaleString()}
+                                {priceAssessment.priceDifference > 0 ? "$" + Math.abs(priceAssessment.priceDifference).toLocaleString() + " above" : "$" + Math.abs(priceAssessment.priceDifference).toLocaleString() + " below"}
                               </span>
-                              {" "}from fair market value.
+                              {" "}fair market value.
                             </p>
                           </div>
 
@@ -1457,50 +1416,6 @@ export default function ReportPage() {
                             );
                           })()}
 
-                        </div>
-                      );
-                    })()}
-
-                    {/* Negotiation Target */}
-                    {(() => {
-                      const rating = priceAssessment.dealRating;
-                      if (rating === "excellent") return null;
-                      const fmv = condition.sellerType === "dealer"
-                        ? (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate)
-                        : priceAssessment.fairMarketPrivate;
-                      const targets = [
-                        { label: "Fair Deal Target", desc: "Within 5% of market value", price: fmv, rating: "fair" as const },
-                        { label: "Good Deal Target", desc: "5–10% below market value", price: Math.round(fmv * 0.95), rating: "good" as const },
-                        { label: "Excellent Deal Target", desc: "10%+ below market value", price: Math.round(fmv * 0.90), rating: "excellent" as const },
-                      ];
-                      // Only show targets that are better than current rating
-                      const ratingOrder = ["poor", "overpriced", "fair", "good", "excellent"];
-                      const currentIdx = ratingOrder.indexOf(rating);
-                      const relevantTargets = targets.filter(t => ratingOrder.indexOf(t.rating) > currentIdx);
-                      if (relevantTargets.length === 0) return null;
-                      const primaryTarget = relevantTargets[0]; // closest achievable upgrade
-                      const savings = condition.askingPrice - primaryTarget.price;
-
-                      return (
-                        <div className="rounded-lg border border-success/30 bg-success/5 p-4">
-                          <div className="flex items-center gap-2 mb-3">
-                            <DollarSign className="h-4 w-4 text-success" />
-                            <h4 className="text-sm font-semibold">Negotiation Targets</h4>
-                          </div>
-                          <div className="grid gap-3 sm:grid-cols-3">
-                            {relevantTargets.map((t) => (
-                              <div key={t.label} className="rounded-md bg-background border p-3">
-                                <p className="text-xs text-muted-foreground">{t.label}</p>
-                                <p className="text-lg font-bold text-success">${t.price.toLocaleString()}</p>
-                                <p className="text-[11px] text-muted-foreground">{t.desc}</p>
-                              </div>
-                            ))}
-                          </div>
-                          {savings > 0 && (
-                            <p className="mt-3 text-xs text-muted-foreground break-words">
-                              Negotiating to the <span className="font-medium text-foreground">{primaryTarget.label.replace(" Target", "")}</span> price would save you <span className="font-semibold text-success">${savings.toLocaleString()}</span> from the current asking price.
-                            </p>
-                          )}
                         </div>
                       );
                     })()}
