@@ -1,43 +1,35 @@
 
-## Auto-populate Sales Tax from ZIP Code
 
-### What the user wants
-When a ZIP code has been entered in Step 2 (Condition), the Sales Tax Calculator in Step 4 (Financing) should automatically pre-select the correct state and set the tax rate — no manual state selection needed.
+## Problem
 
-### How it works today
-- `ConditionStep` collects `zipCode` (stored in `VehicleCondition`)
-- `FinancingStep` receives only `askingPrice` as a prop
-- The Sales Tax Calculator has State + County dropdowns the user must manually choose
+The "Use location" button triggers browser geolocation successfully, but the subsequent reverse geocoding request to OpenStreetMap Nominatim fails silently. The error message "Location lookup failed. Enter ZIP manually." appears, which comes from the `catch` block in `ConditionStep.tsx` (line 107-108).
 
-### The plan
+**Root cause**: Nominatim's usage policy requires a valid `User-Agent` header identifying the application. The current fetch only sends `Accept-Language` but no `User-Agent`. Nominatim may reject or block requests without proper identification. Additionally, there's no error logging, making debugging difficult.
 
-**1. Add a ZIP → State lookup utility in `src/lib/sales-tax-data.ts`**
+## Plan
 
-Add a `getStateFromZip(zip: string): string | null` function. ZIP code prefixes reliably map to states — e.g. ZIPs starting with `900`–`961` are California, `100`–`119` are New York, etc. We'll add a compact prefix-range lookup table covering all 50 states + DC.
+**File**: `src/components/analysis/ConditionStep.tsx`
 
-**2. Update `FinancingStep` props**
+1. Add a proper `User-Agent` header to the Nominatim fetch request (e.g., `CarWise/1.0 (carwise.expert)`)
+2. Add `console.error` logging in the catch block so failures are visible in dev tools
+3. Add a fallback: if the Nominatim request fails, try a second geocoding service (optional, depending on preference)
 
-Add an optional `zipCode?: string` prop to `FinancingStepProps`.
+### Technical detail
 
-**3. Auto-select state on mount / when ZIP changes**
+```typescript
+const res = await fetch(
+  `https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=json`,
+  { 
+    headers: { 
+      "Accept-Language": "en",
+      "User-Agent": "CarWise/1.0 (https://carwise.expert)"
+    } 
+  }
+);
+if (!res.ok) {
+  throw new Error(`Nominatim returned ${res.status}`);
+}
+```
 
-Add a `useEffect` in `FinancingStep` that:
-- Runs when `zipCode` prop is received
-- Calls `getStateFromZip(zipCode)` to determine the state abbreviation
-- Sets `selectedState` to that abbreviation (which already triggers the existing `useEffect` that populates the tax rate)
-- Shows a subtle "Auto-filled from ZIP XXXXX" hint below the State selector so the user knows it was set automatically
+Also add `console.error` in the catch block for debugging visibility.
 
-**4. Pass `zipCode` from `Analyze.tsx`**
-
-In `src/pages/Analyze.tsx`, pass `condition?.zipCode` to `<FinancingStep>`.
-
-### Files to change
-- `src/lib/sales-tax-data.ts` — add `getStateFromZip()` helper
-- `src/components/analysis/FinancingStep.tsx` — accept `zipCode` prop, auto-select state
-- `src/pages/Analyze.tsx` — pass `zipCode={condition?.zipCode}` to `FinancingStep`
-
-### Technical notes
-- The ZIP prefix table will cover 3-digit prefix ranges (e.g., `"060"-"069" → CT`). This is a well-established mapping used by USPS.
-- The existing `useEffect` for `selectedState` already handles setting the tax rate when state changes — so no duplication needed.
-- The auto-fill is non-destructive: if the user already manually chose a state, the ZIP effect won't override it (we'll only apply it when `selectedState` is still empty on mount).
-- County will remain unselected (defaulting to state average rate) since ZIP alone can't reliably determine county.
