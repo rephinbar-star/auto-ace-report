@@ -1,35 +1,32 @@
 
 
-## Problem
+## Simplify Price Assessment: Remove Deal Rating, Keep Price Graph
 
-The "Use location" button triggers browser geolocation successfully, but the subsequent reverse geocoding request to OpenStreetMap Nominatim fails silently. The error message "Location lookup failed. Enter ZIP manually." appears, which comes from the `catch` block in `ConditionStep.tsx` (line 107-108).
+### What changes
 
-**Root cause**: Nominatim's usage policy requires a valid `User-Agent` header identifying the application. The current fetch only sends `Accept-Language` but no `User-Agent`. Nominatim may reject or block requests without proper identification. Additionally, there's no error logging, making debugging difficult.
+Remove the opinionated "This vehicle is a great deal / poor deal" headline and the Negotiation Targets section from the Price Assessment card. Keep only the horizontal gradient bar with markers (Trade-In, Private Sale, Dealer Retail, Fair Market Value, Asking Price, Negotiated Price) so users can visually judge the pricing themselves.
 
-## Plan
+### Why
 
-**File**: `src/components/analysis/ConditionStep.tsx`
+The deal rating is purely price-based and creates misleading contradictions when a vehicle has serious risk factors (accidents, high mileage) but happens to be priced below market. Removing the subjective label and letting users interpret the visual bar eliminates this incongruency entirely.
 
-1. Add a proper `User-Agent` header to the Nominatim fetch request (e.g., `CarWise/1.0 (carwise.expert)`)
-2. Add `console.error` logging in the catch block so failures are visible in dev tools
-3. Add a fallback: if the Nominatim request fails, try a second geocoding service (optional, depending on preference)
+### File: `src/pages/Report.tsx`
 
-### Technical detail
+1. **Remove the deal rating headline block** (lines 1273-1323) — the `<h3>This vehicle is a great deal</h3>` section with the contextual message about being above/below market.
 
-```typescript
-const res = await fetch(
-  `https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=json`,
-  { 
-    headers: { 
-      "Accept-Language": "en",
-      "User-Agent": "CarWise/1.0 (https://carwise.expert)"
-    } 
-  }
-);
-if (!res.ok) {
-  throw new Error(`Nominatim returned ${res.status}`);
-}
-```
+2. **Keep the price bar visualization** (lines 1325-1458) — the gradient bar with floating Asking Price / Negotiated Price labels, dots, and below-bar markers (Trade-In, Fair Market Value, Private Sale / Dealer Retail). Add a simple neutral title like "Price vs. Market" above the bar.
 
-Also add `console.error` in the catch block for debugging visibility.
+3. **Remove the Negotiation Targets section** (lines 1464-1506) — the green box showing Fair/Good/Excellent deal target prices.
+
+4. **Clean up `dealRatingColors`** (line 851-857) and the card header badge that references `dealRating` (around line 1222-1268) — remove any badge/tag that shows the rating label.
+
+5. **Keep `dealRating` in the data model** — it's stored in the database and used in PDF generation and comparison features; no schema changes needed. Just stop displaying it prominently in the report UI.
+
+### Result
+
+The Price Assessment card will show:
+- Card title: "Price Assessment"
+- The gradient bar with all price markers (Trade-In, FMV, Private Sale/Dealer Retail, Asking Price, Negotiated Price)
+- Pricing Sources section (unchanged)
+- No subjective deal label, no negotiation targets
 
