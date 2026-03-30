@@ -431,7 +431,7 @@ export function calculateUVPRS(input: UVPRSInput): UVPRSResult {
     known: true,
     description: input.isBrandNew
       ? "Brand new — delivery mileage only"
-      : `${Math.round(input.mileage / Math.max(1, new Date().getFullYear() - input.year)).toLocaleString()} mi/year vs ${EXPECTED_MILES_PER_YEAR.toLocaleString()} avg`,
+      : `${Math.round(input.mileage / Math.max(1, new Date().getFullYear() - input.year)).toLocaleString()} mi/year vs ${EXPECTED_MILES_PER_YEAR.toLocaleString()} avg (${input.mileage.toLocaleString()} total mi)`,
   });
 
   // 5. Brand Reliability
