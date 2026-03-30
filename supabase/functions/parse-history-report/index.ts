@@ -421,17 +421,46 @@ serve(async (req) => {
         }
       }
 
+      // Fallback: direct HTTP fetch if Firecrawl returned nothing useful
       if (!textContent || textContent.length < 100) {
-        // Scraping failed completely - most likely anti-bot protection (AutoTrader, CarFax, etc.)
-        console.log("URL scraping failed - no usable content retrieved");
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: "Unable to retrieve report data from this URL. The website is blocking automated access. Please take screenshots of the report and upload them instead.",
-            scrapeBlocked: true
-          }),
-          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+        console.log("Firecrawl returned no usable content, trying direct fetch fallback");
+        try {
+          const directRes = await fetch(validatedUrl, {
+            headers: {
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+              "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+              "Accept-Language": "en-US,en;q=0.9",
+            },
+            redirect: "follow",
+          });
+          if (directRes.ok) {
+            const html = await directRes.text();
+            console.log(`Direct fetch got ${html.length} chars`);
+            if (html.length > 200) {
+              // Strip HTML tags for a rough text extraction
+              const stripped = html
+                .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+                .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+                .replace(/<[^>]+>/g, " ")
+                .replace(/\s{2,}/g, " ")
+                .trim();
+              if (stripped.length > 100) {
+                textContent = stripped.slice(0, 15000);
+              }
+            }
+          } else {
+            console.log(`Direct fetch returned ${directRes.status}`);
+            await directRes.text(); // consume body
+          }
+        } catch (e) {
+          console.error("Direct fetch fallback error:", e);
+        }
+      }
+
+      // Final fallback: pass the URL itself as context so the AI knows what to analyze
+      if (!textContent || textContent.length < 100) {
+        console.log("All scraping methods failed, passing URL as context to AI");
+        textContent = `Vehicle history report URL: ${reportUrl}\nThe report page could not be scraped directly. Please analyze based on whatever information is available from this URL. The URL may reference an AutoCheck, CarFax, or Experian report.`;
       }
     }
 
