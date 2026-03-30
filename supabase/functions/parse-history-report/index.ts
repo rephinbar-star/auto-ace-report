@@ -327,6 +327,9 @@ serve(async (req) => {
       
       if (FIRECRAWL_API_KEY) {
         try {
+          // Use both markdown and screenshot formats; disable onlyMainContent
+          // to capture full page including embedded report sections (AutoCheck, CarFax)
+          // and increase waitFor to allow dynamic/JS content to render
           const scrapeResponse = await fetch("https://api.firecrawl.dev/v1/scrape", {
             method: "POST",
             headers: {
@@ -335,14 +338,84 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               url: validatedUrl,
-              formats: ["markdown"],
-              onlyMainContent: true,
-              waitFor: 3000,
+              formats: ["markdown", "screenshot"],
+              onlyMainContent: false,
+              waitFor: 8000,
             }),
           });
 
           const scrapeData = await scrapeResponse.json();
-          textContent = scrapeData.data?.markdown || scrapeData.markdown || "";
+          const markdownContent = scrapeData.data?.markdown || scrapeData.markdown || "";
+          const screenshotBase64 = scrapeData.data?.screenshot || scrapeData.screenshot || "";
+          
+          console.log(`Firecrawl scraped ${markdownContent.length} chars of markdown, screenshot: ${screenshotBase64 ? 'yes' : 'no'}`);
+
+          // Check if the markdown content looks like it has actual report data
+          // (accident info, VIN, title status, owner count, etc.)
+          const reportKeywords = /accident|damage|collision|recall|title|salvage|owner|service|maintenance|autocheck|carfax|vehicle\s*score|clean|rebuilt/i;
+          const hasReportData = reportKeywords.test(markdownContent) && markdownContent.length > 500;
+          
+          if (hasReportData) {
+            textContent = markdownContent;
+            console.log("Using markdown content - contains report keywords");
+          }
+
+          // If markdown is thin or missing report data, use Gemini vision on the screenshot
+          if (!hasReportData && screenshotBase64) {
+            console.log("Markdown lacks report data, using Gemini vision on screenshot");
+            const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+            if (LOVABLE_API_KEY) {
+              try {
+                const visionResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+                  method: "POST",
+                  headers: {
+                    "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    model: "google/gemini-2.5-flash",
+                    messages: [
+                      {
+                        role: "user",
+                        content: [
+                          {
+                            type: "text",
+                            text: "This is a screenshot of a vehicle history report page (CarFax, AutoCheck, Experian, or similar). Extract ALL information visible on the page including: VIN, vehicle score/rating, accident history (number of accidents, severity, damage areas), title status, owner count, service/maintenance records, recall information, mileage readings, and any red flags or alerts shown. Be extremely thorough - every detail matters for assessing vehicle risk."
+                          },
+                          {
+                            type: "image_url",
+                            image_url: {
+                              url: screenshotBase64.startsWith("data:") ? screenshotBase64 : `data:image/png;base64,${screenshotBase64}`
+                            }
+                          }
+                        ]
+                      }
+                    ],
+                    max_tokens: 8000,
+                  }),
+                });
+
+                if (visionResponse.ok) {
+                  const visionData = await visionResponse.json();
+                  const extractedText = visionData.choices?.[0]?.message?.content;
+                  if (extractedText && extractedText.length > 100) {
+                    console.log(`Gemini vision extracted ${extractedText.length} chars from screenshot`);
+                    // Combine both sources for maximum data coverage
+                    textContent = `=== SCREENSHOT ANALYSIS ===\n${extractedText}\n\n=== PAGE CONTENT ===\n${markdownContent}`;
+                  }
+                } else {
+                  console.error("Gemini vision request failed:", visionResponse.status);
+                }
+              } catch (e) {
+                console.error("Gemini vision error for screenshot:", e);
+              }
+            }
+          }
+          
+          // If we still don't have content, use whatever markdown we got
+          if (!textContent && markdownContent) {
+            textContent = markdownContent;
+          }
         } catch (e) {
           console.error("Firecrawl error:", e);
         }
@@ -362,10 +435,10 @@ serve(async (req) => {
       );
     }
 
-    const analysisPrompt = `Analyze this vehicle history report and extract key information. If the content is limited, make reasonable estimates based on typical vehicle history patterns.
+    const analysisPrompt = `Analyze this vehicle history report and extract key information. Pay close attention to accident reports, damage records, vehicle scores, and any red flags. Do NOT default to "clean" or "no accidents" unless the report explicitly confirms this. If the report mentions ANY accident, damage, or collision, you MUST report it accurately.
 
 Report Content:
-${textContent.slice(0, 10000)}
+${textContent.slice(0, 15000)}
 
 Extract structured information about accidents, ownership, title status, and service history.`;
 
