@@ -54,6 +54,10 @@ export function HistoryStep({ onComplete, onBack, onSkip, mileage, onVinExtracte
     if (acceptedTypes.includes(file.type)) {
       setUploadedFile(file);
       setAnalysisResult(null);
+      // If we're in the URL error state, switch back to main view so user can analyze
+      if (urlAccessError) {
+        setUrlAccessError(false);
+      }
     } else {
       toast({
         title: "Invalid file type",
