@@ -94,8 +94,16 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
         try {
           const res = await fetch(
             `https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=json`,
-            { headers: { "Accept-Language": "en" } }
+            { 
+              headers: { 
+                "Accept-Language": "en",
+                "User-Agent": "CarWise/1.0 (https://carwise.expert)"
+              } 
+            }
           );
+          if (!res.ok) {
+            throw new Error(`Nominatim returned ${res.status}`);
+          }
           const data = await res.json();
           const zip = data?.address?.postcode?.replace(/\D/g, "").substring(0, 5);
           if (zip && zip.length === 5) {
@@ -104,7 +112,8 @@ export function ConditionStep({ onComplete, onBack, initialData, vehicleSummary 
           } else {
             setGeoError("Couldn't determine ZIP from location. Enter manually.");
           }
-        } catch {
+        } catch (err) {
+          console.error("Reverse geocoding failed:", err);
           setGeoError("Location lookup failed. Enter ZIP manually.");
         } finally {
           setGeoLoading(false);
