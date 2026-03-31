@@ -57,7 +57,7 @@ interface MaintenanceData {
   citations: string[];
 }
 
-async function lookupMPG(year: number, make: string, model: string): Promise<MPGData> {
+async function lookupMPG(year: number, make: string, model: string, trim?: string): Promise<MPGData> {
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
@@ -72,7 +72,7 @@ async function lookupMPG(year: number, make: string, model: string): Promise<MPG
         "Content-Type": "application/json",
         "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
       },
-      body: JSON.stringify({ year, make, model }),
+      body: JSON.stringify({ year, make, model, trim }),
     });
 
     if (response.ok) {
@@ -86,10 +86,10 @@ async function lookupMPG(year: number, make: string, model: string): Promise<MPG
   }
 
   return {
-    mpgCity: 24,
-    mpgHighway: 32,
-    mpgCombined: 27,
-    fuelType: "Gasoline",
+    mpgCity: null,
+    mpgHighway: null,
+    mpgCombined: null,
+    fuelType: null,
     isEstimate: true,
   };
 }
