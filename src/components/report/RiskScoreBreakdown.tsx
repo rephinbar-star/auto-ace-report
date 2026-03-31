@@ -52,13 +52,6 @@ interface RiskScoreBreakdownProps {
   missingHistoryReport?: boolean;
   onUploadHistory?: (file: File) => void;
   isUploadingHistory?: boolean;
-  vehicleYear?: number;
-  vehicleMake?: string;
-  vehicleMileage?: number;
-  vehicleOwnerCount?: number | null;
-  warrantyMonthsRemaining?: number | null;
-  isCPO?: boolean | null;
-  isBrandNew?: boolean | null;
 }
 
 const riskColors: Record<string, string> = {
