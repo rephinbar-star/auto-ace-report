@@ -4,10 +4,9 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ShieldAlert, Info, HelpCircle, Upload, Loader2, ShieldCheck, ShieldX } from "lucide-react";
+import { ShieldAlert, Info, HelpCircle, Upload, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { UVPRSResult } from "@/lib/uvprs-scoring";
-import { estimateWarrantyStatus } from "@/lib/warranty-data";
 
 const factorTooltips: Record<string, { meaning: string; advice: string }> = {
   title: {
@@ -15,7 +14,7 @@ const factorTooltips: Record<string, { meaning: string; advice: string }> = {
     advice: "Always request a title history check. Avoid salvage/lemon titles unless you're a mechanic buying at steep discount.",
   },
   accidents: {
-    meaning: "Scores risk from reported accidents. Even minor incidents can hide frame damage that surfaces later as alignment or safety issues.",
+    meaning: "Scores risk from reported accidents using exponential scaling — each additional accident carries a disproportionately higher penalty. Frame/structural damage is scored separately within this factor.",
     advice: "Get a pre-purchase inspection (PPI) focusing on frame/unibody. Negotiate harder for 2+ accident vehicles.",
   },
   service: {
@@ -23,32 +22,28 @@ const factorTooltips: Record<string, { meaning: string; advice: string }> = {
     advice: "Ask the seller for full service records. Budget for any overdue major maintenance before buying.",
   },
   mileage: {
-    meaning: "Compares actual mileage to expected mileage for the vehicle's age (~12,000 mi/year). High-mileage vehicles face accelerated wear.",
-    advice: "High mileage isn't always bad if service records are strong. Low mileage on old cars can mean sitting damage.",
+    meaning: "Combines annual mileage rate vs the 13,500 mi/year national average with absolute mileage penalties. Uses a sigmoid curve — going from 15k to 25k mi/year matters more than 10k to 15k. Also factors in vehicle age.",
+    advice: "High mileage isn't always bad if service records are strong. Very low mileage (<4k/yr) on old cars can mean sitting damage (rubber, seals, batteries).",
   },
   brand: {
-    meaning: "Reflects the manufacturer's long-term reliability track record based on industry data (Consumer Reports, J.D. Power).",
+    meaning: "Reflects the manufacturer's long-term reliability track record based on industry data (Consumer Reports, J.D. Power PP100 scores).",
     advice: "Less reliable brands aren't deal-breakers — just budget 20-40% more for maintenance reserves.",
   },
   price: {
-    meaning: "Compares the asking price to fair market value. Overpriced vehicles carry financial risk; suspiciously underpriced ones may hide problems.",
-    advice: "Use the fair market values in this report to negotiate. Aim for within 5% of fair market.",
+    meaning: "Scored asymmetrically: overpricing is purely financial risk, but significant underpricing (20%+ below market) signals potential hidden problems or fraud.",
+    advice: "Use the fair market values in this report to negotiate. Aim for within 5% of fair market. Be wary of deals that seem too good to be true.",
   },
   owners: {
-    meaning: "More previous owners generally correlates with inconsistent maintenance and harder-to-verify history.",
-    advice: "1-2 owners is ideal. For 3+ owners, insist on comprehensive service records.",
-  },
-  age: {
-    meaning: "Older vehicles face higher risk from age-related deterioration — rubber seals, hoses, electronics, and rust.",
-    advice: "For 8+ year old vehicles, inspect rubber components, undercarriage rust, and electrical systems carefully.",
+    meaning: "Age-aware scoring: multiple owners on a young vehicle (<8 years) is penalized more heavily than on older vehicles where turnover is more expected.",
+    advice: "1-2 owners is ideal. For 3+ owners, insist on comprehensive service records. Short ownership periods are a red flag.",
   },
   recall: {
-    meaning: "Uses NHTSA (the official federal database) as the primary source for all recalls issued for this year/make/model, then subtracts any recalls confirmed as resolved by your CarFax/AutoCheck report. This cross-reference gives the most accurate open recall count, though minor discrepancies can occur if CarFax hasn't recorded a recent repair.",
+    meaning: "Uses NHTSA as the primary source for all recalls, cross-referenced with CarFax/AutoCheck resolved counts. 48% of recalls are never completed nationally.",
     advice: "Check NHTSA.gov with the VIN for the definitive list. All recall repairs are free at any authorized dealer — complete them before driving.",
   },
-  warranty: {
-    meaning: "Evaluates remaining factory or CPO warranty coverage. Vehicles still under warranty carry lower risk because major repairs are covered. Uses CarFax data when available, otherwise estimates from manufacturer terms.",
-    advice: "Verify warranty status with the dealer. CPO vehicles typically get extended coverage. Factor in warranty when negotiating — an in-warranty vehicle is worth more.",
+  sellerType: {
+    meaning: "CPO dealers provide manufacturer-backed inspections and extended warranties. Franchise dealers offer some accountability. Private sellers carry the highest information asymmetry risk.",
+    advice: "CPO vehicles typically come with extended coverage and multi-point inspections. Private party sales require extra due diligence — always get a PPI.",
   },
 };
 
@@ -57,13 +52,6 @@ interface RiskScoreBreakdownProps {
   missingHistoryReport?: boolean;
   onUploadHistory?: (file: File) => void;
   isUploadingHistory?: boolean;
-  vehicleYear?: number;
-  vehicleMake?: string;
-  vehicleMileage?: number;
-  vehicleOwnerCount?: number | null;
-  warrantyMonthsRemaining?: number | null;
-  isCPO?: boolean | null;
-  isBrandNew?: boolean | null;
 }
 
 const riskColors: Record<string, string> = {
@@ -85,7 +73,7 @@ function getFactorBarColor(score: number): string {
   return "[&>div]:bg-danger";
 }
 
-export function RiskScoreBreakdown({ result, missingHistoryReport, onUploadHistory, isUploadingHistory, vehicleYear, vehicleMake, vehicleMileage, vehicleOwnerCount, warrantyMonthsRemaining, isCPO }: RiskScoreBreakdownProps) {
+export function RiskScoreBreakdown({ result, missingHistoryReport, onUploadHistory, isUploadingHistory }: RiskScoreBreakdownProps) {
   const { totalScore, riskLevel, riskLabel, factors, knownFactorCount } = result;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -150,11 +138,11 @@ export function RiskScoreBreakdown({ result, missingHistoryReport, onUploadHisto
           </div>
         </div>
 
-        {knownFactorCount < 10 && (
+        {knownFactorCount < 9 && (
           <div className="flex items-start gap-2 rounded-md bg-muted p-3 text-xs text-muted-foreground">
             <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
             <span>
-              {10 - knownFactorCount} factor(s) had missing data. Weights were redistributed across {knownFactorCount} known factors.
+              {9 - knownFactorCount} factor(s) had missing data. Weights were redistributed across {knownFactorCount} known factors.
             </span>
           </div>
         )}
@@ -207,74 +195,6 @@ export function RiskScoreBreakdown({ result, missingHistoryReport, onUploadHisto
           </div>
         </TooltipProvider>
 
-        {/* Warranty Coverage Detail */}
-        {vehicleYear && vehicleMake && vehicleMileage != null && (() => {
-          const status = warrantyMonthsRemaining != null
-            ? {
-                bumperActive: warrantyMonthsRemaining > 0,
-                powertrainActive: warrantyMonthsRemaining > 0,
-                bumperMonthsRemaining: Math.min(warrantyMonthsRemaining, warrantyMonthsRemaining),
-                powertrainMonthsRemaining: warrantyMonthsRemaining,
-              }
-            : estimateWarrantyStatus(vehicleMake, vehicleYear, vehicleMileage, vehicleOwnerCount);
-
-          const coverages = [
-            {
-              label: "Bumper-to-Bumper",
-              active: status.bumperActive,
-              months: status.bumperMonthsRemaining,
-            },
-            {
-              label: "Powertrain",
-              active: status.powertrainActive,
-              months: status.powertrainMonthsRemaining,
-            },
-          ];
-
-          return (
-            <div className="rounded-lg border bg-card p-4 space-y-3">
-              <div className="flex items-center gap-2 text-sm font-medium">
-                {status.bumperActive || status.powertrainActive ? (
-                  <ShieldCheck className="h-4 w-4 text-success" />
-                ) : (
-                  <ShieldX className="h-4 w-4 text-destructive" />
-                )}
-                <span>Factory Warranty Coverage</span>
-                {isCPO && (
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/30 text-primary">
-                    CPO
-                  </Badge>
-                )}
-                {warrantyMonthsRemaining == null && (
-                  <span className="text-[10px] text-muted-foreground italic ml-auto">estimated from manufacturer data</span>
-                )}
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                {coverages.map((c) => (
-                  <div key={c.label} className="rounded-md border bg-muted/50 p-3 space-y-1.5">
-                    <p className="text-xs font-medium text-muted-foreground">{c.label}</p>
-                    {c.active ? (
-                      <>
-                        <p className="text-sm font-semibold text-success">Active</p>
-                        <p className="text-xs text-muted-foreground">
-                          ~{c.months >= 12
-                            ? `${Math.floor(c.months / 12)}yr ${c.months % 12}mo`
-                            : `${c.months}mo`
-                          } remaining
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <p className="text-sm font-semibold text-destructive">Expired</p>
-                        <p className="text-xs text-muted-foreground">No coverage</p>
-                      </>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })()}
       </CardContent>
     </Card>
   );
