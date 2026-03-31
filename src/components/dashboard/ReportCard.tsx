@@ -126,11 +126,6 @@ export function ReportCard({ report, selectionMode, isSelected, onSelect, select
             <span className="capitalize">{report.condition}</span>
           </div>
         </div>
-        {report.updated_at && report.updated_at !== report.created_at && (
-          <p className="text-xs text-muted-foreground">
-            Last analyzed: {new Date(report.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
-          </p>
-        )}
 
         {report.status === "complete" && (
           <div className="flex flex-wrap items-center gap-2">
