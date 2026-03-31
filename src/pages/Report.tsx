@@ -1009,7 +1009,7 @@ export default function ReportPage() {
                           depreciation_table: depreciationTable as any,
                           pricing_sources: analysisResult.pricingSources || [],
                           pricing_last_updated: new Date().toISOString(),
-                          vin: extractedVin || vehicleData.vehicle.vin || null,
+                          ...(extractedVin && !report?.vin ? { vin: extractedVin } : {}),
                         };
                         if (priceAssessment.fairMarketPrivate > 0 || priceAssessment.fairMarketDealer > 0) {
                           histUpd.fair_market_private = priceAssessment.fairMarketPrivate;
