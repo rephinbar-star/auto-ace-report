@@ -146,11 +146,11 @@ export function RiskScoreBreakdown({ result, missingHistoryReport, onUploadHisto
           </div>
         </div>
 
-        {knownFactorCount < 10 && (
+        {knownFactorCount < 9 && (
           <div className="flex items-start gap-2 rounded-md bg-muted p-3 text-xs text-muted-foreground">
             <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
             <span>
-              {10 - knownFactorCount} factor(s) had missing data. Weights were redistributed across {knownFactorCount} known factors.
+              {9 - knownFactorCount} factor(s) had missing data. Weights were redistributed across {knownFactorCount} known factors.
             </span>
           </div>
         )}
