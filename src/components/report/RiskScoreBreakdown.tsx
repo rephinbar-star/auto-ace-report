@@ -4,10 +4,9 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ShieldAlert, Info, HelpCircle, Upload, Loader2, ShieldCheck, ShieldX } from "lucide-react";
+import { ShieldAlert, Info, HelpCircle, Upload, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { UVPRSResult } from "@/lib/uvprs-scoring";
-import { estimateWarrantyStatus } from "@/lib/warranty-data";
 
 const factorTooltips: Record<string, { meaning: string; advice: string }> = {
   title: {
