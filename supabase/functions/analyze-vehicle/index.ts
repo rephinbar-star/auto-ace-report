@@ -198,7 +198,7 @@ serve(async (req) => {
     const { vehicle, condition, financing, history } = vehicleData;
 
     // Fetch MPG, pricing, and maintenance data in parallel
-    const mpgPromise = lookupMPG(vehicle.year, vehicle.make, vehicle.model);
+    const mpgPromise = lookupMPG(vehicle.year, vehicle.make, vehicle.model, vehicle.trim);
     const pricingPromise = lookupPricing(vehicle.year, vehicle.make, vehicle.model, vehicle.trim, condition.mileage, condition.condition, condition.zipCode, vehicle.vin, condition.sellerType);
     const maintenancePromise = lookupMaintenance(vehicle.year, vehicle.make, vehicle.model, vehicle.trim, condition.mileage);
     console.log(`Looking up MPG, pricing, and maintenance for ${vehicle.year} ${vehicle.make} ${vehicle.model}`);
