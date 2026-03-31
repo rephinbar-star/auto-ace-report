@@ -585,6 +585,18 @@ export default function ReportPage() {
         setRecallData({ count: 0, openCount: 0, recalls: [], isLoading: false });
       }
 
+      // Detect frame damage from history issues
+      const issueTexts = (historyAnalysis?.concerns ?? history?.issues ?? []).map((s: string) => s.toLowerCase());
+      const hasFrameDamage = issueTexts.some((i: string) => i.includes("frame") || i.includes("structural"));
+
+      // Map seller type
+      const rawSeller = vehicle.sellerType || condition?.sellerType;
+      const sellerType = condition?.isCPO || history?.isCPO
+        ? "cpo" as const
+        : rawSeller === "private" ? "private" as const
+        : rawSeller ? "dealer" as const
+        : null;
+
       const result = calculateUVPRS({
         year: vehicle.year,
         make: vehicle.make,
@@ -593,6 +605,7 @@ export default function ReportPage() {
         titleStatus: history?.titleStatus || null,
         accidentCount: history?.accidentCount ?? null,
         ownerCount: history?.ownerCount ?? null,
+        hasFrameDamage,
         hasServiceRecords: history?.serviceRecords ?? null,
         healthScore: historyAnalysis?.healthScore ?? null,
         historyIssues: historyAnalysis?.concerns ?? history?.issues ?? null,
@@ -606,8 +619,7 @@ export default function ReportPage() {
         openRecallCount,
         nhtsaTotalRecalls,
         resolvedRecallCount,
-        warrantyMonthsRemaining: history?.warrantyMonthsRemaining ?? null,
-        isCPO: condition?.isCPO || history?.isCPO || null,
+        sellerType,
         isBrandNew: condition?.isBrandNew ?? null,
       });
       setUvprsResult(result);

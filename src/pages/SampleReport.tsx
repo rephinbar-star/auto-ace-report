@@ -213,6 +213,7 @@ export default function SampleReportPage() {
     titleStatus: "clean",
     accidentCount: 0,
     ownerCount: 1,
+    hasFrameDamage: false,
     hasServiceRecords: true,
     healthScore: historyAnalysis.healthScore,
     historyIssues: historyAnalysis.concerns,
@@ -224,8 +225,7 @@ export default function SampleReportPage() {
     fairMarketPrivate: priceAssessment.fairMarketPrivate,
     fairMarketDealer: undefined,
     openRecallCount: 0,
-    warrantyMonthsRemaining: null,
-    isCPO: false,
+    sellerType: "dealer",
   });
 
   const chartData = depreciationTable.map((row) => ({

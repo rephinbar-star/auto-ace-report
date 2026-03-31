@@ -1,15 +1,27 @@
 /**
- * Used Vehicle Purchase Risk Score (UVPRS)
+ * Used Vehicle Purchase Risk Score (UVPRS) — Evidence-Based v2
  * 
  * A deterministic 0–100 score where 0 = lowest risk, 100 = highest risk.
- * Built from 9 weighted, measurable factors.
+ * Built from 9 weighted factors informed by actuarial/insurance pricing research.
  * 
- * UVPRS = 0.20*S_title + 0.18*S_acc + 0.17*S_svc + 0.12*S_mfa + 0.10*S_brand
- *       + 0.08*S_price + 0.06*S_owners + 0.04*S_age + 0.05*S_recall
+ * Factor hierarchy (effective weights, redistributed from essay's 11-factor model
+ * since Geographic/Climate 7% and Odometer Integrity 3% lack data pipelines):
+ *   Title Status        20.0%  (essay 18% + redistribution)
+ *   Accident History    17.8%  (essay 16% + redistribution, includes frame-damage sub-score)
+ *   Model/Brand Rel.    15.6%  (essay 14% + redistribution)
+ *   Mileage-for-Age     13.3%  (essay 12% + redistribution, subsumes vehicle age)
+ *   Service History     11.1%  (essay 10% + redistribution)
+ *   Price vs Market      8.9%  (essay 8% + redistribution, asymmetric scoring)
+ *   Open Recalls         5.6%  (essay 5% + redistribution)
+ *   Owner Count          4.4%  (essay 4% + redistribution, age-aware step function)
+ *   Seller Type          3.3%  (essay 3% + redistribution)
+ *
+ * Removed factors (per essay):
+ *   - Vehicle Age: subsumed into Mileage-for-Age (Weibull survival model)
+ *   - Warranty Status: captured by age + reliability interaction (double-counting)
  */
 
 import { BRAND_RELIABILITY } from "@/components/compare/scoring-utils";
-import { estimateWarrantyStatus } from "@/lib/warranty-data";
 
 // ============================================================================
 // Types
@@ -29,6 +41,7 @@ export interface UVPRSInput {
   titleStatus?: "clean" | "salvage" | "rebuilt" | "lemon" | null;
   accidentCount?: number | null;
   ownerCount?: number | null;
+  hasFrameDamage?: boolean | null;
 
   // Service
   hasServiceRecords?: boolean | null;
@@ -51,8 +64,11 @@ export interface UVPRSInput {
   nhtsaTotalRecalls?: number | null;
   resolvedRecallCount?: number | null;
 
-  // Warranty
-  warrantyMonthsRemaining?: number | null;  // From CarFax (takes priority)
+  // Seller type
+  sellerType?: "private" | "dealer" | "cpo" | null;
+
+  // Legacy fields kept for backward compat (no longer used in scoring)
+  warrantyMonthsRemaining?: number | null;
   isCPO?: boolean | null;
 }
 
@@ -75,55 +91,74 @@ export interface UVPRSResult {
 }
 
 // ============================================================================
-// Constants
+// Constants — effective weights after redistributing Geographic (7%) and
+// Odometer Integrity (3%) proportionally across 9 available factors.
 // ============================================================================
 
 const WEIGHTS: Record<string, number> = {
-  title: 0.20,
-  accident: 0.17,
-  service: 0.14,
-  mileageForAge: 0.11,
-  brand: 0.10,
-  warranty: 0.10,
-  price: 0.07,
-  owners: 0.04,
-  age: 0.04,
-  recall: 0.03,
+  title:        0.200,   // essay 18% → 20.0%
+  accident:     0.178,   // essay 16% → 17.8%
+  brand:        0.156,   // essay 14% → 15.6%
+  mileageForAge:0.133,   // essay 12% → 13.3%
+  service:      0.111,   // essay 10% → 11.1%
+  price:        0.089,   // essay  8% →  8.9%
+  recall:       0.056,   // essay  5% →  5.6%
+  owners:       0.044,   // essay  4% →  4.4%
+  sellerType:   0.033,   // essay  3% →  3.3%
 };
 
-const EXPECTED_MILES_PER_YEAR = 11000;
+const EXPECTED_MILES_PER_YEAR = 13500; // Updated from 11k to current average per essay
 
 // ============================================================================
 // Individual Factor Scoring Functions (each returns 0-100)
 // ============================================================================
 
-/** A) Mileage-for-Age
- * Combines two factors:
- *   1. Ratio-based score: how annual mileage compares to 11k avg
- *   2. Absolute mileage penalty: high-mileage vehicles carry inherent
- *      wear risk regardless of how evenly those miles were spread.
- *
- * Absolute thresholds (cumulative penalty added on top of ratio score):
- *   75k–100k  → +5   (entering high-mileage territory)
- *   100k–125k → +15  (powertrain wear increases)
- *   125k–150k → +25  (significant component fatigue)
- *   150k+     → +35  (major systems at end of life)
+/**
+ * A) Mileage-for-Age — Sigmoid curve with absolute mileage penalties
+ * 
+ * Subsumes vehicle age (both dimensions independently significant per
+ * Weibull survival model, but highly correlated → single factor).
+ * 
+ * Sigmoid inflection points per essay:
+ *   <80% avg (but >4k/yr) = ~15 (slight positive)
+ *   <4k/yr = ~25 (disuse degradation risk)
+ *   100% avg = ~30 (baseline)
+ *   150% avg = ~55
+ *   200%+ = ~75-85
+ * 
+ * Absolute mileage penalties (cumulative):
+ *   75k-100k  → +5
+ *   100k-125k → +15
+ *   125k-150k → +25
+ *   150k+     → +35
  */
 export function scoreMileageForAge(mileage: number, year: number): number {
   const currentYear = new Date().getFullYear();
   const age = Math.max(1, currentYear - year);
-  const expected = EXPECTED_MILES_PER_YEAR * age;
-  const r = mileage / expected;
+  const annualMiles = mileage / age;
+  const ratio = annualMiles / EXPECTED_MILES_PER_YEAR;
 
-  // --- Ratio-based component ---
+  // --- Sigmoid-based ratio score ---
   let ratioScore: number;
-  if (r >= 0.75 && r <= 1.25) {
-    ratioScore = 10;
-  } else if (r > 1.25) {
-    ratioScore = Math.min(100, 10 + 120 * (r - 1.25));
+  
+  if (annualMiles < 4000) {
+    // Very low usage — disuse degradation (rubber, seals, batteries)
+    ratioScore = 25;
+  } else if (ratio < 0.80) {
+    // Below average but reasonable — slight positive
+    ratioScore = 15;
+  } else if (ratio <= 1.0) {
+    // 80%-100% of average — interpolate 15 → 30
+    ratioScore = 15 + (ratio - 0.80) / 0.20 * 15;
+  } else if (ratio <= 1.5) {
+    // 100%-150% — interpolate 30 → 55
+    ratioScore = 30 + (ratio - 1.0) / 0.5 * 25;
+  } else if (ratio <= 2.0) {
+    // 150%-200% — interpolate 55 → 80
+    ratioScore = 55 + (ratio - 1.5) / 0.5 * 25;
   } else {
-    // Low annual mileage: mild "sitting risk" — capped at 20
-    ratioScore = Math.min(20, 5 + 20 * (0.75 - r) / 0.75);
+    // 200%+ — 80-90 range
+    ratioScore = Math.min(90, 80 + (ratio - 2.0) * 10);
   }
 
   // --- Absolute mileage penalty ---
@@ -133,17 +168,46 @@ export function scoreMileageForAge(mileage: number, year: number): number {
   else if (mileage >= 100_000) absPenalty = 15;
   else if (mileage >= 75_000) absPenalty = 5;
 
-  return Math.min(100, ratioScore + absPenalty);
+  return Math.min(100, Math.round(ratioScore + absPenalty));
 }
 
-/** B) Accident / Damage history */
-export function scoreAccident(accidentCount: number | null | undefined): { score: number; known: boolean } {
-  if (accidentCount == null) return { score: 50, known: false };
-  if (accidentCount === 0) return { score: 0, known: true };
+/**
+ * B) Accident / Damage history — Exponential scaling
+ * 
+ * Per Aviation Composite Risk Index methodology adapted for vehicles:
+ *   0 accidents = 0
+ *   1 (assumed minor without severity data) = 25
+ *   2 = 65
+ *   3+ = 90-100
+ * 
+ * Frame damage sub-scoring: if hasFrameDamage, a separate 85-100 score
+ * is blended at 5/16 weight within the accident factor.
+ */
+export function scoreAccident(
+  accidentCount: number | null | undefined,
+  hasFrameDamage?: boolean | null
+): { score: number; known: boolean } {
+  if (accidentCount == null && !hasFrameDamage) return { score: 50, known: false };
 
-  // Without severity detail, first accident = 40 (moderate, not catastrophic)
-  // Each additional accident adds 15
-  return { score: Math.min(100, 40 + 15 * (accidentCount - 1)), known: true };
+  // Base accident score (exponential curve)
+  let baseScore: number;
+  const count = accidentCount ?? 0;
+  if (count === 0) baseScore = 0;
+  else if (count === 1) baseScore = 25;
+  else if (count === 2) baseScore = 65;
+  else if (count === 3) baseScore = 90;
+  else baseScore = Math.min(100, 90 + (count - 3) * 5); // 4+ → 95-100
+
+  // Frame damage sub-score (5% of the 16% accident weight = ~31% of this factor)
+  if (hasFrameDamage) {
+    const framePortion = 5 / 16; // sub-weight ratio within accident factor
+    const frameScore = 90; // structural damage = very high risk
+    const accidentPortion = 1 - framePortion;
+    const combined = accidentPortion * baseScore + framePortion * frameScore;
+    return { score: Math.round(combined), known: true };
+  }
+
+  return { score: baseScore, known: accidentCount != null };
 }
 
 /** C) Title status */
@@ -158,18 +222,30 @@ export function scoreTitleStatus(status: string | null | undefined): { score: nu
   }
 }
 
-/** D) Brand reliability — convert 1-10 scale to PP100-equivalent risk */
+/**
+ * D) Brand/Model reliability
+ * 
+ * Maps from 1-10 reliability scale to 0-100 risk using PP100 calibration:
+ *   Lexus-tier (score 9-10) → risk 10-20
+ *   Industry average (score 5) → risk 50
+ *   Below average (score 2-3) → risk 70-80
+ * 
+ * TODO: Override with model-year-specific NHTSA complaint data when available.
+ */
 export function scoreBrandReliability(make: string): number {
   const brandScore = BRAND_RELIABILITY[make] ?? BRAND_RELIABILITY["default"] ?? 5;
-  
-  // Convert 1-10 reliability (high=good) → 0-100 risk (high=bad)
-  // Smooth linear interpolation: score 10 → risk 0, score 1 → risk 90
-  // Avoids cliff effects between bands
   const risk = Math.round(Math.max(0, Math.min(100, 100 - (brandScore / 10) * 100)));
   return risk;
 }
 
-/** E) Selling price vs market */
+/**
+ * E) Price vs Market — Asymmetric scoring
+ * 
+ * Overpriced = financial risk:
+ *   10% over = 30, 20% over = 50, 30%+ over = 70
+ * Underpriced = fraud/defect signal:
+ *   10% under = 15, 20% under = 40, 30%+ under = 65
+ */
 export function scorePriceVsMarket(
   askingPrice: number,
   fairMarketPrivate: number | null | undefined,
@@ -178,52 +254,53 @@ export function scorePriceVsMarket(
   const mkt = fairMarketDealer || fairMarketPrivate;
   if (!mkt || mkt <= 0) return { score: 50, known: false };
 
-  const pctDiff = (askingPrice - mkt) / mkt; // positive = overpriced, negative = underpriced
+  const pctDiff = (askingPrice - mkt) / mkt;
 
   if (pctDiff >= 0) {
-    // Overpriced: bad value but not a safety risk — moderate scaling
-    // 10% over → 30, 25% over → 75, 30%+ → capped at 90
-    return { score: Math.min(90, Math.round(300 * pctDiff)), known: true };
+    // Overpriced: 10% → 30, 20% → 50, 30% → 70
+    if (pctDiff <= 0.10) return { score: Math.round(pctDiff / 0.10 * 30), known: true };
+    if (pctDiff <= 0.20) return { score: Math.round(30 + (pctDiff - 0.10) / 0.10 * 20), known: true };
+    if (pctDiff <= 0.30) return { score: Math.round(50 + (pctDiff - 0.20) / 0.10 * 20), known: true };
+    return { score: Math.min(90, Math.round(70 + (pctDiff - 0.30) / 0.10 * 10)), known: true };
   } else {
-    // Underpriced: slight discount is great (score ~5), but >20% below market
-    // is suspicious (hidden damage, title issues, scam risk)
+    // Underpriced: 10% → 15, 20% → 40, 30%+ → 65
     const absPct = Math.abs(pctDiff);
-    if (absPct <= 0.10) return { score: Math.round(5 + 50 * absPct), known: true }; // 0-10% under → 5-10
-    if (absPct <= 0.20) return { score: Math.round(10 + 150 * (absPct - 0.10)), known: true }; // 10-20% under → 10-25
-    // >20% under market — suspicious
-    return { score: Math.min(80, Math.round(25 + 275 * (absPct - 0.20))), known: true }; // 20%+ → 25-80
+    if (absPct <= 0.10) return { score: Math.round(absPct / 0.10 * 15), known: true };
+    if (absPct <= 0.20) return { score: Math.round(15 + (absPct - 0.10) / 0.10 * 25), known: true };
+    if (absPct <= 0.30) return { score: Math.round(40 + (absPct - 0.20) / 0.10 * 25), known: true };
+    return { score: Math.min(80, Math.round(65 + (absPct - 0.30) / 0.10 * 10)), known: true };
   }
 }
 
-/** F) Owner count */
-export function scoreOwnerCount(ownerCount: number | null | undefined): { score: number; known: boolean } {
+/**
+ * F) Owner count — Age-aware step function
+ * 
+ * Per AutoCheck findings:
+ *   Vehicle <8 years: each owner beyond first adds 12-15 points
+ *   Vehicle ≥8 years: penalty drops to 5-8 points per owner (more expected)
+ */
+export function scoreOwnerCount(
+  ownerCount: number | null | undefined,
+  vehicleYear: number
+): { score: number; known: boolean } {
   if (ownerCount == null) return { score: 50, known: false };
-  switch (ownerCount) {
-    case 1: return { score: 5, known: true };
-    case 2: return { score: 15, known: true };
-    case 3: return { score: 30, known: true };
-    default: return { score: 50, known: true }; // 4+
+  if (ownerCount <= 1) return { score: 5, known: true };
+
+  const age = new Date().getFullYear() - vehicleYear;
+  const extraOwners = ownerCount - 1;
+
+  if (age < 8) {
+    // Young vehicle — high penalty per extra owner (12-15 pts)
+    const score = Math.min(100, 5 + extraOwners * 14);
+    return { score, known: true };
+  } else {
+    // Older vehicle — lower penalty per extra owner (6-8 pts)
+    const score = Math.min(80, 5 + extraOwners * 7);
+    return { score, known: true };
   }
 }
 
-/** G) Vehicle age */
-export function scoreVehicleAge(year: number): number {
-  const age = new Date().getFullYear() - year;
-  if (age <= 0) return 0;
-  // Warranty-aware curve:
-  // 0-3yr (factory warranty): 5-10 — minimal risk
-  // 4-5yr (extended warranty expiring): 15-25 — rising
-  // 6-10yr (out of warranty, repairs increase): 35-55
-  // 11-15yr: 60-75
-  // 16+yr: 80-95
-  if (age <= 3) return 5 + Math.round((age / 3) * 5);       // 5-10
-  if (age <= 5) return Math.round(10 + (age - 3) * 7.5);     // 10-25
-  if (age <= 10) return Math.round(25 + (age - 5) * 6);      // 25-55
-  if (age <= 15) return Math.round(55 + (age - 10) * 4);     // 55-75
-  return Math.min(95, Math.round(75 + (age - 15) * 3));      // 75-95
-}
-
-/** H) Service & repair history — uses granular data when available, falls back to proxies */
+/** G) Service & repair history — unchanged from v1 */
 export function scoreServiceHistory(
   hasServiceRecords: boolean | null | undefined,
   healthScore: number | null | undefined,
@@ -245,7 +322,6 @@ export function scoreServiceHistory(
   const issueTexts = (issues || []).map(s => s.toLowerCase());
   const positiveTexts = (positives || []).map(s => s.toLowerCase());
 
-  // ── S_gaps: Use granular serviceGapMiles if available ──
   if (serviceGapMiles != null) {
     if (serviceGapMiles <= 10000) gapScore = 10;
     else if (serviceGapMiles <= 20000) gapScore = 40;
@@ -260,11 +336,9 @@ export function scoreServiceHistory(
     gapScore = 70;
   }
 
-  // ── S_due: Use granular majorServicesDue/Done if available ──
   if (majorServicesDue != null && majorServicesDone != null) {
     const dueCount = majorServicesDue.length;
     const doneCount = majorServicesDone.length;
-    // Each overdue major service adds +15, each completed subtracts -10
     dueScore = Math.max(0, Math.min(100, 30 + dueCount * 15 - doneCount * 10));
   } else if (healthScore != null) {
     if (healthScore >= 80) dueScore = 15;
@@ -273,23 +347,20 @@ export function scoreServiceHistory(
     else dueScore = 75;
   }
 
-  // ── S_consistency: Use granular chronicRepairSystems if available ──
   if (chronicRepairSystems != null && chronicRepairSystems.length > 0) {
-    // Severity by system type
     const criticalSystems = ["transmission", "engine", "cooling"];
-    const hasCritical = chronicRepairSystems.some(s => 
+    const hasCritical = chronicRepairSystems.some(s =>
       criticalSystems.some(cs => s.toLowerCase().includes(cs))
     );
     consistencyScore = hasCritical
       ? Math.min(100, 60 + (chronicRepairSystems.length - 1) * 10)
       : Math.min(80, 40 + (chronicRepairSystems.length - 1) * 10);
   } else {
-    // Fallback to text-based analysis
     const chronicKeywords = ["recurring", "repeat", "transmission", "engine", "overheating", "leak"];
-    const hasChronicIssues = issueTexts.some(issue => 
+    const hasChronicIssues = issueTexts.some(issue =>
       chronicKeywords.some(kw => issue.includes(kw))
     );
-    const hasGoodMaintenance = positiveTexts.some(p => 
+    const hasGoodMaintenance = positiveTexts.some(p =>
       p.includes("oil change") || p.includes("routine") || p.includes("well-maintained") || p.includes("dealer service")
     );
 
@@ -302,68 +373,36 @@ export function scoreServiceHistory(
   return { score: Math.round(score), known: true };
 }
 
-/** I) Open recalls */
+/**
+ * H) Open Recalls — Higher scores per essay (48% non-completion rate)
+ *   0 = 0, 1 = 30, 2 = 50, 3+ = 70
+ */
 export function scoreRecalls(openRecallCount: number | null | undefined): { score: number; known: boolean } {
   if (openRecallCount == null) return { score: 50, known: false };
   if (openRecallCount === 0) return { score: 0, known: true };
-  if (openRecallCount === 1) return { score: 20, known: true };
-  if (openRecallCount === 2) return { score: 35, known: true };
-  return { score: 50, known: true }; // 3+
+  if (openRecallCount === 1) return { score: 30, known: true };
+  if (openRecallCount === 2) return { score: 50, known: true };
+  return { score: Math.min(90, 70 + (openRecallCount - 3) * 10), known: true };
 }
 
-/** J) Warranty status — uses CarFax data if available, otherwise estimates from manufacturer terms */
-export function scoreWarrantyStatus(
-  make: string,
-  year: number,
-  mileage: number,
-  ownerCount?: number | null,
-  warrantyMonthsRemaining?: number | null,
-  isCPO?: boolean | null
-): { score: number; known: boolean; description: string } {
-  let score: number;
-  let known: boolean;
-  let description: string;
-
-  if (warrantyMonthsRemaining != null) {
-    // CarFax provided warranty data — use directly
-    known = true;
-    if (warrantyMonthsRemaining >= 24) {
-      score = 5;
-      description = `${warrantyMonthsRemaining} months of warranty remaining`;
-    } else if (warrantyMonthsRemaining >= 12) {
-      score = 15;
-      description = `${warrantyMonthsRemaining} months of warranty remaining`;
-    } else if (warrantyMonthsRemaining >= 1) {
-      score = 40;
-      description = `${warrantyMonthsRemaining} months of warranty remaining — expiring soon`;
-    } else {
-      score = 100;
-      description = "Warranty expired";
-    }
-  } else {
-    // Estimate from manufacturer warranty data — still considered "known"
-    known = true;
-    const status = estimateWarrantyStatus(make, year, mileage, ownerCount);
-
-    if (status.bumperActive && status.powertrainActive) {
-      score = 10;
-      description = `Estimated under full warranty (~${status.bumperMonthsRemaining}mo B2B, ~${status.powertrainMonthsRemaining}mo powertrain)`;
-    } else if (status.powertrainActive) {
-      score = 45;
-      description = `Estimated B2B expired, powertrain active (~${status.powertrainMonthsRemaining}mo remaining)`;
-    } else {
-      score = 100;
-      description = "Estimated fully out of warranty";
-    }
+/**
+ * I) Seller Type — NEW
+ * 
+ * CPO dealer = 5 (manufacturer-backed warranty, inspection)
+ * Franchise dealer = 15
+ * Independent dealer = 30
+ * Private party = 45
+ */
+export function scoreSellerType(sellerType: string | null | undefined): { score: number; known: boolean } {
+  if (!sellerType) return { score: 50, known: false };
+  switch (sellerType.toLowerCase()) {
+    case "cpo": return { score: 5, known: true };
+    case "franchise":
+    case "dealer": return { score: 15, known: true };
+    case "independent": return { score: 30, known: true };
+    case "private": return { score: 45, known: true };
+    default: return { score: 50, known: false };
   }
-
-  // CPO bonus: reduce score by 15 points (floor at 5)
-  if (isCPO === true) {
-    score = Math.max(5, score - 15);
-    description += " (CPO certified)";
-  }
-
-  return { score, known, description };
 }
 
 // ============================================================================
@@ -397,44 +436,22 @@ export function calculateUVPRS(input: UVPRSInput): UVPRSResult {
       : "Unknown — neutral score applied",
   });
 
-  // 2. Accident History
-  const acc = scoreAccident(input.accidentCount);
+  // 2. Accident History (with frame damage sub-scoring)
+  const acc = scoreAccident(input.accidentCount, input.hasFrameDamage);
   factorResults.push({
-    key: "accident", label: "Accident History",
+    key: "accidents", label: "Accident History",
     score: acc.score, weight: WEIGHTS.accident, weighted: 0,
     known: acc.known,
     description: acc.known
-      ? (input.accidentCount === 0 ? "No accidents reported" : `${input.accidentCount} accident(s) reported`)
+      ? (
+        (input.accidentCount ?? 0) === 0 && !input.hasFrameDamage
+          ? "No accidents reported"
+          : `${input.accidentCount ?? 0} accident(s)${input.hasFrameDamage ? " — frame/structural damage detected" : ""}`
+      )
       : "Unknown — neutral score applied",
   });
 
-  // 3. Service History
-  const svc = input.isBrandNew
-    ? { score: 0, known: true }
-    : scoreServiceHistory(input.hasServiceRecords, input.healthScore, input.historyIssues, input.historyPositives, input.serviceGapMiles, input.majorServicesDue, input.majorServicesDone, input.chronicRepairSystems);
-  factorResults.push({
-    key: "service", label: "Service History",
-    score: svc.score, weight: WEIGHTS.service, weighted: 0,
-    known: svc.known,
-    description: input.isBrandNew
-      ? "Brand new — no service history"
-      : (svc.known
-        ? (input.hasServiceRecords ? "Service records available" : "No service records")
-        : "Unknown — neutral score applied"),
-  });
-
-  // 4. Mileage-for-Age
-  const mfa = input.isBrandNew ? 0 : scoreMileageForAge(input.mileage, input.year);
-  factorResults.push({
-    key: "mileageForAge", label: "Mileage for Age",
-    score: mfa, weight: WEIGHTS.mileageForAge, weighted: 0,
-    known: true,
-    description: input.isBrandNew
-      ? "Brand new — delivery mileage only"
-      : `${Math.round(input.mileage / Math.max(1, new Date().getFullYear() - input.year)).toLocaleString()} mi/year vs ${EXPECTED_MILES_PER_YEAR.toLocaleString()} avg (${input.mileage.toLocaleString()} total mi)`,
-  });
-
-  // 5. Brand Reliability
+  // 3. Brand/Model Reliability
   const brand = scoreBrandReliability(input.make);
   factorResults.push({
     key: "brand", label: "Brand Reliability",
@@ -443,7 +460,35 @@ export function calculateUVPRS(input: UVPRSInput): UVPRSResult {
     description: `${input.make} — ${brand <= 10 ? "Excellent" : brand <= 25 ? "Good" : brand <= 50 ? "Average" : "Below average"} reliability`,
   });
 
-  // 6. Price vs Market
+  // 4. Mileage-for-Age (subsumes vehicle age)
+  const mfa = input.isBrandNew ? 0 : scoreMileageForAge(input.mileage, input.year);
+  const age = Math.max(1, new Date().getFullYear() - input.year);
+  const annualMiles = Math.round(input.mileage / age);
+  factorResults.push({
+    key: "mileage", label: "Mileage for Age",
+    score: mfa, weight: WEIGHTS.mileageForAge, weighted: 0,
+    known: true,
+    description: input.isBrandNew
+      ? "Brand new — delivery mileage only"
+      : `${annualMiles.toLocaleString()} mi/year vs ${EXPECTED_MILES_PER_YEAR.toLocaleString()} avg (${input.mileage.toLocaleString()} total mi, ${age}yr old)`,
+  });
+
+  // 5. Service History
+  const svc = input.isBrandNew
+    ? { score: 0, known: true }
+    : scoreServiceHistory(input.hasServiceRecords, input.healthScore, input.historyIssues, input.historyPositives, input.serviceGapMiles, input.majorServicesDue, input.majorServicesDone, input.chronicRepairSystems);
+  factorResults.push({
+    key: "service", label: "Service History",
+    score: svc.score, weight: WEIGHTS.service, weighted: 0,
+    known: svc.known,
+    description: input.isBrandNew
+      ? "Brand new — no service history needed"
+      : (svc.known
+        ? (input.hasServiceRecords ? "Service records available" : "No service records")
+        : "Unknown — neutral score applied"),
+  });
+
+  // 6. Price vs Market (asymmetric)
   const price = scorePriceVsMarket(input.askingPrice, input.fairMarketPrivate, input.fairMarketDealer);
   factorResults.push({
     key: "price", label: "Price vs Market",
@@ -454,36 +499,14 @@ export function calculateUVPRS(input: UVPRSInput): UVPRSResult {
       : "Unknown — neutral score applied",
   });
 
-  // 7. Owner Count
-  const owners = input.isBrandNew
-    ? { score: 0, known: true }
-    : scoreOwnerCount(input.ownerCount);
-  factorResults.push({
-    key: "owners", label: "Owner Count",
-    score: owners.score, weight: WEIGHTS.owners, weighted: 0,
-    known: owners.known,
-    description: input.isBrandNew
-      ? "Brand new — first owner"
-      : (owners.known ? `${input.ownerCount} owner(s)` : "Unknown — neutral score applied"),
-  });
-
-  // 8. Vehicle Age
-  const age = scoreVehicleAge(input.year);
-  factorResults.push({
-    key: "age", label: "Vehicle Age",
-    score: age, weight: WEIGHTS.age, weighted: 0,
-    known: true,
-    description: `${new Date().getFullYear() - input.year} years old`,
-  });
-
-  // 9. Open Recalls
+  // 7. Open Recalls (higher scores per essay)
   const recall = scoreRecalls(input.openRecallCount);
   let recallDescription: string;
   if (!recall.known) {
     recallDescription = "Unknown — neutral score applied";
   } else if (input.nhtsaTotalRecalls != null && input.nhtsaTotalRecalls > 0) {
     const resolved = input.resolvedRecallCount ?? 0;
-    recallDescription = `NHTSA reports ${input.nhtsaTotalRecalls} recall(s) for this year/make/model. CarFax confirms ${resolved} resolved. ${input.openRecallCount} likely still open.`;
+    recallDescription = `NHTSA reports ${input.nhtsaTotalRecalls} recall(s) for this year/make/model. ${resolved} resolved. ${input.openRecallCount} likely still open.`;
   } else if (input.openRecallCount === 0) {
     recallDescription = "No open recalls";
   } else {
@@ -496,41 +519,68 @@ export function calculateUVPRS(input: UVPRSInput): UVPRSResult {
     description: recallDescription,
   });
 
-  // 10. Warranty Status
-  const warranty = input.isBrandNew
-    ? { score: 0, known: true, description: "Brand new — full factory warranty in effect" }
-    : scoreWarrantyStatus(input.make, input.year, input.mileage, input.ownerCount, input.warrantyMonthsRemaining, input.isCPO);
+  // 8. Owner Count (age-aware step function)
+  const owners = input.isBrandNew
+    ? { score: 0, known: true }
+    : scoreOwnerCount(input.ownerCount, input.year);
   factorResults.push({
-    key: "warranty", label: "Warranty Status",
-    score: warranty.score, weight: WEIGHTS.warranty, weighted: 0,
-    known: warranty.known,
-    description: warranty.description,
+    key: "owners", label: "Owner Count",
+    score: owners.score, weight: WEIGHTS.owners, weighted: 0,
+    known: owners.known,
+    description: input.isBrandNew
+      ? "Brand new — first owner"
+      : (owners.known ? `${input.ownerCount} owner(s)` : "Unknown — neutral score applied"),
   });
 
-  // Renormalize weights over known factors
+  // 9. Seller Type (NEW)
+  const seller = scoreSellerType(input.sellerType);
+  factorResults.push({
+    key: "sellerType", label: "Seller Type",
+    score: seller.score, weight: WEIGHTS.sellerType, weighted: 0,
+    known: seller.known,
+    description: seller.known
+      ? `${input.sellerType === "cpo" ? "CPO Dealer" : input.sellerType === "dealer" || input.sellerType === "franchise" ? "Franchise Dealer" : input.sellerType === "independent" ? "Independent Dealer" : "Private Party"}`
+      : "Unknown — neutral score applied",
+  });
+
+  // ── Renormalize weights over known factors ──
   const knownWeightSum = factorResults
     .filter(f => f.known)
     .reduce((sum, f) => sum + f.weight, 0);
-  
+
   const unknownWeightSum = factorResults
     .filter(f => !f.known)
     .reduce((sum, f) => sum + f.weight, 0);
 
-  // Apply renormalized weighted scores
   let totalScore = 0;
   for (const factor of factorResults) {
     if (factor.known && knownWeightSum > 0) {
-      // Renormalize: redistribute unknown factor weights proportionally
       const effectiveWeight = factor.weight + (factor.weight / knownWeightSum) * unknownWeightSum;
       factor.weighted = Math.round(effectiveWeight * factor.score * 100) / 100;
     } else {
-      // Unknown factors contribute 0 (their weight is redistributed)
       factor.weighted = 0;
     }
     totalScore += factor.weighted;
   }
 
   totalScore = Math.round(Math.min(100, Math.max(0, totalScore)));
+
+  // ── Hard floor/ceiling overrides (post-calculation) ──
+  // Salvage/flood/junk title → minimum composite 70
+  if (input.titleStatus === "salvage" || input.titleStatus === "lemon") {
+    totalScore = Math.max(70, totalScore);
+  }
+
+  // Confirmed frame damage → minimum composite 60
+  if (input.hasFrameDamage) {
+    totalScore = Math.max(60, totalScore);
+  }
+
+  // 15+ year vehicle with 200k+ miles → minimum composite 25
+  if (age >= 15 && input.mileage >= 200_000) {
+    totalScore = Math.max(25, totalScore);
+  }
+
   const { level, label } = getRiskLevel(totalScore);
 
   return {

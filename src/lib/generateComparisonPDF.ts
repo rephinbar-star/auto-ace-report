@@ -727,6 +727,13 @@ export async function generateComparisonPDF(data: ComparisonPDFData): Promise<vo
       yPosition = margin;
     }
 
+    const pdfIssues = (v.history_issues ?? []).map((s: string) => s.toLowerCase());
+    const pdfHasFrame = pdfIssues.some((i: string) => i.includes("frame") || i.includes("structural"));
+    const pdfSellerType = v.is_cpo ? "cpo" as const
+      : v.seller_type === "private" ? "private" as const
+      : v.seller_type ? "dealer" as const
+      : null;
+
     const uvprs: UVPRSResult = calculateUVPRS({
       year: v.year,
       make: v.make,
@@ -735,6 +742,7 @@ export async function generateComparisonPDF(data: ComparisonPDFData): Promise<vo
       titleStatus: v.title_status,
       accidentCount: v.accident_count,
       ownerCount: v.owner_count,
+      hasFrameDamage: pdfHasFrame,
       hasServiceRecords: v.has_service_records,
       healthScore: v.health_score,
       historyIssues: v.history_issues,
@@ -745,8 +753,7 @@ export async function generateComparisonPDF(data: ComparisonPDFData): Promise<vo
       chronicRepairSystems: v.chronic_repair_systems,
       fairMarketPrivate: v.fair_market_private ? Number(v.fair_market_private) : null,
       fairMarketDealer: v.fair_market_dealer ? Number(v.fair_market_dealer) : null,
-      warrantyMonthsRemaining: v.warranty_months_remaining,
-      isCPO: v.is_cpo,
+      sellerType: pdfSellerType,
     });
 
     const uvColor: [number, number, number] =

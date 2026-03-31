@@ -60,28 +60,37 @@ export function CompareVehicleCard({ report, onRemove, isBestBuy, rank }: Compar
   const RiskIcon = risk?.icon || AlertTriangle;
 
   // Compute UVPRS
-  const uvprs = useMemo(() => calculateUVPRS({
-    year: report.year,
-    make: report.make,
-    mileage: report.mileage,
-    askingPrice: Number(report.asking_price),
-    titleStatus: report.title_status as "clean" | "salvage" | "rebuilt" | "lemon" | null,
-    accidentCount: report.accident_count,
-    ownerCount: report.owner_count,
-    hasServiceRecords: report.has_service_records,
-    healthScore: report.health_score,
-    historyIssues: report.history_issues,
-    historyPositives: report.history_positives,
-    serviceGapMiles: report.service_gap_miles,
-    majorServicesDue: report.major_services_due,
-    majorServicesDone: report.major_services_done,
-    chronicRepairSystems: report.chronic_repair_systems,
-    fairMarketPrivate: report.fair_market_private ? Number(report.fair_market_private) : null,
-    fairMarketDealer: report.fair_market_dealer ? Number(report.fair_market_dealer) : null,
-    openRecallCount: null,
-    warrantyMonthsRemaining: report.warranty_months_remaining,
-    isCPO: report.is_cpo,
-  }), [report]);
+  const uvprs = useMemo(() => {
+    const issues = (report.history_issues ?? []).map((s: string) => s.toLowerCase());
+    const hasFrameDamage = issues.some((i: string) => i.includes("frame") || i.includes("structural"));
+    const sellerType = report.is_cpo ? "cpo" as const
+      : report.seller_type === "private" ? "private" as const
+      : report.seller_type ? "dealer" as const
+      : null;
+
+    return calculateUVPRS({
+      year: report.year,
+      make: report.make,
+      mileage: report.mileage,
+      askingPrice: Number(report.asking_price),
+      titleStatus: report.title_status as "clean" | "salvage" | "rebuilt" | "lemon" | null,
+      accidentCount: report.accident_count,
+      ownerCount: report.owner_count,
+      hasFrameDamage,
+      hasServiceRecords: report.has_service_records,
+      healthScore: report.health_score,
+      historyIssues: report.history_issues,
+      historyPositives: report.history_positives,
+      serviceGapMiles: report.service_gap_miles,
+      majorServicesDue: report.major_services_due,
+      majorServicesDone: report.major_services_done,
+      chronicRepairSystems: report.chronic_repair_systems,
+      fairMarketPrivate: report.fair_market_private ? Number(report.fair_market_private) : null,
+      fairMarketDealer: report.fair_market_dealer ? Number(report.fair_market_dealer) : null,
+      openRecallCount: null,
+      sellerType,
+    });
+  }, [report]);
 
   const uvprsColor = uvprs.riskLevel === "low" ? "text-green-600 bg-green-500/10 border-green-500/20"
     : uvprs.riskLevel === "moderate" ? "text-yellow-600 bg-yellow-500/10 border-yellow-500/20"
