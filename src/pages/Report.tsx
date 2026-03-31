@@ -637,7 +637,13 @@ export default function ReportPage() {
       });
       if (invokeError) throw invokeError;
       if (result?.success) {
-        setAnalysis(result.analysis);
+        // Preserve existing pricing if new analysis returned $0 values
+        const newAnalysis = result.analysis;
+        if (analysis && newAnalysis.priceAssessment && 
+            !(newAnalysis.priceAssessment.fairMarketPrivate > 0 || newAnalysis.priceAssessment.fairMarketDealer > 0)) {
+          newAnalysis.priceAssessment = { ...newAnalysis.priceAssessment, ...analysis.priceAssessment };
+        }
+        setAnalysis(newAnalysis);
         if (result.mpgData) {
           setMpgData({
             mpgCity: result.mpgData.mpgCity,
@@ -657,10 +663,7 @@ export default function ReportPage() {
         // Persist to DB if this is a saved report
         if (isSavedReport && id) {
           const { priceAssessment, depreciationTable, riskAssessment, historyAnalysis } = result.analysis;
-          await supabase.from("vehicle_reports").update({
-            fair_market_private: priceAssessment.fairMarketPrivate,
-            fair_market_dealer: priceAssessment.fairMarketDealer || null,
-            fair_market_trade_in: priceAssessment.fairMarketTradeIn,
+          const pricingUpdate: Record<string, any> = {
             deal_rating: priceAssessment.dealRating,
             price_difference: priceAssessment.priceDifference,
             risk_level: riskAssessment.level,
@@ -675,7 +678,14 @@ export default function ReportPage() {
             depreciation_table: depreciationTable as any,
             pricing_sources: result.pricingSources || [],
             pricing_last_updated: now.toISOString(),
-          }).eq("id", id);
+          };
+          // Only overwrite pricing if the new values are non-zero
+          if (priceAssessment.fairMarketPrivate > 0 || priceAssessment.fairMarketDealer > 0) {
+            pricingUpdate.fair_market_private = priceAssessment.fairMarketPrivate;
+            pricingUpdate.fair_market_dealer = priceAssessment.fairMarketDealer || null;
+            pricingUpdate.fair_market_trade_in = priceAssessment.fairMarketTradeIn;
+          }
+          await supabase.from("vehicle_reports").update(pricingUpdate).eq("id", id);
         }
       } else {
         throw new Error(result?.error || "Refresh failed");
@@ -964,7 +974,12 @@ export default function ReportPage() {
                     });
                     if (invokeError) throw invokeError;
                     if (analysisResult?.success) {
-                      setAnalysis(analysisResult.analysis);
+                      const newAn1 = analysisResult.analysis;
+                      if (analysis && newAn1.priceAssessment &&
+                          !(newAn1.priceAssessment.fairMarketPrivate > 0 || newAn1.priceAssessment.fairMarketDealer > 0)) {
+                        newAn1.priceAssessment = { ...newAn1.priceAssessment, ...analysis.priceAssessment };
+                      }
+                      setAnalysis(newAn1);
                       if (analysisResult.mpgData) {
                         setMpgData({
                           mpgCity: analysisResult.mpgData.mpgCity,
@@ -979,11 +994,7 @@ export default function ReportPage() {
                         setPricingLastUpdated(new Date());
                       }
                       if (isSavedReport && id) {
-                        const { priceAssessment, depreciationTable, riskAssessment, historyAnalysis } = analysisResult.analysis;
-                        await supabase.from("vehicle_reports").update({
-                          fair_market_private: priceAssessment.fairMarketPrivate,
-                          fair_market_dealer: priceAssessment.fairMarketDealer || null,
-                          fair_market_trade_in: priceAssessment.fairMarketTradeIn,
+                        const histUpd: Record<string, any> = {
                           deal_rating: priceAssessment.dealRating,
                           price_difference: priceAssessment.priceDifference,
                           risk_level: riskAssessment.level,
@@ -999,7 +1010,13 @@ export default function ReportPage() {
                           pricing_sources: analysisResult.pricingSources || [],
                           pricing_last_updated: new Date().toISOString(),
                           vin: extractedVin || vehicleData.vehicle.vin || null,
-                        }).eq("id", id);
+                        };
+                        if (priceAssessment.fairMarketPrivate > 0 || priceAssessment.fairMarketDealer > 0) {
+                          histUpd.fair_market_private = priceAssessment.fairMarketPrivate;
+                          histUpd.fair_market_dealer = priceAssessment.fairMarketDealer || null;
+                          histUpd.fair_market_trade_in = priceAssessment.fairMarketTradeIn;
+                        }
+                        await supabase.from("vehicle_reports").update(histUpd).eq("id", id);
                       }
                       sonnerToast.success("Analysis updated with history data!");
                     } else {
@@ -1280,37 +1297,25 @@ export default function ReportPage() {
                       const high = (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate) * 1.15;
                       const range = high - low || 1;
 
-                      // Guard: if market values are all zero/missing, show fallback
-                      const hasMarketData = (priceAssessment.fairMarketPrivate > 0 || priceAssessment.fairMarketDealer > 0);
-
-                      if (!hasMarketData) {
-                        return (
-                          <div className="space-y-4">
-                            <div>
-                              <h3 className="text-lg font-semibold">Price vs. Market</h3>
-                              <p className="mt-1 text-sm text-muted-foreground">
-                                Market pricing data is not available for this vehicle. This may be due to limited comparable sales data or a VIN mismatch.
-                              </p>
-                              <div className="mt-3 rounded-lg border border-dashed p-4 text-center">
-                                <p className="text-sm text-muted-foreground">Asking Price</p>
-                                <p className="text-xl font-bold">${condition.askingPrice.toLocaleString()}</p>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      }
+                      const hasMarketData = (priceAssessment.fairMarketPrivate > 0 || (priceAssessment.fairMarketDealer ?? 0) > 0);
 
                       return (
                         <div className="space-y-4">
                           <div>
                             <h3 className="text-lg font-semibold">Price vs. Market</h3>
-                            <p className="mt-1 text-sm text-muted-foreground">
-                              Asking price is{" "}
-                              <span className={cn("font-semibold", priceAssessment.priceDifference > 0 ? "text-danger" : "text-success")}>
-                                {priceAssessment.priceDifference > 0 ? "$" + Math.abs(priceAssessment.priceDifference).toLocaleString() + " above" : "$" + Math.abs(priceAssessment.priceDifference).toLocaleString() + " below"}
-                              </span>
-                              {" "}fair market value.
-                            </p>
+                            {hasMarketData ? (
+                              <p className="mt-1 text-sm text-muted-foreground">
+                                Asking price is{" "}
+                                <span className={cn("font-semibold", priceAssessment.priceDifference > 0 ? "text-danger" : "text-success")}>
+                                  {priceAssessment.priceDifference > 0 ? "$" + Math.abs(priceAssessment.priceDifference).toLocaleString() + " above" : "$" + Math.abs(priceAssessment.priceDifference).toLocaleString() + " below"}
+                                </span>
+                                {" "}fair market value.
+                              </p>
+                            ) : (
+                              <p className="mt-1 text-sm text-muted-foreground">
+                                Market pricing data is not available for this vehicle.
+                              </p>
+                            )}
                           </div>
 
                           {/* Price bar visualization */}
@@ -1842,7 +1847,12 @@ export default function ReportPage() {
                       });
                       if (invokeError) throw invokeError;
                       if (analysisResult?.success) {
-                        setAnalysis(analysisResult.analysis);
+                        const newAn2 = analysisResult.analysis;
+                        if (analysis && newAn2.priceAssessment &&
+                            !(newAn2.priceAssessment.fairMarketPrivate > 0 || newAn2.priceAssessment.fairMarketDealer > 0)) {
+                          newAn2.priceAssessment = { ...newAn2.priceAssessment, ...analysis.priceAssessment };
+                        }
+                        setAnalysis(newAn2);
                         if (analysisResult.mpgData) {
                           setMpgData({
                             mpgCity: analysisResult.mpgData.mpgCity,
@@ -1859,10 +1869,7 @@ export default function ReportPage() {
                         // Update saved report if applicable
                         if (isSavedReport && id) {
                           const { priceAssessment, depreciationTable, riskAssessment, historyAnalysis } = analysisResult.analysis;
-                          await supabase.from("vehicle_reports").update({
-                            fair_market_private: priceAssessment.fairMarketPrivate,
-                            fair_market_dealer: priceAssessment.fairMarketDealer || null,
-                            fair_market_trade_in: priceAssessment.fairMarketTradeIn,
+                          const sideUpd: Record<string, any> = {
                             deal_rating: priceAssessment.dealRating,
                             price_difference: priceAssessment.priceDifference,
                             risk_level: riskAssessment.level,
@@ -1886,7 +1893,13 @@ export default function ReportPage() {
                             ...(extractedVin ? { vin: extractedVin } : {}),
                             pricing_sources: analysisResult.pricingSources || [],
                             pricing_last_updated: new Date().toISOString(),
-                          }).eq("id", id);
+                          };
+                          if (priceAssessment.fairMarketPrivate > 0 || priceAssessment.fairMarketDealer > 0) {
+                            sideUpd.fair_market_private = priceAssessment.fairMarketPrivate;
+                            sideUpd.fair_market_dealer = priceAssessment.fairMarketDealer || null;
+                            sideUpd.fair_market_trade_in = priceAssessment.fairMarketTradeIn;
+                          }
+                          await supabase.from("vehicle_reports").update(sideUpd).eq("id", id);
                         }
                         sonnerToast.success("Report updated with history data!");
                       } else {
