@@ -1865,10 +1865,7 @@ export default function ReportPage() {
                         // Update saved report if applicable
                         if (isSavedReport && id) {
                           const { priceAssessment, depreciationTable, riskAssessment, historyAnalysis } = analysisResult.analysis;
-                          await supabase.from("vehicle_reports").update({
-                            fair_market_private: priceAssessment.fairMarketPrivate,
-                            fair_market_dealer: priceAssessment.fairMarketDealer || null,
-                            fair_market_trade_in: priceAssessment.fairMarketTradeIn,
+                          const sideUpd: Record<string, any> = {
                             deal_rating: priceAssessment.dealRating,
                             price_difference: priceAssessment.priceDifference,
                             risk_level: riskAssessment.level,
@@ -1892,7 +1889,13 @@ export default function ReportPage() {
                             ...(extractedVin ? { vin: extractedVin } : {}),
                             pricing_sources: analysisResult.pricingSources || [],
                             pricing_last_updated: new Date().toISOString(),
-                          }).eq("id", id);
+                          };
+                          if (priceAssessment.fairMarketPrivate > 0 || priceAssessment.fairMarketDealer > 0) {
+                            sideUpd.fair_market_private = priceAssessment.fairMarketPrivate;
+                            sideUpd.fair_market_dealer = priceAssessment.fairMarketDealer || null;
+                            sideUpd.fair_market_trade_in = priceAssessment.fairMarketTradeIn;
+                          }
+                          await supabase.from("vehicle_reports").update(sideUpd).eq("id", id);
                         }
                         sonnerToast.success("Report updated with history data!");
                       } else {
