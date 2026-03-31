@@ -974,7 +974,12 @@ export default function ReportPage() {
                     });
                     if (invokeError) throw invokeError;
                     if (analysisResult?.success) {
-                      setAnalysis(analysisResult.analysis);
+                      const newAn1 = analysisResult.analysis;
+                      if (analysis && newAn1.priceAssessment &&
+                          !(newAn1.priceAssessment.fairMarketPrivate > 0 || newAn1.priceAssessment.fairMarketDealer > 0)) {
+                        newAn1.priceAssessment = { ...newAn1.priceAssessment, ...analysis.priceAssessment };
+                      }
+                      setAnalysis(newAn1);
                       if (analysisResult.mpgData) {
                         setMpgData({
                           mpgCity: analysisResult.mpgData.mpgCity,
