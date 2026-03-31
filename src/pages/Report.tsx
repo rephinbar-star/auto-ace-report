@@ -1286,37 +1286,25 @@ export default function ReportPage() {
                       const high = (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate) * 1.15;
                       const range = high - low || 1;
 
-                      // Guard: if market values are all zero/missing, show fallback
-                      const hasMarketData = (priceAssessment.fairMarketPrivate > 0 || priceAssessment.fairMarketDealer > 0);
-
-                      if (!hasMarketData) {
-                        return (
-                          <div className="space-y-4">
-                            <div>
-                              <h3 className="text-lg font-semibold">Price vs. Market</h3>
-                              <p className="mt-1 text-sm text-muted-foreground">
-                                Market pricing data is not available for this vehicle. This may be due to limited comparable sales data or a VIN mismatch.
-                              </p>
-                              <div className="mt-3 rounded-lg border border-dashed p-4 text-center">
-                                <p className="text-sm text-muted-foreground">Asking Price</p>
-                                <p className="text-xl font-bold">${condition.askingPrice.toLocaleString()}</p>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      }
+                      const hasMarketData = (priceAssessment.fairMarketPrivate > 0 || (priceAssessment.fairMarketDealer ?? 0) > 0);
 
                       return (
                         <div className="space-y-4">
                           <div>
                             <h3 className="text-lg font-semibold">Price vs. Market</h3>
-                            <p className="mt-1 text-sm text-muted-foreground">
-                              Asking price is{" "}
-                              <span className={cn("font-semibold", priceAssessment.priceDifference > 0 ? "text-danger" : "text-success")}>
-                                {priceAssessment.priceDifference > 0 ? "$" + Math.abs(priceAssessment.priceDifference).toLocaleString() + " above" : "$" + Math.abs(priceAssessment.priceDifference).toLocaleString() + " below"}
-                              </span>
-                              {" "}fair market value.
-                            </p>
+                            {hasMarketData ? (
+                              <p className="mt-1 text-sm text-muted-foreground">
+                                Asking price is{" "}
+                                <span className={cn("font-semibold", priceAssessment.priceDifference > 0 ? "text-danger" : "text-success")}>
+                                  {priceAssessment.priceDifference > 0 ? "$" + Math.abs(priceAssessment.priceDifference).toLocaleString() + " above" : "$" + Math.abs(priceAssessment.priceDifference).toLocaleString() + " below"}
+                                </span>
+                                {" "}fair market value.
+                              </p>
+                            ) : (
+                              <p className="mt-1 text-sm text-muted-foreground">
+                                Market pricing data is not available for this vehicle.
+                              </p>
+                            )}
                           </div>
 
                           {/* Price bar visualization */}
