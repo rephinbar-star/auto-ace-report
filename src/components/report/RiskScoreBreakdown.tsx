@@ -73,7 +73,7 @@ function getFactorBarColor(score: number): string {
   return "[&>div]:bg-danger";
 }
 
-export function RiskScoreBreakdown({ result, missingHistoryReport, onUploadHistory, isUploadingHistory, vehicleYear, vehicleMake, vehicleMileage, vehicleOwnerCount, warrantyMonthsRemaining, isCPO }: RiskScoreBreakdownProps) {
+export function RiskScoreBreakdown({ result, missingHistoryReport, onUploadHistory, isUploadingHistory }: RiskScoreBreakdownProps) {
   const { totalScore, riskLevel, riskLabel, factors, knownFactorCount } = result;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
