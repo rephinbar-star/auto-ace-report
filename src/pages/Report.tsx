@@ -1009,7 +1009,7 @@ export default function ReportPage() {
                           depreciation_table: depreciationTable as any,
                           pricing_sources: analysisResult.pricingSources || [],
                           pricing_last_updated: new Date().toISOString(),
-                          vin: extractedVin || vehicleData.vehicle.vin || null,
+                          ...(extractedVin && !vehicleData.vehicle.vin ? { vin: extractedVin } : {}),
                         };
                         if (priceAssessment.fairMarketPrivate > 0 || priceAssessment.fairMarketDealer > 0) {
                           histUpd.fair_market_private = priceAssessment.fairMarketPrivate;
@@ -1320,39 +1320,63 @@ export default function ReportPage() {
 
                           {/* Price bar visualization */}
                           {(() => {
+                            if (!hasMarketData) {
+                              // No market data — show simplified asking price only
+                              return (
+                                <div className="relative pt-14 pb-4 mt-2">
+                                  <div className="absolute top-0 right-4 flex flex-col items-center">
+                                    <p className="text-[10px] text-muted-foreground text-center mb-0.5">Asking Price</p>
+                                    <div className="rounded-lg border bg-card px-3 py-1.5 text-sm font-bold shadow-sm whitespace-nowrap">
+                                      ${condition.askingPrice.toLocaleString()}
+                                    </div>
+                                  </div>
+                                  <div className="relative h-2.5 w-full">
+                                    <div className="absolute inset-0 rounded-full overflow-hidden">
+                                      <div className="absolute inset-0 rounded-full bg-muted" />
+                                    </div>
+                                    <div className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: "85%", top: "50%" }}>
+                                      <div className="h-5 w-5 rounded-full border-[3px] border-warning bg-background shadow-md" />
+                                    </div>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground mt-3 text-center">Market comparison unavailable — only asking price is shown.</p>
+                                </div>
+                              );
+                            }
+
                             // Build markers array for all values on the bar
                             const fairMarketValue = condition.sellerType === "dealer"
                               ? (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate)
                               : priceAssessment.fairMarketPrivate;
                             const markers: { label: string; value: number; isAsking?: boolean; isFairMarket?: boolean }[] = [];
-                            markers.push({ label: "Trade-In", value: priceAssessment.fairMarketTradeIn });
-                            markers.push({ label: "Fair Market Value", value: fairMarketValue, isFairMarket: true });
-                            if (priceAssessment.fairMarketDealer && condition.sellerType !== "dealer") {
+                            if (priceAssessment.fairMarketTradeIn > 0) {
+                              markers.push({ label: "Trade-In", value: priceAssessment.fairMarketTradeIn });
+                            }
+                            if (fairMarketValue > 0) {
+                              markers.push({ label: "Fair Market Value", value: fairMarketValue, isFairMarket: true });
+                            }
+                            if (priceAssessment.fairMarketDealer && priceAssessment.fairMarketDealer > 0 && condition.sellerType !== "dealer") {
                               markers.push({ label: "Dealer Retail", value: priceAssessment.fairMarketDealer });
                             }
-                            if (condition.sellerType === "dealer") {
+                            if (condition.sellerType === "dealer" && priceAssessment.fairMarketPrivate > 0) {
                               markers.push({ label: "Private Sale", value: priceAssessment.fairMarketPrivate });
                             }
                             markers.push({ label: "Asking Price", value: condition.askingPrice, isAsking: true });
 
-                            // Anchor gradient to actual values: trade-in = deep green (left), FMV = center green, overpriced = red (right)
-                            const tradeInVal = priceAssessment.fairMarketTradeIn;
+                            // Anchor gradient to actual values
+                            const tradeInVal = priceAssessment.fairMarketTradeIn > 0 ? priceAssessment.fairMarketTradeIn : fairMarketValue * 0.85;
                             const fmvVal = fairMarketValue;
-                            // Bar extends beyond FMV so markers have room on mobile
                             const barMin = tradeInVal * 0.90;
                             const barMax = fmvVal * 1.35;
                             const barRange = barMax - barMin || 1;
                             const toPct = (v: number) => Math.max(5, Math.min(92, ((v - barMin) / barRange) * 100));
 
-                            // Compute gradient stops based on actual value positions
                             const fmvPct = toPct(fmvVal);
 
                             return (
                               <>
                                 {/* Desktop: horizontal gradient bar */}
-                                {/* Extra top padding when negotiated price is present so both rows of labels have room */}
                                  <div className={cn("relative pb-14 mt-2", financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice ? "pt-24" : "pt-14")}>
-                                   {/* Asking price floating label — no connector tail below */}
+                                   {/* Asking price floating label */}
                                    {(() => {
                                      const askPct = toPct(condition.askingPrice);
                                      const hasNegotiated = !!(financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice);
@@ -1372,7 +1396,7 @@ export default function ReportPage() {
                                      );
                                    })()}
 
-                                   {/* Negotiated price floating label — connector line runs from label down to bar */}
+                                   {/* Negotiated price floating label */}
                                    {financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice && (() => {
                                      const negPct = toPct(financing.negotiatedPrice);
                                      const clampStyle = negPct > 80
@@ -1424,7 +1448,7 @@ export default function ReportPage() {
                                      })()}
                                   </div>
 
-                                  {/* Desktop markers */}
+                                  {/* Desktop markers — only non-asking, non-zero */}
                                   <div className="relative mt-5">
                                     {markers.filter(m => !m.isAsking).map((m) => {
                                       const mPct = toPct(m.value);
