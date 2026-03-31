@@ -240,6 +240,11 @@ export function ReportCard({ report, selectionMode, isSelected, onSelect, select
           </>
         )}
       </CardFooter>
+      {report.updated_at && report.updated_at !== report.created_at && (
+        <p className="px-6 pb-3 text-xs text-muted-foreground text-right">
+          Last analyzed: {new Date(report.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+        </p>
+      )}
     </Card>
   );
 }
