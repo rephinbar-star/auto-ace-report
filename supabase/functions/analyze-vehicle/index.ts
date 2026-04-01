@@ -69,6 +69,7 @@ interface PricingData {
     fairMarketTradeIn: number;
   };
   sourceBreakdown?: SourceValuation[];
+  detectedDealerType?: string | null;
 }
 
 interface MaintenanceData {
@@ -235,6 +236,15 @@ serve(async (req) => {
       console.log(`Maintenance data received with ${maintenanceData.citations.length} citations`);
     } else {
       console.log("No maintenance data available, falling back to AI-only estimates");
+    }
+
+    // Refine seller type using MarketCheck dealer detection
+    if (pricingData?.detectedDealerType && condition.sellerType === "dealer") {
+      const detected = pricingData.detectedDealerType.toLowerCase();
+      if (detected === "franchise" || detected === "independent") {
+        console.log(`Seller type refined from "dealer" to "${detected}" via MarketCheck`);
+        condition.sellerType = detected;
+      }
     }
 
     const systemPrompt = `You are an expert automotive analyst with 30+ years of master mechanic experience across ALL vehicle types — sedans, SUVs, pickup trucks, minivans, sports cars, exotic high-end cars, electric vehicles, and hydrogen vehicles. You are also a professional pre-owned vehicle buyer who has purchased vehicles from auctions, dealerships, and private individuals, and you know exactly what red flags to look for that indicate high mechanical and financial risk. You are trained in depth on automotive technology up to present day, including all electronics, ADAS systems, hybrid/EV drivetrains, and infotainment systems. You are a master mechanic capable of troubleshooting automotive issues on all vehicle types, brands, models, and trim levels.
@@ -498,6 +508,7 @@ Provide your expert analysis.`;
         },
         pricingSources: hasPricing ? pricingData.citations : [],
         sourceBreakdown: pricingData?.sourceBreakdown || [],
+        detectedSellerType: condition.sellerType,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

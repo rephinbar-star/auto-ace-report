@@ -553,6 +553,13 @@ export default function ReportPage() {
           if (result.sourceBreakdown?.length) {
             setSourceBreakdown(result.sourceBreakdown);
           }
+          // Update seller type if API detected franchise/independent
+          if (result.detectedSellerType && vehicleData) {
+            setVehicleData(prev => prev ? {
+              ...prev,
+              condition: { ...prev.condition, sellerType: result.detectedSellerType }
+            } : prev);
+          }
         } else {
           throw new Error(result?.error || "Analysis returned no data");
         }
@@ -622,11 +629,13 @@ export default function ReportPage() {
       const issueTexts = (historyAnalysis?.concerns ?? history?.issues ?? []).map((s: string) => s.toLowerCase());
       const hasFrameDamage = issueTexts.some((i: string) => i.includes("frame") || i.includes("structural"));
 
-      // Map seller type
+      // Map seller type (vehicleData.condition.sellerType may already be refined by API detection)
       const rawSeller = vehicle.sellerType || condition?.sellerType;
       const sellerType = condition?.isCPO || history?.isCPO
         ? "cpo" as const
         : rawSeller === "private" ? "private" as const
+        : rawSeller === "franchise" ? "franchise" as const
+        : rawSeller === "independent" ? "independent" as const
         : rawSeller ? "dealer" as const
         : null;
 
@@ -692,6 +701,13 @@ export default function ReportPage() {
         if (result.sourceBreakdown?.length) {
           setSourceBreakdown(result.sourceBreakdown);
         }
+        // Update seller type if API detected franchise/independent
+        if (result.detectedSellerType) {
+          setVehicleData(prev => prev ? {
+            ...prev,
+            condition: { ...prev.condition, sellerType: result.detectedSellerType }
+          } : prev);
+        }
         const now = new Date();
         setPricingLastUpdated(now);
         sonnerToast.success("Analysis refreshed with latest market data");
@@ -715,6 +731,7 @@ export default function ReportPage() {
             pricing_sources: result.pricingSources || [],
             pricing_last_updated: now.toISOString(),
             source_breakdown: result.sourceBreakdown || [],
+            ...(result.detectedSellerType ? { seller_type: result.detectedSellerType } : {}),
           };
           // Only overwrite pricing if the new values are non-zero
           if (priceAssessment.fairMarketPrivate > 0 || priceAssessment.fairMarketDealer > 0) {
