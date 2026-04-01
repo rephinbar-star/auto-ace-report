@@ -1656,41 +1656,42 @@ export default function ReportPage() {
                           <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Priv.</TableHead>
                           <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Trade</TableHead>
                           {!financingSkipped && <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Loan</TableHead>}
-                          <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Deprec.</TableHead>
                           <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Repair</TableHead>
                           <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Maint.</TableHead>
+                          <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Deprec.</TableHead>
                           <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Est. Value</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {depreciationTable.map((row, idx) => {
-                          const totalCosts = row.repairCosts + (row.maintenanceCosts || 0);
+                          const repair = Math.round(row.repairCosts);
+                          const maint = Math.round(row.maintenanceCosts || 0);
                           const prevValue = idx === 0 ? (condition?.askingPrice || depreciationTable[0].privateValue * 1.15) : depreciationTable[idx - 1].privateValue;
                           const depreciation = Math.max(0, Math.round(prevValue - row.privateValue));
-                          const netEquity = excludeRepairs 
-                            ? row.tradeInValue - (financingSkipped ? 0 : row.loanBalance)
-                            : row.tradeInValue - (financingSkipped ? 0 : row.loanBalance) - totalCosts;
+                          const estValue = excludeRepairs
+                            ? Math.round(row.privateValue) - depreciation
+                            : Math.round(row.privateValue) - depreciation - repair - maint;
                           return (
                             <TableRow key={row.year}>
                               <TableCell className="font-medium text-xs whitespace-nowrap px-1.5 md:px-4">Yr {row.year}</TableCell>
                               <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${Math.round(row.privateValue).toLocaleString()}</TableCell>
                               <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${Math.round(row.tradeInValue).toLocaleString()}</TableCell>
                               {!financingSkipped && <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${Math.round(row.loanBalance).toLocaleString()}</TableCell>}
-                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 text-orange-500">
-                                -${depreciation.toLocaleString()}
-                              </TableCell>
                               <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 text-danger">
-                                ${Math.round(row.repairCosts).toLocaleString()}
+                                ${repair.toLocaleString()}
                               </TableCell>
                               <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 text-muted-foreground">
-                                ${Math.round(row.maintenanceCosts || 0).toLocaleString()}
+                                ${maint.toLocaleString()}
+                              </TableCell>
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold text-destructive">
+                                -${depreciation.toLocaleString()}
                               </TableCell>
                               <TableCell className={cn(
                                 "text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-semibold",
-                                netEquity >= 0 ? "text-success" : "text-danger"
+                                estValue >= 0 ? "text-success" : "text-danger"
                               )}>
-                                {netEquity >= 0 ? "+" : "-"}
-                                ${Math.abs(Math.round(netEquity)).toLocaleString()}
+                                {estValue >= 0 ? "+" : "-"}
+                                ${Math.abs(estValue).toLocaleString()}
                               </TableCell>
                             </TableRow>
                           );
