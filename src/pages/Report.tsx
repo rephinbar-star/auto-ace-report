@@ -685,6 +685,9 @@ export default function ReportPage() {
         if (result.pricingSources?.length) {
           setPricingSources(result.pricingSources);
         }
+        if (result.sourceBreakdown?.length) {
+          setSourceBreakdown(result.sourceBreakdown);
+        }
         const now = new Date();
         setPricingLastUpdated(now);
         sonnerToast.success("Analysis refreshed with latest market data");
