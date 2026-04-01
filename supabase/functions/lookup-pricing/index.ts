@@ -17,6 +17,19 @@ interface PricingRequest {
   sellerType?: string;
 }
 
+interface SourceValuation {
+  source: string;
+  privateParty?: number | null;
+  privatePartyLow?: number | null;
+  privatePartyHigh?: number | null;
+  dealerRetail?: number | null;
+  dealerRetailLow?: number | null;
+  dealerRetailHigh?: number | null;
+  tradeIn?: number | null;
+  tradeInLow?: number | null;
+  tradeInHigh?: number | null;
+}
+
 interface PricingResult {
   pricingContext: string;
   citations: string[];
@@ -25,6 +38,7 @@ interface PricingResult {
     fairMarketDealer: number;
     fairMarketTradeIn: number;
   };
+  sourceBreakdown?: SourceValuation[];
 }
 
 /**
@@ -143,14 +157,32 @@ async function tryMarketCheck(
       `Notes: MarketCheck Price is an ML-based prediction using data from 84,000+ sources. Values derived from predicted market price of $${mcPrice.toLocaleString()}.`,
     ].filter(Boolean);
 
+    const computedPrivate = Math.round((privateLow + privateHigh) / 2);
+    const computedDealer = Math.round((dealerLow + dealerHigh) / 2);
+    const computedTradeIn = Math.round((tradeInLow + tradeInHigh) / 2);
+
     return {
       pricingContext: lines.join("\n"),
       citations: ["https://www.marketcheck.com"],
       computedValues: {
-        fairMarketPrivate: Math.round((privateLow + privateHigh) / 2),
-        fairMarketDealer: Math.round((dealerLow + dealerHigh) / 2),
-        fairMarketTradeIn: Math.round((tradeInLow + tradeInHigh) / 2),
+        fairMarketPrivate: computedPrivate,
+        fairMarketDealer: computedDealer,
+        fairMarketTradeIn: computedTradeIn,
       },
+      sourceBreakdown: [
+        {
+          source: "MarketCheck",
+          privateParty: computedPrivate,
+          privatePartyLow: privateLow,
+          privatePartyHigh: privateHigh,
+          dealerRetail: computedDealer,
+          dealerRetailLow: dealerLow,
+          dealerRetailHigh: dealerHigh,
+          tradeIn: computedTradeIn,
+          tradeInLow: tradeInLow,
+          tradeInHigh: tradeInHigh,
+        },
+      ],
     };
   } catch (err) {
     console.error("MarketCheck lookup error:", err);
@@ -294,6 +326,39 @@ async function tryPerplexity(
 
     pricingContext = lines.join("\n");
 
+    // Build per-source breakdown
+    const sourceBreakdown: SourceValuation[] = [
+      {
+        source: "Kelley Blue Book",
+        privateParty: kbbPrivateMid,
+        privatePartyLow: p.kbb_private_party_low,
+        privatePartyHigh: p.kbb_private_party_high,
+        dealerRetail: kbbDealerMid,
+        dealerRetailLow: p.kbb_dealer_retail_low,
+        dealerRetailHigh: p.kbb_dealer_retail_high,
+        tradeIn: kbbTradeInMid,
+        tradeInLow: p.kbb_trade_in_low,
+        tradeInHigh: p.kbb_trade_in_high,
+      },
+    ];
+
+    if (hasEdmundsData) {
+      sourceBreakdown.push({
+        source: "Edmunds",
+        privateParty: p.edmunds_private_party > 0 ? p.edmunds_private_party : null,
+        dealerRetail: p.edmunds_dealer_retail > 0 ? p.edmunds_dealer_retail : null,
+        tradeIn: p.edmunds_trade_in > 0 ? p.edmunds_trade_in : null,
+      });
+    }
+
+    if (hasNadaData) {
+      sourceBreakdown.push({
+        source: "NADA Guides",
+        dealerRetail: p.nada_clean_retail > 0 ? p.nada_clean_retail : null,
+        tradeIn: p.nada_clean_trade_in > 0 ? p.nada_clean_trade_in : null,
+      });
+    }
+
     return {
       pricingContext,
       citations: ensuredCitations,
@@ -302,6 +367,7 @@ async function tryPerplexity(
         fairMarketDealer: avg(dealerValues),
         fairMarketTradeIn: avg(tradeInValues),
       },
+      sourceBreakdown,
     };
   } catch {
     console.log("Could not parse structured response, using raw content");
