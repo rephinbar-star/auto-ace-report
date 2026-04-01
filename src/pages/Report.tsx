@@ -2041,6 +2041,9 @@ export default function ReportPage() {
                           setPricingSources(analysisResult.pricingSources);
                           setPricingLastUpdated(new Date());
                         }
+                        if (analysisResult.sourceBreakdown?.length) {
+                          setSourceBreakdown(analysisResult.sourceBreakdown);
+                        }
                         // Update saved report if applicable
                         if (isSavedReport && id) {
                           const { priceAssessment, depreciationTable, riskAssessment, historyAnalysis } = analysisResult.analysis;
