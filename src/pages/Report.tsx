@@ -1687,9 +1687,7 @@ export default function ReportPage() {
                                 -${depreciation.toLocaleString()}
                               </TableCell>
                               <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold text-foreground">
-                                {estValue >= 0 ? "" : "-"}
-                                {estValue >= 0 ? "+" : "-"}
-                                ${Math.abs(estValue).toLocaleString()}
+                                {estValue < 0 ? "-" : ""}${Math.abs(estValue).toLocaleString()}
                               </TableCell>
                             </TableRow>
                           );
