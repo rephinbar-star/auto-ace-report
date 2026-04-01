@@ -48,6 +48,8 @@ const dealRatingConfig = {
 
 const riskConfig = {
   low: { label: "Low Risk", className: "text-green-600 bg-green-500/10", icon: CheckCircle },
+  moderate: { label: "Moderate Risk", className: "text-yellow-600 bg-yellow-500/10", icon: AlertTriangle },
+  elevated: { label: "Elevated Risk", className: "text-orange-600 bg-orange-500/10", icon: AlertTriangle },
   medium: { label: "Medium Risk", className: "text-yellow-600 bg-yellow-500/10", icon: AlertTriangle },
   high: { label: "High Risk", className: "text-red-600 bg-red-500/10", icon: AlertTriangle },
 };
@@ -94,7 +96,7 @@ export function CompareVehicleCard({ report, onRemove, isBestBuy, rank }: Compar
 
   const uvprsColor = uvprs.riskLevel === "low" ? "text-green-600 bg-green-500/10 border-green-500/20"
     : uvprs.riskLevel === "moderate" ? "text-yellow-600 bg-yellow-500/10 border-yellow-500/20"
-    : uvprs.riskLevel === "high" ? "text-orange-600 bg-orange-500/10 border-orange-500/20"
+    : uvprs.riskLevel === "elevated" ? "text-orange-600 bg-orange-500/10 border-orange-500/20"
     : "text-red-600 bg-red-500/10 border-red-500/20";
 
   const vehicleTitle = `${report.year} ${report.make} ${report.model}${report.trim ? ` ${report.trim}` : ""}`;

@@ -56,6 +56,39 @@ export interface VehicleHistory {
   isCPO?: boolean | null;                   // Certified Pre-Owned status
 }
 
+// AI Findings types for UVPRS dynamic scoring layer
+export interface ActiveServiceFault {
+  system: string;
+  severityClass: 1 | 2 | 3 | 4 | 5;
+  occurrences: number;
+  estimatedCostPerIncident: number | null;
+  isAnomalous: boolean;
+  withinTwoYearsOfPrior: boolean;
+  description: string;
+}
+
+export interface KnownFailurePattern {
+  issue: string;
+  probabilityTier: "high" | "medium" | "low" | "remote";
+  costTier: "critical" | "major" | "moderate" | "minor";
+  alreadyPresent: boolean;
+  description: string;
+}
+
+export interface ChassisSignal {
+  level: 1 | 2 | 3 | 4 | 5;
+  isProblemGeneration: boolean;
+  isWorstGeneration: boolean;
+  withinFailureWindow: boolean;
+  description: string;
+}
+
+export interface AiFindings {
+  activeServiceFaults: ActiveServiceFault[];
+  knownFailurePatterns: KnownFailurePattern[];
+  chassisSignal: ChassisSignal;
+}
+
 export interface FinancingInfo {
   type: "loan" | "lease" | "cash";
   /** True when user chose to skip financing details during the wizard */

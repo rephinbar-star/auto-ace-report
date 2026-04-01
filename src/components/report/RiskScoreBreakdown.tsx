@@ -9,6 +9,10 @@ import { cn } from "@/lib/utils";
 import type { UVPRSResult } from "@/lib/uvprs-scoring";
 
 const factorTooltips: Record<string, { meaning: string; advice: string }> = {
+  aiFindings: {
+    meaning: "Dynamic risk assessment based on AI analysis of this specific vehicle: active service faults (50%), known failure patterns for this model-year (35%), and chassis/platform complaint signals (15%).",
+    advice: "Review the top findings listed — these are the specific issues driving this score. Budget for any identified chronic or high-cost items.",
+  },
   title: {
     meaning: "Measures title brand risk. Clean titles score low; salvage/rebuilt/lemon titles dramatically increase risk due to structural damage or fraud history.",
     advice: "Always request a title history check. Avoid salvage/lemon titles unless you're a mechanic buying at steep discount.",
@@ -57,12 +61,14 @@ interface RiskScoreBreakdownProps {
 const riskColors: Record<string, string> = {
   low: "bg-success text-success-foreground",
   moderate: "bg-warning text-warning-foreground",
+  elevated: "bg-orange-500 text-white",
   high: "bg-danger text-danger-foreground",
 };
 
 const riskProgressColors: Record<string, string> = {
   low: "[&>div]:bg-success",
   moderate: "[&>div]:bg-warning",
+  elevated: "[&>div]:bg-orange-500",
   high: "[&>div]:bg-danger",
 };
 
@@ -138,11 +144,11 @@ export function RiskScoreBreakdown({ result, missingHistoryReport, onUploadHisto
           </div>
         </div>
 
-        {knownFactorCount < 9 && (
+        {knownFactorCount < factors.length && (
           <div className="flex items-start gap-2 rounded-md bg-muted p-3 text-xs text-muted-foreground">
             <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
             <span>
-              {9 - knownFactorCount} factor(s) had missing data. Weights were redistributed across {knownFactorCount} known factors.
+              {factors.length - knownFactorCount} factor(s) had missing data. Weights were redistributed across {knownFactorCount} known factors.
             </span>
           </div>
         )}
@@ -189,6 +195,16 @@ export function RiskScoreBreakdown({ result, missingHistoryReport, onUploadHisto
                   <p className="text-xs text-muted-foreground">
                     {factor.description}
                   </p>
+                  {factor.key === "aiFindings" && factor.topFindings && factor.topFindings.length > 0 && (
+                    <ul className="mt-1 space-y-0.5">
+                      {factor.topFindings.map((finding, i) => (
+                        <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                          <span className="text-destructive mt-0.5">•</span>
+                          <span>{finding}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               );
             })}

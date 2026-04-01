@@ -1,27 +1,24 @@
 /**
- * Used Vehicle Purchase Risk Score (UVPRS) — Evidence-Based v2
+ * Used Vehicle Purchase Risk Score (UVPRS) — Evidence-Based v3
  * 
  * A deterministic 0–100 score where 0 = lowest risk, 100 = highest risk.
- * Built from 9 weighted factors informed by actuarial/insurance pricing research.
+ * Built from 10 weighted factors including a dynamic AI Findings layer.
  * 
- * Factor hierarchy (effective weights, redistributed from essay's 11-factor model
- * since Geographic/Climate 7% and Odometer Integrity 3% lack data pipelines):
- *   Title Status        20.0%  (essay 18% + redistribution)
- *   Accident History    17.8%  (essay 16% + redistribution, includes frame-damage sub-score)
- *   Model/Brand Rel.    15.6%  (essay 14% + redistribution)
- *   Mileage-for-Age     13.3%  (essay 12% + redistribution, subsumes vehicle age)
- *   Service History     11.1%  (essay 10% + redistribution)
- *   Price vs Market      8.9%  (essay 8% + redistribution, asymmetric scoring)
- *   Open Recalls         5.6%  (essay 5% + redistribution)
- *   Owner Count          4.4%  (essay 4% + redistribution, age-aware step function)
- *   Seller Type          3.3%  (essay 3% + redistribution)
- *
- * Removed factors (per essay):
- *   - Vehicle Age: subsumed into Mileage-for-Age (Weibull survival model)
- *   - Warranty Status: captured by age + reliability interaction (double-counting)
+ * Factor hierarchy:
+ *   AI Findings         20.0%  (dynamic: active faults, known failures, chassis signals)
+ *   Title Status        16.0%
+ *   Accident History    14.0%  (includes frame-damage sub-score)
+ *   Model-Year Rel.     14.0%
+ *   Mileage-for-Age     11.0%
+ *   Service History      9.0%
+ *   Price vs Market      7.0%
+ *   Open Recalls         5.0%
+ *   Owner Count          2.0%
+ *   Seller Type          2.0%
  */
 
 import { BRAND_RELIABILITY } from "@/components/compare/scoring-utils";
+import type { AiFindings, ActiveServiceFault, KnownFailurePattern, ChassisSignal } from "@/types/vehicle";
 
 // ============================================================================
 // Types
@@ -67,6 +64,9 @@ export interface UVPRSInput {
   // Seller type
   sellerType?: "private" | "dealer" | "franchise" | "independent" | "cpo" | null;
 
+  // AI Findings (dynamic layer)
+  aiFindings?: AiFindings | null;
+
   // Legacy fields kept for backward compat (no longer used in scoring)
   warrantyMonthsRemaining?: number | null;
   isCPO?: boolean | null;
@@ -80,34 +80,188 @@ export interface UVPRSFactorResult {
   weighted: number;    // weight * score (after renormalization)
   known: boolean;      // false if data was missing
   description: string;
+  topFindings?: string[]; // For AI Findings factor — top 3 drivers
 }
 
 export interface UVPRSResult {
   totalScore: number;
-  riskLevel: "low" | "moderate" | "high";
+  riskLevel: "low" | "moderate" | "elevated" | "high";
   riskLabel: string;
+  verdict: "Buy" | "Conditional Buy" | "Caution" | "Avoid";
   factors: UVPRSFactorResult[];
   knownFactorCount: number;
 }
 
 // ============================================================================
-// Constants — effective weights after redistributing Geographic (7%) and
-// Odometer Integrity (3%) proportionally across 9 available factors.
+// Constants — New weights per v3 plan
 // ============================================================================
 
 const WEIGHTS: Record<string, number> = {
-  title:        0.200,   // essay 18% → 20.0%
-  accident:     0.178,   // essay 16% → 17.8%
-  brand:        0.156,   // essay 14% → 15.6%
-  mileageForAge:0.133,   // essay 12% → 13.3%
-  service:      0.111,   // essay 10% → 11.1%
-  price:        0.089,   // essay  8% →  8.9%
-  recall:       0.056,   // essay  5% →  5.6%
-  owners:       0.044,   // essay  4% →  4.4%
-  sellerType:   0.033,   // essay  3% →  3.3%
+  aiFindings:   0.200,   // NEW: dynamic AI findings layer
+  title:        0.160,
+  accident:     0.140,
+  brand:        0.140,
+  mileageForAge:0.110,
+  service:      0.090,
+  price:        0.070,
+  recall:       0.050,
+  owners:       0.020,
+  sellerType:   0.020,
 };
 
-const EXPECTED_MILES_PER_YEAR = 13500; // Updated from 11k to current average per essay
+const EXPECTED_MILES_PER_YEAR = 13500;
+
+// ============================================================================
+// AI Findings Scoring (Component A + B + C)
+// ============================================================================
+
+// Component A normalization table
+function normalizeComponentA(rawSum: number): number {
+  if (rawSum <= 0) return 0;
+  if (rawSum <= 15) return 10;
+  if (rawSum <= 30) return 22;
+  if (rawSum <= 50) return 38;
+  if (rawSum <= 70) return 52;
+  if (rawSum <= 90) return 65;
+  if (rawSum <= 120) return 78;
+  if (rawSum <= 160) return 88;
+  return 95; // hard cap
+}
+
+// Component B normalization table
+function normalizeComponentB(rawSum: number): number {
+  if (rawSum <= 0) return 0;
+  if (rawSum <= 20) return 12;
+  if (rawSum <= 40) return 25;
+  if (rawSum <= 65) return 40;
+  if (rawSum <= 90) return 55;
+  if (rawSum <= 120) return 68;
+  if (rawSum <= 160) return 80;
+  if (rawSum <= 200) return 90;
+  return 95; // hard cap
+}
+
+const SEVERITY_BASE_POINTS: Record<number, number> = {
+  1: 5, 2: 15, 3: 28, 4: 50, 5: 65,
+};
+
+function getCostModifier(cost: number | null): number {
+  if (cost == null) return 1.0;
+  if (cost < 500) return 0.7;
+  if (cost <= 1500) return 1.0;
+  if (cost <= 3000) return 1.3;
+  if (cost <= 6000) return 1.6;
+  return 2.0;
+}
+
+export function scoreActiveServiceFaults(
+  faults: ActiveServiceFault[],
+  hasServiceRecords?: boolean | null,
+  serviceGapMiles?: number | null
+): number {
+  // No-records penalty
+  if (hasServiceRecords === false && faults.length === 0) return 55;
+
+  let rawSum = 0;
+  // Group faults by system for recurrence
+  const systemMaxScores = new Map<string, number>();
+
+  for (const fault of faults) {
+    let score = SEVERITY_BASE_POINTS[fault.severityClass] ?? 15;
+
+    // Recurrence multiplier
+    if (fault.occurrences >= 3) score *= 1.8;
+    else if (fault.occurrences >= 2) score *= 1.4;
+
+    // Within 24 months of prior same-system repair
+    if (fault.withinTwoYearsOfPrior) score *= 1.2;
+
+    // Cost-severity modifier
+    score *= getCostModifier(fault.estimatedCostPerIncident);
+
+    // Anomaly modifier
+    if (fault.isAnomalous) score *= 1.3;
+
+    rawSum += score;
+  }
+
+  let normalized = normalizeComponentA(rawSum);
+
+  // Partial records penalty
+  if (hasServiceRecords === true && serviceGapMiles != null && serviceGapMiles > 20000) {
+    normalized = Math.min(90, normalized + 10);
+  }
+
+  return Math.round(normalized);
+}
+
+const FAILURE_PATTERN_MATRIX: Record<string, Record<string, number>> = {
+  high:   { critical: 40, major: 30, moderate: 20, minor: 10 },
+  medium: { critical: 28, major: 20, moderate: 13, minor: 6 },
+  low:    { critical: 18, major: 12, moderate: 7, minor: 3 },
+  remote: { critical: 10, major: 6, moderate: 3, minor: 1 },
+};
+
+export function scoreKnownFailurePatterns(patterns: KnownFailurePattern[]): number {
+  let rawSum = 0;
+  for (const pattern of patterns) {
+    let score = FAILURE_PATTERN_MATRIX[pattern.probabilityTier]?.[pattern.costTier] ?? 10;
+    if (pattern.alreadyPresent) score *= 1.5;
+    rawSum += score;
+  }
+  return Math.round(normalizeComponentB(rawSum));
+}
+
+const CHASSIS_BASE_SCORES: Record<number, number> = {
+  1: 5, 2: 18, 3: 35, 4: 55, 5: 80,
+};
+
+export function scoreChassisSignal(signal: ChassisSignal): number {
+  let score = CHASSIS_BASE_SCORES[signal.level] ?? 35;
+  if (signal.isWorstGeneration) score *= 1.5;
+  else if (signal.isProblemGeneration) score *= 1.25;
+  if (signal.withinFailureWindow) score *= 1.2;
+  return Math.min(95, Math.round(score));
+}
+
+export function scoreAiFindings(
+  aiFindings: AiFindings | null | undefined,
+  hasServiceRecords?: boolean | null,
+  serviceGapMiles?: number | null
+): { score: number; known: boolean; topFindings: string[] } {
+  if (!aiFindings) return { score: 50, known: false, topFindings: [] };
+
+  const compA = scoreActiveServiceFaults(
+    aiFindings.activeServiceFaults,
+    hasServiceRecords,
+    serviceGapMiles
+  );
+  const compB = scoreKnownFailurePatterns(aiFindings.knownFailurePatterns);
+  const compC = scoreChassisSignal(aiFindings.chassisSignal);
+
+  const finalScore = Math.round(compA * 0.50 + compB * 0.35 + compC * 0.15);
+
+  // Collect top 3 findings by score contribution
+  const allFindings: { description: string; score: number }[] = [];
+  for (const f of aiFindings.activeServiceFaults) {
+    let s = SEVERITY_BASE_POINTS[f.severityClass] ?? 15;
+    if (f.occurrences >= 3) s *= 1.8; else if (f.occurrences >= 2) s *= 1.4;
+    s *= getCostModifier(f.estimatedCostPerIncident);
+    if (f.isAnomalous) s *= 1.3;
+    allFindings.push({ description: f.description, score: s });
+  }
+  for (const p of aiFindings.knownFailurePatterns) {
+    const s = (FAILURE_PATTERN_MATRIX[p.probabilityTier]?.[p.costTier] ?? 10) * (p.alreadyPresent ? 1.5 : 1);
+    allFindings.push({ description: p.description, score: s });
+  }
+  if (aiFindings.chassisSignal.description) {
+    allFindings.push({ description: aiFindings.chassisSignal.description, score: compC });
+  }
+  allFindings.sort((a, b) => b.score - a.score);
+  const topFindings = allFindings.slice(0, 3).map(f => f.description);
+
+  return { score: Math.min(100, finalScore), known: true, topFindings };
+}
 
 // ============================================================================
 // Individual Factor Scoring Functions (each returns 0-100)
@@ -115,22 +269,6 @@ const EXPECTED_MILES_PER_YEAR = 13500; // Updated from 11k to current average pe
 
 /**
  * A) Mileage-for-Age — Sigmoid curve with absolute mileage penalties
- * 
- * Subsumes vehicle age (both dimensions independently significant per
- * Weibull survival model, but highly correlated → single factor).
- * 
- * Sigmoid inflection points per essay:
- *   <80% avg (but >4k/yr) = ~15 (slight positive)
- *   <4k/yr = ~25 (disuse degradation risk)
- *   100% avg = ~30 (baseline)
- *   150% avg = ~55
- *   200%+ = ~75-85
- * 
- * Absolute mileage penalties (cumulative):
- *   75k-100k  → +5
- *   100k-125k → +15
- *   125k-150k → +25
- *   150k+     → +35
  */
 export function scoreMileageForAge(mileage: number, year: number): number {
   const currentYear = new Date().getFullYear();
@@ -138,30 +276,21 @@ export function scoreMileageForAge(mileage: number, year: number): number {
   const annualMiles = mileage / age;
   const ratio = annualMiles / EXPECTED_MILES_PER_YEAR;
 
-  // --- Sigmoid-based ratio score ---
   let ratioScore: number;
-  
   if (annualMiles < 4000) {
-    // Very low usage — disuse degradation (rubber, seals, batteries)
     ratioScore = 25;
   } else if (ratio < 0.80) {
-    // Below average but reasonable — slight positive
     ratioScore = 15;
   } else if (ratio <= 1.0) {
-    // 80%-100% of average — interpolate 15 → 30
     ratioScore = 15 + (ratio - 0.80) / 0.20 * 15;
   } else if (ratio <= 1.5) {
-    // 100%-150% — interpolate 30 → 55
     ratioScore = 30 + (ratio - 1.0) / 0.5 * 25;
   } else if (ratio <= 2.0) {
-    // 150%-200% — interpolate 55 → 80
     ratioScore = 55 + (ratio - 1.5) / 0.5 * 25;
   } else {
-    // 200%+ — 80-90 range
     ratioScore = Math.min(90, 80 + (ratio - 2.0) * 10);
   }
 
-  // --- Absolute mileage penalty ---
   let absPenalty = 0;
   if (mileage >= 150_000) absPenalty = 35;
   else if (mileage >= 125_000) absPenalty = 25;
@@ -173,15 +302,6 @@ export function scoreMileageForAge(mileage: number, year: number): number {
 
 /**
  * B) Accident / Damage history — Exponential scaling
- * 
- * Per Aviation Composite Risk Index methodology adapted for vehicles:
- *   0 accidents = 0
- *   1 (assumed minor without severity data) = 25
- *   2 = 65
- *   3+ = 90-100
- * 
- * Frame damage sub-scoring: if hasFrameDamage, a separate 85-100 score
- * is blended at 5/16 weight within the accident factor.
  */
 export function scoreAccident(
   accidentCount: number | null | undefined,
@@ -189,19 +309,17 @@ export function scoreAccident(
 ): { score: number; known: boolean } {
   if (accidentCount == null && !hasFrameDamage) return { score: 50, known: false };
 
-  // Base accident score (exponential curve)
   let baseScore: number;
   const count = accidentCount ?? 0;
   if (count === 0) baseScore = 0;
   else if (count === 1) baseScore = 25;
   else if (count === 2) baseScore = 65;
   else if (count === 3) baseScore = 90;
-  else baseScore = Math.min(100, 90 + (count - 3) * 5); // 4+ → 95-100
+  else baseScore = Math.min(100, 90 + (count - 3) * 5);
 
-  // Frame damage sub-score (5% of the 16% accident weight = ~31% of this factor)
   if (hasFrameDamage) {
-    const framePortion = 5 / 16; // sub-weight ratio within accident factor
-    const frameScore = 90; // structural damage = very high risk
+    const framePortion = 5 / 16;
+    const frameScore = 90;
     const accidentPortion = 1 - framePortion;
     const combined = accidentPortion * baseScore + framePortion * frameScore;
     return { score: Math.round(combined), known: true };
@@ -223,14 +341,7 @@ export function scoreTitleStatus(status: string | null | undefined): { score: nu
 }
 
 /**
- * D) Brand/Model reliability
- * 
- * Maps from 1-10 reliability scale to 0-100 risk using PP100 calibration:
- *   Lexus-tier (score 9-10) → risk 10-20
- *   Industry average (score 5) → risk 50
- *   Below average (score 2-3) → risk 70-80
- * 
- * TODO: Override with model-year-specific NHTSA complaint data when available.
+ * D) Brand/Model reliability (renamed from "Brand Reliability" to "Model-Year Reliability")
  */
 export function scoreBrandReliability(make: string): number {
   const brandScore = BRAND_RELIABILITY[make] ?? BRAND_RELIABILITY["default"] ?? 5;
@@ -240,11 +351,6 @@ export function scoreBrandReliability(make: string): number {
 
 /**
  * E) Price vs Market — Asymmetric scoring
- * 
- * Overpriced = financial risk:
- *   10% over = 30, 20% over = 50, 30%+ over = 70
- * Underpriced = fraud/defect signal:
- *   10% under = 15, 20% under = 40, 30%+ under = 65
  */
 export function scorePriceVsMarket(
   askingPrice: number,
@@ -257,13 +363,11 @@ export function scorePriceVsMarket(
   const pctDiff = (askingPrice - mkt) / mkt;
 
   if (pctDiff >= 0) {
-    // Overpriced: 10% → 30, 20% → 50, 30% → 70
     if (pctDiff <= 0.10) return { score: Math.round(pctDiff / 0.10 * 30), known: true };
     if (pctDiff <= 0.20) return { score: Math.round(30 + (pctDiff - 0.10) / 0.10 * 20), known: true };
     if (pctDiff <= 0.30) return { score: Math.round(50 + (pctDiff - 0.20) / 0.10 * 20), known: true };
     return { score: Math.min(90, Math.round(70 + (pctDiff - 0.30) / 0.10 * 10)), known: true };
   } else {
-    // Underpriced: 10% → 15, 20% → 40, 30%+ → 65
     const absPct = Math.abs(pctDiff);
     if (absPct <= 0.10) return { score: Math.round(absPct / 0.10 * 15), known: true };
     if (absPct <= 0.20) return { score: Math.round(15 + (absPct - 0.10) / 0.10 * 25), known: true };
@@ -274,10 +378,6 @@ export function scorePriceVsMarket(
 
 /**
  * F) Owner count — Age-aware step function
- * 
- * Per AutoCheck findings:
- *   Vehicle <8 years: each owner beyond first adds 12-15 points
- *   Vehicle ≥8 years: penalty drops to 5-8 points per owner (more expected)
  */
 export function scoreOwnerCount(
   ownerCount: number | null | undefined,
@@ -290,17 +390,15 @@ export function scoreOwnerCount(
   const extraOwners = ownerCount - 1;
 
   if (age < 8) {
-    // Young vehicle — high penalty per extra owner (12-15 pts)
     const score = Math.min(100, 5 + extraOwners * 14);
     return { score, known: true };
   } else {
-    // Older vehicle — lower penalty per extra owner (6-8 pts)
     const score = Math.min(80, 5 + extraOwners * 7);
     return { score, known: true };
   }
 }
 
-/** G) Service & repair history — unchanged from v1 */
+/** G) Service & repair history */
 export function scoreServiceHistory(
   hasServiceRecords: boolean | null | undefined,
   healthScore: number | null | undefined,
@@ -374,8 +472,7 @@ export function scoreServiceHistory(
 }
 
 /**
- * H) Open Recalls — Higher scores per essay (48% non-completion rate)
- *   0 = 0, 1 = 30, 2 = 50, 3+ = 70
+ * H) Open Recalls
  */
 export function scoreRecalls(openRecallCount: number | null | undefined): { score: number; known: boolean } {
   if (openRecallCount == null) return { score: 50, known: false };
@@ -386,12 +483,7 @@ export function scoreRecalls(openRecallCount: number | null | undefined): { scor
 }
 
 /**
- * I) Seller Type — NEW
- * 
- * CPO dealer = 5 (manufacturer-backed warranty, inspection)
- * Franchise dealer = 15
- * Independent dealer = 30
- * Private party = 45
+ * I) Seller Type
  */
 export function scoreSellerType(sellerType: string | null | undefined): { score: number; known: boolean } {
   if (!sellerType) return { score: 50, known: false };
@@ -409,21 +501,40 @@ export function scoreSellerType(sellerType: string | null | undefined): { score:
 // Main Calculator
 // ============================================================================
 
-export function getRiskLevel(score: number): { level: UVPRSResult["riskLevel"]; label: string } {
-  if (score <= 33) return { level: "low", label: "Low Risk" };
-  if (score <= 67) return { level: "moderate", label: "Moderate Risk" };
-  return { level: "high", label: "High Risk" };
+export function getRiskLevel(score: number): { level: UVPRSResult["riskLevel"]; label: string; verdict: UVPRSResult["verdict"] } {
+  if (score <= 30) return { level: "low", label: "Low Risk", verdict: "Buy" };
+  if (score <= 50) return { level: "moderate", label: "Moderate Risk", verdict: "Conditional Buy" };
+  if (score <= 70) return { level: "elevated", label: "Elevated Risk", verdict: "Caution" };
+  return { level: "high", label: "High Risk", verdict: "Avoid" };
 }
 
 /** Map UVPRS to legacy risk_level enum */
 export function uvprsToLegacyRiskLevel(score: number): "low" | "medium" | "high" {
-  if (score <= 33) return "low";
-  if (score <= 67) return "medium";
+  if (score <= 30) return "low";
+  if (score <= 50) return "medium";
   return "high";
 }
 
 export function calculateUVPRS(input: UVPRSInput): UVPRSResult {
   const factorResults: UVPRSFactorResult[] = [];
+
+  // 0. AI Findings (NEW — 20% weight)
+  const aiFindingsResult = scoreAiFindings(
+    input.aiFindings,
+    input.hasServiceRecords,
+    input.serviceGapMiles
+  );
+  factorResults.push({
+    key: "aiFindings", label: "AI Findings",
+    score: aiFindingsResult.score, weight: WEIGHTS.aiFindings, weighted: 0,
+    known: aiFindingsResult.known,
+    description: aiFindingsResult.known
+      ? (aiFindingsResult.topFindings.length > 0
+        ? aiFindingsResult.topFindings[0]
+        : "No significant findings")
+      : "No AI analysis data available",
+    topFindings: aiFindingsResult.topFindings,
+  });
 
   // 1. Title Status
   const title = scoreTitleStatus(input.titleStatus);
@@ -451,10 +562,10 @@ export function calculateUVPRS(input: UVPRSInput): UVPRSResult {
       : "Unknown — neutral score applied",
   });
 
-  // 3. Brand/Model Reliability
+  // 3. Model-Year Reliability (renamed from Brand Reliability)
   const brand = scoreBrandReliability(input.make);
   factorResults.push({
-    key: "brand", label: "Brand Reliability",
+    key: "brand", label: "Model-Year Reliability",
     score: brand, weight: WEIGHTS.brand, weighted: 0,
     known: true,
     description: `${input.make} — ${brand <= 10 ? "Excellent" : brand <= 25 ? "Good" : brand <= 50 ? "Average" : "Below average"} reliability`,
@@ -499,7 +610,7 @@ export function calculateUVPRS(input: UVPRSInput): UVPRSResult {
       : "Unknown — neutral score applied",
   });
 
-  // 7. Open Recalls (higher scores per essay)
+  // 7. Open Recalls
   const recall = scoreRecalls(input.openRecallCount);
   let recallDescription: string;
   if (!recall.known) {
@@ -532,7 +643,7 @@ export function calculateUVPRS(input: UVPRSInput): UVPRSResult {
       : (owners.known ? `${input.ownerCount} owner(s)` : "Unknown — neutral score applied"),
   });
 
-  // 9. Seller Type (NEW)
+  // 9. Seller Type
   const seller = scoreSellerType(input.sellerType);
   factorResults.push({
     key: "sellerType", label: "Seller Type",
@@ -565,28 +676,53 @@ export function calculateUVPRS(input: UVPRSInput): UVPRSResult {
 
   totalScore = Math.round(Math.min(100, Math.max(0, totalScore)));
 
-  // ── Hard floor/ceiling overrides (post-calculation) ──
-  // Salvage/flood/junk title → minimum composite 70
-  if (input.titleStatus === "salvage" || input.titleStatus === "lemon") {
-    totalScore = Math.max(70, totalScore);
+  // ── Hard floor overrides (tiered, highest applicable wins) ──
+  
+  // Floor 65: salvage/flood/rebuilt title, confirmed frame damage, confirmed odometer rollback
+  if (input.titleStatus === "salvage" || input.titleStatus === "lemon" || input.titleStatus === "rebuilt") {
+    totalScore = Math.max(65, totalScore);
   }
-
-  // Confirmed frame damage → minimum composite 60
   if (input.hasFrameDamage) {
-    totalScore = Math.max(60, totalScore);
+    totalScore = Math.max(65, totalScore);
   }
 
-  // 15+ year vehicle with 200k+ miles → minimum composite 25
-  if (age >= 15 && input.mileage >= 200_000) {
-    totalScore = Math.max(25, totalScore);
+  // Floor 45: 3+ owners in <8 years, chronic recurring fault with >$2k/incident, asking price >25% above fair market
+  if (input.ownerCount != null && input.ownerCount >= 3 && age < 8) {
+    totalScore = Math.max(45, totalScore);
+  }
+  if (input.aiFindings?.activeServiceFaults?.some(
+    f => (f.severityClass === 4 || f.severityClass === 5) && 
+         f.estimatedCostPerIncident != null && f.estimatedCostPerIncident > 2000
+  )) {
+    totalScore = Math.max(45, totalScore);
+  }
+  // Also check chronicRepairSystems as fallback when aiFindings not available
+  if (!input.aiFindings && input.chronicRepairSystems && input.chronicRepairSystems.length > 0) {
+    const criticalSystems = ["transmission", "engine", "cooling", "electrical"];
+    const hasCriticalChronic = input.chronicRepairSystems.some(s =>
+      criticalSystems.some(cs => s.toLowerCase().includes(cs))
+    );
+    if (hasCriticalChronic) {
+      totalScore = Math.max(45, totalScore);
+    }
+  }
+  const mkt = input.fairMarketDealer || input.fairMarketPrivate;
+  if (mkt && mkt > 0 && input.askingPrice > mkt * 1.25) {
+    totalScore = Math.max(45, totalScore);
   }
 
-  const { level, label } = getRiskLevel(totalScore);
+  // Floor 35: AI identifies chassis-wide systemic defect (level 4+)
+  if (input.aiFindings?.chassisSignal?.level != null && input.aiFindings.chassisSignal.level >= 4) {
+    totalScore = Math.max(35, totalScore);
+  }
+
+  const { level, label, verdict } = getRiskLevel(totalScore);
 
   return {
     totalScore,
     riskLevel: level,
     riskLabel: label,
+    verdict,
     factors: factorResults,
     knownFactorCount: factorResults.filter(f => f.known).length,
   };

@@ -283,6 +283,26 @@ These thresholds are absolute rules. Do NOT override them based on subjective ju
 
 FINAL RECOMMENDATION VERDICT: Every analysis MUST conclude with a clear, unambiguous verdict of exactly one of three options: "Buy", "Negotiate", or "Walk Away". The verdict must be consistent with the overall risk assessment, deal rating, warranty status, and all other findings. Include a brief justification sentence explaining the verdict.
 
+AI FINDINGS CLASSIFICATION: You MUST populate the "aiFindings" field with structured risk data for UVPRS scoring:
+
+1. activeServiceFaults — For EVERY fault or anomaly found in the service history or CarFax/AutoCheck:
+   - severityClass: 1=Minor resolved (single, <$500), 2=Moderate resolved (single, $500-$1500), 3=Major resolved (single, >$1500), 4=Recurring/Chronic (same system 2+ times), 5=Unresolved/Open
+   - occurrences: How many times this system was flagged
+   - estimatedCostPerIncident: Estimated repair cost per occurrence in USD
+   - isAnomalous: true if the repair occurred much earlier than expected for this make/model/year (e.g., fuel line replacement before 50k miles, transmission service before 30k, head gasket before 80k, battery replacement within 24 months of new)
+   - withinTwoYearsOfPrior: true if this fault occurred within 24 months of a prior same-system repair
+
+2. knownFailurePatterns — For EVERY known failure pattern for this specific make/model/year/trim at current mileage:
+   - probabilityTier: "high" (>30% failure rate at this mileage), "medium" (15-30%), "low" (5-14%), "remote" (<5%)
+   - costTier: "critical" (>$3000), "major" ($1500-$3000), "moderate" ($500-$1500), "minor" (<$500)
+   - alreadyPresent: true if this failure pattern already appears in the service history
+
+3. chassisSignal — Platform-wide assessment:
+   - level: 1=Clean (at/below segment average), 2=Minor (isolated issues), 3=Moderate (above-average complaints or 1-2 systemic issues), 4=Significant (well-documented platform issues, multiple TSBs), 5=Severe (active NHTSA investigation, recall for systemic defect)
+   - isProblemGeneration: true if this specific generation is known to be worse than the nameplate average
+   - isWorstGeneration: true if this is the specifically flagged worst generation of its nameplate
+   - withinFailureWindow: true if vehicle is within 15,000 miles of documented failure onset mileage
+
 Always provide specific dollar amounts, not ranges. Be direct and honest about risks.`;
 
     // Build vehicle specs section if enriched data is available
@@ -460,8 +480,58 @@ Provide your expert analysis.`;
                     },
                     required: ["verdict", "justification"],
                   },
+                  aiFindings: {
+                    type: "object",
+                    description: "Structured risk findings for UVPRS scoring. MUST be populated for every analysis.",
+                    properties: {
+                      activeServiceFaults: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                          properties: {
+                            system: { type: "string", description: "System affected, e.g. 'electrical', 'transmission', 'cooling'" },
+                            severityClass: { type: "number", description: "1=Minor resolved, 2=Moderate resolved, 3=Major resolved, 4=Recurring/Chronic, 5=Unresolved" },
+                            occurrences: { type: "number", description: "Number of times this system was flagged" },
+                            estimatedCostPerIncident: { type: "number", description: "Estimated repair cost per occurrence in USD" },
+                            isAnomalous: { type: "boolean", description: "True if repair occurred much earlier than expected for this make/model/year" },
+                            withinTwoYearsOfPrior: { type: "boolean", description: "True if fault occurred within 24 months of a prior same-system repair" },
+                            description: { type: "string", description: "Human-readable description of the fault" },
+                          },
+                          required: ["system", "severityClass", "occurrences", "estimatedCostPerIncident", "isAnomalous", "withinTwoYearsOfPrior", "description"],
+                        },
+                        description: "Every fault or anomaly found in service history or CarFax/AutoCheck. Empty array if no service faults found.",
+                      },
+                      knownFailurePatterns: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                          properties: {
+                            issue: { type: "string", description: "Name of the known failure pattern" },
+                            probabilityTier: { type: "string", enum: ["high", "medium", "low", "remote"] },
+                            costTier: { type: "string", enum: ["critical", "major", "moderate", "minor"] },
+                            alreadyPresent: { type: "boolean", description: "True if this failure already appears in service history" },
+                            description: { type: "string", description: "Human-readable description including typical mileage range" },
+                          },
+                          required: ["issue", "probabilityTier", "costTier", "alreadyPresent", "description"],
+                        },
+                        description: "Known failure patterns for this specific make/model/year at current mileage",
+                      },
+                      chassisSignal: {
+                        type: "object",
+                        properties: {
+                          level: { type: "number", description: "1=Clean, 2=Minor, 3=Moderate, 4=Significant, 5=Severe" },
+                          isProblemGeneration: { type: "boolean" },
+                          isWorstGeneration: { type: "boolean" },
+                          withinFailureWindow: { type: "boolean", description: "True if within 15k miles of documented failure onset" },
+                          description: { type: "string", description: "Human-readable platform assessment" },
+                        },
+                        required: ["level", "isProblemGeneration", "isWorstGeneration", "withinFailureWindow", "description"],
+                      },
+                    },
+                    required: ["activeServiceFaults", "knownFailurePatterns", "chassisSignal"],
+                  },
                 },
-                required: ["priceAssessment", "depreciationTable", "riskAssessment", "historyAnalysis", "warrantyAnalysis", "finalVerdict"],
+                required: ["priceAssessment", "depreciationTable", "riskAssessment", "historyAnalysis", "warrantyAnalysis", "finalVerdict", "aiFindings"],
               },
             },
           },

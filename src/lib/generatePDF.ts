@@ -311,7 +311,10 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
 
   const uvprsColor = (): [number, number, number] => {
     if (!uvprsResult) return SLATE;
-    return uvprsResult.riskLevel === "low" ? GREEN : uvprsResult.riskLevel === "moderate" ? AMBER : RED;
+    if (uvprsResult.riskLevel === "low") return GREEN;
+    if (uvprsResult.riskLevel === "moderate") return AMBER;
+    if (uvprsResult.riskLevel === "elevated") return ORANGE;
+    return RED;
   };
 
   const statCards = [

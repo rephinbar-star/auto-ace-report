@@ -71,7 +71,7 @@ import { RiskScoreBreakdown } from "@/components/report/RiskScoreBreakdown";
 import { ServiceHistoryTimeline } from "@/components/report/ServiceHistoryTimeline";
 import { generateReportPDF } from "@/lib/generatePDF";
 import { FinancingStep } from "@/components/analysis/FinancingStep";
-import type { FinancingInfo } from "@/types/vehicle";
+import type { FinancingInfo, AiFindings } from "@/types/vehicle";
 import { cacheImages, getCachedUrls } from "@/lib/api/cache-images";
 import { calculateTCO } from "@/lib/tco-calculations";
 import { toast as sonnerToast } from "sonner";
@@ -137,6 +137,7 @@ interface Analysis {
     verdict: "Buy" | "Negotiate" | "Walk Away";
     justification: string;
   };
+  aiFindings?: AiFindings;
 }
 
 interface DealerAnalysisData {
@@ -663,6 +664,7 @@ export default function ReportPage() {
         resolvedRecallCount,
         sellerType,
         isBrandNew: condition?.isBrandNew ?? null,
+        aiFindings: analysis.aiFindings ?? null,
       });
       setUvprsResult(result);
     };
@@ -2018,8 +2020,9 @@ export default function ReportPage() {
                   <div className="prose prose-sm max-w-none dark:prose-invert">
                     <p className={cn(
                       "whitespace-pre-line font-bold",
-                      analysis.finalVerdict?.verdict === "Walk Away" ? "text-destructive" :
-                      analysis.finalVerdict?.verdict === "Buy" ? "text-success" :
+                      uvprsResult?.verdict === "Avoid" || uvprsResult?.verdict === "Caution" 
+                        || analysis.finalVerdict?.verdict === "Walk Away" ? "text-destructive" :
+                      uvprsResult?.verdict === "Buy" || analysis.finalVerdict?.verdict === "Buy" ? "text-success" :
                       "text-foreground"
                     )}>{riskAssessment.expertOpinion}</p>
                   </div>
@@ -2027,76 +2030,51 @@ export default function ReportPage() {
                 </CardContent>
               </Card>
 
-              {/* Final Verdict Card - Horizontal layout in main content */}
-              {analysis.finalVerdict ? (
-                <Card className={cn(
-                  "border-2",
-                  analysis.finalVerdict.verdict === "Buy" ? "border-success bg-success/5"
-                    : analysis.finalVerdict.verdict === "Negotiate" ? "border-warning bg-warning/5"
-                    : "border-danger bg-danger/5"
-                )}>
-                  <CardContent className="p-6">
-                    <div className="flex flex-col sm:flex-row items-center gap-6">
-                      <div className="flex flex-col items-center gap-2 shrink-0">
-                        {analysis.finalVerdict.verdict === "Buy" ? (
-                          <ThumbsUp className="h-10 w-10 text-success" />
-                        ) : analysis.finalVerdict.verdict === "Negotiate" ? (
-                          <HandCoins className="h-10 w-10 text-warning" />
-                        ) : (
-                          <ThumbsDown className="h-10 w-10 text-danger" />
-                        )}
-                        <Badge className={cn("text-lg px-4 py-1",
-                          analysis.finalVerdict.verdict === "Buy" ? "bg-success text-success-foreground"
-                            : analysis.finalVerdict.verdict === "Negotiate" ? "bg-warning text-warning-foreground"
-                            : "bg-danger text-danger-foreground"
-                        )}>
-                          {analysis.finalVerdict.verdict.toUpperCase()}
-                        </Badge>
-                      </div>
-                      <div className="flex-1 text-center sm:text-left">
-                        <p className="text-sm text-muted-foreground">{analysis.finalVerdict.justification}</p>
-                      </div>
-                      <div className="shrink-0 text-center sm:border-l sm:pl-6">
-                        <p className="mb-1 text-sm font-semibold">Fair Offer Price</p>
-                        <p className="text-3xl font-bold">${riskAssessment.fairOfferPrice.toLocaleString()}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : (() => {
-                /* Fallback: derive verdict from risk data */
-                const effectiveRisk = uvprsResult?.riskLevel 
-                  ?? (riskAssessment.level === "medium" ? "moderate" : riskAssessment.level);
-                const fallbackVerdict = effectiveRisk === "low" ? "Buy" 
-                  : effectiveRisk === "moderate" ? "Negotiate" : "Walk Away";
-                const fallbackJustification = effectiveRisk === "low"
-                  ? "Low overall risk with favorable market pricing and condition factors support a confident purchase at the fair offer price."
-                  : effectiveRisk === "moderate"
-                  ? "Moderate risk factors were identified — negotiate the price down to the fair offer amount to offset potential maintenance or depreciation concerns."
-                  : "High risk factors including condition, history, or pricing concerns make this vehicle inadvisable at the current asking price.";
-                const verdictIcon = fallbackVerdict === "Buy" 
-                  ? <ThumbsUp className="h-10 w-10 text-success" />
-                  : fallbackVerdict === "Negotiate" 
-                  ? <HandCoins className="h-10 w-10 text-warning" />
-                  : <ThumbsDown className="h-10 w-10 text-danger" />;
-                const verdictBorder = fallbackVerdict === "Buy" ? "border-success bg-success/5"
-                  : fallbackVerdict === "Negotiate" ? "border-warning bg-warning/5"
-                  : "border-danger bg-danger/5";
-                const verdictBadge = fallbackVerdict === "Buy" ? "bg-success text-success-foreground"
-                  : fallbackVerdict === "Negotiate" ? "bg-warning text-warning-foreground"
-                  : "bg-danger text-danger-foreground";
+              {/* Final Verdict Card - Uses UVPRS-derived verdict */}
+              {(() => {
+                // Derive verdict from UVPRS score (primary) or fallback
+                const scoreVerdict = uvprsResult?.verdict;
+                const aiVerdict = analysis.finalVerdict?.verdict;
+                
+                // Map score-derived verdict to display
+                const displayVerdict = scoreVerdict || aiVerdict || (() => {
+                  const effectiveRisk = uvprsResult?.riskLevel 
+                    ?? (riskAssessment.level === "medium" ? "moderate" : riskAssessment.level);
+                  if (effectiveRisk === "low") return "Buy" as const;
+                  if (effectiveRisk === "moderate") return "Conditional Buy" as const;
+                  if (effectiveRisk === "elevated") return "Caution" as const;
+                  return "Avoid" as const;
+                })();
+
+                const justification = analysis.finalVerdict?.justification || (() => {
+                  if (displayVerdict === "Buy") return "Low overall risk with favorable market pricing and condition factors support a confident purchase at the fair offer price.";
+                  if (displayVerdict === "Conditional Buy") return "Moderate risk factors identified — a pre-purchase inspection (PPI) is strongly recommended before committing. Negotiate toward the fair offer price.";
+                  if (displayVerdict === "Caution") return "Elevated risk factors require specific conditions to be met before purchase. Budget for upcoming repairs and negotiate aggressively.";
+                  return "High risk factors including condition, history, or pricing concerns make this vehicle inadvisable at the current asking price.";
+                })();
+
+                const verdictConfig = {
+                  "Buy": { icon: <ThumbsUp className="h-10 w-10 text-success" />, border: "border-success bg-success/5", badge: "bg-success text-success-foreground" },
+                  "Conditional Buy": { icon: <HandCoins className="h-10 w-10 text-warning" />, border: "border-warning bg-warning/5", badge: "bg-warning text-warning-foreground" },
+                  "Negotiate": { icon: <HandCoins className="h-10 w-10 text-warning" />, border: "border-warning bg-warning/5", badge: "bg-warning text-warning-foreground" },
+                  "Caution": { icon: <AlertTriangle className="h-10 w-10 text-orange-500" />, border: "border-orange-500 bg-orange-500/5", badge: "bg-orange-500 text-white" },
+                  "Walk Away": { icon: <ThumbsDown className="h-10 w-10 text-danger" />, border: "border-danger bg-danger/5", badge: "bg-danger text-danger-foreground" },
+                  "Avoid": { icon: <ThumbsDown className="h-10 w-10 text-danger" />, border: "border-danger bg-danger/5", badge: "bg-danger text-danger-foreground" },
+                };
+                const config = verdictConfig[displayVerdict] || verdictConfig["Conditional Buy"];
+
                 return (
-                  <Card className={cn("border-2", verdictBorder)}>
+                  <Card className={cn("border-2", config.border)}>
                     <CardContent className="p-6">
                       <div className="flex flex-col sm:flex-row items-center gap-6">
                         <div className="flex flex-col items-center gap-2 shrink-0">
-                          {verdictIcon}
-                          <Badge className={cn("text-lg px-4 py-1", verdictBadge)}>
-                            {fallbackVerdict.toUpperCase()}
+                          {config.icon}
+                          <Badge className={cn("text-lg px-4 py-1", config.badge)}>
+                            {displayVerdict.toUpperCase()}
                           </Badge>
                         </div>
                         <div className="flex-1 text-center sm:text-left">
-                          <p className="text-sm text-muted-foreground">{fallbackJustification}</p>
+                          <p className="text-sm text-muted-foreground">{justification}</p>
                         </div>
                         <div className="shrink-0 text-center sm:border-l sm:pl-6">
                           <p className="mb-1 text-sm font-semibold">Fair Offer Price</p>
