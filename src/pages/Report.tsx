@@ -137,7 +137,7 @@ interface Analysis {
     verdict: "Buy" | "Negotiate" | "Walk Away";
     justification: string;
   };
-}
+  aiFindings?: AiFindings;
 
 interface DealerAnalysisData {
   dealerName: string;
