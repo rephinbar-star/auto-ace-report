@@ -701,6 +701,13 @@ export default function ReportPage() {
         if (result.sourceBreakdown?.length) {
           setSourceBreakdown(result.sourceBreakdown);
         }
+        // Update seller type if API detected franchise/independent
+        if (result.detectedSellerType) {
+          setVehicleData(prev => prev ? {
+            ...prev,
+            condition: { ...prev.condition, sellerType: result.detectedSellerType }
+          } : prev);
+        }
         const now = new Date();
         setPricingLastUpdated(now);
         sonnerToast.success("Analysis refreshed with latest market data");
