@@ -75,8 +75,14 @@ serve(async (req) => {
       ...(mcResult?.citations || []),
       ...(ppResult?.citations || []),
     ];
-    // Deduplicate citations
-    const uniqueCitations = [...new Set(allCitations)];
+    // Only keep pricing-relevant citations (filter out maintenance/repair sites)
+    const pricingDomains = ["kbb.com", "edmunds.com", "nadaguides.com", "marketcheck.com", "cargurus.com", "autotrader.com", "cars.com", "truecar.com", "carfax.com"];
+    const filteredCitations = allCitations.filter(url => {
+      const lower = url.toLowerCase();
+      return pricingDomains.some(domain => lower.includes(domain));
+    });
+    // If filtering removed everything, keep the ensured KBB/Edmunds/NADA defaults
+    const uniqueCitations = [...new Set(filteredCitations.length > 0 ? filteredCitations : allCitations)];
 
     // Build merged pricing context
     const contextParts: string[] = [];
