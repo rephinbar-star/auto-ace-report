@@ -1665,8 +1665,8 @@ export default function ReportPage() {
                         {depreciationTable.map((row) => {
                           const totalCosts = row.repairCosts + (row.maintenanceCosts || 0);
                           const netEquity = excludeRepairs 
-                            ? row.tradeInValue - row.loanBalance
-                            : row.tradeInValue - row.loanBalance - totalCosts;
+                            ? row.tradeInValue - (financingSkipped ? 0 : row.loanBalance)
+                            : row.tradeInValue - (financingSkipped ? 0 : row.loanBalance) - totalCosts;
                           return (
                             <TableRow key={row.year}>
                               <TableCell className="font-medium text-xs whitespace-nowrap px-1.5 md:px-4">Yr {row.year}</TableCell>
