@@ -888,10 +888,13 @@ export default function ReportPage() {
 
   const financingSkipped = financing?.skipped === true;
 
+  const purchasePrice = financing?.negotiatedPrice ?? condition.askingPrice;
+
   const chartData = depreciationTable.map((row) => ({
     name: `Year ${row.year}`,
     "Private Value": row.privateValue,
     "Trade-In Value": row.tradeInValue,
+    "Purchase Price": purchasePrice,
     ...(financingSkipped ? {} : { "Loan Balance": row.loanBalance }),
   }));
 
