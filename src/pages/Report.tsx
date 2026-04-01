@@ -2116,30 +2116,35 @@ export default function ReportPage() {
                   const titleClean = vehicleData?.history?.titleStatus === "clean";
                   const accidents = vehicleData?.history?.accidentCount ?? 0;
                   const chronic = vehicleData?.history?.chronicRepairSystems ?? [];
-                  const issues = analysis.historyAnalysis?.concerns ?? vehicleData?.history?.issues ?? [];
+                  const concerns = analysis.riskAssessment?.reliabilityConcerns ?? [];
 
-                  // Build context-aware parts
+                  // Build concise parts from structured data
                   const pricePart = refVal
                     ? `Priced $${absDiff.toLocaleString()} ${priceDir} fair market${dealerVal ? " dealer" : ""} value ($${refVal.toLocaleString()})`
                     : "";
                   const titlePart = titleClean ? "clean title" : vehicleData?.history?.titleStatus ? `${vehicleData.history.titleStatus} title` : "";
                   const accidentPart = accidents > 0 ? `${accidents} reported accident(s)` : "";
-                  const chronicPart = chronic.length > 0 ? `documented ${chronic.join(", ")} issues` : "";
-                  const issueSummary = issues.length > 0 ? issues.slice(0, 2).join("; ") : "";
+                  const chronicPart = chronic.length > 0 ? `documented ${chronic.join(" & ")} system issues` : "";
+                  // Use short concern names from reliabilityConcerns, NOT raw verbose issue text
+                  const topConcerns = concerns.slice(0, 2).map((c: any) => {
+                    const name = typeof c === "string" ? c : c.concern || "";
+                    // Extract just the first key phrase (before parenthetical or cost details)
+                    return name.split("(")[0].split(" - ")[0].trim();
+                  }).filter(Boolean);
+                  const concernPart = topConcerns.length > 0 ? topConcerns.join(" and ") : "";
+                  const riskDetails = [chronicPart, accidentPart, concernPart].filter(Boolean);
 
                   if (displayVerdict === "Buy") {
-                    const positives = [pricePart, titlePart, accidentPart === "" ? "no reported accidents" : ""].filter(Boolean).join(", ");
+                    const positives = [pricePart, titlePart, accidents === 0 ? "no reported accidents" : ""].filter(Boolean).join(", ");
                     return `${positives}. Low overall risk supports a confident purchase at the fair offer price.`;
                   }
                   if (displayVerdict === "Conditional Buy") {
-                    const concerns = [chronicPart, accidentPart, issueSummary].filter(Boolean).join("; ");
-                    return `${pricePart}${titlePart ? ` with ${titlePart}` : ""}, though ${concerns || "moderate risk factors"} warrant a pre-purchase inspection (PPI) before committing. Negotiate toward the fair offer price.`;
+                    return `${pricePart}${titlePart ? ` with ${titlePart}` : ""}, though ${riskDetails.join(", ") || "moderate risk factors"} warrant a pre-purchase inspection (PPI) before committing. Negotiate toward the fair offer price.`;
                   }
                   if (displayVerdict === "Caution") {
-                    const concerns = [chronicPart, accidentPart, issueSummary].filter(Boolean).join("; ");
-                    return `${pricePart}. Elevated risk: ${concerns || "multiple concern factors identified"}. Specific conditions must be met before purchase — budget for repairs and negotiate aggressively.`;
+                    return `${pricePart}. Elevated risk from ${riskDetails.join(", ") || "multiple concern factors"}. Budget for upcoming repairs and negotiate aggressively toward the fair offer price.`;
                   }
-                  return `${pricePart}. High risk: ${[chronicPart, accidentPart, issueSummary].filter(Boolean).join("; ") || "significant concerns identified"}. This vehicle is inadvisable at the current asking price.`;
+                  return `${pricePart}. High risk: ${riskDetails.join(", ") || "significant concerns identified"}. This vehicle is inadvisable at the current asking price.`;
                 })();
 
                 const verdictConfig = {
