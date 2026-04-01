@@ -1102,102 +1102,104 @@ export default function ReportPage() {
             </Card>
           )}
 
-          {/* Vehicle Specifications Card (collapsible) */}
-          <Collapsible defaultOpen={false}>
-            <Card className="mb-4">
-              <CollapsibleTrigger className="flex w-full items-center justify-between p-5 text-left hover:bg-muted/30 transition-colors rounded-lg">
-                <div className="flex items-center gap-2">
-                  <Settings className="h-5 w-5 text-primary" />
-                  <h3 className="text-lg font-semibold">Vehicle Specifications</h3>
-                </div>
-                <svg className="h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-200 [[data-state=open]>&]:rotate-180" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <CardContent className="px-5 pb-5 pt-0">
-                  <div className="flex flex-col gap-4">
-                    {/* MSRP highlight */}
-                    {vehicle.msrp && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <DollarSign className="h-4 w-4 text-primary" />
-                        <span className="text-muted-foreground">Original MSRP:</span>
-                        <span className="font-semibold">${Number(vehicle.msrp).toLocaleString()}</span>
-                      </div>
-                    )}
+          {/* Vehicle Specifications Card - specs always visible, equipment collapsible */}
+          <Card className="mb-4">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Settings className="h-5 w-5 text-primary" />
+                Vehicle Specifications
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-5 pb-5 pt-0">
+              <div className="flex flex-col gap-4">
+                {/* MSRP highlight */}
+                {vehicle.msrp && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <DollarSign className="h-4 w-4 text-primary" />
+                    <span className="text-muted-foreground">Original MSRP:</span>
+                    <span className="font-semibold">${Number(vehicle.msrp).toLocaleString()}</span>
+                  </div>
+                )}
 
-                    {/* Basic specs grid */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                      {(vehicle.engine || vehicle.engineSize) && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Settings className="h-4 w-4 text-muted-foreground" />
-                          <span>{vehicle.engine || vehicle.engineSize}</span>
-                        </div>
-                      )}
-                      {vehicle.engineHp && (
-                        <div className="text-sm">
-                          <span className="text-muted-foreground">HP:</span>{" "}
-                          <span className="font-medium">{vehicle.engineHp}</span>
-                        </div>
-                      )}
-                      {vehicle.engineTorque && (
-                        <div className="text-sm">
-                          <span className="text-muted-foreground">Torque:</span>{" "}
-                          <span className="font-medium">{vehicle.engineTorque} lb-ft</span>
-                        </div>
-                      )}
-                      {vehicle.engineCylinders && (
-                        <div className="text-sm">
-                          <span className="text-muted-foreground">Cylinders:</span>{" "}
-                          <span className="font-medium">{vehicle.engineCylinders}</span>
-                        </div>
-                      )}
-                      {vehicle.transmission && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Wrench className="h-4 w-4 text-muted-foreground" />
-                          <span>{vehicle.transmission}</span>
-                        </div>
-                      )}
-                      {vehicle.drivetrain && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Car className="h-4 w-4 text-muted-foreground" />
-                          <span>{vehicle.drivetrain}</span>
-                        </div>
-                      )}
-                      {vehicle.fuelType && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <Gauge className="h-4 w-4 text-muted-foreground" />
-                          <span>{vehicle.fuelType}</span>
-                        </div>
-                      )}
-                      {vehicle.exteriorColor && (
-                        <div className="text-sm">
-                          <span className="text-muted-foreground">Ext:</span>{" "}
-                          <span>{vehicle.exteriorColor}</span>
-                        </div>
-                      )}
-                      {vehicle.interiorColor && (
-                        <div className="text-sm">
-                          <span className="text-muted-foreground">Int:</span>{" "}
-                          <span>{vehicle.interiorColor}</span>
-                        </div>
-                      )}
-                      {vehicle.bodyStyle && (
-                        <div className="text-sm">
-                          <span className="text-muted-foreground">Body:</span>{" "}
-                          <span>{vehicle.bodyStyle}</span>
-                        </div>
-                      )}
-                      {vehicle.trim && (
-                        <div className="text-sm">
-                          <span className="text-muted-foreground">Trim:</span>{" "}
-                          <span className="font-medium">{vehicle.trim}</span>
-                        </div>
-                      )}
+                {/* Basic specs grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {(vehicle.engine || vehicle.engineSize) && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Settings className="h-4 w-4 text-muted-foreground" />
+                      <span>{vehicle.engine || vehicle.engineSize}</span>
                     </div>
+                  )}
+                  {vehicle.engineHp && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">HP:</span>{" "}
+                      <span className="font-medium">{vehicle.engineHp}</span>
+                    </div>
+                  )}
+                  {vehicle.engineTorque && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Torque:</span>{" "}
+                      <span className="font-medium">{vehicle.engineTorque} lb-ft</span>
+                    </div>
+                  )}
+                  {vehicle.engineCylinders && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Cylinders:</span>{" "}
+                      <span className="font-medium">{vehicle.engineCylinders}</span>
+                    </div>
+                  )}
+                  {vehicle.transmission && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Wrench className="h-4 w-4 text-muted-foreground" />
+                      <span>{vehicle.transmission}</span>
+                    </div>
+                  )}
+                  {vehicle.drivetrain && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Car className="h-4 w-4 text-muted-foreground" />
+                      <span>{vehicle.drivetrain}</span>
+                    </div>
+                  )}
+                  {vehicle.fuelType && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <Gauge className="h-4 w-4 text-muted-foreground" />
+                      <span>{vehicle.fuelType}</span>
+                    </div>
+                  )}
+                  {vehicle.exteriorColor && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Ext:</span>{" "}
+                      <span>{vehicle.exteriorColor}</span>
+                    </div>
+                  )}
+                  {vehicle.interiorColor && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Int:</span>{" "}
+                      <span>{vehicle.interiorColor}</span>
+                    </div>
+                  )}
+                  {vehicle.bodyStyle && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Body:</span>{" "}
+                      <span>{vehicle.bodyStyle}</span>
+                    </div>
+                  )}
+                  {vehicle.trim && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Trim:</span>{" "}
+                      <span className="font-medium">{vehicle.trim}</span>
+                    </div>
+                  )}
+                </div>
 
-                    {/* Build Sheet (standard equipment) */}
-                    {vehicle.installedEquipment && vehicle.installedEquipment.length > 0 && (
-                      <div className="border-t pt-3">
-                        <p className="text-sm font-semibold mb-2">Standard Equipment</p>
+                {/* Standard Equipment - collapsible */}
+                {vehicle.installedEquipment && vehicle.installedEquipment.length > 0 && (
+                  <Collapsible defaultOpen={false}>
+                    <div className="border-t pt-3">
+                      <CollapsibleTrigger className="flex w-full items-center justify-between text-left hover:opacity-80 transition-opacity">
+                        <p className="text-sm font-semibold">Standard Equipment</p>
+                        <svg className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 [[data-state=open]>&]:rotate-180" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2">
                         {(vehicle as any).categorizedEquipment && Object.keys((vehicle as any).categorizedEquipment).length > 0 ? (
                           <div className="space-y-3">
                             {Object.entries((vehicle as any).categorizedEquipment as Record<string, string[]>).sort(([a], [b]) => a.localeCompare(b)).map(([category, items]) => (
@@ -1225,13 +1227,13 @@ export default function ReportPage() {
                             })}
                           </div>
                         )}
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
+                      </CollapsibleContent>
+                    </div>
+                  </Collapsible>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Negotiated Savings Banner */}
           {(() => {
