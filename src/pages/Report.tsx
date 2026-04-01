@@ -1665,7 +1665,7 @@ export default function ReportPage() {
                       <TableBody>
                         {depreciationTable.map((row, idx) => {
                           const totalCosts = row.repairCosts + (row.maintenanceCosts || 0);
-                          const prevValue = idx === 0 ? (report.asking_price || depreciationTable[0].privateValue * 1.15) : depreciationTable[idx - 1].privateValue;
+                          const prevValue = idx === 0 ? (condition?.askingPrice || depreciationTable[0].privateValue * 1.15) : depreciationTable[idx - 1].privateValue;
                           const depreciation = Math.max(0, Math.round(prevValue - row.privateValue));
                           const netEquity = excludeRepairs 
                             ? row.tradeInValue - (financingSkipped ? 0 : row.loanBalance)
