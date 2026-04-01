@@ -71,7 +71,7 @@ import { RiskScoreBreakdown } from "@/components/report/RiskScoreBreakdown";
 import { ServiceHistoryTimeline } from "@/components/report/ServiceHistoryTimeline";
 import { generateReportPDF } from "@/lib/generatePDF";
 import { FinancingStep } from "@/components/analysis/FinancingStep";
-import type { FinancingInfo } from "@/types/vehicle";
+import type { FinancingInfo, AiFindings } from "@/types/vehicle";
 import { cacheImages, getCachedUrls } from "@/lib/api/cache-images";
 import { calculateTCO } from "@/lib/tco-calculations";
 import { toast as sonnerToast } from "sonner";
