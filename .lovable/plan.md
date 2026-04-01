@@ -1,71 +1,51 @@
 
 
-## Replace MPG Fallback Defaults with Perplexity Web Search
+# Make Pricing Values Deterministic
 
-### Problem
+## Problem
+Currently, pre-computed pricing averages from KBB/Edmunds/NADA are passed as text in `pricingContext`, and the AI re-interprets them to produce `fairMarketPrivate`, `fairMarketDealer`, `fairMarketTradeIn`. This introduces drift — the AI may round or deviate from the exact values.
 
-When the EPA FuelEconomy.gov API returns no match, the system falls back to a massive hardcoded dictionary of models and generic body-type defaults (24/32/27 for sedans). This produces wildly inaccurate results for any vehicle not in the dictionary (e.g., 2011 S550 showing 24/32/27 instead of 14/21/16).
+## Solution
+Pass the pre-computed midpoint values as structured numeric fields alongside the text context. After the AI returns its response, **override** the AI's pricing fields with the deterministic values, so the final output uses exact arithmetic averages.
 
-### Solution
+## Changes
 
-Replace the entire hardcoded fallback system with a Perplexity web search. The flow becomes:
+### 1. `supabase/functions/lookup-pricing/index.ts`
+- Extend the `PricingResult` interface to include structured numeric fields:
+  ```
+  interface PricingResult {
+    pricingContext: string;
+    citations: string[];
+    computedValues?: {
+      fairMarketPrivate: number;
+      fairMarketDealer: number;
+      fairMarketTradeIn: number;
+    };
+  }
+  ```
+- In `tryMarketCheck`: populate `computedValues` from the derived midpoints (already calculated as trade-in/private/dealer averages).
+- In `tryPerplexity`: populate `computedValues` from the cross-referenced averages (already calculated with the `avg()` helper).
 
-1. **Try EPA API** (unchanged)
-2. **Try EPA with trim-based retry** — if model search fails and a `trim` field is provided, extract the trim name and retry
-3. **If EPA fails → Perplexity search** — query `"{year} {make} {model} MPG city highway combined fuel economy"` and use structured output to extract the numbers
-4. **No more hardcoded defaults** — if Perplexity also fails, return `null` values with `isEstimate: true` so the UI can show "MPG data unavailable" instead of wrong numbers
+### 2. `supabase/functions/analyze-vehicle/index.ts`
+- Update the `PricingData` interface to include `computedValues`.
+- After parsing the AI response (line ~447), if `pricingData.computedValues` exists, **override** the AI's `priceAssessment` fields:
+  ```typescript
+  if (pricingData?.computedValues) {
+    const cv = pricingData.computedValues;
+    analysis.priceAssessment.fairMarketPrivate = cv.fairMarketPrivate;
+    analysis.priceAssessment.fairMarketDealer = cv.fairMarketDealer;
+    analysis.priceAssessment.fairMarketTradeIn = cv.fairMarketTradeIn;
+    // Recalculate priceDifference and percentDifference deterministically
+    const effectivePrice = negotiatedPrice || askingPrice;
+    const compareValue = sellerType === 'private' ? cv.fairMarketPrivate : cv.fairMarketDealer;
+    analysis.priceAssessment.priceDifference = effectivePrice - compareValue;
+    analysis.priceAssessment.percentDifference = Math.round(((effectivePrice - compareValue) / compareValue) * 100 * 10) / 10;
+  }
+  ```
+- Keep the AI prompt and text context as-is (the AI still uses it for deal rating, expert opinion, etc.) — only the numeric fair market values and derived differences are overridden.
 
-### Changes
-
-**`supabase/functions/lookup-mpg/index.ts`** — major rewrite:
-- Remove the `FALLBACK_MPG`, `EFFICIENT_MODELS`, and `EV_MAKES` dictionaries entirely (lines 29-220, ~190 lines of hardcoded data)
-- Add `trim` as optional field to `MPGRequest`
-- After EPA lookup fails, add a second EPA attempt using the trim field (extract first word from trim like "S 550" → try "S550")
-- If both EPA attempts fail, call Perplexity API with a targeted query like `"2011 Mercedes-Benz S550 EPA MPG rating city highway combined"` using structured JSON output to extract `mpgCity`, `mpgHighway`, `mpgCombined`, `fuelType`, and optionally `evRange`
-- In the error catch block, return `null` MPG values instead of fake 24/32/27 defaults
-- Mark Perplexity results as `isEstimate: true` (since not directly from EPA)
-
-**`supabase/functions/analyze-vehicle/index.ts`** — minor update:
-- Pass `trim` to the `lookup-mpg` function call so EPA retry can use it
-
-### Perplexity Integration Detail
-
-The `PERPLEXITY_API_KEY` is already configured as a secret. The Perplexity call will use the `sonar` model with structured output:
-
-```typescript
-const perplexityResponse = await fetch('https://api.perplexity.ai/chat/completions', {
-  method: 'POST',
-  headers: {
-    'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({
-    model: 'sonar',
-    messages: [
-      { role: 'system', content: 'Return only the EPA fuel economy data.' },
-      { role: 'user', content: `What are the EPA MPG ratings for a ${year} ${make} ${model}? Provide city MPG, highway MPG, combined MPG, and fuel type.` }
-    ],
-    response_format: {
-      type: 'json_schema',
-      json_schema: {
-        name: 'mpg_data',
-        schema: {
-          type: 'object',
-          properties: {
-            mpgCity: { type: 'number' },
-            mpgHighway: { type: 'number' },
-            mpgCombined: { type: 'number' },
-            fuelType: { type: 'string' },
-            evRange: { type: 'number', nullable: true }
-          }
-        }
-      }
-    }
-  }),
-});
-```
-
-### Files Modified
-1. `supabase/functions/lookup-mpg/index.ts` — remove hardcoded fallbacks, add trim retry + Perplexity search
-2. `supabase/functions/analyze-vehicle/index.ts` — pass trim to lookup-mpg call
+## What stays the same
+- The AI still determines `dealRating`, `expertOpinion`, `finalVerdict`, depreciation table, risk assessment, etc.
+- The text `pricingContext` still flows to the prompt so the AI has full context.
+- MarketCheck-first / Perplexity-fallback strategy is unchanged.
 
