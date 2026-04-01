@@ -20,6 +20,11 @@ interface PricingRequest {
 interface PricingResult {
   pricingContext: string;
   citations: string[];
+  computedValues?: {
+    fairMarketPrivate: number;
+    fairMarketDealer: number;
+    fairMarketTradeIn: number;
+  };
 }
 
 /**
