@@ -38,7 +38,7 @@ export function HistoryStep({ onComplete, onBack, onSkip, mileage, onVinExtracte
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState<(VehicleHistory & { summary?: string }) | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<(VehicleHistory & { summary?: string; vin?: string | null }) | null>(null);
   const [urlAccessError, setUrlAccessError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
