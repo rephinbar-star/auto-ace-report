@@ -1234,6 +1234,16 @@ export default function ReportPage() {
             </CardContent>
           </Card>
 
+          {/* Add Financing Details CTA - shown when financing was skipped */}
+          {financingSkipped && (
+            <Link to={`/analyze?reportId=${id}`}>
+              <button className="w-full mb-4 flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 hover:border-primary/60 px-4 py-3.5 text-sm font-medium text-primary transition-colors">
+                <DollarSign className="h-4 w-4" />
+                Add financing details to see Total Cost of Ownership and Break-Even Point with your financing
+              </button>
+            </Link>
+          )}
+
           {/* Negotiated Savings Banner */}
           {(() => {
             const negotiated = financing?.negotiatedPrice;
