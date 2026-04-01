@@ -138,6 +138,7 @@ interface Analysis {
     justification: string;
   };
   aiFindings?: AiFindings;
+}
 
 interface DealerAnalysisData {
   dealerName: string;
