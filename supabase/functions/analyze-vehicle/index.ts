@@ -480,6 +480,56 @@ Provide your expert analysis.`;
                     },
                     required: ["verdict", "justification"],
                   },
+                  aiFindings: {
+                    type: "object",
+                    description: "Structured risk findings for UVPRS scoring. MUST be populated for every analysis.",
+                    properties: {
+                      activeServiceFaults: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                          properties: {
+                            system: { type: "string", description: "System affected, e.g. 'electrical', 'transmission', 'cooling'" },
+                            severityClass: { type: "number", description: "1=Minor resolved, 2=Moderate resolved, 3=Major resolved, 4=Recurring/Chronic, 5=Unresolved" },
+                            occurrences: { type: "number", description: "Number of times this system was flagged" },
+                            estimatedCostPerIncident: { type: "number", description: "Estimated repair cost per occurrence in USD" },
+                            isAnomalous: { type: "boolean", description: "True if repair occurred much earlier than expected for this make/model/year" },
+                            withinTwoYearsOfPrior: { type: "boolean", description: "True if fault occurred within 24 months of a prior same-system repair" },
+                            description: { type: "string", description: "Human-readable description of the fault" },
+                          },
+                          required: ["system", "severityClass", "occurrences", "estimatedCostPerIncident", "isAnomalous", "withinTwoYearsOfPrior", "description"],
+                        },
+                        description: "Every fault or anomaly found in service history or CarFax/AutoCheck. Empty array if no service faults found.",
+                      },
+                      knownFailurePatterns: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                          properties: {
+                            issue: { type: "string", description: "Name of the known failure pattern" },
+                            probabilityTier: { type: "string", enum: ["high", "medium", "low", "remote"] },
+                            costTier: { type: "string", enum: ["critical", "major", "moderate", "minor"] },
+                            alreadyPresent: { type: "boolean", description: "True if this failure already appears in service history" },
+                            description: { type: "string", description: "Human-readable description including typical mileage range" },
+                          },
+                          required: ["issue", "probabilityTier", "costTier", "alreadyPresent", "description"],
+                        },
+                        description: "Known failure patterns for this specific make/model/year at current mileage",
+                      },
+                      chassisSignal: {
+                        type: "object",
+                        properties: {
+                          level: { type: "number", description: "1=Clean, 2=Minor, 3=Moderate, 4=Significant, 5=Severe" },
+                          isProblemGeneration: { type: "boolean" },
+                          isWorstGeneration: { type: "boolean" },
+                          withinFailureWindow: { type: "boolean", description: "True if within 15k miles of documented failure onset" },
+                          description: { type: "string", description: "Human-readable platform assessment" },
+                        },
+                        required: ["level", "isProblemGeneration", "isWorstGeneration", "withinFailureWindow", "description"],
+                      },
+                    },
+                    required: ["activeServiceFaults", "knownFailurePatterns", "chassisSignal"],
+                  },
                 },
                 required: ["priceAssessment", "depreciationTable", "riskAssessment", "historyAnalysis", "warrantyAnalysis", "finalVerdict"],
               },
