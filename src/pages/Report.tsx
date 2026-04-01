@@ -1290,9 +1290,7 @@ export default function ReportPage() {
               className="w-full mb-4 flex items-center justify-center gap-3 rounded-xl border-2 border-dashed border-blue-400/50 bg-blue-50 hover:bg-blue-100 hover:border-blue-500/70 dark:bg-blue-950/30 dark:hover:bg-blue-950/50 dark:border-blue-500/40 px-6 py-5 text-base font-semibold text-blue-600 dark:text-blue-400 transition-colors"
             >
               <DollarSign className="h-5 w-5" />
-              {financingSkipped
-                ? "Add financing details to see Total Cost of Ownership and Break-Even Point"
-                : "Edit financing details — run a what-if scenario"}
+               Add or Edit Financing Details to Explore Your True Cost of Ownership and Break-Even Timing with your Financing
             </button>
 
             <Dialog open={showFinancingDialog} onOpenChange={setShowFinancingDialog}>
