@@ -539,6 +539,7 @@ export default function ReportPage() {
         }
         
         if (result?.success) {
+          console.log("AI aiFindings returned:", JSON.stringify(result.analysis?.aiFindings ?? "MISSING"));
           setAnalysis(result.analysis);
           // Store MPG data from the response
           if (result.mpgData) {
