@@ -546,6 +546,9 @@ export default function ReportPage() {
             setPricingSources(result.pricingSources);
             setPricingLastUpdated(new Date());
           }
+          if (result.sourceBreakdown?.length) {
+            setSourceBreakdown(result.sourceBreakdown);
+          }
         } else {
           throw new Error(result?.error || "Analysis returned no data");
         }
