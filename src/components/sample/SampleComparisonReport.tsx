@@ -161,6 +161,7 @@ const sampleComparisonVehicles: VehicleReport[] = [
     final_verdict_justification: "Good vehicle but priced slightly above market — negotiate toward fair market value.",
     zip_code: null,
     negotiated_price: null,
+    source_breakdown: [],
   },
   {
     id: "sample-3",
