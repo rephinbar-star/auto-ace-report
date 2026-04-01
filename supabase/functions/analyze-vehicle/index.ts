@@ -50,6 +50,11 @@ interface MPGData {
 interface PricingData {
   pricingContext: string;
   citations: string[];
+  computedValues?: {
+    fairMarketPrivate: number;
+    fairMarketDealer: number;
+    fairMarketTradeIn: number;
+  };
 }
 
 interface MaintenanceData {
