@@ -714,6 +714,7 @@ export default function ReportPage() {
             depreciation_table: depreciationTable as any,
             pricing_sources: result.pricingSources || [],
             pricing_last_updated: now.toISOString(),
+            source_breakdown: result.sourceBreakdown || [],
           };
           // Only overwrite pricing if the new values are non-zero
           if (priceAssessment.fairMarketPrivate > 0 || priceAssessment.fairMarketDealer > 0) {
