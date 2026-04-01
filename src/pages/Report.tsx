@@ -692,6 +692,7 @@ export default function ReportPage() {
             !(newAnalysis.priceAssessment.fairMarketPrivate > 0 || newAnalysis.priceAssessment.fairMarketDealer > 0)) {
           newAnalysis.priceAssessment = { ...newAnalysis.priceAssessment, ...analysis.priceAssessment };
         }
+        console.log("Refresh aiFindings returned:", JSON.stringify(newAnalysis?.aiFindings ?? "MISSING"));
         setAnalysis(newAnalysis);
         if (result.mpgData) {
           setMpgData({
