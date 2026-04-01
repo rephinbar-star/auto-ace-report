@@ -1462,7 +1462,7 @@ export default function ReportPage() {
                                 <span className={cn("font-semibold", priceAssessment.priceDifference > 0 ? "text-danger" : "text-success")}>
                                   {priceAssessment.priceDifference > 0 ? "$" + Math.abs(priceAssessment.priceDifference).toLocaleString() + " above" : "$" + Math.abs(priceAssessment.priceDifference).toLocaleString() + " below"}
                                 </span>
-                                {" "}fair market value.
+                                {" "}Dealer Retail.
                               </p>
                             ) : (
                               <p className="mt-1 text-sm text-muted-foreground">
