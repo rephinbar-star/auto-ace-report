@@ -334,6 +334,28 @@ ${pricingData.pricingContext}` : ""}
 ${hasMaintenance ? `REAL-TIME REPAIR & MAINTENANCE COST DATA (use these as your primary cost reference):
 ${maintenanceData.maintenanceContext}` : ""}
 
+${hasPricing && pricingData.computedValues ? (() => {
+  const effectivePrice = financing.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice
+    ? financing.negotiatedPrice
+    : condition.askingPrice;
+  const cv = pricingData.computedValues!;
+  const dealerDiff = effectivePrice - cv.fairMarketDealer;
+  const privateDiff = effectivePrice - cv.fairMarketPrivate;
+  const tradeInDiff = effectivePrice - cv.fairMarketTradeIn;
+  const fmt = (v: number) => "$" + Math.abs(v).toLocaleString();
+  const dir = (v: number) => v > 0 ? "above" : v < 0 ? "below" : "at";
+  const relevantMarket = condition.sellerType === "private" ? cv.fairMarketPrivate : cv.fairMarketDealer;
+  const relevantDiff = effectivePrice - relevantMarket;
+  const pctDiff = Math.round((relevantDiff / relevantMarket) * 1000) / 10;
+  return `COMPUTED PRICE DIFFERENCES (these are EXACT — use them verbatim in your verdict and expert opinion, do NOT recalculate):
+- Effective purchase price: $${effectivePrice.toLocaleString()}
+- vs Dealer Retail ($${cv.fairMarketDealer.toLocaleString()}): ${fmt(dealerDiff)} ${dir(dealerDiff)}
+- vs Fair Market Value / Private Party ($${cv.fairMarketPrivate.toLocaleString()}): ${fmt(privateDiff)} ${dir(privateDiff)}
+- vs Trade-In ($${cv.fairMarketTradeIn.toLocaleString()}): ${fmt(tradeInDiff)} ${dir(tradeInDiff)}
+- Percent difference vs relevant market (${condition.sellerType === "private" ? "Private Party" : "Dealer Retail"}): ${pctDiff > 0 ? "+" : ""}${pctDiff}%
+IMPORTANT: When writing the finalVerdictJustification and expertOpinion, you MUST reference the exact dollar figures above. Do NOT invent different gap amounts.`;
+})() : ""}
+
 Provide your expert analysis.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
