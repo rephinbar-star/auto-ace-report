@@ -26,7 +26,8 @@ import {
   CartesianGrid, 
   Tooltip, 
   Legend, 
-  ResponsiveContainer 
+  ResponsiveContainer,
+  ReferenceLine
 } from "recharts";
 import { 
   DollarSign, 
