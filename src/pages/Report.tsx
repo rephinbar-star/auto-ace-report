@@ -1857,7 +1857,7 @@ export default function ReportPage() {
                           <TableHead className="text-xs whitespace-nowrap px-1.5 md:px-4">Year</TableHead>
                           <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight">Private<br/>Sale Value</TableHead>
                           <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight">Trade-In<br/>Value</TableHead>
-                          {!financingSkipped && <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Loan</TableHead>}
+                          {!financingSkipped && <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight">Loan<br/>Balance</TableHead>}
                           <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Repairs</TableHead>
                           <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Maint.</TableHead>
                           <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Depreciation</TableHead>
