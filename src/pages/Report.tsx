@@ -1241,12 +1241,53 @@ export default function ReportPage() {
 
           {/* Add Financing Details CTA - shown when financing was skipped */}
           {financingSkipped && (
-            <Link to={`/analyze?reportId=${id}`}>
-              <button className="w-full mb-4 flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-primary/40 bg-primary/5 hover:bg-primary/10 hover:border-primary/60 px-4 py-3.5 text-sm font-medium text-primary transition-colors">
-                <DollarSign className="h-4 w-4" />
+            <>
+              <button
+                onClick={() => setShowFinancingDialog(true)}
+                className="w-full mb-4 flex items-center justify-center gap-3 rounded-xl border-2 border-dashed border-blue-400/50 bg-blue-50 hover:bg-blue-100 hover:border-blue-500/70 dark:bg-blue-950/30 dark:hover:bg-blue-950/50 dark:border-blue-500/40 px-6 py-5 text-base font-semibold text-blue-600 dark:text-blue-400 transition-colors"
+              >
+                <DollarSign className="h-5 w-5" />
                 Add financing details to see Total Cost of Ownership and Break-Even Point with your financing
               </button>
-            </Link>
+
+              <Dialog open={showFinancingDialog} onOpenChange={setShowFinancingDialog}>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0">
+                  <VisuallyHidden>
+                    <DialogTitle>Add Financing Details</DialogTitle>
+                  </VisuallyHidden>
+                  <div className="p-1">
+                    <FinancingStep
+                      askingPrice={condition.askingPrice}
+                      zipCode={condition.zipCode}
+                      onBack={() => setShowFinancingDialog(false)}
+                      onComplete={async (newFinancing: FinancingInfo) => {
+                        setShowFinancingDialog(false);
+                        // Update local state
+                        setVehicleData((prev: any) => ({
+                          ...prev,
+                          financing: newFinancing,
+                        }));
+                        // Update DB if saved report
+                        if (isSavedReport && id) {
+                          await supabase.from("vehicle_reports").update({
+                            financing_type: newFinancing.type,
+                            loan_amount: newFinancing.loanAmount || null,
+                            loan_term: newFinancing.loanTerm || null,
+                            apr: newFinancing.apr || null,
+                            monthly_payment: newFinancing.monthlyPayment || null,
+                            lease_term_months: newFinancing.leaseTermMonths || null,
+                            residual_value: newFinancing.residualValue || null,
+                            negotiated_price: newFinancing.negotiatedPrice && newFinancing.negotiatedPrice !== condition.askingPrice ? newFinancing.negotiatedPrice : null,
+                          }).eq("id", id);
+                          // Reload the page to recalculate everything
+                          window.location.reload();
+                        }
+                      }}
+                    />
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </>
           )}
 
           {/* Negotiated Savings Banner */}
