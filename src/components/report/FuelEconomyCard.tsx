@@ -219,9 +219,51 @@ export function FuelEconomyCard({
     }
   };
 
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setZipError("Geolocation is not supported by your browser.");
+      return;
+    }
+    setIsLoadingGasPrice(true);
+    setZipError("");
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=json&addressdetails=1`,
+            { headers: { "User-Agent": "CarWise/1.0 (https://carwise.expert)" } }
+          );
+          if (!res.ok) throw new Error("Geocoding failed");
+          const data = await res.json();
+          const zip = data?.address?.postcode?.replace(/\D/g, "").substring(0, 5);
+          if (zip && /^\d{5}$/.test(zip)) {
+            setZipInput(zip);
+            await fetchGasPricesByZip(zip);
+          } else {
+            setZipError("Couldn't determine ZIP from location. Enter manually.");
+            setIsLoadingGasPrice(false);
+          }
+        } catch {
+          setZipError("Location lookup failed. Enter ZIP manually.");
+          setIsLoadingGasPrice(false);
+        }
+      },
+      () => {
+        setZipError("Location access denied. Enter ZIP manually.");
+        setIsLoadingGasPrice(false);
+      },
+      { timeout: 8000 }
+    );
+  };
+
   const handleZipSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const zip = zipInput.trim();
+    // If ZIP field is empty, use browser geolocation instead
+    if (!zip) {
+      handleUseCurrentLocation();
+      return;
+    }
     if (!/^\d{5}$/.test(zip)) {
       setZipError("Please enter a valid 5-digit ZIP code.");
       return;
