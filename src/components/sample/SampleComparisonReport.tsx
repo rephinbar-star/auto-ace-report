@@ -85,6 +85,7 @@ const sampleComparisonVehicles: VehicleReport[] = [
     final_verdict_justification: "Excellent deal on a low-mileage, well-maintained vehicle with active warranty.",
     zip_code: null,
     negotiated_price: null,
+    source_breakdown: [],
   },
   {
     id: "sample-2",
@@ -160,6 +161,7 @@ const sampleComparisonVehicles: VehicleReport[] = [
     final_verdict_justification: "Good vehicle but priced slightly above market — negotiate toward fair market value.",
     zip_code: null,
     negotiated_price: null,
+    source_breakdown: [],
   },
   {
     id: "sample-3",
@@ -238,6 +240,7 @@ const sampleComparisonVehicles: VehicleReport[] = [
     final_verdict_justification: "High mileage with significant reliability concerns and minimal warranty coverage.",
     zip_code: null,
     negotiated_price: null,
+    source_breakdown: [],
   },
 ];
 

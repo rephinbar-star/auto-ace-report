@@ -327,6 +327,7 @@ export type Database = {
           risk_score: number | null
           seller_type: string | null
           service_gap_miles: number | null
+          source_breakdown: Json | null
           status: Database["public"]["Enums"]["report_status"]
           title_status: Database["public"]["Enums"]["title_status"] | null
           transmission: string | null
@@ -396,6 +397,7 @@ export type Database = {
           risk_score?: number | null
           seller_type?: string | null
           service_gap_miles?: number | null
+          source_breakdown?: Json | null
           status?: Database["public"]["Enums"]["report_status"]
           title_status?: Database["public"]["Enums"]["title_status"] | null
           transmission?: string | null
@@ -465,6 +467,7 @@ export type Database = {
           risk_score?: number | null
           seller_type?: string | null
           service_gap_miles?: number | null
+          source_breakdown?: Json | null
           status?: Database["public"]["Enums"]["report_status"]
           title_status?: Database["public"]["Enums"]["title_status"] | null
           transmission?: string | null

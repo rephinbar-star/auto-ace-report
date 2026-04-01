@@ -275,6 +275,7 @@ export default function ReportPage() {
         fuel_type: mpgData?.fuelType || null,
         pricing_sources: pricingSources.length > 0 ? pricingSources : null,
         pricing_last_updated: pricingLastUpdated?.toISOString() || null,
+        source_breakdown: sourceBreakdown.length > 0 ? sourceBreakdown : [],
         risk_score: uvprsResult?.totalScore ?? null,
         is_cpo: condition.isCPO || false,
         warranty_months_remaining: history?.warrantyMonthsRemaining ?? null,
@@ -438,6 +439,9 @@ export default function ReportPage() {
           }
           if (report.pricing_last_updated) {
             setPricingLastUpdated(new Date(report.pricing_last_updated));
+          }
+          if (report.source_breakdown && Array.isArray(report.source_breakdown) && report.source_breakdown.length > 0) {
+            setSourceBreakdown(report.source_breakdown as any);
           }
           
           // Enrich with NeoVIN specs if VIN is available and specs are sparse
@@ -710,6 +714,7 @@ export default function ReportPage() {
             depreciation_table: depreciationTable as any,
             pricing_sources: result.pricingSources || [],
             pricing_last_updated: now.toISOString(),
+            source_breakdown: result.sourceBreakdown || [],
           };
           // Only overwrite pricing if the new values are non-zero
           if (priceAssessment.fairMarketPrivate > 0 || priceAssessment.fairMarketDealer > 0) {
@@ -1052,6 +1057,7 @@ export default function ReportPage() {
                           depreciation_table: depreciationTable as any,
                           pricing_sources: analysisResult.pricingSources || [],
                           pricing_last_updated: new Date().toISOString(),
+                          source_breakdown: analysisResult.sourceBreakdown || [],
                           ...(shouldSetVin ? { vin: extractedVin } : {}),
                         };
                         if (priceAssessment.fairMarketPrivate > 0 || priceAssessment.fairMarketDealer > 0) {
@@ -2117,6 +2123,7 @@ export default function ReportPage() {
                             ...(extractedVin && !vehicleData.vehicle.vin ? { vin: extractedVin } : {}),
                             pricing_sources: analysisResult.pricingSources || [],
                             pricing_last_updated: new Date().toISOString(),
+                            source_breakdown: analysisResult.sourceBreakdown || [],
                           };
                           if (priceAssessment.fairMarketPrivate > 0 || priceAssessment.fairMarketDealer > 0) {
                             sideUpd.fair_market_private = priceAssessment.fairMarketPrivate;
