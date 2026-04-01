@@ -566,6 +566,23 @@ Provide your expert analysis.`;
     }
 
     const analysis = JSON.parse(toolCall.function.arguments);
+    
+    // Log and ensure aiFindings exists
+    console.log("AI returned aiFindings:", JSON.stringify(analysis.aiFindings ?? "MISSING"));
+    if (!analysis.aiFindings) {
+      console.warn("AI did not return aiFindings — injecting default structure");
+      analysis.aiFindings = {
+        activeServiceFaults: [],
+        knownFailurePatterns: [],
+        chassisSignal: {
+          level: 1,
+          isProblemGeneration: false,
+          isWorstGeneration: false,
+          withinFailureWindow: false,
+          description: "No chassis signal data available from AI analysis.",
+        },
+      };
+    }
 
     // Override AI pricing with deterministic computed values
     if (pricingData?.computedValues) {
