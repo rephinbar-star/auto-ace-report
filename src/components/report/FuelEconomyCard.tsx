@@ -591,13 +591,13 @@ export function FuelEconomyCard({
             <p className="text-lg font-bold">${tco.annualFuelCost.toLocaleString()}</p>
             <p className="text-xs text-muted-foreground">~${Math.round(tco.annualFuelCost / 12)}/month</p>
           </div>
-          <div className="rounded-lg border p-3">
+          <div className="rounded-lg border p-3 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">Monthly Ownership</span>
+              <DollarSign className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="text-xs text-muted-foreground truncate">Monthly Ownership</span>
             </div>
             <p className="text-lg font-bold">${monthlyOwnership}</p>
-            <p className="text-xs text-muted-foreground">fuel + maintenance</p>
+            <p className="text-xs text-muted-foreground truncate">fuel + maintenance</p>
           </div>
         </div>
 
