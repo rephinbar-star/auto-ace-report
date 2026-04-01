@@ -1644,7 +1644,7 @@ export default function ReportPage() {
                           onCheckedChange={setExcludeRepairs}
                         />
                         <Label htmlFor="exclude-repairs" className="text-sm text-muted-foreground cursor-pointer">
-                          Exclude repairs from equity
+                          Exclude repairs from value
                         </Label>
                       </div>
                     </div>
@@ -1656,14 +1656,17 @@ export default function ReportPage() {
                           <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Priv.</TableHead>
                           <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Trade</TableHead>
                           {!financingSkipped && <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Loan</TableHead>}
+                          <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Deprec.</TableHead>
                           <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Repair</TableHead>
                           <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Maint.</TableHead>
-                          <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Equity</TableHead>
+                          <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Est. Value</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {depreciationTable.map((row) => {
+                        {depreciationTable.map((row, idx) => {
                           const totalCosts = row.repairCosts + (row.maintenanceCosts || 0);
+                          const prevValue = idx === 0 ? (condition?.askingPrice || depreciationTable[0].privateValue * 1.15) : depreciationTable[idx - 1].privateValue;
+                          const depreciation = Math.max(0, Math.round(prevValue - row.privateValue));
                           const netEquity = excludeRepairs 
                             ? row.tradeInValue - (financingSkipped ? 0 : row.loanBalance)
                             : row.tradeInValue - (financingSkipped ? 0 : row.loanBalance) - totalCosts;
@@ -1673,6 +1676,9 @@ export default function ReportPage() {
                               <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${Math.round(row.privateValue).toLocaleString()}</TableCell>
                               <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${Math.round(row.tradeInValue).toLocaleString()}</TableCell>
                               {!financingSkipped && <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${Math.round(row.loanBalance).toLocaleString()}</TableCell>}
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 text-orange-500">
+                                -${depreciation.toLocaleString()}
+                              </TableCell>
                               <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 text-danger">
                                 ${Math.round(row.repairCosts).toLocaleString()}
                               </TableCell>
