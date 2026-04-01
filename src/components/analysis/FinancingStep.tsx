@@ -261,6 +261,47 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
     return (P * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
   })();
 
+  const handleSkip = () => {
+    onComplete({ type: "cash", skipped: true });
+  };
+
+  if (!showForm) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-2xl font-bold">Financing Details</h2>
+          <p className="text-muted-foreground">
+            Adding financing details lets us project your equity and loan balance over time.
+          </p>
+        </div>
+
+        <Card>
+          <CardContent className="flex flex-col items-center gap-4 py-8">
+            <CreditCard className="h-10 w-10 text-primary" />
+            <div className="text-center space-y-1">
+              <p className="font-medium">Do you want to enter financing details now?</p>
+              <p className="text-sm text-muted-foreground">
+                This helps us show your loan balance alongside depreciation projections.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 w-full max-w-sm mt-2">
+              <Button size="lg" onClick={() => setShowForm(true)}>
+                Enter Financing Details Now
+              </Button>
+              <Button variant="ghost" size="lg" className="text-muted-foreground" onClick={handleSkip}>
+                Skip For Now — You can enter later if you want
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="flex justify-start">
+          <Button variant="outline" onClick={onBack}>Back</Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
