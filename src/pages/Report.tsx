@@ -285,6 +285,7 @@ export default function ReportPage() {
         warranty_notes: analysis.warrantyAnalysis?.warrantyNotes || null,
         final_verdict: analysis.finalVerdict?.verdict || null,
         final_verdict_justification: analysis.finalVerdict?.justification || null,
+        ai_findings: (analysis.aiFindings as any) ?? null,
         status: "complete",
       });
 
@@ -423,6 +424,9 @@ export default function ReportPage() {
                 justification: report.final_verdict_justification || "",
               },
             } : {}),
+            ...(report.ai_findings ? {
+              aiFindings: report.ai_findings as unknown as AiFindings,
+            } : {}),
           });
           
           // Load MPG data from saved report
@@ -535,6 +539,7 @@ export default function ReportPage() {
         }
         
         if (result?.success) {
+          console.log("AI aiFindings returned:", JSON.stringify(result.analysis?.aiFindings ?? "MISSING"));
           setAnalysis(result.analysis);
           // Store MPG data from the response
           if (result.mpgData) {
@@ -687,6 +692,7 @@ export default function ReportPage() {
             !(newAnalysis.priceAssessment.fairMarketPrivate > 0 || newAnalysis.priceAssessment.fairMarketDealer > 0)) {
           newAnalysis.priceAssessment = { ...newAnalysis.priceAssessment, ...analysis.priceAssessment };
         }
+        console.log("Refresh aiFindings returned:", JSON.stringify(newAnalysis?.aiFindings ?? "MISSING"));
         setAnalysis(newAnalysis);
         if (result.mpgData) {
           setMpgData({
@@ -734,6 +740,7 @@ export default function ReportPage() {
             pricing_last_updated: now.toISOString(),
             source_breakdown: result.sourceBreakdown || [],
             ...(result.detectedSellerType ? { seller_type: result.detectedSellerType } : {}),
+            ...(result.analysis.aiFindings ? { ai_findings: result.analysis.aiFindings } : {}),
           };
           // Only overwrite pricing if the new values are non-zero
           if (priceAssessment.fairMarketPrivate > 0 || priceAssessment.fairMarketDealer > 0) {

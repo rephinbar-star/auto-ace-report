@@ -1,0 +1,1 @@
+ALTER TABLE public.vehicle_reports ADD COLUMN IF NOT EXISTS ai_findings jsonb DEFAULT NULL;

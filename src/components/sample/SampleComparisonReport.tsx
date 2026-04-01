@@ -86,6 +86,7 @@ const sampleComparisonVehicles: VehicleReport[] = [
     zip_code: null,
     negotiated_price: null,
     source_breakdown: [],
+    ai_findings: null,
   },
   {
     id: "sample-2",
@@ -162,6 +163,7 @@ const sampleComparisonVehicles: VehicleReport[] = [
     zip_code: null,
     negotiated_price: null,
     source_breakdown: [],
+    ai_findings: null,
   },
   {
     id: "sample-3",
@@ -241,6 +243,7 @@ const sampleComparisonVehicles: VehicleReport[] = [
     zip_code: null,
     negotiated_price: null,
     source_breakdown: [],
+    ai_findings: null,
   },
 ];
 
