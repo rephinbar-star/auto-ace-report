@@ -496,10 +496,7 @@ Provide your expert analysis.`;
           fuelType: mpgData.fuelType,
           isEstimate: mpgData.isEstimate,
         },
-        pricingSources: [
-          ...(hasPricing ? pricingData.citations : []),
-          ...(hasMaintenance ? maintenanceData.citations : []),
-        ],
+        pricingSources: hasPricing ? pricingData.citations : [],
         sourceBreakdown: pricingData?.sourceBreakdown || [],
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
