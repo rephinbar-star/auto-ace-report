@@ -50,6 +50,11 @@ interface MPGData {
 interface PricingData {
   pricingContext: string;
   citations: string[];
+  computedValues?: {
+    fairMarketPrivate: number;
+    fairMarketDealer: number;
+    fairMarketTradeIn: number;
+  };
 }
 
 interface MaintenanceData {
@@ -445,6 +450,22 @@ Provide your expert analysis.`;
     }
 
     const analysis = JSON.parse(toolCall.function.arguments);
+
+    // Override AI pricing with deterministic computed values
+    if (pricingData?.computedValues) {
+      const cv = pricingData.computedValues;
+      analysis.priceAssessment.fairMarketPrivate = cv.fairMarketPrivate;
+      analysis.priceAssessment.fairMarketDealer = cv.fairMarketDealer;
+      analysis.priceAssessment.fairMarketTradeIn = cv.fairMarketTradeIn;
+
+      const effectivePrice = financing.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice
+        ? financing.negotiatedPrice
+        : condition.askingPrice;
+      const compareValue = condition.sellerType === "private" ? cv.fairMarketPrivate : cv.fairMarketDealer;
+      analysis.priceAssessment.priceDifference = effectivePrice - compareValue;
+      analysis.priceAssessment.percentDifference = Math.round(((effectivePrice - compareValue) / compareValue) * 100 * 10) / 10;
+      console.log(`Deterministic pricing override: private=$${cv.fairMarketPrivate}, dealer=$${cv.fairMarketDealer}, tradeIn=$${cv.fairMarketTradeIn}, diff=$${analysis.priceAssessment.priceDifference}`);
+    }
 
     // Wait for MPG data
     const mpgData = await mpgPromise;

@@ -20,6 +20,11 @@ interface PricingRequest {
 interface PricingResult {
   pricingContext: string;
   citations: string[];
+  computedValues?: {
+    fairMarketPrivate: number;
+    fairMarketDealer: number;
+    fairMarketTradeIn: number;
+  };
 }
 
 /**
@@ -141,6 +146,11 @@ async function tryMarketCheck(
     return {
       pricingContext: lines.join("\n"),
       citations: ["https://www.marketcheck.com"],
+      computedValues: {
+        fairMarketPrivate: Math.round((privateLow + privateHigh) / 2),
+        fairMarketDealer: Math.round((dealerLow + dealerHigh) / 2),
+        fairMarketTradeIn: Math.round((tradeInLow + tradeInHigh) / 2),
+      },
     };
   } catch (err) {
     console.error("MarketCheck lookup error:", err);
@@ -283,6 +293,16 @@ async function tryPerplexity(
     );
 
     pricingContext = lines.join("\n");
+
+    return {
+      pricingContext,
+      citations: ensuredCitations,
+      computedValues: {
+        fairMarketPrivate: avg(privateValues),
+        fairMarketDealer: avg(dealerValues),
+        fairMarketTradeIn: avg(tradeInValues),
+      },
+    };
   } catch {
     console.log("Could not parse structured response, using raw content");
   }
