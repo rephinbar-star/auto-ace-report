@@ -363,18 +363,18 @@ export function HistoryStep({ onComplete, onBack, onSkip, mileage, onVinExtracte
               </Button>
               <Button 
                 type="button" 
-                onClick={analyzeReport}
+                onClick={readReport}
                 disabled={isAnalyzing || (!uploadedFile && !form.watch("historyUrl"))}
               >
                 {isAnalyzing ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Analyzing...
+                    Reading Report...
                   </>
                 ) : (
                   <>
                     <FileText className="mr-2 h-4 w-4" />
-                    Analyze History
+                    Read Report
                   </>
                 )}
               </Button>
