@@ -89,7 +89,7 @@ export function HistoryStep({ onComplete, onBack, onSkip, mileage, onVinExtracte
     if (file) handleFileSelect(file);
   };
 
-  const analyzeReport = async () => {
+  const readReport = async () => {
     const historyUrl = form.getValues("historyUrl");
     
     if (!uploadedFile && !historyUrl) {
@@ -116,8 +116,8 @@ export function HistoryStep({ onComplete, onBack, onSkip, mileage, onVinExtracte
           onVinExtracted(result.history.vin);
         }
         toast({
-          title: "Report Analyzed",
-          description: `Health Score: ${result.history.healthScore}/100`,
+          title: "Report Read Successfully",
+          description: "Vehicle history data extracted. It will be analyzed with your full report.",
         });
       } else {
         // Check if this is a URL access error (no file uploaded, only URL)
@@ -125,8 +125,8 @@ export function HistoryStep({ onComplete, onBack, onSkip, mileage, onVinExtracte
           setUrlAccessError(true);
         } else {
           toast({
-            title: "Analysis Failed",
-            description: result.error || "Could not analyze the report. Please try again.",
+            title: "Could Not Read Report",
+            description: result.error || "Could not read the report. Please try again.",
             variant: "destructive",
           });
         }
@@ -138,7 +138,7 @@ export function HistoryStep({ onComplete, onBack, onSkip, mileage, onVinExtracte
       } else {
         toast({
           title: "Error",
-          description: "Failed to analyze report. Please try again.",
+          description: "Failed to read report. Please try again.",
           variant: "destructive",
         });
       }
