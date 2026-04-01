@@ -38,7 +38,7 @@ export function HistoryStep({ onComplete, onBack, onSkip, mileage, onVinExtracte
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisResult, setAnalysisResult] = useState<(VehicleHistory & { summary?: string }) | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<(VehicleHistory & { summary?: string; vin?: string | null }) | null>(null);
   const [urlAccessError, setUrlAccessError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -89,7 +89,7 @@ export function HistoryStep({ onComplete, onBack, onSkip, mileage, onVinExtracte
     if (file) handleFileSelect(file);
   };
 
-  const analyzeReport = async () => {
+  const readReport = async () => {
     const historyUrl = form.getValues("historyUrl");
     
     if (!uploadedFile && !historyUrl) {
@@ -116,8 +116,8 @@ export function HistoryStep({ onComplete, onBack, onSkip, mileage, onVinExtracte
           onVinExtracted(result.history.vin);
         }
         toast({
-          title: "Report Analyzed",
-          description: `Health Score: ${result.history.healthScore}/100`,
+          title: "Report Read Successfully",
+          description: "Vehicle history data extracted. It will be analyzed with your full report.",
         });
       } else {
         // Check if this is a URL access error (no file uploaded, only URL)
@@ -125,8 +125,8 @@ export function HistoryStep({ onComplete, onBack, onSkip, mileage, onVinExtracte
           setUrlAccessError(true);
         } else {
           toast({
-            title: "Analysis Failed",
-            description: result.error || "Could not analyze the report. Please try again.",
+            title: "Could Not Read Report",
+            description: result.error || "Could not read the report. Please try again.",
             variant: "destructive",
           });
         }
@@ -138,7 +138,7 @@ export function HistoryStep({ onComplete, onBack, onSkip, mileage, onVinExtracte
       } else {
         toast({
           title: "Error",
-          description: "Failed to analyze report. Please try again.",
+          description: "Failed to read report. Please try again.",
           variant: "destructive",
         });
       }
@@ -363,18 +363,18 @@ export function HistoryStep({ onComplete, onBack, onSkip, mileage, onVinExtracte
               </Button>
               <Button 
                 type="button" 
-                onClick={analyzeReport}
+                onClick={readReport}
                 disabled={isAnalyzing || (!uploadedFile && !form.watch("historyUrl"))}
               >
                 {isAnalyzing ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Analyzing...
+                    Reading Report...
                   </>
                 ) : (
                   <>
                     <FileText className="mr-2 h-4 w-4" />
-                    Analyze History
+                    Read Report
                   </>
                 )}
               </Button>
@@ -387,24 +387,19 @@ export function HistoryStep({ onComplete, onBack, onSkip, mileage, onVinExtracte
       ) : null}
 
       {analysisResult && (
-        <Card>
+        <Card className="border-success/30">
           <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Analysis Complete</span>
-              <div className={cn("flex items-center gap-2 rounded-full px-3 py-1", getHealthScoreBg(analysisResult.healthScore))}>
-                <Shield className={cn("h-4 w-4", getHealthScoreColor(analysisResult.healthScore))} />
-                <span className={cn("font-bold", getHealthScoreColor(analysisResult.healthScore))}>
-                  {analysisResult.healthScore}/100
-                </span>
-              </div>
+            <CardTitle className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5 text-success" />
+              Report Data Extracted
             </CardTitle>
             <CardDescription>
-              {analysisResult.summary}
+              History data has been read successfully and will be included in your full report analysis.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Key stats */}
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <CardContent className="space-y-4">
+            {/* Key stats preview */}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div className="rounded-lg border bg-muted/50 p-3 text-center">
                 <p className="text-2xl font-bold">{analysisResult.accidentCount}</p>
                 <p className="text-xs text-muted-foreground">Accidents</p>
@@ -427,48 +422,18 @@ export function HistoryStep({ onComplete, onBack, onSkip, mileage, onVinExtracte
               </div>
             </div>
 
-            {/* Positives */}
-            {analysisResult.positives.length > 0 && (
-              <div>
-                <h4 className="mb-2 flex items-center gap-2 font-medium text-success">
-                  <CheckCircle className="h-4 w-4" />
-                  Positives
-                </h4>
-                <ul className="space-y-1">
-                  {analysisResult.positives.map((item, idx) => (
-                    <li key={idx} className="flex items-start gap-2 text-sm">
-                      <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-success" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Issues */}
-            {analysisResult.issues.length > 0 && (
-              <div>
-                <h4 className="mb-2 flex items-center gap-2 font-medium text-warning">
-                  <AlertTriangle className="h-4 w-4" />
-                  Concerns
-                </h4>
-                <ul className="space-y-1">
-                  {analysisResult.issues.map((item, idx) => (
-                    <li key={idx} className="flex items-start gap-2 text-sm">
-                      <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-warning" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+            {analysisResult.vin && (
+              <p className="text-sm text-muted-foreground">
+                VIN detected: <span className="font-mono font-medium text-foreground">{analysisResult.vin}</span>
+              </p>
             )}
 
             <div className="flex flex-wrap gap-4">
               <Button type="button" variant="outline" onClick={() => setAnalysisResult(null)}>
-                Analyze Different Report
+                Upload Different Report
               </Button>
               <Button onClick={handleContinue}>
-                Continue with Analysis
+                Continue with Report Data
               </Button>
             </div>
           </CardContent>
