@@ -177,6 +177,18 @@ export default function ReportPage() {
     evRange: number | null;
   } | null>(null);
   const [pricingSources, setPricingSources] = useState<string[]>([]);
+  const [sourceBreakdown, setSourceBreakdown] = useState<Array<{
+    source: string;
+    privateParty?: number | null;
+    privatePartyLow?: number | null;
+    privatePartyHigh?: number | null;
+    dealerRetail?: number | null;
+    dealerRetailLow?: number | null;
+    dealerRetailHigh?: number | null;
+    tradeIn?: number | null;
+    tradeInLow?: number | null;
+    tradeInHigh?: number | null;
+  }>>([]);
   const [pricingLastUpdated, setPricingLastUpdated] = useState<Date | null>(null);
   const [isRefreshingPricing, setIsRefreshingPricing] = useState(false);
   const [uvprsResult, setUvprsResult] = useState<UVPRSResult | null>(null);
