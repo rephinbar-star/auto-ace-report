@@ -113,7 +113,7 @@ function synthesizeAiFindingsFromReport(report: any): AiFindings {
         system,
         severityClass: 4,
         occurrences: 2,
-        estimatedCostPerIncident: 2000,
+        estimatedCostPerIncident: 2500,
         isAnomalous: false,
         withinTwoYearsOfPrior: true,
         description: `Chronic ${system} system issue identified in service history`,
@@ -691,6 +691,8 @@ export default function ReportPage() {
         : rawSeller ? "dealer" as const
         : null;
 
+      console.log("[UVPRS-DEBUG] aiFindings input:", JSON.stringify(analysis.aiFindings, null, 2));
+      console.log("[UVPRS-DEBUG] chronicRepairSystems:", history?.chronicRepairSystems);
       const result = calculateUVPRS({
         year: vehicle.year,
         make: vehicle.make,
@@ -717,6 +719,7 @@ export default function ReportPage() {
         isBrandNew: condition?.isBrandNew ?? null,
         aiFindings: analysis.aiFindings ?? null,
       });
+      console.log("[UVPRS-DEBUG] result:", result.totalScore, result.factors.map(f => `${f.key}=${f.score}(known=${f.known})`));
       setUvprsResult(result);
     };
     computeUVPRS();
