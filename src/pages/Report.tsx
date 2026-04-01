@@ -2077,8 +2077,8 @@ export default function ReportPage() {
                     <p className={cn(
                       "whitespace-pre-line font-bold",
                       uvprsResult?.verdict === "Avoid" || uvprsResult?.verdict === "Caution" 
-                        || analysis.finalVerdict?.verdict === "Walk Away" ? "text-destructive" :
-                      uvprsResult?.verdict === "Buy" || analysis.finalVerdict?.verdict === "Buy" ? "text-success" :
+                        ? "text-destructive" :
+                      uvprsResult?.verdict === "Buy" ? "text-success" :
                       "text-foreground"
                     )}>{riskAssessment.expertOpinion}</p>
                   </div>
@@ -2102,11 +2102,44 @@ export default function ReportPage() {
                   return "Avoid" as const;
                 })();
 
-                const justification = analysis.finalVerdict?.justification || (() => {
-                  if (displayVerdict === "Buy") return "Low overall risk with favorable market pricing and condition factors support a confident purchase at the fair offer price.";
-                  if (displayVerdict === "Conditional Buy") return "Moderate risk factors identified — a pre-purchase inspection (PPI) is strongly recommended before committing. Negotiate toward the fair offer price.";
-                  if (displayVerdict === "Caution") return "Elevated risk factors require specific conditions to be met before purchase. Budget for upcoming repairs and negotiate aggressively.";
-                  return "High risk factors including condition, history, or pricing concerns make this vehicle inadvisable at the current asking price.";
+                // Always generate justification from actual data — never trust AI-stored text
+                const justification = (() => {
+                  const askPrice = vehicleData?.condition?.askingPrice ?? 0;
+                  const negPrice = vehicleData?.financing?.negotiatedPrice;
+                  const effectivePrice = negPrice ?? askPrice;
+                  const dealerVal = priceAssessment?.fairMarketDealer;
+                  const privateVal = priceAssessment?.fairMarketPrivate ?? 0;
+                  const refVal = dealerVal || privateVal;
+                  const priceDiff = refVal ? effectivePrice - refVal : 0;
+                  const priceDir = priceDiff > 0 ? "above" : "below";
+                  const absDiff = Math.abs(priceDiff);
+                  const titleClean = vehicleData?.history?.titleStatus === "clean";
+                  const accidents = vehicleData?.history?.accidentCount ?? 0;
+                  const chronic = vehicleData?.history?.chronicRepairSystems ?? [];
+                  const issues = analysis.historyAnalysis?.concerns ?? vehicleData?.history?.issues ?? [];
+
+                  // Build context-aware parts
+                  const pricePart = refVal
+                    ? `Priced $${absDiff.toLocaleString()} ${priceDir} fair market${dealerVal ? " dealer" : ""} value ($${refVal.toLocaleString()})`
+                    : "";
+                  const titlePart = titleClean ? "clean title" : vehicleData?.history?.titleStatus ? `${vehicleData.history.titleStatus} title` : "";
+                  const accidentPart = accidents > 0 ? `${accidents} reported accident(s)` : "";
+                  const chronicPart = chronic.length > 0 ? `documented ${chronic.join(", ")} issues` : "";
+                  const issueSummary = issues.length > 0 ? issues.slice(0, 2).join("; ") : "";
+
+                  if (displayVerdict === "Buy") {
+                    const positives = [pricePart, titlePart, accidentPart === "" ? "no reported accidents" : ""].filter(Boolean).join(", ");
+                    return `${positives}. Low overall risk supports a confident purchase at the fair offer price.`;
+                  }
+                  if (displayVerdict === "Conditional Buy") {
+                    const concerns = [chronicPart, accidentPart, issueSummary].filter(Boolean).join("; ");
+                    return `${pricePart}${titlePart ? ` with ${titlePart}` : ""}, though ${concerns || "moderate risk factors"} warrant a pre-purchase inspection (PPI) before committing. Negotiate toward the fair offer price.`;
+                  }
+                  if (displayVerdict === "Caution") {
+                    const concerns = [chronicPart, accidentPart, issueSummary].filter(Boolean).join("; ");
+                    return `${pricePart}. Elevated risk: ${concerns || "multiple concern factors identified"}. Specific conditions must be met before purchase — budget for repairs and negotiate aggressively.`;
+                  }
+                  return `${pricePart}. High risk: ${[chronicPart, accidentPart, issueSummary].filter(Boolean).join("; ") || "significant concerns identified"}. This vehicle is inadvisable at the current asking price.`;
                 })();
 
                 const verdictConfig = {
