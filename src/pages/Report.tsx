@@ -1033,6 +1033,9 @@ export default function ReportPage() {
                         setPricingSources(analysisResult.pricingSources);
                         setPricingLastUpdated(new Date());
                       }
+                      if (analysisResult.sourceBreakdown?.length) {
+                        setSourceBreakdown(analysisResult.sourceBreakdown);
+                      }
                       if (isSavedReport && id) {
                         const histUpd: Record<string, any> = {
                           deal_rating: priceAssessment.dealRating,
