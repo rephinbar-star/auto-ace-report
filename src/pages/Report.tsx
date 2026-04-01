@@ -884,11 +884,13 @@ export default function ReportPage() {
     high: "bg-danger text-danger-foreground",
   };
 
+  const financingSkipped = financing?.skipped === true;
+
   const chartData = depreciationTable.map((row) => ({
     name: `Year ${row.year}`,
     "Private Value": row.privateValue,
     "Trade-In Value": row.tradeInValue,
-    "Loan Balance": row.loanBalance,
+    ...(financingSkipped ? {} : { "Loan Balance": row.loanBalance }),
   }));
 
   return (
