@@ -1057,6 +1057,7 @@ export default function ReportPage() {
                           depreciation_table: depreciationTable as any,
                           pricing_sources: analysisResult.pricingSources || [],
                           pricing_last_updated: new Date().toISOString(),
+                          source_breakdown: analysisResult.sourceBreakdown || [],
                           ...(shouldSetVin ? { vin: extractedVin } : {}),
                         };
                         if (priceAssessment.fairMarketPrivate > 0 || priceAssessment.fairMarketDealer > 0) {
