@@ -707,8 +707,26 @@ export function calculateUVPRS(input: UVPRSInput): UVPRSResult {
     }
   }
   const mkt = input.fairMarketDealer || input.fairMarketPrivate;
-  if (mkt && mkt > 0 && input.askingPrice > mkt * 1.25) {
+  const pctOverMarket = mkt && mkt > 0 ? (input.askingPrice - mkt) / mkt : 0;
+  if (pctOverMarket > 0.25) {
     totalScore = Math.max(45, totalScore);
+  }
+
+  // Compound floor 51: overpriced >10% AND has expensive known reliability concerns (>$4k total)
+  if (pctOverMarket > 0.10) {
+    const totalReliabilityCost = (input.aiFindings?.knownFailurePatterns ?? [])
+      .reduce((sum, p) => {
+        const costMap: Record<string, number> = { critical: 5000, major: 2500, moderate: 1200, minor: 500 };
+        return sum + (costMap[p.costTier] ?? 1000);
+      }, 0);
+    if (totalReliabilityCost >= 4000) {
+      totalScore = Math.max(51, totalScore);
+    }
+  }
+
+  // Compound floor 51: overpriced >15% with ANY chronic repair systems
+  if (pctOverMarket > 0.15 && input.chronicRepairSystems && input.chronicRepairSystems.length > 0) {
+    totalScore = Math.max(51, totalScore);
   }
 
   // Floor 35: AI identifies chassis-wide systemic defect (level 4+)
