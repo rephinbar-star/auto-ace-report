@@ -622,11 +622,14 @@ export default function ReportPage() {
       const issueTexts = (historyAnalysis?.concerns ?? history?.issues ?? []).map((s: string) => s.toLowerCase());
       const hasFrameDamage = issueTexts.some((i: string) => i.includes("frame") || i.includes("structural"));
 
-      // Map seller type
-      const rawSeller = vehicle.sellerType || condition?.sellerType;
+      // Map seller type — use API-detected dealer type if available
+      const detectedType = analysisResult?.detectedSellerType;
+      const rawSeller = detectedType || vehicle.sellerType || condition?.sellerType;
       const sellerType = condition?.isCPO || history?.isCPO
         ? "cpo" as const
         : rawSeller === "private" ? "private" as const
+        : rawSeller === "franchise" ? "franchise" as const
+        : rawSeller === "independent" ? "independent" as const
         : rawSeller ? "dealer" as const
         : null;
 
