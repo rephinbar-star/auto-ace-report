@@ -428,6 +428,13 @@ export default function ReportPage() {
             }).then(({ data: specsResult }) => {
               if (specsResult?.success && specsResult.data) {
                 const d = specsResult.data;
+                // Guard: if decoded make doesn't match report make, VIN is wrong — skip enrichment
+                const decodedMake = (d.make || "").toLowerCase().trim();
+                const reportMake = (report.make || "").toLowerCase().trim();
+                if (decodedMake && reportMake && decodedMake !== reportMake) {
+                  console.warn(`VIN ${report.vin} decodes to ${d.make} but report is ${report.make} — skipping spec enrichment`);
+                  return;
+                }
                 setVehicleData((prev: any) => ({
                   ...prev,
                   vehicle: {
@@ -953,12 +960,15 @@ export default function ReportPage() {
                       sonnerToast.error(result.error || "Failed to parse history report");
                       return;
                     }
-                    const extractedVin = result.history.vin || vehicleData.vehicle.vin;
+                    // Only use extracted VIN if report has no VIN yet AND it looks like it matches
+                    const existingVin = vehicleData.vehicle.vin;
+                    const extractedVin = result.history.vin;
+                    const shouldSetVin = !existingVin && extractedVin;
                     const updatedVehicleData = {
                       ...vehicleData,
                       vehicle: {
                         ...vehicleData.vehicle,
-                        ...(extractedVin ? { vin: extractedVin } : {}),
+                        ...(shouldSetVin ? { vin: extractedVin } : {}),
                       },
                       history: {
                         ...vehicleData.history,
@@ -1009,7 +1019,7 @@ export default function ReportPage() {
                           depreciation_table: depreciationTable as any,
                           pricing_sources: analysisResult.pricingSources || [],
                           pricing_last_updated: new Date().toISOString(),
-                          ...(extractedVin && !vehicleData.vehicle.vin ? { vin: extractedVin } : {}),
+                          ...(shouldSetVin ? { vin: extractedVin } : {}),
                         };
                         if (priceAssessment.fairMarketPrivate > 0 || priceAssessment.fairMarketDealer > 0) {
                           histUpd.fair_market_private = priceAssessment.fairMarketPrivate;
@@ -1920,7 +1930,7 @@ export default function ReportPage() {
                             major_services_due: result.history?.majorServicesDue ?? null,
                             major_services_done: result.history?.majorServicesDone ?? null,
                             chronic_repair_systems: result.history?.chronicRepairSystems ?? null,
-                            ...(extractedVin ? { vin: extractedVin } : {}),
+                            ...(extractedVin && !vehicleData.vehicle.vin ? { vin: extractedVin } : {}),
                             pricing_sources: analysisResult.pricingSources || [],
                             pricing_last_updated: new Date().toISOString(),
                           };
