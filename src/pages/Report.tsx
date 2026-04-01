@@ -113,7 +113,7 @@ function synthesizeAiFindingsFromReport(report: any): AiFindings {
         system,
         severityClass: 4,
         occurrences: 2,
-        estimatedCostPerIncident: 2000,
+        estimatedCostPerIncident: 2500,
         isAnomalous: false,
         withinTwoYearsOfPrior: true,
         description: `Chronic ${system} system issue identified in service history`,
