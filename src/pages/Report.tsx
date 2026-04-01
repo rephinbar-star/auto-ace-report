@@ -26,7 +26,8 @@ import {
   CartesianGrid, 
   Tooltip, 
   Legend, 
-  ResponsiveContainer 
+  ResponsiveContainer,
+  ReferenceLine
 } from "recharts";
 import { 
   DollarSign, 
@@ -887,10 +888,13 @@ export default function ReportPage() {
 
   const financingSkipped = financing?.skipped === true;
 
+  const purchasePrice = financing?.negotiatedPrice ?? condition.askingPrice;
+
   const chartData = depreciationTable.map((row) => ({
     name: `Year ${row.year}`,
     "Private Value": row.privateValue,
     "Trade-In Value": row.tradeInValue,
+    "Purchase Price": purchasePrice,
     ...(financingSkipped ? {} : { "Loan Balance": row.loanBalance }),
   }));
 
@@ -1630,6 +1634,14 @@ export default function ReportPage() {
                           strokeDasharray="5 5"
                         />
                         )}
+                        <Line 
+                          type="monotone" 
+                          dataKey="Purchase Price" 
+                          stroke="hsl(var(--danger))" 
+                          strokeWidth={2}
+                          strokeDasharray="6 3"
+                          dot={false}
+                        />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
