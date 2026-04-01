@@ -195,6 +195,16 @@ export function RiskScoreBreakdown({ result, missingHistoryReport, onUploadHisto
                   <p className="text-xs text-muted-foreground">
                     {factor.description}
                   </p>
+                  {factor.key === "aiFindings" && factor.topFindings && factor.topFindings.length > 0 && (
+                    <ul className="mt-1 space-y-0.5">
+                      {factor.topFindings.map((finding, i) => (
+                        <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                          <span className="text-destructive mt-0.5">•</span>
+                          <span>{finding}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               );
             })}
