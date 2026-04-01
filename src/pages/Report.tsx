@@ -1620,6 +1620,7 @@ export default function ReportPage() {
                           stroke="hsl(var(--warning))" 
                           strokeWidth={2}
                         />
+                        {!financingSkipped && (
                         <Line 
                           type="monotone" 
                           dataKey="Loan Balance" 
@@ -1627,6 +1628,7 @@ export default function ReportPage() {
                           strokeWidth={2}
                           strokeDasharray="5 5"
                         />
+                        )}
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
