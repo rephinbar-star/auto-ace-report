@@ -1891,6 +1891,31 @@ export default function ReportPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
+                        {/* Year 0 row - purchase starting point */}
+                        {(() => {
+                          const askPrice = condition?.askingPrice || 0;
+                          const loanAmt = financing?.loanAmount || askPrice;
+                          const privateVal = Math.round(financing?.negotiatedPrice ?? askPrice);
+                          const tradeInVal = Math.round(priceAssessment.fairMarketTradeIn || privateVal * 0.85);
+                          const yr0Equity = privateVal - Math.round(loanAmt);
+                          return (
+                            <TableRow>
+                              <TableCell className="font-medium text-xs whitespace-nowrap px-1.5 md:px-4">Yr 0</TableCell>
+                              {!financingSkipped && <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${Math.round(loanAmt).toLocaleString()}</TableCell>}
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 text-danger">$0</TableCell>
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 text-danger">$0</TableCell>
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold text-destructive">$0</TableCell>
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${privateVal.toLocaleString()}</TableCell>
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${tradeInVal.toLocaleString()}</TableCell>
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold text-foreground">${privateVal.toLocaleString()}</TableCell>
+                              {!financingSkipped && (
+                                <TableCell className={cn("text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold", yr0Equity >= 0 ? "text-success" : "text-destructive")}>
+                                  {yr0Equity < 0 ? "-" : ""}${Math.abs(yr0Equity).toLocaleString()}
+                                </TableCell>
+                              )}
+                            </TableRow>
+                          );
+                        })()}
                         {depreciationTable.map((row, idx) => {
                           const repair = Math.round(row.repairCosts);
                           const maint = Math.round(row.maintenanceCosts || 0);
