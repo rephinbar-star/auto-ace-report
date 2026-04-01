@@ -417,3 +417,36 @@ async function tryPerplexity(
 
   return { pricingContext, citations: ensuredCitations };
 }
+
+/**
+ * Detects dealer type (franchise/independent) by looking up active listings
+ * for this VIN on MarketCheck.
+ */
+async function detectDealerType(vin: string): Promise<string | null> {
+  const MARKETCHECK_API_KEY = Deno.env.get("MARKETCHECK_API_KEY");
+  if (!MARKETCHECK_API_KEY) return null;
+
+  try {
+    const params = new URLSearchParams({
+      api_key: MARKETCHECK_API_KEY,
+      vins: vin,
+      rows: "1",
+    });
+    const url = `https://api.marketcheck.com/v2/search/car/active?${params}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.error(`MarketCheck listing search failed: ${response.status}`);
+      return null;
+    }
+    const data = await response.json();
+    const listing = data?.listings?.[0];
+    if (!listing) return null;
+
+    const dealerType = listing?.dealer?.dealer_type;
+    console.log(`MarketCheck dealer_type for VIN ${vin}: ${dealerType || "not found"}`);
+    return dealerType || null; // "franchise" or "independent"
+  } catch (err) {
+    console.error("Dealer type detection error:", err);
+    return null;
+  }
+}
