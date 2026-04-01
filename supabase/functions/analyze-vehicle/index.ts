@@ -69,6 +69,7 @@ interface PricingData {
     fairMarketTradeIn: number;
   };
   sourceBreakdown?: SourceValuation[];
+  detectedDealerType?: string | null;
 }
 
 interface MaintenanceData {
