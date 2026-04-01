@@ -553,6 +553,13 @@ export default function ReportPage() {
           if (result.sourceBreakdown?.length) {
             setSourceBreakdown(result.sourceBreakdown);
           }
+          // Update seller type if API detected franchise/independent
+          if (result.detectedSellerType && vehicleData) {
+            setVehicleData(prev => prev ? {
+              ...prev,
+              condition: { ...prev.condition, sellerType: result.detectedSellerType }
+            } : prev);
+          }
         } else {
           throw new Error(result?.error || "Analysis returned no data");
         }
