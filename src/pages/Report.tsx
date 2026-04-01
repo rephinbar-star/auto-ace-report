@@ -2077,8 +2077,8 @@ export default function ReportPage() {
                     <p className={cn(
                       "whitespace-pre-line font-bold",
                       uvprsResult?.verdict === "Avoid" || uvprsResult?.verdict === "Caution" 
-                        || analysis.finalVerdict?.verdict === "Walk Away" ? "text-destructive" :
-                      uvprsResult?.verdict === "Buy" || analysis.finalVerdict?.verdict === "Buy" ? "text-success" :
+                        ? "text-destructive" :
+                      uvprsResult?.verdict === "Buy" ? "text-success" :
                       "text-foreground"
                     )}>{riskAssessment.expertOpinion}</p>
                   </div>
