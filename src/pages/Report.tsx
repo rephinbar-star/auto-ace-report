@@ -953,12 +953,15 @@ export default function ReportPage() {
                       sonnerToast.error(result.error || "Failed to parse history report");
                       return;
                     }
-                    const extractedVin = result.history.vin || vehicleData.vehicle.vin;
+                    // Only use extracted VIN if report has no VIN yet AND it looks like it matches
+                    const existingVin = vehicleData.vehicle.vin;
+                    const extractedVin = result.history.vin;
+                    const shouldSetVin = !existingVin && extractedVin;
                     const updatedVehicleData = {
                       ...vehicleData,
                       vehicle: {
                         ...vehicleData.vehicle,
-                        ...(extractedVin ? { vin: extractedVin } : {}),
+                        ...(shouldSetVin ? { vin: extractedVin } : {}),
                       },
                       history: {
                         ...vehicleData.history,
