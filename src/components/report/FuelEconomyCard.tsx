@@ -269,16 +269,14 @@ export function FuelEconomyCard({
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-start gap-2">
-          <Fuel className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-          <CardTitle className="!text-base sm:!text-lg !leading-tight whitespace-normal break-words">
-            Fuel Economy & Ownership Cost
-          </CardTitle>
-        </div>
+    <Card className="overflow-visible">
+      <CardHeader className="p-4 sm:p-6">
+        <CardTitle className="text-base sm:text-lg leading-snug">
+          <Fuel className="h-5 w-5 text-primary shrink-0 inline-block mr-2 align-middle" />
+          Fuel Economy &amp; Ownership Cost
+        </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-6 p-4 pt-0 sm:p-6 sm:pt-0">
         {/* ZIP Code Lookup */}
         <div className={cn(
           "rounded-lg border p-3 space-y-2 transition-colors",
