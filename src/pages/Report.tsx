@@ -1696,6 +1696,12 @@ export default function ReportPage() {
                     </Table>
                     </div>
 
+                    {financingSkipped && (
+                      <p className="text-xs text-muted-foreground mt-2">
+                        <span className="font-bold">*Does not include Taxes and Fees included in the purchase since no financing data was provided</span>
+                      </p>
+                    )}
+
                     {/* Cost Data Sources */}
                     {pricingSources.length > 0 && (
                       <div className="mt-4 rounded-lg border border-dashed p-3">
