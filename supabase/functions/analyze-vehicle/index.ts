@@ -47,6 +47,19 @@ interface MPGData {
   isEstimate: boolean;
 }
 
+interface SourceValuation {
+  source: string;
+  privateParty?: number | null;
+  privatePartyLow?: number | null;
+  privatePartyHigh?: number | null;
+  dealerRetail?: number | null;
+  dealerRetailLow?: number | null;
+  dealerRetailHigh?: number | null;
+  tradeIn?: number | null;
+  tradeInLow?: number | null;
+  tradeInHigh?: number | null;
+}
+
 interface PricingData {
   pricingContext: string;
   citations: string[];
@@ -55,6 +68,7 @@ interface PricingData {
     fairMarketDealer: number;
     fairMarketTradeIn: number;
   };
+  sourceBreakdown?: SourceValuation[];
 }
 
 interface MaintenanceData {

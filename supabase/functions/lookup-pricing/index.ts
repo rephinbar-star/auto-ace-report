@@ -326,6 +326,39 @@ async function tryPerplexity(
 
     pricingContext = lines.join("\n");
 
+    // Build per-source breakdown
+    const sourceBreakdown: SourceValuation[] = [
+      {
+        source: "Kelley Blue Book",
+        privateParty: kbbPrivateMid,
+        privatePartyLow: p.kbb_private_party_low,
+        privatePartyHigh: p.kbb_private_party_high,
+        dealerRetail: kbbDealerMid,
+        dealerRetailLow: p.kbb_dealer_retail_low,
+        dealerRetailHigh: p.kbb_dealer_retail_high,
+        tradeIn: kbbTradeInMid,
+        tradeInLow: p.kbb_trade_in_low,
+        tradeInHigh: p.kbb_trade_in_high,
+      },
+    ];
+
+    if (hasEdmundsData) {
+      sourceBreakdown.push({
+        source: "Edmunds",
+        privateParty: p.edmunds_private_party > 0 ? p.edmunds_private_party : null,
+        dealerRetail: p.edmunds_dealer_retail > 0 ? p.edmunds_dealer_retail : null,
+        tradeIn: p.edmunds_trade_in > 0 ? p.edmunds_trade_in : null,
+      });
+    }
+
+    if (hasNadaData) {
+      sourceBreakdown.push({
+        source: "NADA Guides",
+        dealerRetail: p.nada_clean_retail > 0 ? p.nada_clean_retail : null,
+        tradeIn: p.nada_clean_trade_in > 0 ? p.nada_clean_trade_in : null,
+      });
+    }
+
     return {
       pricingContext,
       citations: ensuredCitations,
@@ -334,6 +367,7 @@ async function tryPerplexity(
         fairMarketDealer: avg(dealerValues),
         fairMarketTradeIn: avg(tradeInValues),
       },
+      sourceBreakdown,
     };
   } catch {
     console.log("Could not parse structured response, using raw content");
