@@ -275,6 +275,7 @@ export type Database = {
       vehicle_reports: {
         Row: {
           accident_count: number | null
+          ai_findings: Json | null
           apr: number | null
           asking_price: number
           body_style: string | null
@@ -345,6 +346,7 @@ export type Database = {
         }
         Insert: {
           accident_count?: number | null
+          ai_findings?: Json | null
           apr?: number | null
           asking_price: number
           body_style?: string | null
@@ -415,6 +417,7 @@ export type Database = {
         }
         Update: {
           accident_count?: number | null
+          ai_findings?: Json | null
           apr?: number | null
           asking_price?: number
           body_style?: string | null
