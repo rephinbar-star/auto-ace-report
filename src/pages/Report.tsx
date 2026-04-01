@@ -187,6 +187,7 @@ export default function ReportPage() {
     recalls: RecallItem[];
     isLoading: boolean;
   } | null>(null);
+  const [showFinancingDialog, setShowFinancingDialog] = useState(false);
   
   // Check if coming from comparison
   const fromComparison = searchParams.get("from") === "compare";
