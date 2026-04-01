@@ -1870,9 +1870,11 @@ export default function ReportPage() {
                           const maint = Math.round(row.maintenanceCosts || 0);
                           const prevValue = idx === 0 ? (condition?.askingPrice || depreciationTable[0].privateValue * 1.15) : depreciationTable[idx - 1].privateValue;
                           const depreciation = Math.max(0, Math.round(prevValue - row.privateValue));
+                          const cumulativeRepairs = depreciationTable.slice(0, idx + 1).reduce((sum, r) => sum + Math.round(r.repairCosts), 0);
+                          const cumulativeMaint = depreciationTable.slice(0, idx + 1).reduce((sum, r) => sum + Math.round(r.maintenanceCosts || 0), 0);
                           const estValue = excludeRepairs
-                            ? Math.round(row.privateValue) - depreciation
-                            : Math.round(row.privateValue) - depreciation - repair - maint;
+                            ? Math.round(row.privateValue)
+                            : Math.round(row.privateValue) - cumulativeRepairs - cumulativeMaint;
                           return (
                             <TableRow key={row.year}>
                               <TableCell className="font-medium text-xs whitespace-nowrap px-1.5 md:px-4">Yr {row.year}</TableCell>
