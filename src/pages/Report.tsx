@@ -1170,7 +1170,27 @@ export default function ReportPage() {
                   )}
                 </div>
 
-                {/* Standard Equipment - collapsible */}
+                {/* Non-Standard Options & Packages */}
+                {vehicle.optionPackages && vehicle.optionPackages.length > 0 && (
+                  <div className="border-t pt-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <BadgeCheck className="h-4 w-4 text-primary" />
+                      <p className="text-sm font-semibold">Non-Standard Options &amp; Packages</p>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-2">Factory-installed options and premium packages beyond standard equipment</p>
+                    <div className="flex flex-wrap gap-2">
+                      {vehicle.optionPackages.map((pkg: any, i: number) => {
+                        const label = typeof pkg === "string" ? pkg : pkg?.name || String(pkg);
+                        return (
+                          <Badge key={i} variant="outline" className="text-sm px-3 py-1">
+                            {label}
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {vehicle.installedEquipment && vehicle.installedEquipment.length > 0 && (
                   <Collapsible defaultOpen={false}>
                     <div className="border-t pt-3">
