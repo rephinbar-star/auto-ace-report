@@ -61,12 +61,14 @@ interface RiskScoreBreakdownProps {
 const riskColors: Record<string, string> = {
   low: "bg-success text-success-foreground",
   moderate: "bg-warning text-warning-foreground",
+  elevated: "bg-orange-500 text-white",
   high: "bg-danger text-danger-foreground",
 };
 
 const riskProgressColors: Record<string, string> = {
   low: "[&>div]:bg-success",
   moderate: "[&>div]:bg-warning",
+  elevated: "[&>div]:bg-orange-500",
   high: "[&>div]:bg-danger",
 };
 
