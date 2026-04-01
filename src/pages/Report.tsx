@@ -1262,12 +1262,45 @@ export default function ReportPage() {
                       onBack={() => setShowFinancingDialog(false)}
                       onComplete={async (newFinancing: FinancingInfo) => {
                         setShowFinancingDialog(false);
-                        // Update local state
+
+                        // Recalculate loan balances in the depreciation table using amortization
+                        const updatedDepTable = (() => {
+                          const table = analysis.depreciationTable;
+                          if (!table || !newFinancing.loanAmount || !newFinancing.loanTerm) return table;
+
+                          const P = newFinancing.loanAmount;
+                          const monthlyRate = ((newFinancing.apr || 0) / 100) / 12;
+                          const totalMonths = newFinancing.loanTerm;
+
+                          const monthlyPmt = monthlyRate > 0
+                            ? P * (monthlyRate * Math.pow(1 + monthlyRate, totalMonths)) / (Math.pow(1 + monthlyRate, totalMonths) - 1)
+                            : P / totalMonths;
+
+                          const balanceAfter = (months: number) => {
+                            if (months >= totalMonths) return 0;
+                            if (monthlyRate > 0) {
+                              return P * Math.pow(1 + monthlyRate, months) - monthlyPmt * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate);
+                            }
+                            return Math.max(0, P - monthlyPmt * months);
+                          };
+
+                          return table.map((row) => ({
+                            ...row,
+                            loanBalance: Math.max(0, Math.round(balanceAfter(row.year * 12))),
+                          }));
+                        })();
+
+                        // Update local state — chart & table re-render immediately
                         setVehicleData((prev: any) => ({
                           ...prev,
                           financing: newFinancing,
                         }));
-                        // Update DB if saved report
+                        setAnalysis((prev) => prev ? {
+                          ...prev,
+                          depreciationTable: updatedDepTable,
+                        } : prev);
+
+                        // Persist to DB
                         if (isSavedReport && id) {
                           await supabase.from("vehicle_reports").update({
                             financing_type: newFinancing.type,
@@ -1278,9 +1311,8 @@ export default function ReportPage() {
                             lease_term_months: newFinancing.leaseTermMonths || null,
                             residual_value: newFinancing.residualValue || null,
                             negotiated_price: newFinancing.negotiatedPrice && newFinancing.negotiatedPrice !== condition.askingPrice ? newFinancing.negotiatedPrice : null,
+                            depreciation_table: updatedDepTable as any,
                           }).eq("id", id);
-                          // Reload the page to recalculate everything
-                          window.location.reload();
                         }
                       }}
                     />
