@@ -293,6 +293,16 @@ async function tryPerplexity(
     );
 
     pricingContext = lines.join("\n");
+
+    return {
+      pricingContext,
+      citations: ensuredCitations,
+      computedValues: {
+        fairMarketPrivate: avg(privateValues),
+        fairMarketDealer: avg(dealerValues),
+        fairMarketTradeIn: avg(tradeInValues),
+      },
+    };
   } catch {
     console.log("Could not parse structured response, using raw content");
   }
