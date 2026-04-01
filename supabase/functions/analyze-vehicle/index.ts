@@ -508,6 +508,7 @@ Provide your expert analysis.`;
         },
         pricingSources: hasPricing ? pricingData.citations : [],
         sourceBreakdown: pricingData?.sourceBreakdown || [],
+        detectedSellerType: condition.sellerType,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
