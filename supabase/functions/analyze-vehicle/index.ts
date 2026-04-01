@@ -500,6 +500,7 @@ Provide your expert analysis.`;
           ...(hasPricing ? pricingData.citations : []),
           ...(hasMaintenance ? maintenanceData.citations : []),
         ],
+        sourceBreakdown: pricingData?.sourceBreakdown || [],
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
