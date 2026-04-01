@@ -110,6 +110,7 @@ serve(async (req) => {
         citations: uniqueCitations,
         computedValues,
         sourceBreakdown: allSources,
+        detectedDealerType,
       } as PricingResult,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
