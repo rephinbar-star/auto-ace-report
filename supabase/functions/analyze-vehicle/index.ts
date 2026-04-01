@@ -531,7 +531,7 @@ Provide your expert analysis.`;
                     required: ["activeServiceFaults", "knownFailurePatterns", "chassisSignal"],
                   },
                 },
-                required: ["priceAssessment", "depreciationTable", "riskAssessment", "historyAnalysis", "warrantyAnalysis", "finalVerdict"],
+                required: ["priceAssessment", "depreciationTable", "riskAssessment", "historyAnalysis", "warrantyAnalysis", "finalVerdict", "aiFindings"],
               },
             },
           },
