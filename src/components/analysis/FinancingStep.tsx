@@ -54,6 +54,7 @@ interface FinancingStepProps {
 }
 
 export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: FinancingStepProps) {
+  const [showForm, setShowForm] = useState(false);
   const [countyLookupLoading, setCountyLookupLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("loan");
   const [selectedState, setSelectedState] = useState<string>("");
