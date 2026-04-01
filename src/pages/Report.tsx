@@ -103,6 +103,49 @@ interface DepreciationYear {
   netEquityPrivate: number;
   netEquityTradeIn: number;
 }
+/** Synthesize AiFindings from legacy DB fields for reports saved before the aiFindings schema existed */
+function synthesizeAiFindingsFromReport(report: any): AiFindings {
+  const faults: import("@/types/vehicle").ActiveServiceFault[] = [];
+  // Chronic repair systems → Class 4 faults
+  if (report.chronic_repair_systems?.length) {
+    for (const system of report.chronic_repair_systems) {
+      faults.push({
+        system,
+        severityClass: 4,
+        occurrences: 2,
+        estimatedCostPerIncident: 2000,
+        isAnomalous: false,
+        withinTwoYearsOfPrior: true,
+        description: `Chronic ${system} system issue identified in service history`,
+      });
+    }
+  }
+  // Reliability concerns → known failure patterns
+  const patterns: import("@/types/vehicle").KnownFailurePattern[] = [];
+  const concerns = Array.isArray(report.reliability_concerns) ? report.reliability_concerns : [];
+  for (const c of concerns) {
+    const concern = typeof c === "string" ? { concern: c } : c;
+    const avgCost = ((concern.costLow ?? 1500) + (concern.costHigh ?? 3000)) / 2;
+    patterns.push({
+      issue: concern.concern || "Unknown concern",
+      probabilityTier: avgCost > 2500 ? "high" : "medium",
+      costTier: avgCost > 3000 ? "critical" : avgCost > 1500 ? "major" : "moderate",
+      alreadyPresent: false,
+      description: concern.concern || "",
+    });
+  }
+  return {
+    activeServiceFaults: faults,
+    knownFailurePatterns: patterns,
+    chassisSignal: {
+      level: (report.chronic_repair_systems?.length ?? 0) > 0 ? 3 : 2,
+      isProblemGeneration: false,
+      isWorstGeneration: false,
+      withinFailureWindow: false,
+      description: "Estimated from legacy report data",
+    },
+  };
+}
 
 interface Analysis {
   priceAssessment: {
