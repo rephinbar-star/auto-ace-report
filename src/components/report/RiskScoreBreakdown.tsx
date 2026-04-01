@@ -9,6 +9,10 @@ import { cn } from "@/lib/utils";
 import type { UVPRSResult } from "@/lib/uvprs-scoring";
 
 const factorTooltips: Record<string, { meaning: string; advice: string }> = {
+  aiFindings: {
+    meaning: "Dynamic risk assessment based on AI analysis of this specific vehicle: active service faults (50%), known failure patterns for this model-year (35%), and chassis/platform complaint signals (15%).",
+    advice: "Review the top findings listed — these are the specific issues driving this score. Budget for any identified chronic or high-cost items.",
+  },
   title: {
     meaning: "Measures title brand risk. Clean titles score low; salvage/rebuilt/lemon titles dramatically increase risk due to structural damage or fraud history.",
     advice: "Always request a title history check. Avoid salvage/lemon titles unless you're a mechanic buying at steep discount.",
