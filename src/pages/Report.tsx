@@ -1659,7 +1659,7 @@ export default function ReportPage() {
                           <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Repair</TableHead>
                           <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Maint.</TableHead>
                           <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Deprec.</TableHead>
-                          <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Est. Value</TableHead>
+                          <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight">Est. Vehicle<br/>Value</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
