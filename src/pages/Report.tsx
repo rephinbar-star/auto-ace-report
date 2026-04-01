@@ -426,7 +426,10 @@ export default function ReportPage() {
             } : {}),
             ...(report.ai_findings ? {
               aiFindings: report.ai_findings as unknown as AiFindings,
-            } : {}),
+            } : {
+              // Synthesize aiFindings from legacy DB fields for older reports
+              aiFindings: synthesizeAiFindingsFromReport(report),
+            }),
           });
           
           // Load MPG data from saved report
