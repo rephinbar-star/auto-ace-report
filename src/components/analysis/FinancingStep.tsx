@@ -654,7 +654,7 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
                   </div>
 
                   <div className="flex gap-4">
-                    <Button type="button" variant="outline" onClick={onBack}>
+                    <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
                       Back
                     </Button>
                     <Button type="submit">Generate Report</Button>
