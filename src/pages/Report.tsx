@@ -1643,6 +1643,12 @@ export default function ReportPage() {
                                 <div key={src.source} className="rounded-md bg-muted/50 p-2.5">
                                   <p className="text-xs font-semibold text-foreground mb-1.5">{src.source}</p>
                                   <div className="grid grid-cols-3 gap-2 text-xs">
+                                    {tradeInVal && (
+                                      <div>
+                                        <span className="text-muted-foreground">Trade-In</span>
+                                        <p className="font-medium text-foreground">{tradeInVal}</p>
+                                      </div>
+                                    )}
                                     {privateVal && (
                                       <div>
                                         <span className="text-muted-foreground">Private Party</span>
@@ -1653,12 +1659,6 @@ export default function ReportPage() {
                                       <div>
                                         <span className="text-muted-foreground">Dealer Retail</span>
                                         <p className="font-medium text-foreground">{dealerVal}</p>
-                                      </div>
-                                    )}
-                                    {tradeInVal && (
-                                      <div>
-                                        <span className="text-muted-foreground">Trade-In</span>
-                                        <p className="font-medium text-foreground">{tradeInVal}</p>
                                       </div>
                                     )}
                                   </div>
