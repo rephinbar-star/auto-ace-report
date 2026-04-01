@@ -1680,7 +1680,7 @@ export default function ReportPage() {
                               <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 text-danger">
                                 ${repair.toLocaleString()}
                               </TableCell>
-                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 text-muted-foreground">
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 text-danger">
                                 ${maint.toLocaleString()}
                               </TableCell>
                               <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold text-destructive">
