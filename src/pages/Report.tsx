@@ -1283,88 +1283,88 @@ export default function ReportPage() {
             </CardContent>
           </Card>
 
-          {/* Add Financing Details CTA - shown when financing was skipped */}
-          {financingSkipped && (
-            <>
-              <button
-                onClick={() => setShowFinancingDialog(true)}
-                className="w-full mb-4 flex items-center justify-center gap-3 rounded-xl border-2 border-dashed border-blue-400/50 bg-blue-50 hover:bg-blue-100 hover:border-blue-500/70 dark:bg-blue-950/30 dark:hover:bg-blue-950/50 dark:border-blue-500/40 px-6 py-5 text-base font-semibold text-blue-600 dark:text-blue-400 transition-colors"
-              >
-                <DollarSign className="h-5 w-5" />
-                Add financing details to see Total Cost of Ownership and Break-Even Point with your financing
-              </button>
+          {/* Financing Details CTA - always shown for what-if scenarios */}
+          <>
+            <button
+              onClick={() => setShowFinancingDialog(true)}
+              className="w-full mb-4 flex items-center justify-center gap-3 rounded-xl border-2 border-dashed border-blue-400/50 bg-blue-50 hover:bg-blue-100 hover:border-blue-500/70 dark:bg-blue-950/30 dark:hover:bg-blue-950/50 dark:border-blue-500/40 px-6 py-5 text-base font-semibold text-blue-600 dark:text-blue-400 transition-colors"
+            >
+              <DollarSign className="h-5 w-5" />
+              {financingSkipped
+                ? "Add financing details to see Total Cost of Ownership and Break-Even Point"
+                : "Edit financing details — run a what-if scenario"}
+            </button>
 
-              <Dialog open={showFinancingDialog} onOpenChange={setShowFinancingDialog}>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0">
-                  <VisuallyHidden>
-                    <DialogTitle>Add Financing Details</DialogTitle>
-                  </VisuallyHidden>
-                  <div className="p-1">
-                    <FinancingStep
-                      askingPrice={condition.askingPrice}
-                      zipCode={condition.zipCode}
-                      onBack={() => setShowFinancingDialog(false)}
-                      onComplete={async (newFinancing: FinancingInfo) => {
-                        setShowFinancingDialog(false);
+            <Dialog open={showFinancingDialog} onOpenChange={setShowFinancingDialog}>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0">
+                <VisuallyHidden>
+                  <DialogTitle>{financingSkipped ? "Add" : "Edit"} Financing Details</DialogTitle>
+                </VisuallyHidden>
+                <div className="p-1">
+                  <FinancingStep
+                    askingPrice={condition.askingPrice}
+                    zipCode={condition.zipCode}
+                    onBack={() => setShowFinancingDialog(false)}
+                    onComplete={async (newFinancing: FinancingInfo) => {
+                      setShowFinancingDialog(false);
 
-                        // Recalculate loan balances in the depreciation table using amortization
-                        const updatedDepTable = (() => {
-                          const table = analysis.depreciationTable;
-                          if (!table || !newFinancing.loanAmount || !newFinancing.loanTerm) return table;
+                      // Recalculate loan balances in the depreciation table using amortization
+                      const updatedDepTable = (() => {
+                        const table = analysis.depreciationTable;
+                        if (!table || !newFinancing.loanAmount || !newFinancing.loanTerm) return table;
 
-                          const P = newFinancing.loanAmount;
-                          const monthlyRate = ((newFinancing.apr || 0) / 100) / 12;
-                          const totalMonths = newFinancing.loanTerm;
+                        const P = newFinancing.loanAmount;
+                        const monthlyRate = ((newFinancing.apr || 0) / 100) / 12;
+                        const totalMonths = newFinancing.loanTerm;
 
-                          const monthlyPmt = monthlyRate > 0
-                            ? P * (monthlyRate * Math.pow(1 + monthlyRate, totalMonths)) / (Math.pow(1 + monthlyRate, totalMonths) - 1)
-                            : P / totalMonths;
+                        const monthlyPmt = monthlyRate > 0
+                          ? P * (monthlyRate * Math.pow(1 + monthlyRate, totalMonths)) / (Math.pow(1 + monthlyRate, totalMonths) - 1)
+                          : P / totalMonths;
 
-                          const balanceAfter = (months: number) => {
-                            if (months >= totalMonths) return 0;
-                            if (monthlyRate > 0) {
-                              return P * Math.pow(1 + monthlyRate, months) - monthlyPmt * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate);
-                            }
-                            return Math.max(0, P - monthlyPmt * months);
-                          };
+                        const balanceAfter = (months: number) => {
+                          if (months >= totalMonths) return 0;
+                          if (monthlyRate > 0) {
+                            return P * Math.pow(1 + monthlyRate, months) - monthlyPmt * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate);
+                          }
+                          return Math.max(0, P - monthlyPmt * months);
+                        };
 
-                          return table.map((row) => ({
-                            ...row,
-                            loanBalance: Math.max(0, Math.round(balanceAfter(row.year * 12))),
-                          }));
-                        })();
-
-                        // Update local state — chart & table re-render immediately
-                        setVehicleData((prev: any) => ({
-                          ...prev,
-                          financing: newFinancing,
+                        return table.map((row) => ({
+                          ...row,
+                          loanBalance: Math.max(0, Math.round(balanceAfter(row.year * 12))),
                         }));
-                        setAnalysis((prev) => prev ? {
-                          ...prev,
-                          depreciationTable: updatedDepTable,
-                        } : prev);
+                      })();
 
-                        // Persist to DB
-                        if (isSavedReport && id) {
-                          await supabase.from("vehicle_reports").update({
-                            financing_type: newFinancing.type,
-                            loan_amount: newFinancing.loanAmount || null,
-                            loan_term: newFinancing.loanTerm || null,
-                            apr: newFinancing.apr || null,
-                            monthly_payment: newFinancing.monthlyPayment || null,
-                            lease_term_months: newFinancing.leaseTermMonths || null,
-                            residual_value: newFinancing.residualValue || null,
-                            negotiated_price: newFinancing.negotiatedPrice && newFinancing.negotiatedPrice !== condition.askingPrice ? newFinancing.negotiatedPrice : null,
-                            depreciation_table: updatedDepTable as any,
-                          }).eq("id", id);
-                        }
-                      }}
-                    />
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </>
-          )}
+                      // Update local state — chart & table re-render immediately
+                      setVehicleData((prev: any) => ({
+                        ...prev,
+                        financing: newFinancing,
+                      }));
+                      setAnalysis((prev) => prev ? {
+                        ...prev,
+                        depreciationTable: updatedDepTable,
+                      } : prev);
+
+                      // Persist to DB
+                      if (isSavedReport && id) {
+                        await supabase.from("vehicle_reports").update({
+                          financing_type: newFinancing.type,
+                          loan_amount: newFinancing.loanAmount || null,
+                          loan_term: newFinancing.loanTerm || null,
+                          apr: newFinancing.apr || null,
+                          monthly_payment: newFinancing.monthlyPayment || null,
+                          lease_term_months: newFinancing.leaseTermMonths || null,
+                          residual_value: newFinancing.residualValue || null,
+                          negotiated_price: newFinancing.negotiatedPrice && newFinancing.negotiatedPrice !== condition.askingPrice ? newFinancing.negotiatedPrice : null,
+                          depreciation_table: updatedDepTable as any,
+                        }).eq("id", id);
+                      }
+                    }}
+                  />
+                </div>
+              </DialogContent>
+            </Dialog>
+          </>
 
           {/* Negotiated Savings Banner */}
           {(() => {
