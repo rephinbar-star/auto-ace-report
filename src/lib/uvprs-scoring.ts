@@ -65,7 +65,7 @@ export interface UVPRSInput {
   resolvedRecallCount?: number | null;
 
   // Seller type
-  sellerType?: "private" | "dealer" | "cpo" | null;
+  sellerType?: "private" | "dealer" | "franchise" | "independent" | "cpo" | null;
 
   // Legacy fields kept for backward compat (no longer used in scoring)
   warrantyMonthsRemaining?: number | null;
