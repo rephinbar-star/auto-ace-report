@@ -85,6 +85,7 @@ const sampleComparisonVehicles: VehicleReport[] = [
     final_verdict_justification: "Excellent deal on a low-mileage, well-maintained vehicle with active warranty.",
     zip_code: null,
     negotiated_price: null,
+    source_breakdown: [],
   },
   {
     id: "sample-2",
