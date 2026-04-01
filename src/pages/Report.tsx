@@ -1686,10 +1686,8 @@ export default function ReportPage() {
                               <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold text-destructive">
                                 -${depreciation.toLocaleString()}
                               </TableCell>
-                              <TableCell className={cn(
-                                "text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-semibold",
-                                estValue >= 0 ? "text-success" : "text-danger"
-                              )}>
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold text-foreground">
+                                {estValue >= 0 ? "" : "-"}
                                 {estValue >= 0 ? "+" : "-"}
                                 ${Math.abs(estValue).toLocaleString()}
                               </TableCell>
