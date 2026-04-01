@@ -1464,7 +1464,7 @@ export default function ReportPage() {
                                 </span>
                                 {" "}Dealer Retail
                                 {priceAssessment.fairMarketPrivate > 0 && (() => {
-                                  const fmvDiff = analysis.asking_price - priceAssessment.fairMarketPrivate;
+                                  const fmvDiff = condition.askingPrice - priceAssessment.fairMarketPrivate;
                                   return (
                                     <>
                                       {" "}and{" "}
