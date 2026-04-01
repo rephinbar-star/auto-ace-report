@@ -42,8 +42,8 @@ interface PricingResult {
 }
 
 /**
- * Primary: MarketCheck Price API (accurate ML-based valuation)
- * Fallback: Perplexity (when VIN is missing or MarketCheck fails)
+ * Calls MarketCheck AND Perplexity in parallel, merges results.
+ * MarketCheck provides ML-based prediction; Perplexity provides KBB/Edmunds/NADA book values.
  */
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -54,23 +54,54 @@ serve(async (req) => {
     const { year, make, model, trim, mileage, condition, zipCode, vin, sellerType }: PricingRequest = await req.json();
     const vehicleDesc = `${year} ${make} ${model}${trim ? ` ${trim}` : ""}`;
 
-    // Try MarketCheck first if VIN is available
-    if (vin && vin.length === 17) {
-      const mcResult = await tryMarketCheck(vin, mileage, sellerType, zipCode, vehicleDesc);
-      if (mcResult) {
-        console.log("MarketCheck pricing succeeded");
-        return new Response(JSON.stringify({ success: true, data: mcResult }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      console.log("MarketCheck failed, falling back to Perplexity");
-    } else {
-      console.log("No VIN available, using Perplexity fallback");
+    // Launch both sources in parallel
+    const mcPromise = (vin && vin.length === 17)
+      ? tryMarketCheck(vin, mileage, sellerType, zipCode, vehicleDesc)
+      : Promise.resolve(null);
+    const ppPromise = tryPerplexity(year, make, model, trim, mileage, condition, zipCode, vehicleDesc).catch(err => {
+      console.error("Perplexity failed:", err);
+      return null;
+    });
+
+    const [mcResult, ppResult] = await Promise.all([mcPromise, ppPromise]);
+
+    // Merge results: combine source breakdowns and compute final values
+    const allSources: SourceValuation[] = [
+      ...(mcResult?.sourceBreakdown || []),
+      ...(ppResult?.sourceBreakdown || []),
+    ];
+
+    const allCitations: string[] = [
+      ...(mcResult?.citations || []),
+      ...(ppResult?.citations || []),
+    ];
+    // Deduplicate citations
+    const uniqueCitations = [...new Set(allCitations)];
+
+    // Build merged pricing context
+    const contextParts: string[] = [];
+    if (mcResult?.pricingContext) contextParts.push(mcResult.pricingContext);
+    if (ppResult?.pricingContext) contextParts.push(ppResult.pricingContext);
+    const mergedContext = contextParts.join("\n\n");
+
+    // For computed values: prefer Perplexity (cross-referenced KBB/Edmunds/NADA) over MarketCheck
+    const computedValues = ppResult?.computedValues || mcResult?.computedValues;
+
+    if (!mergedContext) {
+      throw new Error("No pricing data available from any source");
     }
 
-    // Fallback: Perplexity
-    const perplexityResult = await tryPerplexity(year, make, model, trim, mileage, condition, zipCode, vehicleDesc);
-    return new Response(JSON.stringify({ success: true, data: perplexityResult }), {
+    console.log(`Pricing complete: ${allSources.length} source(s), ${uniqueCitations.length} citation(s)`);
+
+    return new Response(JSON.stringify({
+      success: true,
+      data: {
+        pricingContext: mergedContext,
+        citations: uniqueCitations,
+        computedValues,
+        sourceBreakdown: allSources,
+      } as PricingResult,
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
