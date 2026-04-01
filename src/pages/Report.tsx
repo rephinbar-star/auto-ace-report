@@ -1887,6 +1887,7 @@ export default function ReportPage() {
                           <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight">Private<br/>Sale Value</TableHead>
                           <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight">Trade-In<br/>Value</TableHead>
                           <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight">Est. Vehicle<br/>Value</TableHead>
+                          {!financingSkipped && <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Equity</TableHead>}
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1918,6 +1919,14 @@ export default function ReportPage() {
                               <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold text-foreground">
                                 {estValue < 0 ? "-" : ""}${Math.abs(estValue).toLocaleString()}
                               </TableCell>
+                              {!financingSkipped && (() => {
+                                const equity = Math.round(row.privateValue) - Math.round(row.loanBalance);
+                                return (
+                                  <TableCell className={cn("text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold", equity >= 0 ? "text-success" : "text-destructive")}>
+                                    {equity < 0 ? "-" : ""}${Math.abs(equity).toLocaleString()}
+                                  </TableCell>
+                                );
+                              })()}
                             </TableRow>
                           );
                         })}
