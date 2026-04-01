@@ -692,12 +692,12 @@ export function calculateUVPRS(input: UVPRSInput): UVPRSResult {
   }
   if (input.aiFindings?.activeServiceFaults?.some(
     f => (f.severityClass === 4 || f.severityClass === 5) && 
-         f.estimatedCostPerIncident != null && f.estimatedCostPerIncident > 2000
+         f.estimatedCostPerIncident != null && f.estimatedCostPerIncident >= 2000
   )) {
     totalScore = Math.max(45, totalScore);
   }
-  // Also check chronicRepairSystems as fallback when aiFindings not available
-  if (!input.aiFindings && input.chronicRepairSystems && input.chronicRepairSystems.length > 0) {
+  // Also check chronicRepairSystems (always, not just when aiFindings missing)
+  if (input.chronicRepairSystems && input.chronicRepairSystems.length > 0) {
     const criticalSystems = ["transmission", "engine", "cooling", "electrical"];
     const hasCriticalChronic = input.chronicRepairSystems.some(s =>
       criticalSystems.some(cs => s.toLowerCase().includes(cs))
