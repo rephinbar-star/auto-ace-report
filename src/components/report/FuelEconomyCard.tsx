@@ -271,9 +271,9 @@ export function FuelEconomyCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-start gap-2 text-base sm:text-lg leading-tight">
+        <CardTitle className="flex items-start gap-2 !text-base sm:!text-lg !leading-tight">
           <Fuel className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-          <span className="min-w-0 break-words">Fuel Economy & Ownership Cost</span>
+          <span className="min-w-0">Fuel Economy &amp; Ownership Cost</span>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
