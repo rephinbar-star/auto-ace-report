@@ -1945,7 +1945,7 @@ export default function ReportPage() {
                                 {estValue < 0 ? "-" : ""}${Math.abs(estValue).toLocaleString()}
                               </TableCell>
                               {!financingSkipped && (() => {
-                                const equity = Math.round(row.privateValue) - Math.round(row.loanBalance);
+                                const equity = estValue - Math.round(row.loanBalance);
                                 return (
                                   <TableCell className={cn("text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold", equity >= 0 ? "text-success" : "text-destructive")}>
                                     {equity < 0 ? "-" : ""}${Math.abs(equity).toLocaleString()}
