@@ -1957,8 +1957,8 @@ export default function ReportPage() {
                   <div className="prose prose-sm max-w-none dark:prose-invert">
                     <p className={cn(
                       "whitespace-pre-line font-bold",
-                      analysis.finalVerdict === "Walk Away" ? "text-destructive" :
-                      analysis.finalVerdict === "Buy" ? "text-success" :
+                      analysis.finalVerdict?.verdict === "Walk Away" ? "text-destructive" :
+                      analysis.finalVerdict?.verdict === "Buy" ? "text-success" :
                       "text-foreground"
                     )}>{riskAssessment.expertOpinion}</p>
                   </div>
