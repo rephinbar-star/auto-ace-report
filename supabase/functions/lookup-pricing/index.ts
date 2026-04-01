@@ -146,6 +146,11 @@ async function tryMarketCheck(
     return {
       pricingContext: lines.join("\n"),
       citations: ["https://www.marketcheck.com"],
+      computedValues: {
+        fairMarketPrivate: Math.round((privateLow + privateHigh) / 2),
+        fairMarketDealer: Math.round((dealerLow + dealerHigh) / 2),
+        fairMarketTradeIn: Math.round((tradeInLow + tradeInHigh) / 2),
+      },
     };
   } catch (err) {
     console.error("MarketCheck lookup error:", err);
