@@ -664,6 +664,7 @@ export default function ReportPage() {
         resolvedRecallCount,
         sellerType,
         isBrandNew: condition?.isBrandNew ?? null,
+        aiFindings: analysis.aiFindings ?? null,
       });
       setUvprsResult(result);
     };
