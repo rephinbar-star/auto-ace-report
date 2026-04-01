@@ -1955,7 +1955,12 @@ export default function ReportPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="prose prose-sm max-w-none dark:prose-invert">
-                    <p className="whitespace-pre-line">{riskAssessment.expertOpinion}</p>
+                    <p className={cn(
+                      "whitespace-pre-line font-bold",
+                      analysis.finalVerdict === "Walk Away" ? "text-destructive" :
+                      analysis.finalVerdict === "Buy" ? "text-success" :
+                      "text-foreground"
+                    )}>{riskAssessment.expertOpinion}</p>
                   </div>
                   
                 </CardContent>
