@@ -1685,7 +1685,7 @@ export default function ReportPage() {
                         <Line 
                           type="monotone" 
                           dataKey="Loan Balance" 
-                          stroke="hsl(var(--primary))" 
+                          stroke="#3b82f6"
                           strokeWidth={2}
                           strokeDasharray="5 5"
                         />
