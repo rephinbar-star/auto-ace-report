@@ -424,6 +424,9 @@ export default function ReportPage() {
                 justification: report.final_verdict_justification || "",
               },
             } : {}),
+            ...(report.ai_findings ? {
+              aiFindings: report.ai_findings as unknown as AiFindings,
+            } : {}),
           });
           
           // Load MPG data from saved report
