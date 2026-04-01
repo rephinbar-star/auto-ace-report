@@ -55,7 +55,7 @@ serve(async (req) => {
     const { year, make, model, trim, mileage, condition, zipCode, vin, sellerType }: PricingRequest = await req.json();
     const vehicleDesc = `${year} ${make} ${model}${trim ? ` ${trim}` : ""}`;
 
-    // Launch both sources in parallel
+    // Launch pricing sources and dealer type detection in parallel
     const mcPromise = (vin && vin.length === 17)
       ? tryMarketCheck(vin, mileage, sellerType, zipCode, vehicleDesc)
       : Promise.resolve(null);
@@ -63,8 +63,11 @@ serve(async (req) => {
       console.error("Perplexity failed:", err);
       return null;
     });
+    const dealerTypePromise = (vin && vin.length === 17 && sellerType !== "private")
+      ? detectDealerType(vin).catch(() => null)
+      : Promise.resolve(null);
 
-    const [mcResult, ppResult] = await Promise.all([mcPromise, ppPromise]);
+    const [mcResult, ppResult, detectedDealerType] = await Promise.all([mcPromise, ppPromise, dealerTypePromise]);
 
     // Merge results: combine source breakdowns and compute final values
     const allSources: SourceValuation[] = [
