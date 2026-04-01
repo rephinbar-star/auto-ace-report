@@ -1615,8 +1615,54 @@ export default function ReportPage() {
 
                     {/* Pricing Sources */}
                     {pricingSources.length > 0 && (
-                      <div className="rounded-lg border border-dashed p-3">
+                      <div className="rounded-lg border border-dashed p-3 space-y-3">
                         <p className="text-xs font-medium text-muted-foreground mb-2">Pricing Sources</p>
+                        
+                        {/* Per-source valuation breakdown */}
+                        {sourceBreakdown.length > 0 && (
+                          <div className="space-y-2">
+                            {sourceBreakdown.map((src) => {
+                              const fmt = (v?: number | null) => v ? `$${v.toLocaleString()}` : null;
+                              const range = (low?: number | null, high?: number | null, mid?: number | null) => {
+                                if (low && high) return `$${low.toLocaleString()} – $${high.toLocaleString()}`;
+                                if (mid) return `$${mid.toLocaleString()}`;
+                                return null;
+                              };
+                              const privateVal = range(src.privatePartyLow, src.privatePartyHigh, src.privateParty);
+                              const dealerVal = range(src.dealerRetailLow, src.dealerRetailHigh, src.dealerRetail);
+                              const tradeInVal = range(src.tradeInLow, src.tradeInHigh, src.tradeIn);
+                              const hasAny = privateVal || dealerVal || tradeInVal;
+                              if (!hasAny) return null;
+                              return (
+                                <div key={src.source} className="rounded-md bg-muted/50 p-2.5">
+                                  <p className="text-xs font-semibold text-foreground mb-1.5">{src.source}</p>
+                                  <div className="grid grid-cols-3 gap-2 text-xs">
+                                    {privateVal && (
+                                      <div>
+                                        <span className="text-muted-foreground">Private Party</span>
+                                        <p className="font-medium text-foreground">{privateVal}</p>
+                                      </div>
+                                    )}
+                                    {dealerVal && (
+                                      <div>
+                                        <span className="text-muted-foreground">Dealer Retail</span>
+                                        <p className="font-medium text-foreground">{dealerVal}</p>
+                                      </div>
+                                    )}
+                                    {tradeInVal && (
+                                      <div>
+                                        <span className="text-muted-foreground">Trade-In</span>
+                                        <p className="font-medium text-foreground">{tradeInVal}</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* Source links */}
                         <div className="flex flex-wrap gap-2">
                           {(() => {
                             const knownSources: Record<string, string> = {
