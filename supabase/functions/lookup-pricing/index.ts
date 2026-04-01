@@ -101,7 +101,7 @@ serve(async (req) => {
       throw new Error("No pricing data available from any source");
     }
 
-    console.log(`Pricing complete: ${allSources.length} source(s), ${uniqueCitations.length} citation(s)`);
+    console.log(`Pricing complete: ${allSources.length} source(s), ${uniqueCitations.length} citation(s), dealerType=${detectedDealerType || "unknown"}`);
 
     return new Response(JSON.stringify({
       success: true,
