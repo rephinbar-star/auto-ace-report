@@ -48,6 +48,8 @@ const dealRatingConfig = {
 
 const riskConfig = {
   low: { label: "Low Risk", className: "text-green-600 bg-green-500/10", icon: CheckCircle },
+  moderate: { label: "Moderate Risk", className: "text-yellow-600 bg-yellow-500/10", icon: AlertTriangle },
+  elevated: { label: "Elevated Risk", className: "text-orange-600 bg-orange-500/10", icon: AlertTriangle },
   medium: { label: "Medium Risk", className: "text-yellow-600 bg-yellow-500/10", icon: AlertTriangle },
   high: { label: "High Risk", className: "text-red-600 bg-red-500/10", icon: AlertTriangle },
 };
