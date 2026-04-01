@@ -1923,7 +1923,7 @@ export default function ReportPage() {
                             major_services_due: result.history?.majorServicesDue ?? null,
                             major_services_done: result.history?.majorServicesDone ?? null,
                             chronic_repair_systems: result.history?.chronicRepairSystems ?? null,
-                            ...(extractedVin ? { vin: extractedVin } : {}),
+                            ...(extractedVin && !vehicleData.vehicle.vin ? { vin: extractedVin } : {}),
                             pricing_sources: analysisResult.pricingSources || [],
                             pricing_last_updated: new Date().toISOString(),
                           };
