@@ -283,6 +283,26 @@ These thresholds are absolute rules. Do NOT override them based on subjective ju
 
 FINAL RECOMMENDATION VERDICT: Every analysis MUST conclude with a clear, unambiguous verdict of exactly one of three options: "Buy", "Negotiate", or "Walk Away". The verdict must be consistent with the overall risk assessment, deal rating, warranty status, and all other findings. Include a brief justification sentence explaining the verdict.
 
+AI FINDINGS CLASSIFICATION: You MUST populate the "aiFindings" field with structured risk data for UVPRS scoring:
+
+1. activeServiceFaults — For EVERY fault or anomaly found in the service history or CarFax/AutoCheck:
+   - severityClass: 1=Minor resolved (single, <$500), 2=Moderate resolved (single, $500-$1500), 3=Major resolved (single, >$1500), 4=Recurring/Chronic (same system 2+ times), 5=Unresolved/Open
+   - occurrences: How many times this system was flagged
+   - estimatedCostPerIncident: Estimated repair cost per occurrence in USD
+   - isAnomalous: true if the repair occurred much earlier than expected for this make/model/year (e.g., fuel line replacement before 50k miles, transmission service before 30k, head gasket before 80k, battery replacement within 24 months of new)
+   - withinTwoYearsOfPrior: true if this fault occurred within 24 months of a prior same-system repair
+
+2. knownFailurePatterns — For EVERY known failure pattern for this specific make/model/year/trim at current mileage:
+   - probabilityTier: "high" (>30% failure rate at this mileage), "medium" (15-30%), "low" (5-14%), "remote" (<5%)
+   - costTier: "critical" (>$3000), "major" ($1500-$3000), "moderate" ($500-$1500), "minor" (<$500)
+   - alreadyPresent: true if this failure pattern already appears in the service history
+
+3. chassisSignal — Platform-wide assessment:
+   - level: 1=Clean (at/below segment average), 2=Minor (isolated issues), 3=Moderate (above-average complaints or 1-2 systemic issues), 4=Significant (well-documented platform issues, multiple TSBs), 5=Severe (active NHTSA investigation, recall for systemic defect)
+   - isProblemGeneration: true if this specific generation is known to be worse than the nameplate average
+   - isWorstGeneration: true if this is the specifically flagged worst generation of its nameplate
+   - withinFailureWindow: true if vehicle is within 15,000 miles of documented failure onset mileage
+
 Always provide specific dollar amounts, not ranges. Be direct and honest about risks.`;
 
     // Build vehicle specs section if enriched data is available
