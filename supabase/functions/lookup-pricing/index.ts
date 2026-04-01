@@ -157,14 +157,32 @@ async function tryMarketCheck(
       `Notes: MarketCheck Price is an ML-based prediction using data from 84,000+ sources. Values derived from predicted market price of $${mcPrice.toLocaleString()}.`,
     ].filter(Boolean);
 
+    const computedPrivate = Math.round((privateLow + privateHigh) / 2);
+    const computedDealer = Math.round((dealerLow + dealerHigh) / 2);
+    const computedTradeIn = Math.round((tradeInLow + tradeInHigh) / 2);
+
     return {
       pricingContext: lines.join("\n"),
       citations: ["https://www.marketcheck.com"],
       computedValues: {
-        fairMarketPrivate: Math.round((privateLow + privateHigh) / 2),
-        fairMarketDealer: Math.round((dealerLow + dealerHigh) / 2),
-        fairMarketTradeIn: Math.round((tradeInLow + tradeInHigh) / 2),
+        fairMarketPrivate: computedPrivate,
+        fairMarketDealer: computedDealer,
+        fairMarketTradeIn: computedTradeIn,
       },
+      sourceBreakdown: [
+        {
+          source: "MarketCheck",
+          privateParty: computedPrivate,
+          privatePartyLow: privateLow,
+          privatePartyHigh: privateHigh,
+          dealerRetail: computedDealer,
+          dealerRetailLow: dealerLow,
+          dealerRetailHigh: dealerHigh,
+          tradeIn: computedTradeIn,
+          tradeInLow: tradeInLow,
+          tradeInHigh: tradeInHigh,
+        },
+      ],
     };
   } catch (err) {
     console.error("MarketCheck lookup error:", err);
