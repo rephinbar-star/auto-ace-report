@@ -240,6 +240,7 @@ const sampleComparisonVehicles: VehicleReport[] = [
     final_verdict_justification: "High mileage with significant reliability concerns and minimal warranty coverage.",
     zip_code: null,
     negotiated_price: null,
+    source_breakdown: [],
   },
 ];
 
