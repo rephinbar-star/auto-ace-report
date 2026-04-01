@@ -1887,6 +1887,7 @@ export default function ReportPage() {
                           <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight">Private<br/>Sale Value</TableHead>
                           <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight">Trade-In<br/>Value</TableHead>
                           <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight">Est. Vehicle<br/>Value</TableHead>
+                          {!financingSkipped && <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Equity</TableHead>}
                         </TableRow>
                       </TableHeader>
                       <TableBody>
