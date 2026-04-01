@@ -1634,6 +1634,14 @@ export default function ReportPage() {
                           strokeDasharray="5 5"
                         />
                         )}
+                        <Line 
+                          type="monotone" 
+                          dataKey="Purchase Price" 
+                          stroke="hsl(var(--danger))" 
+                          strokeWidth={2}
+                          strokeDasharray="6 3"
+                          dot={false}
+                        />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
