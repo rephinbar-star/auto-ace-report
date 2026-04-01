@@ -740,6 +740,7 @@ export default function ReportPage() {
             pricing_last_updated: now.toISOString(),
             source_breakdown: result.sourceBreakdown || [],
             ...(result.detectedSellerType ? { seller_type: result.detectedSellerType } : {}),
+            ...(result.analysis.aiFindings ? { ai_findings: result.analysis.aiFindings } : {}),
           };
           // Only overwrite pricing if the new values are non-zero
           if (priceAssessment.fairMarketPrivate > 0 || priceAssessment.fairMarketDealer > 0) {
