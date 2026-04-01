@@ -285,7 +285,7 @@ export default function ReportPage() {
         warranty_notes: analysis.warrantyAnalysis?.warrantyNotes || null,
         final_verdict: analysis.finalVerdict?.verdict || null,
         final_verdict_justification: analysis.finalVerdict?.justification || null,
-        ai_findings: analysis.aiFindings ?? null,
+        ai_findings: (analysis.aiFindings as any) ?? null,
         status: "complete",
       });
 
