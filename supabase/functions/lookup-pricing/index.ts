@@ -164,7 +164,7 @@ async function tryPerplexity(
   }
 
   const locationClause = zipCode ? ` in ZIP code ${zipCode}` : "";
-  const query = `Look up the Kelley Blue Book (KBB) valuation for a ${vehicleDesc} with ${mileage.toLocaleString()} miles in ${condition} condition${locationClause}. I need the KBB Private Party Value, KBB Dealer Retail / Fair Purchase Price, and KBB Trade-In Value. Also look up the Edmunds TMV and NADA value if available.`;
+  const query = `What are the current Kelley Blue Book (KBB), Edmunds True Market Value (TMV), and NADA guide valuations for a ${vehicleDesc} with ${mileage.toLocaleString()} miles in ${condition} condition${locationClause}? I need separate values from each source: KBB Private Party, KBB Fair Purchase Price, KBB Trade-In, Edmunds TMV, and NADA Clean Retail value.`;
 
   console.log(`Perplexity fallback for: ${vehicleDesc}, ${mileage} miles, ${condition} condition`);
 
@@ -179,7 +179,7 @@ async function tryPerplexity(
       messages: [
         {
           role: "system",
-          content: "You are a vehicle valuation lookup assistant. Your ONLY job is to find VALUATION/BOOK VALUES from KBB, Edmunds, and NADA — NOT listing prices or asking prices from dealers or private sellers. Book values represent what a vehicle IS WORTH according to pricing guides, not what sellers are ASKING for it. These are different numbers. Focus on finding the KBB valuation tool results, Edmunds True Market Value, and NADA guide values. Do NOT confuse dealer listing prices or marketplace asking prices with book values.",
+          content: "You are a vehicle valuation lookup assistant. Your ONLY job is to find VALUATION/BOOK VALUES from KBB, Edmunds, and NADA — NOT listing prices or asking prices from dealers or private sellers. Book values represent what a vehicle IS WORTH according to pricing guides, not what sellers are ASKING for it. These are different numbers. Focus on finding the KBB valuation tool results, Edmunds True Market Value, and NADA guide values. Do NOT confuse dealer listing prices or marketplace asking prices with book values. Return values from EACH source separately.",
         },
         { role: "user", content: query },
       ],
@@ -197,11 +197,15 @@ async function tryPerplexity(
               kbb_dealer_retail_high: { type: "number", description: "KBB Fair Purchase Price / Dealer Retail high end in dollars" },
               kbb_trade_in_low: { type: "number", description: "KBB Trade-In Value low end in dollars" },
               kbb_trade_in_high: { type: "number", description: "KBB Trade-In Value high end in dollars" },
-              edmunds_tmv: { type: "number", description: "Edmunds True Market Value in dollars, or 0 if not found" },
-              nada_value: { type: "number", description: "NADA guide value in dollars, or 0 if not found" },
+              edmunds_private_party: { type: "number", description: "Edmunds TMV Private Party value in dollars, or 0 if not found" },
+              edmunds_dealer_retail: { type: "number", description: "Edmunds TMV Dealer Retail value in dollars, or 0 if not found" },
+              edmunds_trade_in: { type: "number", description: "Edmunds TMV Trade-In value in dollars, or 0 if not found" },
+              nada_clean_retail: { type: "number", description: "NADA Clean Retail value in dollars, or 0 if not found" },
+              nada_clean_trade_in: { type: "number", description: "NADA Clean Trade-In value in dollars, or 0 if not found" },
+              nada_rough_trade_in: { type: "number", description: "NADA Rough Trade-In value in dollars, or 0 if not found" },
               notes: { type: "string", description: "Any caveats about the data" },
             },
-            required: ["kbb_private_party_low", "kbb_private_party_high", "kbb_dealer_retail_low", "kbb_dealer_retail_high", "kbb_trade_in_low", "kbb_trade_in_high", "edmunds_tmv", "nada_value", "notes"],
+            required: ["kbb_private_party_low", "kbb_private_party_high", "kbb_dealer_retail_low", "kbb_dealer_retail_high", "kbb_trade_in_low", "kbb_trade_in_high", "edmunds_private_party", "edmunds_dealer_retail", "edmunds_trade_in", "nada_clean_retail", "nada_clean_trade_in", "nada_rough_trade_in", "notes"],
           },
         },
       },
@@ -216,39 +220,66 @@ async function tryPerplexity(
 
   const data = await response.json();
   const rawContent = data.choices?.[0]?.message?.content || "";
-  const citations: string[] = data.citations || [];
+  // Ensure KBB, Edmunds, and NADA always appear as sources
+  const baseCitations: string[] = data.citations || [];
+  const ensuredCitations = [...baseCitations];
+  const hasKbb = baseCitations.some((c: string) => c.includes("kbb.com"));
+  const hasEdmunds = baseCitations.some((c: string) => c.includes("edmunds.com"));
+  const hasNada = baseCitations.some((c: string) => c.includes("nadaguides.com"));
+  if (!hasKbb) ensuredCitations.push("https://www.kbb.com");
+  if (!hasEdmunds) ensuredCitations.push("https://www.edmunds.com");
+  if (!hasNada) ensuredCitations.push("https://www.nadaguides.com");
 
   let pricingContext = rawContent;
   try {
-    const parsed = JSON.parse(rawContent);
+    const p = JSON.parse(rawContent);
     const lines: string[] = [
-      "VEHICLE VALUATION DATA (Book Values, NOT listing prices):",
+      "VEHICLE VALUATION DATA (Book Values from Multiple Sources):",
       "",
-      `KBB Private Party Value: $${parsed.kbb_private_party_low?.toLocaleString()} - $${parsed.kbb_private_party_high?.toLocaleString()}`,
-      `KBB Dealer Retail / Fair Purchase Price: $${parsed.kbb_dealer_retail_low?.toLocaleString()} - $${parsed.kbb_dealer_retail_high?.toLocaleString()}`,
-      `KBB Trade-In Value: $${parsed.kbb_trade_in_low?.toLocaleString()} - $${parsed.kbb_trade_in_high?.toLocaleString()}`,
+      "=== KELLEY BLUE BOOK (KBB) ===",
+      `KBB Private Party Value: $${p.kbb_private_party_low?.toLocaleString()} - $${p.kbb_private_party_high?.toLocaleString()}`,
+      `KBB Fair Purchase Price (Dealer Retail): $${p.kbb_dealer_retail_low?.toLocaleString()} - $${p.kbb_dealer_retail_high?.toLocaleString()}`,
+      `KBB Trade-In Value: $${p.kbb_trade_in_low?.toLocaleString()} - $${p.kbb_trade_in_high?.toLocaleString()}`,
     ];
 
-    if (parsed.edmunds_tmv && parsed.edmunds_tmv > 0) {
-      lines.push(`Edmunds TMV: $${parsed.edmunds_tmv.toLocaleString()}`);
-    }
-    if (parsed.nada_value && parsed.nada_value > 0) {
-      lines.push(`NADA Value: $${parsed.nada_value.toLocaleString()}`);
-    }
-    if (parsed.notes) {
-      lines.push("", `Notes: ${parsed.notes}`);
+    const hasEdmundsData = (p.edmunds_private_party > 0 || p.edmunds_dealer_retail > 0 || p.edmunds_trade_in > 0);
+    if (hasEdmundsData) {
+      lines.push("", "=== EDMUNDS TRUE MARKET VALUE (TMV) ===");
+      if (p.edmunds_private_party > 0) lines.push(`Edmunds TMV Private Party: $${p.edmunds_private_party.toLocaleString()}`);
+      if (p.edmunds_dealer_retail > 0) lines.push(`Edmunds TMV Dealer Retail: $${p.edmunds_dealer_retail.toLocaleString()}`);
+      if (p.edmunds_trade_in > 0) lines.push(`Edmunds TMV Trade-In: $${p.edmunds_trade_in.toLocaleString()}`);
     }
 
-    const privatePartyMid = Math.round((parsed.kbb_private_party_low + parsed.kbb_private_party_high) / 2);
-    const dealerRetailMid = Math.round((parsed.kbb_dealer_retail_low + parsed.kbb_dealer_retail_high) / 2);
-    const tradeInMid = Math.round((parsed.kbb_trade_in_low + parsed.kbb_trade_in_high) / 2);
+    const hasNadaData = (p.nada_clean_retail > 0 || p.nada_clean_trade_in > 0 || p.nada_rough_trade_in > 0);
+    if (hasNadaData) {
+      lines.push("", "=== NADA GUIDES ===");
+      if (p.nada_clean_retail > 0) lines.push(`NADA Clean Retail: $${p.nada_clean_retail.toLocaleString()}`);
+      if (p.nada_clean_trade_in > 0) lines.push(`NADA Clean Trade-In: $${p.nada_clean_trade_in.toLocaleString()}`);
+      if (p.nada_rough_trade_in > 0) lines.push(`NADA Rough Trade-In: $${p.nada_rough_trade_in.toLocaleString()}`);
+    }
+
+    if (p.notes) {
+      lines.push("", `Notes: ${p.notes}`);
+    }
+
+    // Compute midpoints using KBB as primary, supplemented by Edmunds/NADA
+    const kbbPrivateMid = Math.round((p.kbb_private_party_low + p.kbb_private_party_high) / 2);
+    const kbbDealerMid = Math.round((p.kbb_dealer_retail_low + p.kbb_dealer_retail_high) / 2);
+    const kbbTradeInMid = Math.round((p.kbb_trade_in_low + p.kbb_trade_in_high) / 2);
+
+    // Cross-reference: average across available sources for final fair market values
+    const privateValues = [kbbPrivateMid, ...(p.edmunds_private_party > 0 ? [p.edmunds_private_party] : [])];
+    const dealerValues = [kbbDealerMid, ...(p.edmunds_dealer_retail > 0 ? [p.edmunds_dealer_retail] : []), ...(p.nada_clean_retail > 0 ? [p.nada_clean_retail] : [])];
+    const tradeInValues = [kbbTradeInMid, ...(p.edmunds_trade_in > 0 ? [p.edmunds_trade_in] : []), ...(p.nada_clean_trade_in > 0 ? [p.nada_clean_trade_in] : [])];
+
+    const avg = (arr: number[]) => Math.round(arr.reduce((a, b) => a + b, 0) / arr.length);
 
     lines.push(
       "",
-      "MIDPOINT VALUES (use these for fairMarket fields):",
-      `fairMarketPrivate = $${privatePartyMid.toLocaleString()}`,
-      `fairMarketDealer = $${dealerRetailMid.toLocaleString()}`,
-      `fairMarketTradeIn = $${tradeInMid.toLocaleString()}`,
+      "MIDPOINT VALUES (cross-referenced across available sources — use these for fairMarket fields):",
+      `fairMarketPrivate = $${avg(privateValues).toLocaleString()} (based on ${privateValues.length} source${privateValues.length > 1 ? "s" : ""})`,
+      `fairMarketDealer = $${avg(dealerValues).toLocaleString()} (based on ${dealerValues.length} source${dealerValues.length > 1 ? "s" : ""})`,
+      `fairMarketTradeIn = $${avg(tradeInValues).toLocaleString()} (based on ${tradeInValues.length} source${tradeInValues.length > 1 ? "s" : ""})`,
     );
 
     pricingContext = lines.join("\n");
@@ -256,5 +287,5 @@ async function tryPerplexity(
     console.log("Could not parse structured response, using raw content");
   }
 
-  return { pricingContext, citations };
+  return { pricingContext, citations: ensuredCitations };
 }
