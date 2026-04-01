@@ -66,6 +66,13 @@ export function FuelEconomyCard({
   const [gasPriceSource, setGasPriceSource] = useState<"national" | "local">("national");
   const [zipInput, setZipInput] = useState(zipCode || "");
   const [zipError, setZipError] = useState("");
+
+  // Sync zipInput when zipCode prop updates (e.g. from async report load)
+  useEffect(() => {
+    if (zipCode && /^\d{5}$/.test(zipCode)) {
+      setZipInput(zipCode);
+    }
+  }, [zipCode]);
   const [geoDenied, setGeoDenied] = useState(false);
 
   const isElectric = fuelType?.toLowerCase().includes("electric");
