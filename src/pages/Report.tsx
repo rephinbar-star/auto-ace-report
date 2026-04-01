@@ -2123,6 +2123,7 @@ export default function ReportPage() {
                             ...(extractedVin && !vehicleData.vehicle.vin ? { vin: extractedVin } : {}),
                             pricing_sources: analysisResult.pricingSources || [],
                             pricing_last_updated: new Date().toISOString(),
+                            source_breakdown: analysisResult.sourceBreakdown || [],
                           };
                           if (priceAssessment.fairMarketPrivate > 0 || priceAssessment.fairMarketDealer > 0) {
                             sideUpd.fair_market_private = priceAssessment.fairMarketPrivate;
