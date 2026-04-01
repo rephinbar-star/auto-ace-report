@@ -17,6 +17,19 @@ interface PricingRequest {
   sellerType?: string;
 }
 
+interface SourceValuation {
+  source: string;
+  privateParty?: number | null;
+  privatePartyLow?: number | null;
+  privatePartyHigh?: number | null;
+  dealerRetail?: number | null;
+  dealerRetailLow?: number | null;
+  dealerRetailHigh?: number | null;
+  tradeIn?: number | null;
+  tradeInLow?: number | null;
+  tradeInHigh?: number | null;
+}
+
 interface PricingResult {
   pricingContext: string;
   citations: string[];
@@ -25,6 +38,7 @@ interface PricingResult {
     fairMarketDealer: number;
     fairMarketTradeIn: number;
   };
+  sourceBreakdown?: SourceValuation[];
 }
 
 /**
