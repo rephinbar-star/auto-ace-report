@@ -1462,7 +1462,20 @@ export default function ReportPage() {
                                 <span className={cn("font-semibold", priceAssessment.priceDifference > 0 ? "text-danger" : "text-success")}>
                                   {priceAssessment.priceDifference > 0 ? "$" + Math.abs(priceAssessment.priceDifference).toLocaleString() + " above" : "$" + Math.abs(priceAssessment.priceDifference).toLocaleString() + " below"}
                                 </span>
-                                {" "}Dealer Retail.
+                                {" "}Dealer Retail
+                                {priceAssessment.fairMarketPrivate > 0 && (() => {
+                                  const fmvDiff = condition.askingPrice - priceAssessment.fairMarketPrivate;
+                                  return (
+                                    <>
+                                      {" "}and{" "}
+                                      <span className={cn("font-semibold", fmvDiff > 0 ? "text-danger" : "text-success")}>
+                                        {"$" + Math.abs(fmvDiff).toLocaleString() + (fmvDiff > 0 ? " above" : " below")}
+                                      </span>
+                                      {" "}Fair Market Value
+                                    </>
+                                  );
+                                })()}
+                                .
                               </p>
                             ) : (
                               <p className="mt-1 text-sm text-muted-foreground">
