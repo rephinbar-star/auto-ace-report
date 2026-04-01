@@ -428,6 +428,13 @@ export default function ReportPage() {
             }).then(({ data: specsResult }) => {
               if (specsResult?.success && specsResult.data) {
                 const d = specsResult.data;
+                // Guard: if decoded make doesn't match report make, VIN is wrong — skip enrichment
+                const decodedMake = (d.make || "").toLowerCase().trim();
+                const reportMake = (report.make || "").toLowerCase().trim();
+                if (decodedMake && reportMake && decodedMake !== reportMake) {
+                  console.warn(`VIN ${report.vin} decodes to ${d.make} but report is ${report.make} — skipping spec enrichment`);
+                  return;
+                }
                 setVehicleData((prev: any) => ({
                   ...prev,
                   vehicle: {
