@@ -1077,6 +1077,30 @@ export default function ReportPage() {
             </div>
           </div>
 
+          {/* Non-Standard Options Card */}
+          {vehicle.optionPackages && vehicle.optionPackages.length > 0 && (
+            <Card className="mb-4">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <BadgeCheck className="h-5 w-5 text-primary" />
+                  Non-Standard Options &amp; Packages
+                </CardTitle>
+                <CardDescription>Factory-installed options and premium packages beyond standard equipment</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {vehicle.optionPackages.map((pkg: any, i: number) => {
+                    const label = typeof pkg === "string" ? pkg : pkg?.name || String(pkg);
+                    return (
+                      <Badge key={i} variant="outline" className="text-sm px-3 py-1">
+                        {label}
+                      </Badge>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Vehicle Specifications Card (collapsible) */}
           <Collapsible defaultOpen={false}>
@@ -1208,31 +1232,6 @@ export default function ReportPage() {
               </CollapsibleContent>
             </Card>
           </Collapsible>
-
-          {/* Non-Standard Options Card */}
-          {vehicle.optionPackages && vehicle.optionPackages.length > 0 && (
-            <Card className="mb-8">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <BadgeCheck className="h-5 w-5 text-primary" />
-                  Non-Standard Options &amp; Packages
-                </CardTitle>
-                <CardDescription>Factory-installed options and premium packages beyond standard equipment</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {vehicle.optionPackages.map((pkg: any, i: number) => {
-                    const label = typeof pkg === "string" ? pkg : pkg?.name || String(pkg);
-                    return (
-                      <Badge key={i} variant="outline" className="text-sm px-3 py-1">
-                        {label}
-                      </Badge>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
           {/* Negotiated Savings Banner */}
           {(() => {
