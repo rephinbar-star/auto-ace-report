@@ -58,6 +58,8 @@ export interface VehicleHistory {
 
 export interface FinancingInfo {
   type: "loan" | "lease" | "cash";
+  /** True when user chose to skip financing details during the wizard */
+  skipped?: boolean;
   // Negotiated price (may differ from asking price)
   negotiatedPrice?: number;
   // Loan fields

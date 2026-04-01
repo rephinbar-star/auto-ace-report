@@ -884,11 +884,13 @@ export default function ReportPage() {
     high: "bg-danger text-danger-foreground",
   };
 
+  const financingSkipped = financing?.skipped === true;
+
   const chartData = depreciationTable.map((row) => ({
     name: `Year ${row.year}`,
     "Private Value": row.privateValue,
     "Trade-In Value": row.tradeInValue,
-    "Loan Balance": row.loanBalance,
+    ...(financingSkipped ? {} : { "Loan Balance": row.loanBalance }),
   }));
 
   return (
@@ -1618,6 +1620,7 @@ export default function ReportPage() {
                           stroke="hsl(var(--warning))" 
                           strokeWidth={2}
                         />
+                        {!financingSkipped && (
                         <Line 
                           type="monotone" 
                           dataKey="Loan Balance" 
@@ -1625,6 +1628,7 @@ export default function ReportPage() {
                           strokeWidth={2}
                           strokeDasharray="5 5"
                         />
+                        )}
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -1651,7 +1655,7 @@ export default function ReportPage() {
                           <TableHead className="text-xs whitespace-nowrap px-1.5 md:px-4">Year</TableHead>
                           <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Priv.</TableHead>
                           <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Trade</TableHead>
-                          <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Loan</TableHead>
+                          {!financingSkipped && <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Loan</TableHead>}
                           <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Repair</TableHead>
                           <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Maint.</TableHead>
                           <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Equity</TableHead>
@@ -1661,14 +1665,14 @@ export default function ReportPage() {
                         {depreciationTable.map((row) => {
                           const totalCosts = row.repairCosts + (row.maintenanceCosts || 0);
                           const netEquity = excludeRepairs 
-                            ? row.tradeInValue - row.loanBalance
-                            : row.tradeInValue - row.loanBalance - totalCosts;
+                            ? row.tradeInValue - (financingSkipped ? 0 : row.loanBalance)
+                            : row.tradeInValue - (financingSkipped ? 0 : row.loanBalance) - totalCosts;
                           return (
                             <TableRow key={row.year}>
                               <TableCell className="font-medium text-xs whitespace-nowrap px-1.5 md:px-4">Yr {row.year}</TableCell>
                               <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${Math.round(row.privateValue).toLocaleString()}</TableCell>
                               <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${Math.round(row.tradeInValue).toLocaleString()}</TableCell>
-                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${Math.round(row.loanBalance).toLocaleString()}</TableCell>
+                              {!financingSkipped && <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${Math.round(row.loanBalance).toLocaleString()}</TableCell>}
                               <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 text-danger">
                                 ${Math.round(row.repairCosts).toLocaleString()}
                               </TableCell>
