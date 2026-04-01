@@ -419,32 +419,45 @@ async function tryPerplexity(
 }
 
 /**
- * Detects dealer type (franchise/independent) by looking up active listings
- * for this VIN on MarketCheck.
+ * Detects dealer type (franchise/independent) by looking up listings
+ * for this VIN on MarketCheck — tries active first, then all listings.
  */
 async function detectDealerType(vin: string): Promise<string | null> {
   const MARKETCHECK_API_KEY = Deno.env.get("MARKETCHECK_API_KEY");
   if (!MARKETCHECK_API_KEY) return null;
 
   try {
-    const params = new URLSearchParams({
-      api_key: MARKETCHECK_API_KEY,
-      vins: vin,
-      rows: "1",
-    });
-    const url = `https://api.marketcheck.com/v2/search/car/active?${params}`;
-    const response = await fetch(url);
-    if (!response.ok) {
-      console.error(`MarketCheck listing search failed: ${response.status}`);
-      return null;
-    }
-    const data = await response.json();
-    const listing = data?.listings?.[0];
-    if (!listing) return null;
+    // Try active listings first, then all (includes sold)
+    for (const endpoint of ["active", "all"]) {
+      const params = new URLSearchParams({
+        api_key: MARKETCHECK_API_KEY,
+        vins: vin,
+        rows: "1",
+      });
+      const url = `https://api.marketcheck.com/v2/search/car/${endpoint}?${params}`;
+      console.log(`Dealer detection: querying MarketCheck /${endpoint} for VIN ${vin}`);
+      const response = await fetch(url);
+      if (!response.ok) {
+        console.error(`MarketCheck /${endpoint} search failed: ${response.status}`);
+        continue;
+      }
+      const data = await response.json();
+      const listing = data?.listings?.[0];
+      if (!listing) {
+        console.log(`MarketCheck /${endpoint}: no listings found for VIN ${vin}`);
+        continue;
+      }
 
-    const dealerType = listing?.dealer?.dealer_type;
-    console.log(`MarketCheck dealer_type for VIN ${vin}: ${dealerType || "not found"}`);
-    return dealerType || null; // "franchise" or "independent"
+      const dealerType = listing?.dealer?.dealer_type;
+      if (dealerType) {
+        console.log(`Dealer type detected via MarketCheck /${endpoint}: ${dealerType}`);
+        return dealerType; // "franchise" or "independent"
+      }
+      console.log(`MarketCheck /${endpoint}: listing found but no dealer_type field`);
+    }
+
+    console.log(`Dealer type detection: no dealer_type found for VIN ${vin}`);
+    return null;
   } catch (err) {
     console.error("Dealer type detection error:", err);
     return null;

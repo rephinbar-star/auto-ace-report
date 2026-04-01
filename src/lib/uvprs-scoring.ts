@@ -539,7 +539,7 @@ export function calculateUVPRS(input: UVPRSInput): UVPRSResult {
     score: seller.score, weight: WEIGHTS.sellerType, weighted: 0,
     known: seller.known,
     description: seller.known
-      ? `${input.sellerType === "cpo" ? "CPO Dealer" : input.sellerType === "franchise" ? "Franchise Dealer" : input.sellerType === "independent" ? "Independent Dealer" : input.sellerType === "dealer" ? "Dealer" : input.sellerType === "private" ? "Private Party" : "Dealer"}`
+      ? `${input.sellerType === "cpo" ? "CPO Dealer" : input.sellerType === "franchise" ? "Franchise Dealer" : input.sellerType === "independent" ? "Private Dealer" : input.sellerType === "dealer" ? "Dealer" : input.sellerType === "private" ? "Private Party" : "Dealer"}`
       : "Unknown — neutral score applied",
   });
 
