@@ -440,6 +440,9 @@ export default function ReportPage() {
           if (report.pricing_last_updated) {
             setPricingLastUpdated(new Date(report.pricing_last_updated));
           }
+          if (report.source_breakdown && Array.isArray(report.source_breakdown) && report.source_breakdown.length > 0) {
+            setSourceBreakdown(report.source_breakdown as any);
+          }
           
           // Enrich with NeoVIN specs if VIN is available and specs are sparse
           if (report.vin && !report.engine_size && !report.transmission) {
