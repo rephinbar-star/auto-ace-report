@@ -1644,7 +1644,7 @@ export default function ReportPage() {
                           onCheckedChange={setExcludeRepairs}
                         />
                         <Label htmlFor="exclude-repairs" className="text-sm text-muted-foreground cursor-pointer">
-                          Exclude repairs from equity
+                          Exclude repairs from value
                         </Label>
                       </div>
                     </div>
