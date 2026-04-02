@@ -629,6 +629,16 @@ export function FuelEconomyCard({
               <span className="text-lg font-bold text-danger">${tco.totalTCO.toLocaleString()}</span>
             </div>
           </div>
+
+          {/* Monthly Ownership Cost */}
+          <div className="rounded-lg border p-3 min-w-0 mt-3">
+            <div className="flex items-center gap-2 mb-1">
+              <DollarSign className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="text-xs text-muted-foreground truncate">Monthly Ownership</span>
+            </div>
+            <p className="text-lg font-bold">${monthlyOwnership}</p>
+            <p className="text-xs text-muted-foreground truncate">fuel + maintenance</p>
+          </div>
         </div>
 
 
