@@ -482,8 +482,8 @@ export function FuelEconomyCard({
         </div>
 
         {/* Annual Fuel Cost */}
-        <div className="rounded-lg border p-3">
-          <div className="flex items-center gap-2 mb-1">
+        <div className="rounded-lg border p-3 text-center">
+          <div className="flex items-center justify-center gap-2 mb-1">
             {isElectric ? (
               <Zap className="h-4 w-4 text-muted-foreground" />
             ) : (
@@ -493,8 +493,7 @@ export function FuelEconomyCard({
               Annual {isElectric ? "Electricity" : "Fuel"}
             </span>
           </div>
-          <p className="text-lg font-bold">${tco.annualFuelCost.toLocaleString()}</p>
-          <p className="text-xs text-muted-foreground">~${Math.round(tco.annualFuelCost / 12)}/month</p>
+          <p className="text-lg font-bold">${tco.annualFuelCost.toLocaleString()} <span className="text-sm font-normal text-muted-foreground">(~${Math.round(tco.annualFuelCost / 12)}/mo)</span></p>
         </div>
 
         <div>
