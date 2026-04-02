@@ -424,7 +424,7 @@ export function FuelEconomyCard({
           {zipError && <p className="text-xs text-destructive">{zipError}</p>}
         </div>
 
-        {localGasData && !isLoadingGasPrice && (
+        {localGasData && !isLoadingGasPrice && ((() => { console.log("[GAS-DEBUG] localGasData:", JSON.stringify(localGasData)); return true; })()) && (
           <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
             <div className="flex items-center gap-2">
               <MapPin className="h-4 w-4 text-primary" />
@@ -434,25 +434,25 @@ export function FuelEconomyCard({
               </Badge>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {localGasData.regular && (
+              {localGasData.regular != null && localGasData.regular > 0 && (
                 <div className="text-center">
                   <p className="text-xs text-muted-foreground">Regular</p>
                   <p className="text-sm font-bold">${localGasData.regular.toFixed(2)}</p>
                 </div>
               )}
-              {localGasData.midGrade && (
+              {localGasData.midGrade != null && localGasData.midGrade > 0 && (
                 <div className="text-center">
                   <p className="text-xs text-muted-foreground">Mid-Grade</p>
                   <p className="text-sm font-bold text-primary">${localGasData.midGrade.toFixed(2)}</p>
                 </div>
               )}
-              {localGasData.premium && (
+              {localGasData.premium != null && localGasData.premium > 0 && (
                 <div className="text-center">
                   <p className="text-xs text-muted-foreground">Premium</p>
                   <p className="text-sm font-bold">${localGasData.premium.toFixed(2)}</p>
                 </div>
               )}
-              {localGasData.diesel && (
+              {localGasData.diesel != null && localGasData.diesel > 0 && (
                 <div className="text-center">
                   <p className="text-xs text-muted-foreground">Diesel</p>
                   <p className="text-sm font-bold">${localGasData.diesel.toFixed(2)}</p>
