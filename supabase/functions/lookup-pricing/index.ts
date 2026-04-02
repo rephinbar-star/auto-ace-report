@@ -141,7 +141,10 @@ async function tryMarketCheck(
   }
 
   try {
-    const dealerType = sellerType === "private" ? "independent" : "franchise";
+    // Use the actual seller type if already refined (franchise/independent), otherwise map
+    const dealerType = sellerType === "private" ? "independent" 
+      : sellerType === "independent" ? "independent"
+      : "franchise";
     const zip = zipCode || "90210"; // Default ZIP required by MarketCheck
     const params = new URLSearchParams({
       api_key: MARKETCHECK_API_KEY,
