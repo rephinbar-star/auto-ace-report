@@ -424,7 +424,7 @@ export function FuelEconomyCard({
           {zipError && <p className="text-xs text-destructive">{zipError}</p>}
         </div>
 
-        {localGasData && !isLoadingGasPrice && ((() => { console.log("[GAS-DEBUG] localGasData:", JSON.stringify(localGasData)); return true; })()) && (
+        {localGasData && !isLoadingGasPrice && (
           <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
             <div className="flex items-center gap-2">
               <MapPin className="h-4 w-4 text-primary" />
@@ -488,7 +488,32 @@ export function FuelEconomyCard({
           </div>
         </div>
 
-        {/* 5-Year TCO Summary */}
+        {/* Monthly Breakdown */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-lg border p-3">
+            <div className="flex items-center gap-2 mb-1">
+              {isElectric ? (
+                <Zap className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <Fuel className="h-4 w-4 text-muted-foreground" />
+              )}
+              <span className="text-xs text-muted-foreground">
+                Annual {isElectric ? "Electricity" : "Fuel"}
+              </span>
+            </div>
+            <p className="text-lg font-bold">${tco.annualFuelCost.toLocaleString()}</p>
+            <p className="text-xs text-muted-foreground">~${Math.round(tco.annualFuelCost / 12)}/month</p>
+          </div>
+          <div className="rounded-lg border p-3 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <DollarSign className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="text-xs text-muted-foreground truncate">Monthly Ownership</span>
+            </div>
+            <p className="text-lg font-bold">${monthlyOwnership}</p>
+            <p className="text-xs text-muted-foreground truncate">fuel + maintenance</p>
+          </div>
+        </div>
+
         <div>
           <h4 className="text-sm font-medium mb-3">5-Year Total Cost of Ownership</h4>
           <div className="rounded-lg bg-muted/50 p-4 space-y-3">
@@ -623,31 +648,6 @@ export function FuelEconomyCard({
           </div>
         </div>
 
-        {/* Monthly Breakdown */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-lg border p-3">
-            <div className="flex items-center gap-2 mb-1">
-              {isElectric ? (
-                <Zap className="h-4 w-4 text-muted-foreground" />
-              ) : (
-                <Fuel className="h-4 w-4 text-muted-foreground" />
-              )}
-              <span className="text-xs text-muted-foreground">
-                Annual {isElectric ? "Electricity" : "Fuel"}
-              </span>
-            </div>
-            <p className="text-lg font-bold">${tco.annualFuelCost.toLocaleString()}</p>
-            <p className="text-xs text-muted-foreground">~${Math.round(tco.annualFuelCost / 12)}/month</p>
-          </div>
-          <div className="rounded-lg border p-3 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <DollarSign className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span className="text-xs text-muted-foreground truncate">Monthly Ownership</span>
-            </div>
-            <p className="text-lg font-bold">${monthlyOwnership}</p>
-            <p className="text-xs text-muted-foreground truncate">fuel + maintenance</p>
-          </div>
-        </div>
 
         {/* Cost Per Mile */}
         <div className="flex items-center justify-between rounded-lg bg-primary/5 p-3">
