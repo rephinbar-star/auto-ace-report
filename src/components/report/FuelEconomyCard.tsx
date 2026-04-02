@@ -658,17 +658,6 @@ export function FuelEconomyCard({
           </div>
           <span className="text-lg font-bold text-danger">${tco.costPerMile.toFixed(2)}</span>
         </div>
-
-        <p className="text-xs text-muted-foreground">
-          * Based on {annualMiles.toLocaleString()} miles/year
-          {isElectric 
-            ? `, $${electricityPrice.toFixed(2)}/kWh electricity` 
-            : `, $${gasPricePerGallon.toFixed(2)}/gal gas`
-          }
-          {gasPriceSource === "local" && localGasData ? ` (${localGasData.location})` : ""}
-          . Maintenance scales with mileage.
-          {annualMiles > 12000 && " Excess mileage (above 12k/yr) adds ~$0.18/mi in depreciation."}
-        </p>
       </CardContent>
     </Card>
   );
