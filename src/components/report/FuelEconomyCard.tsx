@@ -375,16 +375,18 @@ export function FuelEconomyCard({
           </p>
         </div>
 
-        {/* ZIP Code Lookup */}
+        {/* Local Gas Prices */}
         <div className={cn(
-          "rounded-lg border p-3 space-y-2 transition-colors",
+          "rounded-lg border p-3 space-y-3 transition-colors",
           geoDenied && !zipCode && gasPriceSource === "national"
             ? "border-warning/40 bg-warning/5"
-            : "bg-muted/30"
+            : localGasData ? "border-primary/20 bg-primary/5" : "bg-muted/30"
         )}>
-          <div className="flex items-center gap-2 mb-1">
-            <MapPin className={cn("h-4 w-4", geoDenied && !zipCode && gasPriceSource === "national" ? "text-warning" : "text-muted-foreground")} />
-            <span className="text-sm font-medium">Local Gas Prices</span>
+          <div className="flex items-center gap-2">
+            <MapPin className={cn("h-4 w-4", localGasData ? "text-primary" : geoDenied && !zipCode && gasPriceSource === "national" ? "text-warning" : "text-muted-foreground")} />
+            <span className="text-sm font-medium">
+              {localGasData ? `Local Gas Prices — ${localGasData.location}` : "Local Gas Prices"}
+            </span>
             {gasPriceSource === "local" && localGasData && (
               <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20">
                 Live
@@ -422,18 +424,9 @@ export function FuelEconomyCard({
             </button>
           </form>
           {zipError && <p className="text-xs text-destructive">{zipError}</p>}
-        </div>
 
-        {localGasData && !isLoadingGasPrice && (
-          <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
-            <div className="flex items-center gap-2">
-              <MapPin className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium">Local Gas Prices — {localGasData.location}</span>
-              <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20">
-                Live
-              </Badge>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {localGasData && !isLoadingGasPrice && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
               {localGasData.regular != null && localGasData.regular > 0 && (
                 <div className="text-center">
                   <p className="text-xs text-muted-foreground">Regular</p>
@@ -459,8 +452,8 @@ export function FuelEconomyCard({
                 </div>
               )}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Annual Mileage Slider */}
         <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
