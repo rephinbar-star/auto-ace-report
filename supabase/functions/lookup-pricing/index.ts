@@ -141,7 +141,10 @@ async function tryMarketCheck(
   }
 
   try {
-    const dealerType = sellerType === "private" ? "independent" : "franchise";
+    // Use the actual seller type if already refined (franchise/independent), otherwise map
+    const dealerType = sellerType === "private" ? "independent" 
+      : sellerType === "independent" ? "independent"
+      : "franchise";
     const zip = zipCode || "90210"; // Default ZIP required by MarketCheck
     const params = new URLSearchParams({
       api_key: MARKETCHECK_API_KEY,
@@ -427,34 +430,32 @@ async function detectDealerType(vin: string): Promise<string | null> {
   if (!MARKETCHECK_API_KEY) return null;
 
   try {
-    // Try active listings first, then all (includes sold)
-    for (const endpoint of ["active", "all"]) {
-      const params = new URLSearchParams({
-        api_key: MARKETCHECK_API_KEY,
-        vins: vin,
-        rows: "1",
-      });
-      const url = `https://api.marketcheck.com/v2/search/car/${endpoint}?${params}`;
-      console.log(`Dealer detection: querying MarketCheck /${endpoint} for VIN ${vin}`);
-      const response = await fetch(url);
-      if (!response.ok) {
-        console.error(`MarketCheck /${endpoint} search failed: ${response.status}`);
-        continue;
-      }
-      const data = await response.json();
-      const listing = data?.listings?.[0];
-      if (!listing) {
-        console.log(`MarketCheck /${endpoint}: no listings found for VIN ${vin}`);
-        continue;
-      }
-
-      const dealerType = listing?.dealer?.dealer_type;
-      if (dealerType) {
-        console.log(`Dealer type detected via MarketCheck /${endpoint}: ${dealerType}`);
-        return dealerType; // "franchise" or "independent"
-      }
-      console.log(`MarketCheck /${endpoint}: listing found but no dealer_type field`);
+    // Only check active listings — historical listings may show a different dealer
+    const params = new URLSearchParams({
+      api_key: MARKETCHECK_API_KEY,
+      vins: vin,
+      rows: "1",
+    });
+    const url = `https://api.marketcheck.com/v2/search/car/active?${params}`;
+    console.log(`Dealer detection: querying MarketCheck /active for VIN ${vin}`);
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.error(`MarketCheck /active search failed: ${response.status}`);
+      return null;
     }
+    const data = await response.json();
+    const listing = data?.listings?.[0];
+    if (!listing) {
+      console.log(`MarketCheck /active: no active listings found for VIN ${vin}`);
+      return null;
+    }
+
+    const dealerType = listing?.dealer?.dealer_type;
+    if (dealerType) {
+      console.log(`Dealer type detected via MarketCheck /active: ${dealerType}`);
+      return dealerType; // "franchise" or "independent"
+    }
+    console.log(`MarketCheck /active: listing found but no dealer_type field`);
 
     console.log(`Dealer type detection: no dealer_type found for VIN ${vin}`);
     return null;
