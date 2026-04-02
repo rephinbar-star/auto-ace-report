@@ -630,13 +630,12 @@ export function FuelEconomyCard({
           </div>
 
           {/* Monthly Ownership Cost */}
-          <div className="rounded-lg border p-3 min-w-0 mt-3">
-            <div className="flex items-center gap-2 mb-1">
+          <div className="rounded-lg border p-3 min-w-0 mt-3 text-center">
+            <div className="flex items-center justify-center gap-2 mb-1">
               <DollarSign className="h-4 w-4 text-muted-foreground shrink-0" />
               <span className="text-xs text-muted-foreground truncate">Monthly Ownership</span>
             </div>
-            <p className="text-lg font-bold">${monthlyOwnership}</p>
-            <p className="text-xs text-muted-foreground truncate">fuel + maintenance</p>
+            <p className="text-lg font-bold">${monthlyOwnership} <span className="text-sm font-normal text-muted-foreground">(fuel + maintenance)</span></p>
           </div>
         </div>
 
