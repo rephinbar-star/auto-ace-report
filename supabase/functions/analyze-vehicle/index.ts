@@ -239,11 +239,20 @@ serve(async (req) => {
     }
 
     // Refine seller type using MarketCheck dealer detection
-    if (pricingData?.detectedDealerType && condition.sellerType === "dealer") {
-      const detected = pricingData.detectedDealerType.toLowerCase();
-      if (detected === "franchise" || detected === "independent") {
-        console.log(`Seller type refined from "dealer" to "${detected}" via MarketCheck`);
-        condition.sellerType = detected;
+    if (condition.sellerType === "dealer") {
+      if (pricingData?.detectedDealerType) {
+        const detected = pricingData.detectedDealerType.toLowerCase();
+        if (detected === "franchise" || detected === "independent") {
+          console.log(`Seller type refined from "dealer" to "${detected}" via MarketCheck`);
+          condition.sellerType = detected;
+        } else {
+          console.log(`MarketCheck returned unknown dealer type "${detected}", defaulting to independent`);
+          condition.sellerType = "independent";
+        }
+      } else {
+        // No MarketCheck data — default generic "dealer" to "independent" (Private Dealer)
+        console.log(`No MarketCheck dealer detection available, defaulting "dealer" to "independent"`);
+        condition.sellerType = "independent";
       }
     }
 
