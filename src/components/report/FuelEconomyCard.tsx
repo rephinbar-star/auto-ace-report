@@ -326,6 +326,55 @@ export function FuelEconomyCard({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6 p-4 pt-0 sm:p-6 sm:pt-0">
+        {/* MPG/MPGe Stats */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-sm font-medium flex items-center gap-2">
+              {isElectric ? <Zap className="h-4 w-4 text-primary" /> : null}
+              {isElectric ? "Energy Efficiency" : "Fuel Economy"}
+            </h4>
+            <Badge variant="outline" className={cn("text-xs", fuelRating.color)}>
+              {fuelRating.label}
+            </Badge>
+          </div>
+          
+          {mpgCombined ? (
+            <div className={cn("grid gap-3", isElectric && evRange ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3")}>
+              <div className="rounded-lg border p-3 text-center">
+                <Gauge className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
+                <p className="text-lg font-bold">{mpgCity || "—"}</p>
+                <p className="text-xs text-muted-foreground">City {isElectric ? "MPGe" : "MPG"}</p>
+              </div>
+              <div className="rounded-lg border p-3 text-center bg-primary/5">
+                <Gauge className="h-4 w-4 mx-auto mb-1 text-primary" />
+                <p className="text-lg font-bold text-primary">{mpgCombined}</p>
+                <p className="text-xs text-muted-foreground">Combined {isElectric ? "MPGe" : "MPG"}</p>
+              </div>
+              <div className="rounded-lg border p-3 text-center">
+                <Gauge className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
+                <p className="text-lg font-bold">{mpgHighway || "—"}</p>
+                <p className="text-xs text-muted-foreground">Highway {isElectric ? "MPGe" : "MPG"}</p>
+              </div>
+              {isElectric && evRange && (
+                <div className="rounded-lg border p-3 text-center bg-success/5">
+                  <Battery className="h-4 w-4 mx-auto mb-1 text-success" />
+                  <p className="text-lg font-bold text-success">{evRange}</p>
+                  <p className="text-xs text-muted-foreground">Range (mi)</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {isElectric ? "Energy efficiency" : "Fuel economy"} data not available for this vehicle.
+            </p>
+          )}
+          
+          <p className="text-xs text-muted-foreground mt-2">
+            {isElectric ? "Powertrain" : "Fuel Type"}: {normalizedFuelType}
+            {isElectric && " (Battery Electric)"}
+          </p>
+        </div>
+
         {/* ZIP Code Lookup */}
         <div className={cn(
           "rounded-lg border p-3 space-y-2 transition-colors",
@@ -343,7 +392,6 @@ export function FuelEconomyCard({
             )}
           </div>
 
-          {/* Prompt when geolocation denied and no ZIP stored */}
           {geoDenied && !zipCode && gasPriceSource === "national" && (
             <p className="text-xs text-warning-foreground bg-warning/10 border border-warning/20 rounded-md px-2.5 py-2 leading-relaxed">
               📍 Allowing location access or entering your ZIP code allows us to generate a much more accurate regionally-based analysis — including car values, gas prices, and total cost of ownership.
@@ -438,55 +486,6 @@ export function FuelEconomyCard({
             <span>12,000 mi (avg)</span>
             <span>19,000 mi</span>
           </div>
-        </div>
-
-        {/* MPG/MPGe Stats */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h4 className="text-sm font-medium flex items-center gap-2">
-              {isElectric ? <Zap className="h-4 w-4 text-primary" /> : null}
-              {isElectric ? "Energy Efficiency" : "Fuel Economy"}
-            </h4>
-            <Badge variant="outline" className={cn("text-xs", fuelRating.color)}>
-              {fuelRating.label}
-            </Badge>
-          </div>
-          
-          {mpgCombined ? (
-            <div className={cn("grid gap-3", isElectric && evRange ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3")}>
-              <div className="rounded-lg border p-3 text-center">
-                <Gauge className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
-                <p className="text-lg font-bold">{mpgCity || "—"}</p>
-                <p className="text-xs text-muted-foreground">City {isElectric ? "MPGe" : "MPG"}</p>
-              </div>
-              <div className="rounded-lg border p-3 text-center bg-primary/5">
-                <Gauge className="h-4 w-4 mx-auto mb-1 text-primary" />
-                <p className="text-lg font-bold text-primary">{mpgCombined}</p>
-                <p className="text-xs text-muted-foreground">Combined {isElectric ? "MPGe" : "MPG"}</p>
-              </div>
-              <div className="rounded-lg border p-3 text-center">
-                <Gauge className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
-                <p className="text-lg font-bold">{mpgHighway || "—"}</p>
-                <p className="text-xs text-muted-foreground">Highway {isElectric ? "MPGe" : "MPG"}</p>
-              </div>
-              {isElectric && evRange && (
-                <div className="rounded-lg border p-3 text-center bg-success/5">
-                  <Battery className="h-4 w-4 mx-auto mb-1 text-success" />
-                  <p className="text-lg font-bold text-success">{evRange}</p>
-                  <p className="text-xs text-muted-foreground">Range (mi)</p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              {isElectric ? "Energy efficiency" : "Fuel economy"} data not available for this vehicle.
-            </p>
-          )}
-          
-          <p className="text-xs text-muted-foreground mt-2">
-            {isElectric ? "Powertrain" : "Fuel Type"}: {normalizedFuelType}
-            {isElectric && " (Battery Electric)"}
-          </p>
         </div>
 
         {/* 5-Year TCO Summary */}
