@@ -424,7 +424,7 @@ export function FuelEconomyCard({
           {zipError && <p className="text-xs text-destructive">{zipError}</p>}
         </div>
 
-        {localGasData && !isLoadingGasPrice && (
+        {localGasData && !isLoadingGasPrice && ((() => { console.log("[GAS-DEBUG] localGasData:", JSON.stringify(localGasData)); return true; })()) && (
           <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
             <div className="flex items-center gap-2">
               <MapPin className="h-4 w-4 text-primary" />
