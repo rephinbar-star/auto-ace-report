@@ -1038,13 +1038,21 @@ export default function ReportPage() {
 
   const purchasePrice = financing?.negotiatedPrice ?? condition.askingPrice;
 
-  const chartData = depreciationTable.map((row) => ({
-    name: `Year ${row.year}`,
-    "Private Value": row.privateValue,
-    "Trade-In Value": row.tradeInValue,
-    "Purchase Price": purchasePrice,
-    ...(financingSkipped ? {} : { "Loan Balance": row.loanBalance }),
-  }));
+  const chartData = (() => {
+    const yr0 = Math.round(purchasePrice);
+    const clamped: number[] = [];
+    for (let i = 0; i < depreciationTable.length; i++) {
+      const ceiling = i === 0 ? yr0 : clamped[i - 1];
+      clamped.push(Math.min(ceiling, Math.round(depreciationTable[i].privateValue)));
+    }
+    return depreciationTable.map((row, idx) => ({
+      name: `Year ${row.year}`,
+      "Private Value": clamped[idx],
+      "Trade-In Value": row.tradeInValue,
+      "Purchase Price": purchasePrice,
+      ...(financingSkipped ? {} : { "Loan Balance": row.loanBalance }),
+    }));
+  })();
 
   return (
     <div className={cn("flex min-h-screen flex-col", isMobile && "force-mobile")}>
