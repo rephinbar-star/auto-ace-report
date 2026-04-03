@@ -2104,19 +2104,13 @@ export default function ReportPage() {
 
               {/* Final Verdict Card - Uses UVPRS-derived verdict */}
               {(() => {
-                // Derive verdict from UVPRS score (primary) or fallback
-                const scoreVerdict = uvprsResult?.verdict;
-                const aiVerdict = analysis.finalVerdict?.verdict;
-                
-                // Map score-derived verdict to display
-                const displayVerdict = scoreVerdict || aiVerdict || (() => {
-                  const effectiveRisk = uvprsResult?.riskLevel 
-                    ?? (riskAssessment.level === "medium" ? "moderate" : riskAssessment.level);
-                  if (effectiveRisk === "low") return "Buy" as const;
-                  if (effectiveRisk === "moderate") return "Conditional Buy" as const;
-                  if (effectiveRisk === "elevated") return "Caution" as const;
-                  return "Avoid" as const;
-                })();
+                // Reconcile AI verdict with UVPRS score — always take the higher-risk signal
+                const floorTriggered = !!(analysis.aiFindings?.floorOverrides as any)?.triggered;
+                const displayVerdict = getFinalVerdict(
+                  analysis.finalVerdict?.verdict,
+                  uvprsResult?.totalScore,
+                  floorTriggered
+                );
 
                 // Always generate justification from actual data — never trust AI-stored text
                 const justification = (() => {
