@@ -933,7 +933,9 @@ export default function ReportPage() {
     );
   })();
 
-  const handleDownloadPDF = async () => {
+  // Alias for backward compat with all existing references
+  const depreciationTable = computedDepTable;
+
     setIsDownloading(true);
     try {
       // Cache images through our backend to avoid CORS issues
