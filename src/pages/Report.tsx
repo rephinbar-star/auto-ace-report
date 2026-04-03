@@ -936,6 +936,7 @@ export default function ReportPage() {
   // Alias for backward compat with all existing references
   const depreciationTable = computedDepTable;
 
+  const handleDownloadPDF = async () => {
     setIsDownloading(true);
     try {
       // Cache images through our backend to avoid CORS issues
