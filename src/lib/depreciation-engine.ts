@@ -22,6 +22,8 @@ export interface DepreciationInputs {
   batteryDecayCurve?: number[];
   /** Probability-weighted repair costs per year */
   expectedRepairsByYear: { expected: number; worstCase: number }[];
+  /** Annual routine maintenance costs per year (100% certain) */
+  maintenanceCostsByYear?: number[];
 }
 
 export interface ComputedDepreciationRow {
