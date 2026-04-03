@@ -57,6 +57,7 @@ import { cn } from "@/lib/utils";
 import { SEO } from "@/components/seo/SEO";
 import { generateReportPDF } from "@/lib/generatePDF";
 import { calculateTCO } from "@/lib/tco-calculations";
+import { convertLegacyTable, type ComputedDepreciationRow } from "@/lib/depreciation-engine";
 import { toast } from "sonner";
 import { SampleComparisonReport } from "@/components/sample/SampleComparisonReport";
 import { RiskScoreBreakdown } from "@/components/report/RiskScoreBreakdown";
