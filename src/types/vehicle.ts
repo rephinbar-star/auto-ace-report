@@ -73,6 +73,8 @@ export interface KnownFailurePattern {
   costTier: "critical" | "major" | "moderate" | "minor";
   alreadyPresent: boolean;
   description: string;
+  probabilityPercent: number;       // Explicit %: high=70, medium=40, low=15, remote=5
+  yearsToFailureWindow: number;     // Years from now within which failure is most likely
 }
 
 export interface ChassisSignal {
