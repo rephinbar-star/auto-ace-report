@@ -813,7 +813,6 @@ Provide your expert analysis.`;
       }
     };
     applyFloorOverrides(analysis);
-    }
 
     // Override AI pricing with deterministic computed values
     if (pricingData?.computedValues) {
