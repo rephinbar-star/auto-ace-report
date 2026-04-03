@@ -2031,6 +2031,14 @@ export default function ReportPage() {
                                   {row.equity < 0 ? "-" : ""}${Math.abs(row.equity).toLocaleString()}
                                 </TableCell>
                               )}
+                              {(() => {
+                                const netEquity = estValue - row.repairCosts - row.maintenanceCosts;
+                                return (
+                                  <TableCell className={cn("text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold", netEquity >= 0 ? "text-success" : "text-destructive")}>
+                                    {netEquity < 0 ? "-" : ""}${Math.abs(netEquity).toLocaleString()}
+                                  </TableCell>
+                                );
+                              })()}
                             </TableRow>
                           );
                         })}
