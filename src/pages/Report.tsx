@@ -915,7 +915,6 @@ export default function ReportPage() {
       return computeDepreciationTable(depreciationInputs, {
         startingFMV,
         annualMiles: 12000,
-        maintenanceCostsByYear: depreciationInputs.maintenanceCostsByYear,
         loanAmount: financing?.loanAmount,
         loanAPR: financing?.apr,
         loanTermMonths: financing?.loanTerm,
