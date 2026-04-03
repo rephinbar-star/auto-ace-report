@@ -132,6 +132,8 @@ function synthesizeAiFindingsFromReport(report: any): AiFindings {
       costTier: avgCost > 3000 ? "critical" : avgCost > 1500 ? "major" : "moderate",
       alreadyPresent: false,
       description: concern.concern || "",
+      probabilityPercent: avgCost > 2500 ? 70 : 40,
+      yearsToFailureWindow: 3,
     });
   }
   return {

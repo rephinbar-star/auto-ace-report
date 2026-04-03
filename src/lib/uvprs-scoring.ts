@@ -676,6 +676,11 @@ export function calculateUVPRS(input: UVPRSInput): UVPRSResult {
 
   totalScore = Math.round(Math.min(100, Math.max(0, totalScore)));
 
+  // ── Apply AI-reported floor overrides (secondary check — primary is server-side) ──
+  if (input.aiFindings?.floorOverrides?.triggered && input.aiFindings.floorOverrides.minimumScore != null) {
+    totalScore = Math.max(totalScore, input.aiFindings.floorOverrides.minimumScore);
+  }
+
   // ── Hard floor overrides (tiered, highest applicable wins) ──
   
   // Floor 65: salvage/flood/rebuilt title, confirmed frame damage, confirmed odometer rollback
