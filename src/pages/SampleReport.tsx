@@ -205,6 +205,17 @@ export default function SampleReportPage() {
     chronicRepairSystems: [] as string[],
   };
 
+  // Compute depreciation table using the deterministic engine
+  const startingFMV = priceAssessment.fairMarketPrivate;
+  const computedDepTable = convertLegacyTable(
+    depreciationTable,
+    startingFMV,
+    28000, // sample loan amount
+    4.5,   // sample APR
+    60,    // sample 60 month term
+    false
+  );
+
   // Compute UVPRS from sample data
   const sampleUVPRS = calculateUVPRS({
     year: sampleVehicle.year,
@@ -229,15 +240,22 @@ export default function SampleReportPage() {
     sellerType: "dealer",
   });
 
-  const chartData = depreciationTable.map((row) => ({
-    name: `Year ${row.year}`,
-    "Private Value": row.privateValue,
-    "Trade-In Value": row.tradeInValue,
-    "Loan Balance": row.loanBalance,
-    "Cumulative Repairs": depreciationTable
-      .filter((r) => r.year <= row.year)
-      .reduce((sum, r) => sum + r.repairCosts + (r.maintenanceCosts || 0), 0),
-  }));
+  const chartData = [
+    {
+      name: "Year 0",
+      "Market Value": startingFMV,
+      "Trade-In Value": priceAssessment.fairMarketTradeIn,
+      "Asking Price": sampleVehicle.askingPrice,
+      "Loan Balance": 28000,
+    },
+    ...computedDepTable.map((row) => ({
+      name: `Year ${row.year}`,
+      "Market Value": row.marketValue,
+      "Trade-In Value": row.tradeInValue,
+      "Asking Price": sampleVehicle.askingPrice,
+      "Loan Balance": row.loanBalance,
+    })),
+  ];
 
   const calculateNetEquity = (row: typeof depreciationTable[0]) => {
     const cumulativeRepairs = depreciationTable
