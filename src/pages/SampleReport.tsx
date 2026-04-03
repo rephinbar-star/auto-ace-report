@@ -57,6 +57,7 @@ import { cn } from "@/lib/utils";
 import { SEO } from "@/components/seo/SEO";
 import { generateReportPDF } from "@/lib/generatePDF";
 import { calculateTCO } from "@/lib/tco-calculations";
+import { convertLegacyTable, type ComputedDepreciationRow } from "@/lib/depreciation-engine";
 import { toast } from "sonner";
 import { SampleComparisonReport } from "@/components/sample/SampleComparisonReport";
 import { RiskScoreBreakdown } from "@/components/report/RiskScoreBreakdown";
@@ -204,6 +205,17 @@ export default function SampleReportPage() {
     chronicRepairSystems: [] as string[],
   };
 
+  // Compute depreciation table using the deterministic engine
+  const startingFMV = priceAssessment.fairMarketPrivate;
+  const computedDepTable = convertLegacyTable(
+    depreciationTable,
+    startingFMV,
+    28000, // sample loan amount
+    4.5,   // sample APR
+    60,    // sample 60 month term
+    false
+  );
+
   // Compute UVPRS from sample data
   const sampleUVPRS = calculateUVPRS({
     year: sampleVehicle.year,
@@ -228,24 +240,24 @@ export default function SampleReportPage() {
     sellerType: "dealer",
   });
 
-  const chartData = depreciationTable.map((row) => ({
-    name: `Year ${row.year}`,
-    "Private Value": row.privateValue,
-    "Trade-In Value": row.tradeInValue,
-    "Loan Balance": row.loanBalance,
-    "Cumulative Repairs": depreciationTable
-      .filter((r) => r.year <= row.year)
-      .reduce((sum, r) => sum + r.repairCosts + (r.maintenanceCosts || 0), 0),
-  }));
+  const chartData = [
+    {
+      name: "Year 0",
+      "Market Value": startingFMV,
+      "Trade-In Value": priceAssessment.fairMarketTradeIn,
+      "Asking Price": sampleVehicle.askingPrice,
+      "Loan Balance": 28000,
+    },
+    ...computedDepTable.map((row) => ({
+      name: `Year ${row.year}`,
+      "Market Value": row.marketValue,
+      "Trade-In Value": row.tradeInValue,
+      "Asking Price": sampleVehicle.askingPrice,
+      "Loan Balance": row.loanBalance,
+    })),
+  ];
 
-  const calculateNetEquity = (row: typeof depreciationTable[0]) => {
-    const cumulativeRepairs = depreciationTable
-      .filter((r) => r.year <= row.year)
-      .reduce((sum, r) => sum + r.repairCosts + (r.maintenanceCosts || 0), 0);
-    return includeRepairs 
-      ? row.tradeInValue - row.loanBalance - cumulativeRepairs
-      : row.tradeInValue - row.loanBalance;
-  };
+  // No longer needed - equity computed by engine
 
   const handleDownloadPDF = async () => {
     setIsDownloading(true);
@@ -694,7 +706,7 @@ export default function SampleReportPage() {
                         <Legend />
                         <Line 
                           type="monotone" 
-                          dataKey="Private Value" 
+                          dataKey="Market Value" 
                           stroke="hsl(142, 76%, 36%)" 
                           strokeWidth={2}
                         />
@@ -711,15 +723,14 @@ export default function SampleReportPage() {
                           strokeWidth={2}
                           strokeDasharray="5 5"
                         />
-                        {includeRepairs && (
-                          <Line 
-                            type="monotone" 
-                            dataKey="Cumulative Repairs" 
-                            stroke="hsl(0, 84%, 60%)" 
-                            strokeWidth={2}
-                            strokeDasharray="3 3"
-                          />
-                        )}
+                        <Line 
+                          type="monotone" 
+                          dataKey="Asking Price" 
+                          stroke="hsl(0, 84%, 60%)" 
+                          strokeWidth={2}
+                          strokeDasharray="6 3"
+                          dot={false}
+                        />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -730,37 +741,37 @@ export default function SampleReportPage() {
                       <TableHeader>
                          <TableRow>
                           <TableHead>Year</TableHead>
-                          <TableHead className="text-right">Private Value</TableHead>
+                          <TableHead className="text-right">Market Value</TableHead>
                           <TableHead className="text-right">Trade-In</TableHead>
                           <TableHead className="text-right">Loan Balance</TableHead>
-                          {includeRepairs && <TableHead className="text-right">Repairs</TableHead>}
-                          {includeRepairs && <TableHead className="text-right">Maintenance</TableHead>}
-                          <TableHead className="text-right">Net Equity {includeRepairs ? "(w/ costs)" : "(w/o costs)"}</TableHead>
+                          <TableHead className="text-right">Repairs</TableHead>
+                          <TableHead className="text-right">Maint.</TableHead>
+                          <TableHead className="text-right">Depreciation</TableHead>
+                          <TableHead className="text-right">Equity</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {depreciationTable.map((row) => (
+                        {computedDepTable.map((row) => (
                           <TableRow key={row.year}>
                             <TableCell className="font-medium">Year {row.year}</TableCell>
-                            <TableCell className="text-right">${row.privateValue.toLocaleString()}</TableCell>
+                            <TableCell className="text-right">${row.marketValue.toLocaleString()}</TableCell>
                             <TableCell className="text-right">${row.tradeInValue.toLocaleString()}</TableCell>
                             <TableCell className="text-right">${row.loanBalance.toLocaleString()}</TableCell>
-                            {includeRepairs && (
-                              <TableCell className="text-right text-destructive">
-                                ${row.repairCosts.toLocaleString()}
-                              </TableCell>
-                            )}
-                            {includeRepairs && (
-                              <TableCell className="text-right text-muted-foreground">
-                                ${(row.maintenanceCosts || 0).toLocaleString()}
-                              </TableCell>
-                            )}
+                            <TableCell className="text-right text-destructive">
+                              ${row.repairCosts.toLocaleString()}
+                            </TableCell>
+                            <TableCell className="text-right text-muted-foreground">
+                              ${row.maintenanceCosts.toLocaleString()}
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-destructive">
+                              -${row.depreciation.toLocaleString()}
+                            </TableCell>
                             <TableCell className={cn(
                               "text-right font-semibold",
-                              calculateNetEquity(row) >= 0 ? "text-green-600" : "text-red-600"
+                              row.equity >= 0 ? "text-green-600" : "text-red-600"
                             )}>
-                              {calculateNetEquity(row) >= 0 ? "+" : ""}
-                              ${calculateNetEquity(row).toLocaleString()}
+                              {row.equity >= 0 ? "+" : ""}
+                              ${row.equity.toLocaleString()}
                             </TableCell>
                           </TableRow>
                         ))}
