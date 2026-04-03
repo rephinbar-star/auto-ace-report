@@ -1038,13 +1038,21 @@ export default function ReportPage() {
 
   const purchasePrice = financing?.negotiatedPrice ?? condition.askingPrice;
 
-  const chartData = depreciationTable.map((row) => ({
-    name: `Year ${row.year}`,
-    "Private Value": row.privateValue,
-    "Trade-In Value": row.tradeInValue,
-    "Purchase Price": purchasePrice,
-    ...(financingSkipped ? {} : { "Loan Balance": row.loanBalance }),
-  }));
+  const chartData = (() => {
+    const yr0 = Math.round(purchasePrice);
+    const clamped: number[] = [];
+    for (let i = 0; i < depreciationTable.length; i++) {
+      const ceiling = i === 0 ? yr0 : clamped[i - 1];
+      clamped.push(Math.min(ceiling, Math.round(depreciationTable[i].privateValue)));
+    }
+    return depreciationTable.map((row, idx) => ({
+      name: `Year ${row.year}`,
+      "Private Value": clamped[idx],
+      "Trade-In Value": row.tradeInValue,
+      "Purchase Price": purchasePrice,
+      ...(financingSkipped ? {} : { "Loan Balance": row.loanBalance }),
+    }));
+  })();
 
   return (
     <div className={cn("flex min-h-screen flex-col", isMobile && "force-mobile")}>
@@ -1996,16 +2004,25 @@ export default function ReportPage() {
                             </TableRow>
                           );
                         })()}
-                        {depreciationTable.map((row, idx) => {
+                        {(() => {
+                          // Compute clamped private values so they never exceed the prior year
+                          const yr0Value = Math.round(financing?.negotiatedPrice ?? condition?.askingPrice ?? 0);
+                          const clampedValues: number[] = [];
+                          for (let i = 0; i < depreciationTable.length; i++) {
+                            const ceiling = i === 0 ? yr0Value : clampedValues[i - 1];
+                            clampedValues.push(Math.min(ceiling, Math.round(depreciationTable[i].privateValue)));
+                          }
+                          return depreciationTable.map((row, idx) => {
                           const repair = Math.round(row.repairCosts);
                           const maint = Math.round(row.maintenanceCosts || 0);
-                          const prevValue = idx === 0 ? (condition?.askingPrice || depreciationTable[0].privateValue * 1.15) : depreciationTable[idx - 1].privateValue;
-                          const depreciation = Math.max(0, Math.round(prevValue - row.privateValue));
+                          const clampedPrivate = clampedValues[idx];
+                          const prevValue = idx === 0 ? yr0Value : clampedValues[idx - 1];
+                          const depreciation = Math.round(prevValue - clampedPrivate);
                           const cumulativeRepairs = depreciationTable.slice(0, idx + 1).reduce((sum, r) => sum + Math.round(r.repairCosts), 0);
                           const cumulativeMaint = depreciationTable.slice(0, idx + 1).reduce((sum, r) => sum + Math.round(r.maintenanceCosts || 0), 0);
                           const estValue = excludeRepairs
-                            ? Math.round(row.privateValue)
-                            : Math.round(row.privateValue) - cumulativeRepairs - cumulativeMaint;
+                            ? clampedPrivate
+                            : clampedPrivate - cumulativeRepairs - cumulativeMaint;
                           return (
                             <TableRow key={row.year}>
                               <TableCell className="font-medium text-xs whitespace-nowrap px-1.5 md:px-4">Yr {row.year}</TableCell>
@@ -2019,7 +2036,7 @@ export default function ReportPage() {
                               <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold text-destructive">
                                 -${depreciation.toLocaleString()}
                               </TableCell>
-                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${Math.round(row.privateValue).toLocaleString()}</TableCell>
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${clampedPrivate.toLocaleString()}</TableCell>
                               <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${Math.round(row.tradeInValue).toLocaleString()}</TableCell>
                               <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold text-foreground">
                                 {estValue < 0 ? "-" : ""}${Math.abs(estValue).toLocaleString()}
@@ -2034,7 +2051,8 @@ export default function ReportPage() {
                               })()}
                             </TableRow>
                           );
-                        })}
+                        });
+                        })()}
                       </TableBody>
                     </Table>
                     </div>
