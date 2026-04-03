@@ -377,7 +377,23 @@ AI FINDINGS CLASSIFICATION: You MUST populate the "aiFindings" field with struct
    ADDITIONAL CLASSIFICATIONS:
    - Odometer anomaly (rollback = Class 5, discrepancy = Class 4)
    - Open safety recalls (safety-critical = Class 5, non-critical 3+ = Class 4, 1-2 = Class 3)
-   - Battery health issues (EV only: SoH <70% = Class 4, 70-80% = Class 3, 80-85% = Class 2)
+    - BATTERY HEALTH FAULT (required ONLY when powertrain is BEV or PHEV AND mileage exceeds 60,000 miles):
+      If no battery diagnostic report has been provided:
+        Severity: Class 3 if mileage 60,000-100,000 miles
+        Severity: Class 4 if mileage >100,000 miles
+        base_points: 28 (Class 3) or 50 (Class 4)
+        anomaly_flag: true
+        note: "Battery State of Health is unverified. This is a critical unknown for a [BEV/PHEV] at this mileage. Buyer cannot assess the primary powertrain component without a diagnostic report."
+      If a battery diagnostic report HAS been provided:
+        Assess SoH from the report and classify accordingly:
+        SoH >85%: No fault entry — normal degradation
+        SoH 75-85%: Class 2, base_points 15
+        SoH 65-75%: Class 3, base_points 28
+        SoH <65%: Class 4, base_points 50
+      Do NOT apply battery health fault classification to:
+        - ICE vehicles
+        - HEV vehicles under 100,000 miles (hybrid batteries are generally more durable and harder to assess without dealer-level tools)
+        - Any BEV or PHEV under 60,000 miles without specific evidence of premature degradation
    - Service gap faults (severe gap >60k = Class 4, significant 30-60k = Class 3)
 
 2. knownFailurePatterns — For EVERY known failure pattern for this specific make/model/year/trim at current mileage:
