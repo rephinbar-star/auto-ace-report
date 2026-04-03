@@ -1041,22 +1041,26 @@ export default function ReportPage() {
   const financingSkipped = financing?.skipped === true;
 
   const purchasePrice = financing?.negotiatedPrice ?? condition.askingPrice;
+  const askingPrice = condition.askingPrice;
 
-  const chartData = (() => {
-    const yr0 = Math.round(purchasePrice);
-    const clamped: number[] = [];
-    for (let i = 0; i < depreciationTable.length; i++) {
-      const ceiling = i === 0 ? yr0 : clamped[i - 1];
-      clamped.push(Math.min(ceiling, Math.round(depreciationTable[i].privateValue)));
-    }
-    return depreciationTable.map((row, idx) => ({
+  // Chart data: values already deterministic from engine, no clamping needed
+  const chartData = [
+    // Yr 0 starting point
+    {
+      name: "Year 0",
+      "Market Value": startingFMV,
+      "Trade-In Value": Math.round(priceAssessment.fairMarketTradeIn || startingFMV * 0.85),
+      "Asking Price": askingPrice,
+      ...(financingSkipped ? {} : { "Loan Balance": financing?.loanAmount || 0 }),
+    },
+    ...depreciationTable.map((row) => ({
       name: `Year ${row.year}`,
-      "Private Value": clamped[idx],
+      "Market Value": row.marketValue,
       "Trade-In Value": row.tradeInValue,
-      "Purchase Price": purchasePrice,
+      "Asking Price": askingPrice,
       ...(financingSkipped ? {} : { "Loan Balance": row.loanBalance }),
-    }));
-  })();
+    })),
+  ];
 
   return (
     <div className={cn("flex min-h-screen flex-col", isMobile && "force-mobile")}>
