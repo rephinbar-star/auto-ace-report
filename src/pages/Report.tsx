@@ -1925,7 +1925,7 @@ export default function ReportPage() {
                         <Legend />
                         <Line 
                           type="monotone" 
-                          dataKey="Private Value" 
+                          dataKey="Market Value" 
                           stroke="hsl(var(--success))" 
                           strokeWidth={2}
                         />
@@ -1946,7 +1946,7 @@ export default function ReportPage() {
                         )}
                         <Line 
                           type="monotone" 
-                          dataKey="Purchase Price" 
+                          dataKey="Asking Price" 
                           stroke="hsl(var(--danger))" 
                           strokeWidth={2}
                           strokeDasharray="6 3"
