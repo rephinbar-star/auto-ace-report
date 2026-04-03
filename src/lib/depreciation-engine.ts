@@ -45,7 +45,7 @@ export interface DepreciationConfig {
   startingFMV: number;           // Fair market value (private party)
   tradeInRatio?: number;         // Default 0.85
   annualMiles?: number;          // Default 12000
-  maintenanceCostsByYear?: number[]; // From AI or estimated
+  // maintenanceCostsByYear now lives in DepreciationInputs
   // Loan amortization
   loanAmount?: number;
   loanAPR?: number;
