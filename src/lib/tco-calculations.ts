@@ -77,6 +77,7 @@ export function calculateMileageDepreciationAdjustment(
 interface DepreciationRow {
   year: number;
   repairCosts: number;
+  worstCaseRepairCosts?: number;
   maintenanceCosts?: number;
 }
 
