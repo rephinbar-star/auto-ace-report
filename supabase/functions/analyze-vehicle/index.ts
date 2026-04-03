@@ -717,7 +717,78 @@ Provide your expert analysis.`;
           withinFailureWindow: false,
           description: "No chassis signal data available from AI analysis.",
         },
+        floorOverrides: { triggered: false, minimumScore: null, triggeringConditions: [] },
       };
+    }
+
+    // Ensure floorOverrides exists
+    if (!analysis.aiFindings.floorOverrides) {
+      analysis.aiFindings.floorOverrides = { triggered: false, minimumScore: null, triggeringConditions: [] };
+    }
+
+    // Ensure probabilityPercent and yearsToFailureWindow on knownFailurePatterns
+    const PROB_MAP: Record<string, number> = { high: 70, medium: 40, low: 15, remote: 5 };
+    for (const p of analysis.aiFindings.knownFailurePatterns || []) {
+      if (p.probabilityPercent == null) p.probabilityPercent = PROB_MAP[p.probabilityTier] ?? 40;
+      if (p.yearsToFailureWindow == null) p.yearsToFailureWindow = 3;
+    }
+
+    // §10: Server-side deterministic floor override enforcement
+    const applyFloorOverrides = (analysis: any) => {
+      const floors: { score: number; condition: string }[] = [];
+      const findings = analysis.aiFindings;
+      const hist = analysis.historyAnalysis;
+
+      // Odometer rollback → floor 85
+      if (hist?.odometerIntegrity?.status === "rollback") {
+        floors.push({ score: 85, condition: "Confirmed odometer rollback" });
+      }
+      // Odometer discrepancy → floor 45
+      if (hist?.odometerIntegrity?.status === "discrepancy") {
+        floors.push({ score: 45, condition: "Odometer discrepancy (>25k miles unmonitored)" });
+      }
+
+      // Open recalls: count from active service faults tagged as "recalls"
+      const recallFaults = (findings?.activeServiceFaults || []).filter(
+        (f: any) => f.system?.toLowerCase() === "recalls" || f.system?.toLowerCase() === "recall"
+      );
+      const recallCount = recallFaults.length;
+      const hasSafetyCritical = recallFaults.some((f: any) => f.severityClass === 5);
+      if (recallCount >= 5 || hasSafetyCritical) {
+        floors.push({ score: 60, condition: `${recallCount} open recalls${hasSafetyCritical ? " (safety-critical)" : ""}` });
+      } else if (recallCount >= 3) {
+        floors.push({ score: 45, condition: `${recallCount} open recalls` });
+      }
+
+      // Service gap severe → floor 35
+      if (hist?.serviceGap?.gapSeverity === "severe") {
+        floors.push({ score: 35, condition: "Severe service gap (>60,000 miles)" });
+      }
+
+      // Chronic high-cost fault (Class 4+ and >$2k) → floor 45
+      const hasExpensiveChronic = (findings?.activeServiceFaults || []).some(
+        (f: any) => (f.severityClass === 4 || f.severityClass === 5) && f.estimatedCostPerIncident >= 2000
+      );
+      if (hasExpensiveChronic) {
+        floors.push({ score: 45, condition: "Chronic/unresolved fault with >$2,000/incident cost" });
+      }
+
+      // Chassis level 4+ → floor 35
+      if (findings?.chassisSignal?.level >= 4) {
+        floors.push({ score: 35, condition: `Chassis signal level ${findings.chassisSignal.level} — significant platform issues` });
+      }
+
+      if (floors.length > 0) {
+        const maxFloor = Math.max(...floors.map(f => f.score));
+        findings.floorOverrides = {
+          triggered: true,
+          minimumScore: maxFloor,
+          triggeringConditions: floors.map(f => f.condition),
+        };
+        console.log(`Floor overrides applied: min=${maxFloor}, conditions=[${floors.map(f => f.condition).join("; ")}]`);
+      }
+    };
+    applyFloorOverrides(analysis);
     }
 
     // Override AI pricing with deterministic computed values
