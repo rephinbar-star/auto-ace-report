@@ -12,6 +12,7 @@ export interface TCOResult {
   purchasePrice: number;
   fuelCost5Year: number;
   repairCost5Year: number;
+  worstCaseRepairCost5Year: number;
   maintenanceCost5Year: number;
   mileageDepreciation?: number;
   totalTCO: number;
@@ -21,6 +22,7 @@ export interface TCOResult {
     purchase: number;
     fuel: number;
     repairs: number;
+    worstCaseRepairs: number;
     maintenance: number;
     mileageDepreciation?: number;
   };
