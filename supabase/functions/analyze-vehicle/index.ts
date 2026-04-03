@@ -523,6 +523,44 @@ Provide your expert analysis.`;
                     },
                     required: ["fairMarketPrivate", "fairMarketDealer", "fairMarketTradeIn", "dealRating", "priceDifference", "percentDifference"],
                   },
+                  depreciationInputs: {
+                    type: "object",
+                    description: "Rate-based inputs for deterministic depreciation computation. The frontend computes all market values, equity, and depreciation amounts from these rates. Do NOT compute final values — only provide rates and per-year cost estimates.",
+                    properties: {
+                      annualDepreciationRates: {
+                        type: "array",
+                        items: { type: "number" },
+                        description: "5 decimal depreciation rates (e.g. [0.12, 0.10, 0.08, 0.07, 0.06]). Year 1 rate should reflect the vehicle's age and segment — newer vehicles depreciate faster (12-18%), older vehicles slower (5-8%). These are time-based only; mileage is handled separately.",
+                      },
+                      mileageDepreciationRatePerMile: {
+                        type: "number",
+                        description: "Additional value loss in dollars per mile driven. Typical range: $0.05-$0.15 for sedans, $0.08-$0.20 for trucks/SUVs, $0.15-$0.40 for luxury/exotic.",
+                      },
+                      batteryDecayCurve: {
+                        type: "array",
+                        items: { type: "number" },
+                        description: "BEV/PHEV only: 5 decimal values representing additional SoH-driven value penalty per year (e.g. [0.02, 0.03, 0.04, 0.05, 0.06] for a Leaf). Omit or use empty array for ICE/HEV vehicles.",
+                      },
+                      expectedRepairsByYear: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                          properties: {
+                            expected: { type: "number", description: "Probability-weighted expected repair cost for this year" },
+                            worstCase: { type: "number", description: "100% × costHigh for all items in this year" },
+                          },
+                          required: ["expected", "worstCase"],
+                        },
+                        description: "5 entries, one per year. Expected uses probabilityPercent × costMidpoint. Worst case uses 100% × costHigh.",
+                      },
+                      maintenanceCostsByYear: {
+                        type: "array",
+                        items: { type: "number" },
+                        description: "5 entries: annual routine maintenance costs (oil changes, tires, brakes, filters, inspections). 100% certain, not probabilistic.",
+                      },
+                    },
+                    required: ["annualDepreciationRates", "mileageDepreciationRatePerMile", "expectedRepairsByYear", "maintenanceCostsByYear"],
+                  },
                   depreciationTable: {
                     type: "array",
                     items: {
@@ -540,7 +578,7 @@ Provide your expert analysis.`;
                       },
                       required: ["year", "privateValue", "tradeInValue", "loanBalance", "repairCosts", "worstCaseRepairCosts", "maintenanceCosts", "netEquityPrivate", "netEquityTradeIn"],
                     },
-                    description: "5-year depreciation and equity projection. repairCosts uses expected-value model (probability-weighted). worstCaseRepairCosts assumes all repairs occur. maintenanceCosts are 100% certain scheduled services.",
+                    description: "LEGACY FALLBACK: 5-year depreciation table. Only used if depreciationInputs is not provided. Prefer populating depreciationInputs instead.",
                   },
                   riskAssessment: {
                     type: "object",

@@ -74,7 +74,7 @@ import { FinancingStep } from "@/components/analysis/FinancingStep";
 import type { FinancingInfo, AiFindings } from "@/types/vehicle";
 import { cacheImages, getCachedUrls } from "@/lib/api/cache-images";
 import { calculateTCO } from "@/lib/tco-calculations";
-import { toast as sonnerToast } from "sonner";
+import { convertLegacyTable, computeDepreciationTable, type ComputedDepreciationRow, type DepreciationInputs } from "@/lib/depreciation-engine";
 import { calculateUVPRS, uvprsToLegacyRiskLevel, type UVPRSResult } from "@/lib/uvprs-scoring";
 import { lookupRecalls } from "@/lib/nhtsa";
 import { parseHistoryReport } from "@/lib/api/parse-history";
