@@ -2045,6 +2045,7 @@ export default function ReportPage() {
                           );
                         });
                         })()}
+                      </TableBody>
                     </Table>
                     </div>
 
