@@ -64,14 +64,13 @@ export function computeDepreciationTable(
     startingFMV,
     tradeInRatio = 0.85,
     annualMiles = 12000,
-    maintenanceCostsByYear = [],
     loanAmount,
     loanAPR,
     loanTermMonths,
     financingSkipped,
   } = config;
 
-  const { annualDepreciationRates, mileageDepreciationRatePerMile, batteryDecayCurve, expectedRepairsByYear } = inputs;
+  const { annualDepreciationRates, mileageDepreciationRatePerMile, batteryDecayCurve, expectedRepairsByYear, maintenanceCostsByYear = [] } = inputs;
 
   // Pre-compute loan amortization
   const loanBalances = computeLoanBalances(loanAmount, loanAPR, loanTermMonths, financingSkipped);
