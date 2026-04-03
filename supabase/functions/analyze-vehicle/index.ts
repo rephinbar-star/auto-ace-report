@@ -246,13 +246,12 @@ serve(async (req) => {
           console.log(`Seller type refined from "dealer" to "${detected}" via MarketCheck`);
           condition.sellerType = detected;
         } else {
-          console.log(`MarketCheck returned unknown dealer type "${detected}", defaulting to independent`);
-          condition.sellerType = "independent";
+          console.log(`MarketCheck returned unknown dealer type "${detected}", keeping as "dealer"`);
+          // Keep as "dealer" — don't assume independent without evidence
         }
       } else {
-        // No MarketCheck data — default generic "dealer" to "independent" (Private Dealer)
-        console.log(`No MarketCheck dealer detection available, defaulting "dealer" to "independent"`);
-        condition.sellerType = "independent";
+        // No MarketCheck data — keep as generic "dealer" rather than assuming independent
+        console.log(`No MarketCheck dealer detection available, keeping seller type as "dealer"`);
       }
     }
 
