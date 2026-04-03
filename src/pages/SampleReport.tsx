@@ -257,14 +257,7 @@ export default function SampleReportPage() {
     })),
   ];
 
-  const calculateNetEquity = (row: typeof depreciationTable[0]) => {
-    const cumulativeRepairs = depreciationTable
-      .filter((r) => r.year <= row.year)
-      .reduce((sum, r) => sum + r.repairCosts + (r.maintenanceCosts || 0), 0);
-    return includeRepairs 
-      ? row.tradeInValue - row.loanBalance - cumulativeRepairs
-      : row.tradeInValue - row.loanBalance;
-  };
+  // No longer needed - equity computed by engine
 
   const handleDownloadPDF = async () => {
     setIsDownloading(true);
