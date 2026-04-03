@@ -1999,10 +1999,11 @@ export default function ReportPage() {
                         {(() => {
                           // Compute clamped private values so they never exceed the prior year
                           const yr0Value = Math.round(financing?.negotiatedPrice ?? condition?.askingPrice ?? 0);
-                          const clampedValues = depreciationTable.map((row, idx) => {
-                            const ceiling = idx === 0 ? yr0Value : clampedValues[idx - 1];
-                            return Math.min(ceiling, Math.round(row.privateValue));
-                          });
+                          const clampedValues: number[] = [];
+                          for (let i = 0; i < depreciationTable.length; i++) {
+                            const ceiling = i === 0 ? yr0Value : clampedValues[i - 1];
+                            clampedValues.push(Math.min(ceiling, Math.round(depreciationTable[i].privateValue)));
+                          }
                           return depreciationTable.map((row, idx) => {
                           const repair = Math.round(row.repairCosts);
                           const maint = Math.round(row.maintenanceCosts || 0);
