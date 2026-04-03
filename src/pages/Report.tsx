@@ -1996,16 +1996,24 @@ export default function ReportPage() {
                             </TableRow>
                           );
                         })()}
-                        {depreciationTable.map((row, idx) => {
+                        {(() => {
+                          // Compute clamped private values so they never exceed the prior year
+                          const yr0Value = Math.round(financing?.negotiatedPrice ?? condition?.askingPrice ?? 0);
+                          const clampedValues = depreciationTable.map((row, idx) => {
+                            const ceiling = idx === 0 ? yr0Value : clampedValues[idx - 1];
+                            return Math.min(ceiling, Math.round(row.privateValue));
+                          });
+                          return depreciationTable.map((row, idx) => {
                           const repair = Math.round(row.repairCosts);
                           const maint = Math.round(row.maintenanceCosts || 0);
-                          const prevValue = idx === 0 ? (condition?.askingPrice || depreciationTable[0].privateValue * 1.15) : depreciationTable[idx - 1].privateValue;
-                          const depreciation = Math.max(0, Math.round(prevValue - row.privateValue));
+                          const clampedPrivate = clampedValues[idx];
+                          const prevValue = idx === 0 ? yr0Value : clampedValues[idx - 1];
+                          const depreciation = Math.round(prevValue - clampedPrivate);
                           const cumulativeRepairs = depreciationTable.slice(0, idx + 1).reduce((sum, r) => sum + Math.round(r.repairCosts), 0);
                           const cumulativeMaint = depreciationTable.slice(0, idx + 1).reduce((sum, r) => sum + Math.round(r.maintenanceCosts || 0), 0);
                           const estValue = excludeRepairs
-                            ? Math.round(row.privateValue)
-                            : Math.round(row.privateValue) - cumulativeRepairs - cumulativeMaint;
+                            ? clampedPrivate
+                            : clampedPrivate - cumulativeRepairs - cumulativeMaint;
                           return (
                             <TableRow key={row.year}>
                               <TableCell className="font-medium text-xs whitespace-nowrap px-1.5 md:px-4">Yr {row.year}</TableCell>
