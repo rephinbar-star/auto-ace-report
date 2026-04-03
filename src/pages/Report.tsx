@@ -606,8 +606,9 @@ export default function ReportPage() {
           if (result.sourceBreakdown?.length) {
             setSourceBreakdown(result.sourceBreakdown);
           }
-          // Update seller type if API detected franchise/independent
+           // Update seller type if API detected franchise/independent
           if (result.detectedSellerType && vehicleData) {
+            detectedSellerTypeRef.current = result.detectedSellerType;
             setVehicleData(prev => prev ? {
               ...prev,
               condition: { ...prev.condition, sellerType: result.detectedSellerType }
