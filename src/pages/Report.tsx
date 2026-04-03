@@ -2077,13 +2077,7 @@ export default function ReportPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="prose prose-sm max-w-none dark:prose-invert">
-                    <p className={cn(
-                      "whitespace-pre-line font-bold",
-                      uvprsResult?.verdict === "Avoid" || uvprsResult?.verdict === "Caution" 
-                        ? "text-destructive" :
-                      uvprsResult?.verdict === "Buy" ? "text-success" :
-                      "text-foreground"
-                    )}>{riskAssessment.expertOpinion}</p>
+                    <p className="whitespace-pre-line text-foreground">{riskAssessment.expertOpinion}</p>
                   </div>
                   
                 </CardContent>
