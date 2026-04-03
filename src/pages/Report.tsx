@@ -1987,13 +1987,11 @@ export default function ReportPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {/* Year 0 row - purchase starting point */}
+                        {/* Year 0 row - FMV starting point */}
                         {(() => {
-                          const askPrice = condition?.askingPrice || 0;
-                          const loanAmt = financing?.loanAmount || askPrice;
-                          const privateVal = Math.round(financing?.negotiatedPrice ?? askPrice);
-                          const tradeInVal = Math.round(priceAssessment.fairMarketTradeIn || privateVal * 0.85);
-                          const yr0Equity = privateVal - Math.round(loanAmt);
+                          const loanAmt = financing?.loanAmount || 0;
+                          const tradeInVal = Math.round(priceAssessment.fairMarketTradeIn || startingFMV * 0.85);
+                          const yr0Equity = startingFMV - Math.round(loanAmt);
                           return (
                             <TableRow>
                               <TableCell className="font-medium text-xs whitespace-nowrap px-1.5 md:px-4">Yr 0</TableCell>
@@ -2001,9 +1999,9 @@ export default function ReportPage() {
                               <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 text-danger">$0</TableCell>
                               <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 text-danger">$0</TableCell>
                               <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold text-destructive">$0</TableCell>
-                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${privateVal.toLocaleString()}</TableCell>
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${startingFMV.toLocaleString()}</TableCell>
                               <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${tradeInVal.toLocaleString()}</TableCell>
-                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold text-foreground">${privateVal.toLocaleString()}</TableCell>
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold text-foreground">${startingFMV.toLocaleString()}</TableCell>
                               {!financingSkipped && (
                                 <TableCell className={cn("text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold", yr0Equity >= 0 ? "text-success" : "text-destructive")}>
                                   {yr0Equity < 0 ? "-" : ""}${Math.abs(yr0Equity).toLocaleString()}
@@ -2012,55 +2010,36 @@ export default function ReportPage() {
                             </TableRow>
                           );
                         })()}
-                        {(() => {
-                          // Compute clamped private values so they never exceed the prior year
-                          const yr0Value = Math.round(financing?.negotiatedPrice ?? condition?.askingPrice ?? 0);
-                          const clampedValues: number[] = [];
-                          for (let i = 0; i < depreciationTable.length; i++) {
-                            const ceiling = i === 0 ? yr0Value : clampedValues[i - 1];
-                            clampedValues.push(Math.min(ceiling, Math.round(depreciationTable[i].privateValue)));
-                          }
-                          return depreciationTable.map((row, idx) => {
-                          const repair = Math.round(row.repairCosts);
-                          const maint = Math.round(row.maintenanceCosts || 0);
-                          const clampedPrivate = clampedValues[idx];
-                          const prevValue = idx === 0 ? yr0Value : clampedValues[idx - 1];
-                          const depreciation = Math.round(prevValue - clampedPrivate);
-                          const cumulativeRepairs = depreciationTable.slice(0, idx + 1).reduce((sum, r) => sum + Math.round(r.repairCosts), 0);
-                          const cumulativeMaint = depreciationTable.slice(0, idx + 1).reduce((sum, r) => sum + Math.round(r.maintenanceCosts || 0), 0);
-                          const estValue = excludeRepairs
-                            ? clampedPrivate
-                            : clampedPrivate - cumulativeRepairs - cumulativeMaint;
+                        {depreciationTable.map((row) => {
+                          const estValue = row.marketValue;
+                          const isZeroValue = estValue === 0;
                           return (
                             <TableRow key={row.year}>
                               <TableCell className="font-medium text-xs whitespace-nowrap px-1.5 md:px-4">Yr {row.year}</TableCell>
-                              {!financingSkipped && <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${Math.round(row.loanBalance).toLocaleString()}</TableCell>}
+                              {!financingSkipped && <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${row.loanBalance.toLocaleString()}</TableCell>}
                               <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 text-danger">
-                                ${repair.toLocaleString()}
+                                ${row.repairCosts.toLocaleString()}
                               </TableCell>
                               <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 text-danger">
-                                ${maint.toLocaleString()}
+                                ${row.maintenanceCosts.toLocaleString()}
                               </TableCell>
                               <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold text-destructive">
-                                -${depreciation.toLocaleString()}
+                                -${row.depreciation.toLocaleString()}
                               </TableCell>
-                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${clampedPrivate.toLocaleString()}</TableCell>
-                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${Math.round(row.tradeInValue).toLocaleString()}</TableCell>
-                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold text-foreground">
-                                {estValue < 0 ? "-" : ""}${Math.abs(estValue).toLocaleString()}
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${row.marketValue.toLocaleString()}</TableCell>
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${row.tradeInValue.toLocaleString()}</TableCell>
+                              <TableCell className={cn("text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold", isZeroValue ? "text-destructive" : "text-foreground")}>
+                                ${estValue.toLocaleString()}
+                                {isZeroValue && <span className="text-[10px] block text-muted-foreground">Repair costs may exceed value</span>}
                               </TableCell>
-                              {!financingSkipped && (() => {
-                                const equity = estValue - Math.round(row.loanBalance);
-                                return (
-                                  <TableCell className={cn("text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold", equity >= 0 ? "text-success" : "text-destructive")}>
-                                    {equity < 0 ? "-" : ""}${Math.abs(equity).toLocaleString()}
-                                  </TableCell>
-                                );
-                              })()}
+                              {!financingSkipped && (
+                                <TableCell className={cn("text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold", row.equity >= 0 ? "text-success" : "text-destructive")}>
+                                  {row.equity < 0 ? "-" : ""}${Math.abs(row.equity).toLocaleString()}
+                                </TableCell>
+                              )}
                             </TableRow>
                           );
-                        });
-                        })()}
+                        })}
                       </TableBody>
                     </Table>
                     </div>
