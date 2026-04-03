@@ -2441,11 +2441,20 @@ export default function ReportPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="mb-4 text-center">
-                    <div className="text-4xl font-bold">{historyAnalysis.healthScore}</div>
-                    <p className="text-sm text-muted-foreground">out of 100</p>
-                  </div>
-                  <Progress value={historyAnalysis.healthScore} className="h-3" />
+                  {(() => {
+                    const score = historyAnalysis.healthScore;
+                    const scoreColor = score <= 33 ? 'text-red-500' : score <= 66 ? 'text-orange-500' : 'text-emerald-500';
+                    const barColor = score <= 33 ? '[&>div]:bg-red-500' : score <= 66 ? '[&>div]:bg-orange-500' : '[&>div]:bg-emerald-500';
+                    return (
+                      <>
+                        <div className="mb-4 text-center">
+                          <div className={`text-4xl font-bold ${scoreColor}`}>{score}</div>
+                          <p className="text-sm text-muted-foreground">out of 100</p>
+                        </div>
+                        <Progress value={score} className={`h-3 ${barColor}`} />
+                      </>
+                    );
+                  })()}
 
                   <div className="mt-6 space-y-4">
                     <div>

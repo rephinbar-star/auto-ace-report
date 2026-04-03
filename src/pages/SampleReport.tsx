@@ -844,22 +844,31 @@ export default function SampleReportPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <motion.div 
-                      className="mb-4 text-center"
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ type: "spring", stiffness: 200, delay: 0.3 }}
-                    >
-                      <div className="text-4xl font-bold">{historyAnalysis.healthScore}</div>
-                      <p className="text-sm text-muted-foreground">out of 100</p>
-                    </motion.div>
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: "100%" }}
-                      transition={{ delay: 0.5, duration: 0.8 }}
-                    >
-                      <Progress value={historyAnalysis.healthScore} className="h-3" />
-                    </motion.div>
+                    {(() => {
+                      const score = historyAnalysis.healthScore;
+                      const scoreColor = score <= 33 ? 'text-red-500' : score <= 66 ? 'text-orange-500' : 'text-emerald-500';
+                      const barColor = score <= 33 ? '[&>div]:bg-red-500' : score <= 66 ? '[&>div]:bg-orange-500' : '[&>div]:bg-emerald-500';
+                      return (
+                        <>
+                          <motion.div 
+                            className="mb-4 text-center"
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ type: "spring", stiffness: 200, delay: 0.3 }}
+                          >
+                            <div className={`text-4xl font-bold ${scoreColor}`}>{score}</div>
+                            <p className="text-sm text-muted-foreground">out of 100</p>
+                          </motion.div>
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: "100%" }}
+                            transition={{ delay: 0.5, duration: 0.8 }}
+                          >
+                            <Progress value={score} className={`h-3 ${barColor}`} />
+                          </motion.div>
+                        </>
+                      );
+                    })()}
 
                     <div className="mt-6 space-y-4">
                       <div>
