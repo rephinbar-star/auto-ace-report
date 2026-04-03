@@ -207,12 +207,13 @@ export function estimate5YearMaintenance(make: string, currentAge: number): numb
 /**
  * Extract 5-year repair costs from depreciation table
  */
-export function get5YearRepairCosts(depreciationTable: unknown): { repairs: number; maintenance: number } {
+export function get5YearRepairCosts(depreciationTable: unknown): { repairs: number; worstCaseRepairs: number; maintenance: number } {
   if (!depreciationTable || !Array.isArray(depreciationTable)) {
-    return { repairs: 0, maintenance: 0 };
+    return { repairs: 0, worstCaseRepairs: 0, maintenance: 0 };
   }
 
   let totalRepairs = 0;
+  let totalWorstCase = 0;
   let totalMaintenance = 0;
   for (let year = 1; year <= 5; year++) {
     const row = depreciationTable.find((r) => {
@@ -222,11 +223,12 @@ export function get5YearRepairCosts(depreciationTable: unknown): { repairs: numb
     if (row) {
       const typed = row as unknown as DepreciationRow;
       totalRepairs += typed.repairCosts || 0;
+      totalWorstCase += typed.worstCaseRepairCosts || typed.repairCosts || 0;
       totalMaintenance += typed.maintenanceCosts || 0;
     }
   }
 
-  return { repairs: totalRepairs, maintenance: totalMaintenance };
+  return { repairs: totalRepairs, worstCaseRepairs: totalWorstCase, maintenance: totalMaintenance };
 }
 
 /**
