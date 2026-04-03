@@ -175,6 +175,7 @@ interface Analysis {
     percentDifference: number;
   };
   depreciationTable: DepreciationYear[];
+  depreciationInputs?: DepreciationInputs;
   riskAssessment: {
     level: "low" | "medium" | "high";
     depreciationRisk: string;
