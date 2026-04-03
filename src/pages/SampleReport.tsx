@@ -706,7 +706,7 @@ export default function SampleReportPage() {
                         <Legend />
                         <Line 
                           type="monotone" 
-                          dataKey="Private Value" 
+                          dataKey="Market Value" 
                           stroke="hsl(142, 76%, 36%)" 
                           strokeWidth={2}
                         />
@@ -723,15 +723,14 @@ export default function SampleReportPage() {
                           strokeWidth={2}
                           strokeDasharray="5 5"
                         />
-                        {includeRepairs && (
-                          <Line 
-                            type="monotone" 
-                            dataKey="Cumulative Repairs" 
-                            stroke="hsl(0, 84%, 60%)" 
-                            strokeWidth={2}
-                            strokeDasharray="3 3"
-                          />
-                        )}
+                        <Line 
+                          type="monotone" 
+                          dataKey="Asking Price" 
+                          stroke="hsl(0, 84%, 60%)" 
+                          strokeWidth={2}
+                          strokeDasharray="6 3"
+                          dot={false}
+                        />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -742,37 +741,37 @@ export default function SampleReportPage() {
                       <TableHeader>
                          <TableRow>
                           <TableHead>Year</TableHead>
-                          <TableHead className="text-right">Private Value</TableHead>
+                          <TableHead className="text-right">Market Value</TableHead>
                           <TableHead className="text-right">Trade-In</TableHead>
                           <TableHead className="text-right">Loan Balance</TableHead>
-                          {includeRepairs && <TableHead className="text-right">Repairs</TableHead>}
-                          {includeRepairs && <TableHead className="text-right">Maintenance</TableHead>}
-                          <TableHead className="text-right">Net Equity {includeRepairs ? "(w/ costs)" : "(w/o costs)"}</TableHead>
+                          <TableHead className="text-right">Repairs</TableHead>
+                          <TableHead className="text-right">Maint.</TableHead>
+                          <TableHead className="text-right">Depreciation</TableHead>
+                          <TableHead className="text-right">Equity</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {depreciationTable.map((row) => (
+                        {computedDepTable.map((row) => (
                           <TableRow key={row.year}>
                             <TableCell className="font-medium">Year {row.year}</TableCell>
-                            <TableCell className="text-right">${row.privateValue.toLocaleString()}</TableCell>
+                            <TableCell className="text-right">${row.marketValue.toLocaleString()}</TableCell>
                             <TableCell className="text-right">${row.tradeInValue.toLocaleString()}</TableCell>
                             <TableCell className="text-right">${row.loanBalance.toLocaleString()}</TableCell>
-                            {includeRepairs && (
-                              <TableCell className="text-right text-destructive">
-                                ${row.repairCosts.toLocaleString()}
-                              </TableCell>
-                            )}
-                            {includeRepairs && (
-                              <TableCell className="text-right text-muted-foreground">
-                                ${(row.maintenanceCosts || 0).toLocaleString()}
-                              </TableCell>
-                            )}
+                            <TableCell className="text-right text-destructive">
+                              ${row.repairCosts.toLocaleString()}
+                            </TableCell>
+                            <TableCell className="text-right text-muted-foreground">
+                              ${row.maintenanceCosts.toLocaleString()}
+                            </TableCell>
+                            <TableCell className="text-right font-bold text-destructive">
+                              -${row.depreciation.toLocaleString()}
+                            </TableCell>
                             <TableCell className={cn(
                               "text-right font-semibold",
-                              calculateNetEquity(row) >= 0 ? "text-green-600" : "text-red-600"
+                              row.equity >= 0 ? "text-green-600" : "text-red-600"
                             )}>
-                              {calculateNetEquity(row) >= 0 ? "+" : ""}
-                              ${calculateNetEquity(row).toLocaleString()}
+                              {row.equity >= 0 ? "+" : ""}
+                              ${row.equity.toLocaleString()}
                             </TableCell>
                           </TableRow>
                         ))}
