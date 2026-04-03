@@ -41,6 +41,7 @@ interface DepreciationRow {
   tradeInValue: number;
   loanBalance: number;
   repairCosts: number;
+  worstCaseRepairCosts?: number;
   maintenanceCosts?: number;
 }
 
