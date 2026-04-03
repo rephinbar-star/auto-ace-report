@@ -1,151 +1,146 @@
 
 
-# Purchase Risk Score Overhaul — Updated Plan
+# Prompt Engineering & Scoring Overhaul — Revised Plan (v3)
 
 ## Summary
 
-Four structural changes: (1) add an AI Findings dynamic factor at 20% weight with a detailed 3-component scoring algorithm, (2) rebalance static weights to 80%, (3) implement tiered hard floor overrides, and (4) derive Buy/Caution/Avoid from the risk score.
+14 changes across 6 files. The previous 11-step plan is retained in full. Three new changes are added: (12) probabilistic repair fields on `knownFailurePatterns`, (13) expected-value repair cost computation in TCO and depreciation table, and (14) expected vs worst-case repair range in the UI with methodology tooltip.
 
 ---
 
-## Change 1: AI Findings Dynamic Layer (20% weight)
+## Existing Changes (§1–§11) — Unchanged
 
-### Backend — `supabase/functions/analyze-vehicle/index.ts`
+All 11 previously approved changes remain exactly as specified:
 
-Add `aiFindings` to the AI tool call schema so the AI outputs structured data for all three components:
+- **§1**: REPLACE role definition with EV/Luxury/High-Mileage specialization
+- **§2**: ADD odometer integrity check to system prompt
+- **§3**: ADD open safety recalls override logic to system prompt
+- **§4**: ADD service gap severity tiers to system prompt
+- **§5**: REPLACE final verdict logic with conditional mapping
+- **§6**: ADD expert opinion 4-paragraph structure
+- **§7**: EXTEND AI findings fault classifications (odometer, recalls, battery, service gap)
+- **§8**: EXTEND tool schema with odometerIntegrity, serviceGap, batteryHealth on historyAnalysis
+- **§9**: EXTEND tool schema with floorOverrides on aiFindings
+- **§10**: ADD server-side applyFloorOverrides() function
+- **§11**: Frontend verdict reconciliation (Conditional Buy / Caution / Avoid)
 
-```json
-"aiFindings": {
-  "activeServiceFaults": [
-    {
-      "system": "string",
-      "severityClass": 1-5,
-      "occurrences": number,
-      "estimatedCostPerIncident": number | null,
-      "isAnomalous": boolean,
-      "withinTwoYearsOfPrior": boolean,
-      "description": "string"
-    }
-  ],
-  "knownFailurePatterns": [
-    {
-      "issue": "string",
-      "probabilityTier": "high" | "medium" | "low" | "remote",
-      "costTier": "critical" | "major" | "moderate" | "minor",
-      "alreadyPresent": boolean,
-      "description": "string"
-    }
-  ],
-  "chassisSignal": {
-    "level": 1-5,
-    "isProblemGeneration": boolean,
-    "isWorstGeneration": boolean,
-    "withinFailureWindow": boolean,
-    "description": "string"
-  }
-}
+---
+
+## New Change §12: Probabilistic Fields on Known Failure Patterns
+
+### AI Prompt (`supabase/functions/analyze-vehicle/index.ts`)
+
+Add to the `knownFailurePatterns` tool schema two new required fields:
+
+```
+probabilityPercent: number  // Explicit percentage mapping the tier:
+                            // high=70, medium=40, low=15, remote=5
+yearsToFailureWindow: number // Years from now within which this failure
+                             // is most likely to occur (drives distribution)
 ```
 
-Add prompt instructions telling the AI to classify faults using the severity class definitions, probability/cost tier matrices, and chassis signal levels defined below.
+Add prompt instruction telling the AI to populate these from its existing knowledge — the tier already implies the percentage, this just makes it explicit and structured.
 
-### Frontend — `src/lib/uvprs-scoring.ts`
+### Types (`src/types/vehicle.ts`)
 
-Add `aiFindings` to `UVPRSInput`. Add three new scoring functions and a combiner:
+Add to `KnownFailurePattern` interface:
+- `probabilityPercent: number`
+- `yearsToFailureWindow: number`
 
-#### Component A: `scoreActiveServiceFaults()` (50% of AI Findings)
+---
 
-1. Each fault starts at base points by severity class: Class 1=5, Class 2=15, Class 3=28, Class 4=50, Class 5=65
-2. Recurrence multiplier: 2 occurrences same system ×1.4, 3+ ×1.8; within 24 months of prior same-system ×1.2 additional
-3. Cost-severity modifier: <$500 ×0.7, $500-1500 ×1.0, $1500-3000 ×1.3, $3000-6000 ×1.6, >$6000 ×2.0
-4. Anomaly modifier: if `isAnomalous` ×1.3
-5. Sum all adjusted scores, normalize via lookup table: 0→0, 1-15→10, 16-30→22, 31-50→38, 51-70→52, 71-90→65, 91-120→78, 121-160→88, 161+→95
-6. No-records penalty: if no service records at all → automatic 55; if partial gaps → +10 (capped at 90)
+## New Change §13: Expected-Value Repair Cost Model
 
-#### Component B: `scoreKnownFailurePatterns()` (35% of AI Findings)
+### Depreciation Table Schema
 
-1. Score each pattern using the probability×cost matrix:
-   - H/C=40, H/Ma=30, H/Mo=20, H/Mi=10
-   - M/C=28, M/Ma=20, M/Mo=13, M/Mi=6
-   - L/C=18, L/Ma=12, L/Mo=7, L/Mi=3
-   - R/C=10, R/Ma=6, R/Mo=3, R/Mi=1
-2. If `alreadyPresent` (also found in Component A), ×1.5
-3. Sum and normalize: 0→0, 1-20→12, 21-40→25, 41-65→40, 66-90→55, 91-120→68, 121-160→80, 161-200→90, 201+→95
+Add a new field to each depreciation row in the tool call schema and in `DepreciationYear` type:
 
-#### Component C: `scoreChassisSignal()` (15% of AI Findings)
-
-1. Base score by level: 1=5, 2=18, 3=35, 4=55, 5=80
-2. Problem generation ×1.25; worst generation ×1.5
-3. Within failure mileage window ×1.2
-4. Cap at 95
-
-#### Combiner: `scoreAiFindings()`
 ```
-AI Findings Score = (A × 0.50) + (B × 0.35) + (C × 0.15)
+worstCaseRepairCosts: number  // 100% × costHigh for all items in that year
 ```
 
----
+The existing `repairCosts` field changes meaning: it now represents the **expected value** (probability-weighted) repair cost.
 
-## Change 2: Rebalanced Static Weights
+### AI Prompt — New Instruction
 
-Update `WEIGHTS` in `uvprs-scoring.ts`:
+Add to system prompt:
 
-| Factor | New Weight |
-|--------|-----------|
-| AI Findings | 20% |
-| Title Status | 16% |
-| Accident History | 14% |
-| Model-Year Reliability | 14% |
-| Mileage for Age | 11% |
-| Service History | 9% |
-| Price vs Market | 7% |
-| Open Recalls | 5% |
-| Owner Count | 2% |
-| Seller Type | 2% |
+```
+REPAIR COST MODEL — EXPECTED VALUE:
+The depreciationTable repairCosts field must use probability-weighted expected 
+values, NOT 100% of estimated costs.
 
-Rename "Brand Reliability" label to "Model-Year Reliability".
+For each known failure pattern assigned to a given year:
+  repairCosts contribution = probabilityPercent × costMidpoint
+  where costMidpoint = (costLow + costHigh) / 2
 
----
+For each active service fault (already present / recurring):
+  repairCosts contribution = 100% × costMidpoint (these are certain/near-certain)
 
-## Change 3: Hard Floor Overrides
+The worstCaseRepairCosts field = sum of 100% × costHigh for ALL items in that year.
 
-Replace current post-calculation overrides with tiered floors (highest applicable wins):
+IMPORTANT EXCEPTION: maintenanceCosts remain at 100%. Routine scheduled 
+maintenance (oil changes, tire rotations, brake fluid, timing belt/chain 
+service, filters, inspections) is certain — not probabilistic. Only 
+unscheduled repairs and known failure patterns use the expected-value model.
 
-- **Floor 65**: salvage/flood/rebuilt title, confirmed frame damage, confirmed odometer rollback
-- **Floor 45**: 3+ owners in <8 years, chronic recurring fault with >$2k/incident estimate, asking price >25% above fair market
-- **Floor 35**: AI identifies chassis-wide systemic defect (level 4+), vehicle listed 90+ days significantly below market
+Distribution: Use yearsToFailureWindow to place each failure pattern's 
+cost contribution in the appropriate year(s) of the 5-year table.
+```
 
----
+### TCO Calculation (`src/lib/tco-calculations.ts`)
 
-## Change 4: Risk-Score-Derived Recommendation
+- Update `DepreciationRow` interface to include `worstCaseRepairCosts?: number`
+- Update `TCOResult` to include `worstCaseRepairCost5Year: number`
+- In `get5YearRepairCosts`, also sum `worstCaseRepairCosts`
+- In `calculateTCO`, compute and return both expected and worst-case 5-year repair totals
+- `totalTCO` continues to use expected (probability-weighted) repair costs
+- Add `worstCaseRepairCost5Year` to the result and `breakdown`
 
-Update `getRiskLevel()` to return 4 tiers with verdict:
+### Types (`src/types/vehicle.ts`)
 
-| Score | Level | Label | Verdict |
-|-------|-------|-------|---------|
-| 0-30 | low | Low Risk | Buy |
-| 31-50 | moderate | Moderate Risk | Conditional Buy |
-| 51-70 | elevated | Elevated Risk | Caution |
-| 71-100 | high | High Risk | Avoid |
-
-Add `verdict` to `UVPRSResult`. Override the AI's verdict label in `Report.tsx` with the score-derived one, keeping the AI's `expertOpinion` and `justification` text. Update all consumers.
-
-### Top Findings Display
-
-The AI Findings factor should surface the top 3 highest-scoring inputs across all three components as human-readable explanations alongside the score in `RiskScoreBreakdown.tsx`.
+Add `worstCaseRepairCosts: number` to `DepreciationYear`.
 
 ---
 
-## Files Modified
+## New Change §14: Expected vs Worst-Case Repair Range in UI
+
+### Report UI (`src/components/report/FuelEconomyCard.tsx`)
+
+Where repairs are currently shown as a single number (e.g., "Est. Repairs (5 yr): $1,550"):
+
+- Display as a range: "$1,550 – $4,200" (expected – worst case)
+- Add an info tooltip icon that shows: "Expected repair costs are probability-weighted based on documented failure rates for this make/model/year. Worst case assumes all flagged repairs occur."
+
+### Depreciation Table (`src/pages/SampleReport.tsx` and `Report.tsx`)
+
+The Repairs column in the depreciation table continues to show the expected value. Add a subtle tooltip on the column header explaining: "Probability-weighted expected repair costs. Hover rows for worst-case estimates."
+
+On hover of each repair cell, show the worst-case value.
+
+### Comparison Views (`ComparisonSummary.tsx`, `FinancialOutlookCard.tsx`)
+
+Show expected repair costs as primary, with worst-case in parentheses or tooltip.
+
+### PDF Generation (`src/lib/generatePDF.ts`, `src/lib/generateComparisonPDF.ts`)
+
+Show "5-Year Repairs: $X (worst case: $Y)" format.
+
+---
+
+## Files Modified (Complete)
 
 | File | Changes |
 |------|---------|
-| `supabase/functions/analyze-vehicle/index.ts` | Add `aiFindings` to tool schema + prompt instructions for classification |
-| `src/lib/uvprs-scoring.ts` | New AI Findings scorer (3 components), new weights, new floors, 4-tier risk levels |
-| `src/types/vehicle.ts` | Add `AiFindings` interface |
-| `src/pages/Report.tsx` | Pass aiFindings to UVPRS, use score-derived verdict |
-| `src/pages/SampleReport.tsx` | Update sample data + verdict display |
-| `src/components/report/RiskScoreBreakdown.tsx` | Add aiFindings tooltip, support 4 tiers, show top findings |
-| `src/components/compare/CompareVehicleCard.tsx` | Pass aiFindings, update risk level handling |
-| `src/lib/generatePDF.ts` | Support 4-tier verdict in PDF |
-| `src/lib/generateComparisonPDF.ts` | Pass aiFindings, update risk tiers |
+| `supabase/functions/analyze-vehicle/index.ts` | §1-§10 (prompt + schema + floor function) + §12 (probabilityPercent/yearsToFailureWindow on knownFailurePatterns) + §13 (expected-value repair cost instruction + worstCaseRepairCosts in depreciationTable schema) |
+| `src/types/vehicle.ts` | §11 types + §12 (probabilityPercent, yearsToFailureWindow on KnownFailurePattern) + §13 (worstCaseRepairCosts on DepreciationYear) |
+| `src/lib/uvprs-scoring.ts` | §11a-b (Conditional Buy, floor override consumption) |
+| `src/lib/tco-calculations.ts` | §13 (worstCaseRepairCosts in DepreciationRow, TCOResult, calculateTCO) |
+| `src/pages/Report.tsx` | §11c (verdict reconciliation) + §14 (repair range tooltip on depreciation table) |
+| `src/components/report/FuelEconomyCard.tsx` | §14 (expected vs worst-case range + methodology tooltip) |
+| `src/components/compare/ComparisonSummary.tsx` | §14 (worst-case in parentheses/tooltip) |
+| `src/components/compare/FinancialOutlookCard.tsx` | §14 (worst-case in parentheses/tooltip) |
+| `src/lib/generatePDF.ts` | §14 (expected + worst-case format) |
+| `src/lib/generateComparisonPDF.ts` | §14 (expected + worst-case format) |
+| `src/pages/SampleReport.tsx` | §13 (add worstCaseRepairCosts to sample data) + §14 (tooltip on repairs column) |
 
