@@ -199,6 +199,7 @@ export function convertLegacyTable(
     rows.push({
       year: legacy.year,
       marketValue,
+      privateValue: marketValue,
       tradeInValue: tradeIn,
       depreciation,
       repairCosts: Math.round(legacy.repairCosts),
@@ -206,6 +207,8 @@ export function convertLegacyTable(
       maintenanceCosts: Math.round(legacy.maintenanceCosts ?? 0),
       loanBalance: balance,
       equity,
+      netEquityPrivate: equity,
+      netEquityTradeIn: tradeIn - balance,
     });
 
     prevValue = marketValue;
