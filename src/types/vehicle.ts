@@ -85,10 +85,43 @@ export interface ChassisSignal {
   description: string;
 }
 
+export interface FloorOverrides {
+  triggered: boolean;
+  minimumScore: number | null;
+  triggeringConditions: string[];
+}
+
+export interface OdometerIntegrity {
+  status: "verified" | "discrepancy" | "rollback" | "unknown";
+  lastReportedMileage: number | null;
+  currentMileage: number;
+  gapMiles: number | null;
+  explanation: string;
+}
+
+export interface ServiceGapAnalysis {
+  largestGapMiles: number;
+  gapSeverity: "normal" | "minor" | "moderate" | "significant" | "severe";
+  lastServiceMileage: number | null;
+  lastServiceYear: number | null;
+  inferredOverdueItems: string[];
+}
+
+export interface BatteryHealth {
+  thermalManagement: "liquid" | "air" | "unknown";
+  estimatedSoHMin: number | null;
+  estimatedSoHMax: number | null;
+  estimatedRangeMin: number | null;
+  estimatedRangeMax: number | null;
+  diagnosticRequired: boolean;
+  diagnosticTool: string | null;
+}
+
 export interface AiFindings {
   activeServiceFaults: ActiveServiceFault[];
   knownFailurePatterns: KnownFailurePattern[];
   chassisSignal: ChassisSignal;
+  floorOverrides?: FloorOverrides;
 }
 
 export interface FinancingInfo {
