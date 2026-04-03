@@ -27,6 +27,7 @@ export interface DepreciationInputs {
 export interface ComputedDepreciationRow {
   year: number;
   marketValue: number;       // Deterministic market value at end of year
+  privateValue: number;      // Alias for marketValue (backward compat)
   tradeInValue: number;      // ~85% of marketValue
   depreciation: number;      // value(N-1) - value(N)
   repairCosts: number;       // Expected (probability-weighted)
@@ -34,6 +35,8 @@ export interface ComputedDepreciationRow {
   maintenanceCosts: number;
   loanBalance: number;
   equity: number;            // marketValue - loanBalance
+  netEquityPrivate: number;  // Alias for equity (backward compat)
+  netEquityTradeIn: number;  // tradeInValue - loanBalance
 }
 
 export interface DepreciationConfig {
