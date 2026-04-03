@@ -1998,6 +1998,9 @@ export default function ReportPage() {
                                   {yr0Equity < 0 ? "-" : ""}${Math.abs(yr0Equity).toLocaleString()}
                                 </TableCell>
                               )}
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold text-success">
+                                ${startingFMV.toLocaleString()}
+                              </TableCell>
                             </TableRow>
                           );
                         })()}
