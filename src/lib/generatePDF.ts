@@ -511,7 +511,7 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
     const breakdownItems: [string, number][] = [
       ["Purchase Price", tco.purchasePrice],
       [`5-Year ${tco.fuelCost5Year > 0 ? "Fuel" : "Energy"} Cost`, tco.fuelCost5Year],
-      ["5-Year Repairs", tco.repairCost5Year],
+      [`5-Year Repairs${tco.worstCaseRepairCost5Year > 0 && tco.worstCaseRepairCost5Year !== tco.repairCost5Year ? ` (worst case: ${fmt(tco.worstCaseRepairCost5Year)})` : ""}`, tco.repairCost5Year],
       ["5-Year Maintenance", tco.maintenanceCost5Year || 0],
     ];
     if (tco.mileageDepreciation && tco.mileageDepreciation > 0) {

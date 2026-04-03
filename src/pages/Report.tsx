@@ -2144,7 +2144,7 @@ export default function ReportPage() {
                   const concernPart = topConcerns.length > 0 ? topConcerns.join(" and ") : "";
                   const riskDetails = [chronicPart, accidentPart, concernPart].filter(Boolean);
 
-                  if (displayVerdict === "Buy") {
+                  if (displayVerdict === "Conditional Buy" && uvprsResult && uvprsResult.totalScore <= 30) {
                     const positives = [pricePart, titlePart, accidents === 0 ? "no reported accidents" : ""].filter(Boolean).join(", ");
                     return `${positives}. Low overall risk supports a confident purchase at the fair offer price.`;
                   }
