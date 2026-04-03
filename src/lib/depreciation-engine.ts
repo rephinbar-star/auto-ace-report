@@ -105,6 +105,7 @@ export function computeDepreciationTable(
     rows.push({
       year: yr + 1,
       marketValue,
+      privateValue: marketValue,
       tradeInValue: tradeIn,
       depreciation,
       repairCosts: Math.round(repairs.expected),
@@ -112,6 +113,8 @@ export function computeDepreciationTable(
       maintenanceCosts: Math.round(maint),
       loanBalance: balance,
       equity,
+      netEquityPrivate: equity,
+      netEquityTradeIn: tradeIn - balance,
     });
 
     prevValue = marketValue;
