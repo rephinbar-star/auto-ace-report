@@ -502,7 +502,7 @@ export function scoreSellerType(sellerType: string | null | undefined): { score:
 // ============================================================================
 
 export function getRiskLevel(score: number): { level: UVPRSResult["riskLevel"]; label: string; verdict: UVPRSResult["verdict"] } {
-  if (score <= 30) return { level: "low", label: "Low Risk", verdict: "Buy" };
+  if (score <= 30) return { level: "low", label: "Low Risk", verdict: "Conditional Buy" };
   if (score <= 50) return { level: "moderate", label: "Moderate Risk", verdict: "Conditional Buy" };
   if (score <= 70) return { level: "elevated", label: "Elevated Risk", verdict: "Caution" };
   return { level: "high", label: "High Risk", verdict: "Avoid" };
@@ -675,6 +675,11 @@ export function calculateUVPRS(input: UVPRSInput): UVPRSResult {
   }
 
   totalScore = Math.round(Math.min(100, Math.max(0, totalScore)));
+
+  // ── Apply AI-reported floor overrides (secondary check — primary is server-side) ──
+  if (input.aiFindings?.floorOverrides?.triggered && input.aiFindings.floorOverrides.minimumScore != null) {
+    totalScore = Math.max(totalScore, input.aiFindings.floorOverrides.minimumScore);
+  }
 
   // ── Hard floor overrides (tiered, highest applicable wins) ──
   

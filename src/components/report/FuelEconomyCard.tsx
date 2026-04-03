@@ -603,8 +603,27 @@ export function FuelEconomyCard({
               <span className="font-medium">${tco.fuelCost5Year.toLocaleString()}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Est. Repairs (5 yr)</span>
-              <span className="font-medium text-danger">${tco.repairCost5Year.toLocaleString()}</span>
+              <span className="text-sm text-muted-foreground flex items-center gap-1">
+                Est. Repairs (5 yr)
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p className="text-sm">
+                        Expected repair costs are probability-weighted based on documented failure rates for this make/model/year. Worst case assumes all flagged repairs occur.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </span>
+              <span className="font-medium text-danger">
+                ${tco.repairCost5Year.toLocaleString()}
+                {tco.worstCaseRepairCost5Year > 0 && tco.worstCaseRepairCost5Year !== tco.repairCost5Year && (
+                  <span className="text-xs text-muted-foreground ml-1">– ${tco.worstCaseRepairCost5Year.toLocaleString()}</span>
+                )}
+              </span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Est. Maintenance (5 yr)</span>

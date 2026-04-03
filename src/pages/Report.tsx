@@ -99,9 +99,24 @@ interface DepreciationYear {
   tradeInValue: number;
   loanBalance: number;
   repairCosts: number;
+  worstCaseRepairCosts?: number;
   maintenanceCosts?: number;
   netEquityPrivate: number;
   netEquityTradeIn: number;
+}
+
+/** Reconcile AI verdict with UVPRS score — always take the higher-risk signal */
+function getFinalVerdict(
+  aiVerdict: string | undefined,
+  uvprsScore: number | undefined,
+  floorTriggered: boolean
+): "Conditional Buy" | "Caution" | "Avoid" {
+  const riskLevels: Record<string, number> = { "Walk Away": 3, "Negotiate": 2, "Buy": 1 };
+  const aiLevel = riskLevels[aiVerdict || "Buy"] ?? 1;
+  const scoreLevel = uvprsScore == null ? 1 : uvprsScore > 70 ? 3 : uvprsScore > 50 ? 2 : 1;
+  const floorLevel = floorTriggered ? 2 : 1;
+  const finalLevel = Math.max(aiLevel, scoreLevel, floorLevel);
+  return finalLevel >= 3 ? "Avoid" : finalLevel >= 2 ? "Caution" : "Conditional Buy";
 }
 /** Synthesize AiFindings from legacy DB fields for reports saved before the aiFindings schema existed */
 function synthesizeAiFindingsFromReport(report: any): AiFindings {
@@ -132,6 +147,8 @@ function synthesizeAiFindingsFromReport(report: any): AiFindings {
       costTier: avgCost > 3000 ? "critical" : avgCost > 1500 ? "major" : "moderate",
       alreadyPresent: false,
       description: concern.concern || "",
+      probabilityPercent: avgCost > 2500 ? 70 : 40,
+      yearsToFailureWindow: 3,
     });
   }
   return {
@@ -2087,19 +2104,13 @@ export default function ReportPage() {
 
               {/* Final Verdict Card - Uses UVPRS-derived verdict */}
               {(() => {
-                // Derive verdict from UVPRS score (primary) or fallback
-                const scoreVerdict = uvprsResult?.verdict;
-                const aiVerdict = analysis.finalVerdict?.verdict;
-                
-                // Map score-derived verdict to display
-                const displayVerdict = scoreVerdict || aiVerdict || (() => {
-                  const effectiveRisk = uvprsResult?.riskLevel 
-                    ?? (riskAssessment.level === "medium" ? "moderate" : riskAssessment.level);
-                  if (effectiveRisk === "low") return "Buy" as const;
-                  if (effectiveRisk === "moderate") return "Conditional Buy" as const;
-                  if (effectiveRisk === "elevated") return "Caution" as const;
-                  return "Avoid" as const;
-                })();
+                // Reconcile AI verdict with UVPRS score — always take the higher-risk signal
+                const floorTriggered = !!(analysis.aiFindings?.floorOverrides as any)?.triggered;
+                const displayVerdict = getFinalVerdict(
+                  analysis.finalVerdict?.verdict,
+                  uvprsResult?.totalScore,
+                  floorTriggered
+                );
 
                 // Always generate justification from actual data — never trust AI-stored text
                 const justification = (() => {
@@ -2133,7 +2144,7 @@ export default function ReportPage() {
                   const concernPart = topConcerns.length > 0 ? topConcerns.join(" and ") : "";
                   const riskDetails = [chronicPart, accidentPart, concernPart].filter(Boolean);
 
-                  if (displayVerdict === "Buy") {
+                  if (displayVerdict === "Conditional Buy" && uvprsResult && uvprsResult.totalScore <= 30) {
                     const positives = [pricePart, titlePart, accidents === 0 ? "no reported accidents" : ""].filter(Boolean).join(", ");
                     return `${positives}. Low overall risk supports a confident purchase at the fair offer price.`;
                   }

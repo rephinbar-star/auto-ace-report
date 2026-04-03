@@ -73,6 +73,8 @@ export interface KnownFailurePattern {
   costTier: "critical" | "major" | "moderate" | "minor";
   alreadyPresent: boolean;
   description: string;
+  probabilityPercent: number;       // Explicit %: high=70, medium=40, low=15, remote=5
+  yearsToFailureWindow: number;     // Years from now within which failure is most likely
 }
 
 export interface ChassisSignal {
@@ -83,10 +85,43 @@ export interface ChassisSignal {
   description: string;
 }
 
+export interface FloorOverrides {
+  triggered: boolean;
+  minimumScore: number | null;
+  triggeringConditions: string[];
+}
+
+export interface OdometerIntegrity {
+  status: "verified" | "discrepancy" | "rollback" | "unknown";
+  lastReportedMileage: number | null;
+  currentMileage: number;
+  gapMiles: number | null;
+  explanation: string;
+}
+
+export interface ServiceGapAnalysis {
+  largestGapMiles: number;
+  gapSeverity: "normal" | "minor" | "moderate" | "significant" | "severe";
+  lastServiceMileage: number | null;
+  lastServiceYear: number | null;
+  inferredOverdueItems: string[];
+}
+
+export interface BatteryHealth {
+  thermalManagement: "liquid" | "air" | "unknown";
+  estimatedSoHMin: number | null;
+  estimatedSoHMax: number | null;
+  estimatedRangeMin: number | null;
+  estimatedRangeMax: number | null;
+  diagnosticRequired: boolean;
+  diagnosticTool: string | null;
+}
+
 export interface AiFindings {
   activeServiceFaults: ActiveServiceFault[];
   knownFailurePatterns: KnownFailurePattern[];
   chassisSignal: ChassisSignal;
+  floorOverrides?: FloorOverrides;
 }
 
 export interface FinancingInfo {
@@ -114,6 +149,7 @@ export interface DepreciationYear {
   tradeInValue: number;
   loanBalance: number;
   repairCosts: number;
+  worstCaseRepairCosts?: number;
   maintenanceCosts?: number;
   netEquityPrivate: number;
   netEquityTradeIn: number;

@@ -12,6 +12,7 @@ export interface TCOResult {
   purchasePrice: number;
   fuelCost5Year: number;
   repairCost5Year: number;
+  worstCaseRepairCost5Year: number;
   maintenanceCost5Year: number;
   mileageDepreciation?: number;
   totalTCO: number;
@@ -21,6 +22,7 @@ export interface TCOResult {
     purchase: number;
     fuel: number;
     repairs: number;
+    worstCaseRepairs: number;
     maintenance: number;
     mileageDepreciation?: number;
   };
@@ -75,6 +77,7 @@ export function calculateMileageDepreciationAdjustment(
 interface DepreciationRow {
   year: number;
   repairCosts: number;
+  worstCaseRepairCosts?: number;
   maintenanceCosts?: number;
 }
 
@@ -204,12 +207,13 @@ export function estimate5YearMaintenance(make: string, currentAge: number): numb
 /**
  * Extract 5-year repair costs from depreciation table
  */
-export function get5YearRepairCosts(depreciationTable: unknown): { repairs: number; maintenance: number } {
+export function get5YearRepairCosts(depreciationTable: unknown): { repairs: number; worstCaseRepairs: number; maintenance: number } {
   if (!depreciationTable || !Array.isArray(depreciationTable)) {
-    return { repairs: 0, maintenance: 0 };
+    return { repairs: 0, worstCaseRepairs: 0, maintenance: 0 };
   }
 
   let totalRepairs = 0;
+  let totalWorstCase = 0;
   let totalMaintenance = 0;
   for (let year = 1; year <= 5; year++) {
     const row = depreciationTable.find((r) => {
@@ -219,11 +223,12 @@ export function get5YearRepairCosts(depreciationTable: unknown): { repairs: numb
     if (row) {
       const typed = row as unknown as DepreciationRow;
       totalRepairs += typed.repairCosts || 0;
+      totalWorstCase += typed.worstCaseRepairCosts || typed.repairCosts || 0;
       totalMaintenance += typed.maintenanceCosts || 0;
     }
   }
 
-  return { repairs: totalRepairs, maintenance: totalMaintenance };
+  return { repairs: totalRepairs, worstCaseRepairs: totalWorstCase, maintenance: totalMaintenance };
 }
 
 /**
@@ -248,6 +253,7 @@ export function calculateTCO(
   // Extract base repair/maintenance costs from depreciation table, or estimate if missing
   const baseCosts = get5YearRepairCosts(depreciationTable);
   let baseRepairCost5Year = baseCosts.repairs;
+  let baseWorstCaseRepair5Year = baseCosts.worstCaseRepairs;
   let baseMaintenanceCost5Year = baseCosts.maintenance;
   
   // If no data in depreciation table, estimate maintenance based on make/age
@@ -255,11 +261,13 @@ export function calculateTCO(
     const currentYear = new Date().getFullYear();
     const vehicleAge = currentYear - vehicleInfo.year;
     baseMaintenanceCost5Year = estimate5YearMaintenance(vehicleInfo.make, vehicleAge);
+    baseWorstCaseRepair5Year = 0;
   }
 
   // Apply mileage multiplier to maintenance/repair costs
   const mileageMultiplier = getMileageMaintenanceMultiplier(annualMiles);
   const repairCost5Year = baseRepairCost5Year * mileageMultiplier;
+  const worstCaseRepairCost5Year = baseWorstCaseRepair5Year * mileageMultiplier;
   const maintenanceCost5Year = baseMaintenanceCost5Year * mileageMultiplier;
 
   // Calculate additional depreciation for excess mileage
@@ -276,6 +284,7 @@ export function calculateTCO(
     purchasePrice: askingPrice,
     fuelCost5Year: Math.round(fuelCost5Year),
     repairCost5Year: Math.round(repairCost5Year),
+    worstCaseRepairCost5Year: Math.round(worstCaseRepairCost5Year),
     maintenanceCost5Year: Math.round(maintenanceCost5Year),
     totalTCO: Math.round(totalTCO),
     annualFuelCost: Math.round(annualFuelCost),
@@ -285,6 +294,7 @@ export function calculateTCO(
       purchase: askingPrice,
       fuel: Math.round(fuelCost5Year),
       repairs: Math.round(repairCost5Year),
+      worstCaseRepairs: Math.round(worstCaseRepairCost5Year),
       maintenance: Math.round(maintenanceCost5Year),
       mileageDepreciation: Math.round(mileageDepreciation),
     },
