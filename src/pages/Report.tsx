@@ -906,31 +906,31 @@ export default function ReportPage() {
   }
 
   const { vehicle, condition, financing } = vehicleData;
-  const { priceAssessment, depreciationTable: rawDepreciationTable, riskAssessment, historyAnalysis } = analysis;
+  const { priceAssessment, depreciationTable: rawDepreciationTable, depreciationInputs, riskAssessment, historyAnalysis } = analysis;
 
-  // Recompute loan balances using proper amortization math instead of AI-generated values
-  const depreciationTable = (() => {
-    const principal = financing?.loanAmount;
-    const apr = financing?.apr;
-    const termMonths = financing?.loanTerm;
-    if (!principal || !apr || !termMonths || financing?.skipped) return rawDepreciationTable;
-
-    const r = apr / 12 / 100;
-    const n = termMonths;
-    const pmt = r > 0
-      ? principal * r / (1 - Math.pow(1 + r, -n))
-      : principal / n;
-
-    return rawDepreciationTable.map((row) => {
-      const k = Math.min(row.year * 12, n);
-      let balance: number;
-      if (r > 0) {
-        balance = principal * Math.pow(1 + r, k) - pmt * ((Math.pow(1 + r, k) - 1) / r);
-      } else {
-        balance = principal - pmt * k;
-      }
-      return { ...row, loanBalance: Math.max(0, Math.round(balance)) };
-    });
+  // Deterministic depreciation engine: prefer AI rate inputs, fall back to legacy table
+  const startingFMV = priceAssessment.fairMarketPrivate;
+  const computedDepTable: ComputedDepreciationRow[] = (() => {
+    if (depreciationInputs?.annualDepreciationRates?.length) {
+      return computeDepreciationTable(depreciationInputs, {
+        startingFMV,
+        annualMiles: 12000,
+        maintenanceCostsByYear: depreciationInputs.maintenanceCostsByYear,
+        loanAmount: financing?.loanAmount,
+        loanAPR: financing?.apr,
+        loanTermMonths: financing?.loanTerm,
+        financingSkipped: financing?.skipped,
+      });
+    }
+    // Legacy fallback: clamp AI values deterministically
+    return convertLegacyTable(
+      rawDepreciationTable,
+      startingFMV,
+      financing?.loanAmount,
+      financing?.apr,
+      financing?.loanTerm,
+      financing?.skipped
+    );
   })();
 
   const handleDownloadPDF = async () => {
