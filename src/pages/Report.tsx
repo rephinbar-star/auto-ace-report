@@ -2028,7 +2028,7 @@ export default function ReportPage() {
                               <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold text-destructive">
                                 -${depreciation.toLocaleString()}
                               </TableCell>
-                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${Math.round(row.privateValue).toLocaleString()}</TableCell>
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${clampedPrivate.toLocaleString()}</TableCell>
                               <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${Math.round(row.tradeInValue).toLocaleString()}</TableCell>
                               <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold text-foreground">
                                 {estValue < 0 ? "-" : ""}${Math.abs(estValue).toLocaleString()}
@@ -2043,8 +2043,8 @@ export default function ReportPage() {
                               })()}
                             </TableRow>
                           );
-                        })}
-                      </TableBody>
+                        });
+                        })()}
                     </Table>
                     </div>
 
