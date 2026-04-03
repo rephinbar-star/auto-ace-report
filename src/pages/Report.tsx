@@ -690,8 +690,8 @@ export default function ReportPage() {
         : rawSeller === "private" ? "private" as const
         : rawSeller === "franchise" ? "franchise" as const
         : rawSeller === "independent" ? "independent" as const
-        : rawSeller === "dealer" ? "independent" as const
-        : rawSeller ? "independent" as const
+        : rawSeller === "dealer" ? "dealer" as const
+        : rawSeller ? "dealer" as const
         : null;
 
       console.log("[UVPRS-DEBUG] aiFindings input:", JSON.stringify(analysis.aiFindings, null, 2));
