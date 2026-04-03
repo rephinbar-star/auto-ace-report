@@ -212,6 +212,7 @@ export default function ReportPage() {
   const [vehicleData, setVehicleData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [dealerAnalysis, setDealerAnalysis] = useState<DealerAnalysisData | null>(null);
+  const detectedSellerTypeRef = useRef<string | null>(null);
   const [isSavedReport, setIsSavedReport] = useState(false);
   const [mpgData, setMpgData] = useState<{
     mpgCity: number | null;
