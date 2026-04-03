@@ -2177,7 +2177,7 @@ export default function ReportPage() {
                         </div>
                         <div className="shrink-0 text-center sm:border-l sm:pl-6">
                           <p className="mb-1 text-sm font-semibold">Fair Offer Price</p>
-                          <p className="text-3xl font-bold">${riskAssessment.fairOfferPrice.toLocaleString()}</p>
+                          <p className="text-3xl font-bold">{displayVerdict === "Avoid" ? "N/A" : `$${riskAssessment.fairOfferPrice.toLocaleString()}`}</p>
                         </div>
                       </div>
                     </CardContent>
