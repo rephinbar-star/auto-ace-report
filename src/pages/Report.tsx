@@ -280,7 +280,7 @@ export default function ReportPage() {
         mileage: condition.mileage,
         asking_price: condition.askingPrice,
         condition: condition.condition,
-        seller_type: condition.sellerType,
+        seller_type: detectedSellerTypeRef.current || condition.sellerType,
         zip_code: condition.zipCode || null,
         financing_type: financing.type,
         loan_amount: financing.loanAmount || null,
