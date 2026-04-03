@@ -212,6 +212,7 @@ export default function ReportPage() {
   const [vehicleData, setVehicleData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [dealerAnalysis, setDealerAnalysis] = useState<DealerAnalysisData | null>(null);
+  const detectedSellerTypeRef = useRef<string | null>(null);
   const [isSavedReport, setIsSavedReport] = useState(false);
   const [mpgData, setMpgData] = useState<{
     mpgCity: number | null;
@@ -279,7 +280,7 @@ export default function ReportPage() {
         mileage: condition.mileage,
         asking_price: condition.askingPrice,
         condition: condition.condition,
-        seller_type: condition.sellerType,
+        seller_type: detectedSellerTypeRef.current || condition.sellerType,
         zip_code: condition.zipCode || null,
         financing_type: financing.type,
         loan_amount: financing.loanAmount || null,
@@ -605,8 +606,9 @@ export default function ReportPage() {
           if (result.sourceBreakdown?.length) {
             setSourceBreakdown(result.sourceBreakdown);
           }
-          // Update seller type if API detected franchise/independent
+           // Update seller type if API detected franchise/independent
           if (result.detectedSellerType && vehicleData) {
+            detectedSellerTypeRef.current = result.detectedSellerType;
             setVehicleData(prev => prev ? {
               ...prev,
               condition: { ...prev.condition, sellerType: result.detectedSellerType }
@@ -688,8 +690,8 @@ export default function ReportPage() {
         : rawSeller === "private" ? "private" as const
         : rawSeller === "franchise" ? "franchise" as const
         : rawSeller === "independent" ? "independent" as const
-        : rawSeller === "dealer" ? "independent" as const
-        : rawSeller ? "independent" as const
+        : rawSeller === "dealer" ? "dealer" as const
+        : rawSeller ? "dealer" as const
         : null;
 
       console.log("[UVPRS-DEBUG] aiFindings input:", JSON.stringify(analysis.aiFindings, null, 2));
