@@ -177,14 +177,21 @@ export function FinancingDetailsCard({ financing, askingPrice, onChange }: Finan
                   />
                 </div>
               </div>
-              {/* 5. Total Amount Financed (read-only) */}
+              {/* 5. Interest Amount (read-only) */}
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Interest Amount</Label>
+                <div className="flex items-center h-9 px-3 rounded-md border bg-muted/50 text-sm pointer-events-none select-none text-muted-foreground">
+                  ${interestAmount.toLocaleString()}
+                </div>
+              </div>
+              {/* 6. Total Amount Financed (read-only) */}
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">Total Amount Financed</Label>
                 <div className="flex items-center h-9 px-3 rounded-md border bg-muted/50 text-sm pointer-events-none select-none text-muted-foreground">
                   ${totalAmountFinanced.toLocaleString()}
                 </div>
               </div>
-              {/* 6. Payment (read-only) */}
+              {/* 7. Payment (read-only) */}
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">Monthly Payment</Label>
                 <div className="flex items-center h-9 px-3 rounded-md border bg-muted/50 text-sm pointer-events-none select-none text-muted-foreground">
@@ -194,15 +201,15 @@ export function FinancingDetailsCard({ financing, askingPrice, onChange }: Finan
             </div>
 
             {/* Summary */}
-            {computedMonthlyPayment != null && local.loanTerm && (
+            {computedMonthlyPayment != null && loanTerm > 0 && (
               <div className="rounded-lg bg-muted/50 p-3 text-center">
                 <p className="text-sm text-muted-foreground">
                   <span className="font-semibold text-foreground">${computedMonthlyPayment.toLocaleString()}/mo</span>
-                  {" "}for {local.loanTerm} months at {local.apr ?? 0}% APR
+                  {" "}for {loanTerm} months at {apr}% APR
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Total interest: ${totalInterest.toLocaleString()}
-                  {" · "}Total cost: ${((computedMonthlyPayment * local.loanTerm) + downPayment).toLocaleString()}
+                  Interest: ${interestAmount.toLocaleString()}
+                  {" · "}Total paid: ${totalAmountFinanced.toLocaleString()}
                 </p>
               </div>
             )}
