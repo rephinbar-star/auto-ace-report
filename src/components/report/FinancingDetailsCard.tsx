@@ -128,18 +128,7 @@ export function FinancingDetailsCard({ financing, askingPrice, onChange }: Finan
         {local.type === "loan" && (
           <>
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Loan Amount</Label>
-                <div className="relative">
-                  <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input
-                    type="number"
-                    className="h-9 pl-8"
-                    value={local.loanAmount || ""}
-                    onChange={(e) => update({ loanAmount: Number(e.target.value) || undefined })}
-                  />
-                </div>
-              </div>
+              {/* 1. Loan Term */}
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">Loan Term (months)</Label>
                 <Input
@@ -149,6 +138,7 @@ export function FinancingDetailsCard({ financing, askingPrice, onChange }: Finan
                   onChange={(e) => update({ loanTerm: Number(e.target.value) || undefined })}
                 />
               </div>
+              {/* 2. Interest Rate */}
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">Interest Rate (%)</Label>
                 <Input
@@ -159,26 +149,44 @@ export function FinancingDetailsCard({ financing, askingPrice, onChange }: Finan
                   onChange={(e) => update({ apr: Number(e.target.value) || undefined })}
                 />
               </div>
+              {/* 3. Fees */}
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Monthly Payment</Label>
-                <div className="flex items-center h-9 px-3 rounded-md border bg-muted/50 text-sm">
-                  {computedMonthlyPayment != null ? `$${computedMonthlyPayment.toLocaleString()}` : "—"}
+                <Label className="text-xs text-muted-foreground">Fees (doc/title/dealer)</Label>
+                <div className="relative">
+                  <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    type="number"
+                    className="h-9 pl-8"
+                    value={local.fees || ""}
+                    onChange={(e) => update({ fees: Number(e.target.value) || undefined })}
+                  />
                 </div>
               </div>
-            </div>
-
-            {/* Read-only derived fields */}
-            <div className="grid grid-cols-2 gap-3">
+              {/* 4. Money Down */}
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">Money Down</Label>
-                <div className="flex items-center h-9 px-3 rounded-md border bg-muted/50 text-sm pointer-events-none select-none text-muted-foreground">
-                  ${downPayment.toLocaleString()}
+                <div className="relative">
+                  <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    type="number"
+                    className="h-9 pl-8"
+                    value={local.downPayment || ""}
+                    onChange={(e) => update({ downPayment: Number(e.target.value) || undefined })}
+                  />
                 </div>
               </div>
+              {/* 5. Total Amount Financed (read-only) */}
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">Total Amount Financed</Label>
-                <div className="flex items-center h-9 px-3 rounded-md border bg-muted/50 text-sm">
+                <div className="flex items-center h-9 px-3 rounded-md border bg-muted/50 text-sm pointer-events-none select-none text-muted-foreground">
                   ${totalAmountFinanced.toLocaleString()}
+                </div>
+              </div>
+              {/* 6. Payment (read-only) */}
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Monthly Payment</Label>
+                <div className="flex items-center h-9 px-3 rounded-md border bg-muted/50 text-sm pointer-events-none select-none text-muted-foreground">
+                  {computedMonthlyPayment != null ? `$${computedMonthlyPayment.toLocaleString()}` : "—"}
                 </div>
               </div>
             </div>
