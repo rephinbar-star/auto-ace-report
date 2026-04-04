@@ -361,7 +361,13 @@ For each known failure pattern assigned to a given year:
 For each active service fault (already present / recurring):
   repairCosts contribution = 100% × costMidpoint (these are certain/near-certain)
 
-The worstCaseRepairCosts field = sum of 100% × costHigh for ALL items in that year.
+The worstCaseRepairCosts field uses ELEVATED probabilities (not 100%) to represent a realistic bad-luck scenario:
+  - For items with probability >= 70%: use 100% × costHigh
+  - For items with probability 40-69%: use 75% × costHigh
+  - For items with probability 15-39%: use 40% × costHigh
+  - For items with probability < 15%: use 15% × costHigh
+This prevents the absurd scenario where worst-case assumes every single failure happens simultaneously.
+HARD RULE: worstCaseRepairCosts must NEVER exceed 3× the expected repairCosts for the same year. If your calculation exceeds this, reduce it to 3× expected.
 
 IMPORTANT EXCEPTION: maintenanceCosts remain at 100%. Routine scheduled maintenance (oil changes, tire rotations, brake fluid, timing belt/chain service, filters, inspections) is certain — not probabilistic. Only unscheduled repairs and known failure patterns use the expected-value model.
 
