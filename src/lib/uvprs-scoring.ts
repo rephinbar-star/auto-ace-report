@@ -503,7 +503,8 @@ export function scoreSellerType(sellerType: string | null | undefined): { score:
 
 export function getRiskLevel(score: number): { level: UVPRSResult["riskLevel"]; label: string; verdict: UVPRSResult["verdict"] } {
   if (score <= 30) return { level: "low", label: "Low Risk", verdict: "Conditional Buy" };
-  if (score <= 50) return { level: "moderate", label: "Moderate Risk", verdict: "Conditional Buy" };
+  if (score <= 40) return { level: "moderate", label: "Moderate Risk", verdict: "Conditional Buy" };
+  if (score <= 50) return { level: "elevated", label: "Elevated Risk", verdict: "Caution" };
   if (score <= 70) return { level: "elevated", label: "Elevated Risk", verdict: "Caution" };
   return { level: "high", label: "High Risk", verdict: "Avoid" };
 }

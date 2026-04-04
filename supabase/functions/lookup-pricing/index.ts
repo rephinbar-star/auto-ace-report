@@ -199,13 +199,13 @@ serve(async (req) => {
       ...dealerResult.outlierNotes,
     ];
 
-    // FMV = (weightedTradeIn + weightedPrivateParty) / 2
-    // This represents true economic value, excluding dealer margin
-    const fairMarketValue = Math.round((tradeInResult.value + privateResult.value) / 2);
+    // FMV = weighted private party value (what a buyer would pay in a consumer transaction)
+    // Trade-in is a separate wholesale benchmark, not averaged into FMV
+    const fairMarketValue = privateResult.value > 0 ? privateResult.value : Math.round((tradeInResult.value + privateResult.value) / 2);
 
     const computedValues = (privateResult.value > 0 || dealerResult.value > 0 || tradeInResult.value > 0)
       ? {
-          fairMarketPrivate: fairMarketValue, // FMV = midpoint of trade-in and private party
+          fairMarketPrivate: fairMarketValue, // FMV = weighted private party value
           fairMarketDealer: dealerResult.value,
           fairMarketTradeIn: tradeInResult.value,
         }
