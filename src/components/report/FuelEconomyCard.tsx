@@ -599,6 +599,28 @@ export function FuelEconomyCard({
               <span className="text-sm text-muted-foreground">Purchase Price</span>
               <span className="font-medium">${tco.purchasePrice.toLocaleString()}</span>
             </div>
+            {financingCost > 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground flex items-center gap-1">
+                  Loan Interest &amp; Fees
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p className="text-sm">
+                          Total loan interest and dealer/doc fees from your financing details. This represents the additional cost of financing vs paying cash.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </span>
+                <span className="font-medium text-warning">
+                  +${financingCost.toLocaleString()}
+                </span>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">
                 Est. {isElectric ? "Electricity" : "Fuel"} Cost (5 yr)
@@ -652,28 +674,6 @@ export function FuelEconomyCard({
                 </span>
                 <span className="font-medium text-warning">
                   +${tco.mileageDepreciation?.toLocaleString()}
-                </span>
-              </div>
-            )}
-            {financingCost > 0 && (
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground flex items-center gap-1">
-                  Interest &amp; Fees
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-xs">
-                        <p className="text-sm">
-                          Total loan interest and dealer/doc fees from your financing details. This represents the additional cost of financing vs paying cash.
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </span>
-                <span className="font-medium text-warning">
-                  +${financingCost.toLocaleString()}
                 </span>
               </div>
             )}
