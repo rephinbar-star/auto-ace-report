@@ -40,6 +40,8 @@ interface FuelEconomyCardProps {
   onAnnualMilesChange?: (miles: number) => void;
   zipCode?: string;
   onZipCodeSave?: (zip: string) => void;
+  /** Interest amount + fees from financing (added to TCO) */
+  financingCost?: number;
 }
 
 export function FuelEconomyCard({
