@@ -4,8 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DollarSign, CreditCard, Landmark, Banknote } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { DollarSign, CreditCard, Landmark, Banknote, HandCoins } from "lucide-react";
 import type { FinancingInfo } from "@/types/vehicle";
 
 interface FinancingDetailsCardProps {
@@ -41,6 +40,21 @@ export function FinancingDetailsCard({ financing, askingPrice, onChange }: Finan
     return Math.round(P / n);
   })();
 
+  // Derived read-only values
+  const downPayment = local.type === "loan" && local.loanAmount
+    ? Math.max(0, purchasePrice - local.loanAmount)
+    : 0;
+  const totalAmountFinanced = local.loanAmount || 0;
+  const totalInterest = local.type === "loan" && computedMonthlyPayment && local.loanTerm
+    ? (computedMonthlyPayment * local.loanTerm) - totalAmountFinanced
+    : 0;
+
+  // Savings banner data
+  const negotiated = local.negotiatedPrice;
+  const hasSavings = negotiated != null && negotiated < askingPrice;
+  const saved = hasSavings ? askingPrice - negotiated! : 0;
+  const savingsPct = hasSavings ? ((saved / askingPrice) * 100).toFixed(1) : "0";
+
   const typeIcon = local.type === "loan" ? <Landmark className="h-5 w-5 text-primary" />
     : local.type === "lease" ? <CreditCard className="h-5 w-5 text-primary" />
     : <Banknote className="h-5 w-5 text-primary" />;
@@ -74,7 +88,7 @@ export function FinancingDetailsCard({ financing, askingPrice, onChange }: Finan
           </Select>
         </div>
 
-        {/* Purchase / Negotiated Price — always shown */}
+        {/* Purchase / Negotiated Price */}
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground">
             {local.type === "cash" ? "Purchase Price" : "Negotiated Price"}
@@ -90,47 +104,96 @@ export function FinancingDetailsCard({ financing, askingPrice, onChange }: Finan
           </div>
         </div>
 
-        {/* Loan-specific fields */}
-        {local.type === "loan" && (
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Loan Amount</Label>
-              <div className="relative">
-                <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input
-                  type="number"
-                  className="h-9 pl-8"
-                  value={local.loanAmount || ""}
-                  onChange={(e) => update({ loanAmount: Number(e.target.value) || undefined })}
-                />
-              </div>
+        {/* Savings Banner — inside the card, below negotiated price */}
+        {hasSavings && (
+          <div className="flex items-center gap-3 rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2.5">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-green-500/20">
+              <HandCoins className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Loan Term (months)</Label>
-              <Input
-                type="number"
-                className="h-9"
-                value={local.loanTerm || ""}
-                onChange={(e) => update({ loanTerm: Number(e.target.value) || undefined })}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">APR (%)</Label>
-              <Input
-                type="number"
-                step="0.1"
-                className="h-9"
-                value={local.apr ?? ""}
-                onChange={(e) => update({ apr: Number(e.target.value) || undefined })}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Monthly Payment</Label>
-              <div className="flex items-center h-9 px-3 rounded-md border bg-muted/50 text-sm">
-                {computedMonthlyPayment != null ? `$${computedMonthlyPayment.toLocaleString()}` : "—"}
-              </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-green-700 dark:text-green-400">
+                You negotiated ${saved.toLocaleString()} off the asking price
+              </p>
+              <p className="text-xs text-green-600/80 dark:text-green-500/80">
+                Paying ${negotiated!.toLocaleString()} instead of ${askingPrice.toLocaleString()} — a {savingsPct}% discount. Deal rating and TCO reflect your negotiated price.
+              </p>
             </div>
           </div>
+        )}
+
+        {/* Loan-specific fields */}
+        {local.type === "loan" && (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Loan Amount</Label>
+                <div className="relative">
+                  <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    type="number"
+                    className="h-9 pl-8"
+                    value={local.loanAmount || ""}
+                    onChange={(e) => update({ loanAmount: Number(e.target.value) || undefined })}
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Loan Term (months)</Label>
+                <Input
+                  type="number"
+                  className="h-9"
+                  value={local.loanTerm || ""}
+                  onChange={(e) => update({ loanTerm: Number(e.target.value) || undefined })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Interest Rate (%)</Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  className="h-9"
+                  value={local.apr ?? ""}
+                  onChange={(e) => update({ apr: Number(e.target.value) || undefined })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Monthly Payment</Label>
+                <div className="flex items-center h-9 px-3 rounded-md border bg-muted/50 text-sm">
+                  {computedMonthlyPayment != null ? `$${computedMonthlyPayment.toLocaleString()}` : "—"}
+                </div>
+              </div>
+            </div>
+
+            {/* Read-only derived fields */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Money Down</Label>
+                <div className="flex items-center h-9 px-3 rounded-md border bg-muted/50 text-sm">
+                  ${downPayment.toLocaleString()}
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Total Amount Financed</Label>
+                <div className="flex items-center h-9 px-3 rounded-md border bg-muted/50 text-sm">
+                  ${totalAmountFinanced.toLocaleString()}
+                </div>
+              </div>
+            </div>
+
+            {/* Summary */}
+            {computedMonthlyPayment != null && local.loanTerm && (
+              <div className="rounded-lg bg-muted/50 p-3 text-center">
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-semibold text-foreground">${computedMonthlyPayment.toLocaleString()}/mo</span>
+                  {" "}for {local.loanTerm} months at {local.apr ?? 0}% APR
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Total interest: ${totalInterest.toLocaleString()}
+                  {" · "}Total cost: ${((computedMonthlyPayment * local.loanTerm) + downPayment).toLocaleString()}
+                </p>
+              </div>
+            )}
+          </>
         )}
 
         {/* Lease-specific fields */}
@@ -178,19 +241,6 @@ export function FinancingDetailsCard({ financing, askingPrice, onChange }: Finan
                 />
               </div>
             </div>
-          </div>
-        )}
-
-        {/* Summary line */}
-        {local.type === "loan" && computedMonthlyPayment != null && local.loanTerm && (
-          <div className="rounded-lg bg-muted/50 p-3 text-center">
-            <p className="text-sm text-muted-foreground">
-              <span className="font-semibold text-foreground">${computedMonthlyPayment.toLocaleString()}/mo</span>
-              {" "}for {local.loanTerm} months at {local.apr ?? 0}% APR
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Total interest: ${((computedMonthlyPayment * local.loanTerm) - (local.loanAmount || 0)).toLocaleString()}
-            </p>
           </div>
         )}
 
