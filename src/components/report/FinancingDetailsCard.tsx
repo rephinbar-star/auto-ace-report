@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,8 +16,13 @@ interface FinancingDetailsCardProps {
 export function FinancingDetailsCard({ financing, askingPrice, onChange }: FinancingDetailsCardProps) {
   const [local, setLocal] = useState<FinancingInfo>({ ...financing });
 
+  // Only sync from parent when the financing type changes (not on every prop update)
+  const prevTypeRef = useRef(financing.type);
   useEffect(() => {
-    setLocal({ ...financing });
+    if (financing.type !== prevTypeRef.current) {
+      prevTypeRef.current = financing.type;
+      setLocal({ ...financing });
+    }
   }, [financing]);
 
   const update = useCallback((patch: Partial<FinancingInfo>) => {
