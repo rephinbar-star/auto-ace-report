@@ -153,12 +153,16 @@ function computeLoanBalances(
 
   const balances = [Math.round(principal)];
   for (let yr = 1; yr <= 5; yr++) {
-    const k = Math.min(yr * 12, n);
+    const monthsPaid = yr * 12;
+    if (monthsPaid >= n) {
+      balances.push(0);
+      continue;
+    }
     let balance: number;
     if (r > 0) {
-      balance = principal * Math.pow(1 + r, k) - pmt * ((Math.pow(1 + r, k) - 1) / r);
+      balance = principal * Math.pow(1 + r, monthsPaid) - pmt * ((Math.pow(1 + r, monthsPaid) - 1) / r);
     } else {
-      balance = principal - pmt * k;
+      balance = principal - pmt * monthsPaid;
     }
     balances.push(Math.max(0, Math.round(balance)));
   }
