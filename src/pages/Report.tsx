@@ -1193,13 +1193,12 @@ export default function ReportPage() {
 
   // Chart data: values already deterministic from engine, no clamping needed
   const chartData = [
-    // Yr 0 starting point
     {
       name: "Year 0",
       "Market Value": startingFMV,
       "Trade-In Value": Math.round(priceAssessment.fairMarketTradeIn || startingFMV * 0.85),
       "Asking Price": askingPrice,
-      ...(financingSkipped ? {} : { "Loan Balance": financing?.loanAmount || 0 }),
+      ...(financingSkipped ? {} : { "Loan Balance": liveLoanMetrics.totalAmountFinanced }),
     },
     ...depreciationTable.map((row) => ({
       name: `Year ${row.year}`,
