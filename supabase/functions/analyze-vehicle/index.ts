@@ -577,7 +577,7 @@ Provide your expert analysis.`;
                         tradeInValue: { type: "number" },
                         loanBalance: { type: "number" },
                         repairCosts: { type: "number", description: "Probability-weighted expected annual repair costs. For known failure patterns: probabilityPercent × (costLow+costHigh)/2. For active/present faults: 100% × costMidpoint. Maintenance is separate." },
-                        worstCaseRepairCosts: { type: "number", description: "Worst-case annual repair costs = 100% × costHigh for ALL items assigned to this year. Used for range display." },
+                        worstCaseRepairCosts: { type: "number", description: "Worst-case annual repair costs using elevated probabilities (not 100% of all items). Must NEVER exceed 3× the expected repairCosts for the same year." },
                         maintenanceCosts: { type: "number", description: "Estimated annual routine maintenance costs (oil changes, brake pads, tires, filters, fluid flushes, inspections). These are scheduled/preventive services at 100% — NOT probabilistic." },
                         netEquityPrivate: { type: "number" },
                         netEquityTradeIn: { type: "number" },

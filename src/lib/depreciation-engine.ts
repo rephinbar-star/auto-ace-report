@@ -114,7 +114,7 @@ export function computeDepreciationTable(
       tradeInValue: tradeIn,
       depreciation,
       repairCosts: Math.round(repairs.expected),
-      worstCaseRepairCosts: Math.round(repairs.worstCase),
+      worstCaseRepairCosts: Math.round(cappedWorstCase),
       maintenanceCosts: Math.round(maint),
       loanBalance: balance,
       equity,
