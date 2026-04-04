@@ -134,6 +134,8 @@ export interface FinancingInfo {
   loanAmount?: number;
   loanTerm?: number; // months
   apr?: number;
+  fees?: number;       // dealer/doc/title fees
+  downPayment?: number;
   // Lease fields
   monthlyPayment?: number;
   leaseTermMonths?: number;
