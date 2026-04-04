@@ -184,11 +184,39 @@ serve(async (req) => {
     if (ppResult?.pricingContext) contextParts.push(ppResult.pricingContext);
     const mergedContext = contextParts.join("\n\n");
 
-    // For computed values: prefer Perplexity (cross-referenced KBB/Edmunds/NADA) over MarketCheck
-    const computedValues = ppResult?.computedValues || mcResult?.computedValues;
+    // Weighted Confidence Aggregation across all sources
+    const tradeInEntries = buildEntries(allSources, "tradeIn");
+    const privateEntries = buildEntries(allSources, "privateParty");
+    const dealerEntries = buildEntries(allSources, "dealerRetail");
+
+    const tradeInResult = computeWeightedValue(tradeInEntries);
+    const privateResult = computeWeightedValue(privateEntries);
+    const dealerResult = computeWeightedValue(dealerEntries);
+
+    const outlierNotes = [
+      ...tradeInResult.outlierNotes,
+      ...privateResult.outlierNotes,
+      ...dealerResult.outlierNotes,
+    ];
+
+    // FMV = (weightedTradeIn + weightedPrivateParty) / 2
+    // This represents true economic value, excluding dealer margin
+    const fairMarketValue = Math.round((tradeInResult.value + privateResult.value) / 2);
+
+    const computedValues = (privateResult.value > 0 || dealerResult.value > 0 || tradeInResult.value > 0)
+      ? {
+          fairMarketPrivate: fairMarketValue, // FMV = midpoint of trade-in and private party
+          fairMarketDealer: dealerResult.value,
+          fairMarketTradeIn: tradeInResult.value,
+        }
+      : mcResult?.computedValues || ppResult?.computedValues;
 
     if (!mergedContext) {
       throw new Error("No pricing data available from any source");
+    }
+
+    if (outlierNotes.length > 0) {
+      console.log(`Pricing outliers detected: ${outlierNotes.join(" | ")}`);
     }
 
     console.log(`Pricing complete: ${allSources.length} source(s), ${uniqueCitations.length} citation(s), dealerType=${detectedDealerType || "unknown"}`);
@@ -201,6 +229,7 @@ serve(async (req) => {
         computedValues,
         sourceBreakdown: allSources,
         detectedDealerType,
+        outlierNotes: outlierNotes.length > 0 ? outlierNotes : undefined,
       } as PricingResult,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
