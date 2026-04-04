@@ -127,6 +127,14 @@ function sanitizeExpertOpinion({
 
   let sanitized = expertOpinion.trim();
 
+  // Fix #1: Replace ambiguous "aggressive" pricing language with precise framing
+  sanitized = sanitized.replace(
+    /(?:MarketCheck|KBB|data)\s+(?:and\s+\w+\s+)?(?:data\s+)?suggest[s]?\s+(?:the\s+)?price\s+is\s+aggressive/gi,
+    "The dealer appears to be pricing this unit below typical dealer retail to compensate for the mileage and undocumented history"
+  );
+  sanitized = sanitized.replace(/\bthe price is aggressive\b/gi, "the price is positioned below dealer retail benchmarks");
+  sanitized = sanitized.replace(/\baggressive pricing\b/gi, "pricing below dealer retail");
+
   if (dealRating.toLowerCase() !== "excellent") {
     sanitized = sanitized.replace(/['"]?excellent['"]?\s+deal rating/gi, `${dealRating.toLowerCase()} pricing position`);
   }
