@@ -10,6 +10,7 @@ interface VehicleData {
   trim?: string;
   mileage: number;
   askingPrice: number;
+  purchasePrice?: number;
 }
 
 interface PriceAssessment {
@@ -881,7 +882,7 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   }
 
   // Depreciation table
-  const cols = ["Year", "Private Value", "Trade-In", "Loan Bal.", "Repairs", "Maint.", "Net Equity"];
+  const cols = ["Year", "Private Value", "Trade-In", "Loan Bal.", "Repairs", "Maint.", "Net Position"];
   const colWidths = [20, 28, 28, 28, 24, 24, 28];
 
   ensureSpace(depreciationTable.length * 7 + 12);
@@ -899,10 +900,11 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
 
   let cumulativeRepairs = 0;
   let cumulativeMaintenance = 0;
+  const purchasePrice = data.vehicle.purchasePrice ?? data.vehicle.askingPrice;
   depreciationTable.forEach((row, index) => {
     cumulativeRepairs += row.repairCosts;
     cumulativeMaintenance += (row.maintenanceCosts || 0);
-    const netEquity = row.tradeInValue - row.loanBalance - cumulativeRepairs - cumulativeMaintenance;
+    const netPosition = row.privateValue - purchasePrice - cumulativeRepairs - cumulativeMaintenance;
 
     ensureSpace(8);
     if (index % 2 === 0) {
@@ -921,7 +923,7 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
       fmt(row.loanBalance),
       fmt(row.repairCosts),
       fmt(row.maintenanceCosts || 0),
-      `${netEquity >= 0 ? "+" : ""}${fmt(netEquity)}`,
+      `${netPosition >= 0 ? "+" : ""}${fmt(netPosition)}`,
     ];
 
     rowData.forEach((cell, i) => {
@@ -930,7 +932,7 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
       } else if (i === 5) {
         pdf.setTextColor(...SLATE);
       } else if (i === 6) {
-        pdf.setTextColor(netEquity >= 0 ? 34 : 220, netEquity >= 0 ? 197 : 38, netEquity >= 0 ? 94 : 38);
+        pdf.setTextColor(netPosition >= 0 ? 34 : 220, netPosition >= 0 ? 197 : 38, netPosition >= 0 ? 94 : 38);
         pdf.setFont("helvetica", "bold");
       } else {
         pdf.setTextColor(...BLACK);

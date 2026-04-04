@@ -595,7 +595,13 @@ export function calculateUVPRS(input: UVPRSInput): UVPRSResult {
     description: input.isBrandNew
       ? "Brand new — no service history needed"
       : (svc.known
-        ? (input.hasServiceRecords ? "Service records available" : "No service records")
+        ? (input.hasServiceRecords
+          ? (input.serviceGapMiles != null && input.serviceGapMiles > 60000
+            ? `Incomplete — ${input.serviceGapMiles.toLocaleString()}-mile gap`
+            : input.serviceGapMiles != null && input.serviceGapMiles > 20000
+              ? `Partial records — ${input.serviceGapMiles.toLocaleString()}-mile gap`
+              : "Service records available")
+          : "No service records")
         : "Unknown — neutral score applied"),
   });
 

@@ -72,6 +72,10 @@ const riskProgressColors: Record<string, string> = {
   high: "[&>div]:bg-danger",
 };
 
+function normalizeFindingText(value: string): string {
+  return value.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
 function getFactorBarColor(score: number): string {
   if (score <= 20) return "[&>div]:bg-success";
   if (score <= 40) return "[&>div]:bg-warning";
@@ -158,6 +162,13 @@ export function RiskScoreBreakdown({ result, missingHistoryReport, onUploadHisto
           <div className="space-y-3">
             {factors.map((factor) => {
               const tip = factorTooltips[factor.key];
+              const filteredTopFindings = factor.key === "aiFindings" && factor.topFindings
+                ? factor.topFindings.filter((finding, index, arr) => {
+                    const normalizedFinding = normalizeFindingText(finding);
+                    const normalizedDescription = normalizeFindingText(factor.description);
+                    return normalizedFinding !== normalizedDescription && arr.findIndex((item) => normalizeFindingText(item) === normalizedFinding) === index;
+                  })
+                : factor.topFindings;
               return (
                 <div key={factor.key} className="space-y-1">
                   <div className="flex items-center justify-between text-sm">
@@ -195,9 +206,9 @@ export function RiskScoreBreakdown({ result, missingHistoryReport, onUploadHisto
                   <p className="text-xs text-muted-foreground">
                     {factor.description}
                   </p>
-                  {factor.key === "aiFindings" && factor.topFindings && factor.topFindings.length > 0 && (
+                  {factor.key === "aiFindings" && filteredTopFindings && filteredTopFindings.length > 0 && (
                     <ul className="mt-1 space-y-0.5">
-                      {factor.topFindings.map((finding, i) => (
+                      {filteredTopFindings.map((finding, i) => (
                         <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
                           <span className="text-destructive mt-0.5">•</span>
                           <span>{finding}</span>
