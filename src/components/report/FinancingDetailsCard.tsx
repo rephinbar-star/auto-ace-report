@@ -28,17 +28,8 @@ export function FinancingDetailsCard({ financing, askingPrice, onChange }: Finan
 
   const purchasePrice = local.negotiatedPrice ?? askingPrice;
 
-  // Calculate monthly payment for loan
-  const computedMonthlyPayment = (() => {
-    if (local.type !== "loan" || !local.loanAmount || !local.loanTerm) return null;
-    const P = local.loanAmount;
-    const r = ((local.apr || 0) / 100) / 12;
-    const n = local.loanTerm;
-    if (r > 0) {
-      return Math.round(P * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1));
-    }
-    return Math.round(P / n);
-  })();
+  // These are computed after totalAmountFinanced is known — defined below
+  let computedMonthlyPayment: number | null = null;
 
   // Derived read-only values
   const fees = local.fees || 0;
