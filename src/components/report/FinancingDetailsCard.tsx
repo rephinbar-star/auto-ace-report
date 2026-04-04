@@ -34,23 +34,25 @@ export function FinancingDetailsCard({ financing, askingPrice, onChange }: Finan
   const apr = local.apr || 0;
   const loanTerm = local.loanTerm || 0;
 
-  // Interest Amount = total interest on the negotiated price over the loan term
+  // Principal = what's actually being financed (price + fees - down payment)
+  const principal = local.type === "loan"
+    ? Math.max(0, purchasePrice + fees - downPayment)
+    : 0;
+
+  // Interest Amount = total interest on the principal over the loan term
   const interestAmount = (() => {
-    if (local.type !== "loan" || !loanTerm || apr <= 0) return 0;
-    const principal = purchasePrice;
+    if (!principal || !loanTerm || apr <= 0) return 0;
     const r = (apr / 100) / 12;
     const n = loanTerm;
     const monthlyPmt = principal * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
     return Math.round((monthlyPmt * n) - principal);
   })();
 
-  // Total Amount Financed = negotiated price + interest + fees - down payment
-  const totalAmountFinanced = local.type === "loan"
-    ? Math.max(0, purchasePrice + interestAmount + fees - downPayment)
-    : 0;
+  // Total Amount Financed = principal + interest
+  const totalAmountFinanced = principal + interestAmount;
 
   // Monthly Payment = Total Amount Financed / term
-  const computedMonthlyPayment = local.type === "loan" && totalAmountFinanced > 0 && loanTerm > 0
+  const computedMonthlyPayment = totalAmountFinanced > 0 && loanTerm > 0
     ? Math.round(totalAmountFinanced / loanTerm)
     : null;
 
