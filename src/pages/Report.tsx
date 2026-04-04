@@ -1034,6 +1034,8 @@ export default function ReportPage() {
 
     return {
       totalAmountFinanced,
+      interestAmount: Math.round(computedInterestAmount),
+      fees,
       balanceAfterMonths: (months: number) => {
         if (!isLoan || !loanTermMonths || totalAmountFinanced <= 0) return 0;
         if (months >= loanTermMonths) return 0;
