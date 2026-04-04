@@ -2262,7 +2262,7 @@ export default function ReportPage() {
                   if (displayVerdict === "Caution") {
                     return `${pricePart}. Elevated risk from ${riskDetails.join(", ") || "multiple concern factors"}. Budget for upcoming repairs and negotiate aggressively toward the fair offer price.`;
                   }
-                  return `${pricePart}. High risk: ${riskDetails.join(", ") || "significant concerns identified"}. This vehicle is inadvisable at the current asking price.`;
+                  return `${pricePart}. High risk: ${riskDetails.length > 0 ? riskDetails.join(" and ") + " failure" : "significant concerns identified"}. This vehicle is inadvisable at the current asking price.`;
                 })();
 
                 const verdictConfig = {

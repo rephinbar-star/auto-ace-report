@@ -662,7 +662,7 @@ export function FuelEconomyCard({
               </span>
             </div>
             <p className="text-[10px] text-muted-foreground -mt-1">
-              Uses probability-weighted expected repair costs. High end reflects elevated failure probabilities (capped at 3× expected).
+              Range: probability-weighted expected costs (low) to maximum plausible scenario if major failures occur (high).
             </p>
           </div>
 

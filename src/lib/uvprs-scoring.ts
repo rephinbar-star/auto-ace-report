@@ -613,7 +613,7 @@ export function calculateUVPRS(input: UVPRSInput): UVPRSResult {
     score: Math.round(price.score), weight: WEIGHTS.price, weighted: 0,
     known: price.known,
     description: price.known
-      ? `$${input.askingPrice.toLocaleString()} vs $${((input.fairMarketDealer || input.fairMarketPrivate) ?? 0).toLocaleString()} market`
+      ? `$${input.askingPrice.toLocaleString()} vs $${((input.fairMarketDealer || input.fairMarketPrivate) ?? 0).toLocaleString()} ${input.fairMarketDealer ? "dealer retail" : "fair market value"}`
       : "Unknown — neutral score applied",
   });
 
