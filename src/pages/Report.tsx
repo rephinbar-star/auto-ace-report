@@ -2067,6 +2067,8 @@ export default function ReportPage() {
                     .eq("id", id);
                 }}
               />
+
+              {/* Depreciation Chart */}
               <Card className="overflow-hidden max-w-[calc(100vw-2rem)]">
                 <CardHeader>
                 <CardTitle className="flex items-center gap-2 flex-wrap">
