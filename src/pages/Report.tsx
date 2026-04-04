@@ -986,6 +986,9 @@ export default function ReportPage() {
 
   const { vehicle, condition, financing } = vehicleData;
   const { priceAssessment, depreciationTable: rawDepreciationTable, depreciationInputs, riskAssessment, historyAnalysis } = analysis;
+  const financingSkipped = financing?.skipped === true;
+  const askingPrice = condition.askingPrice;
+  const purchasePrice = financing?.negotiatedPrice ?? askingPrice;
 
   // Deterministic depreciation engine: prefer AI rate inputs, fall back to legacy table
   const startingFMV = priceAssessment.fairMarketPrivate;
@@ -1011,8 +1014,48 @@ export default function ReportPage() {
     );
   })();
 
-  // Alias for backward compat with all existing references
-  const depreciationTable = computedDepTable;
+  const liveLoanMetrics = (() => {
+    const isLoan = financing?.type === "loan" && !financingSkipped;
+    const fees = financing?.fees ?? 0;
+    const downPayment = financing?.downPayment ?? 0;
+    const apr = financing?.apr ?? 0;
+    const loanTermMonths = financing?.loanTerm ?? 0;
+    const principal = isLoan ? Math.max(0, purchasePrice + fees - downPayment) : 0;
+    const computedInterestAmount = (() => {
+      if (!principal || !loanTermMonths || apr <= 0) return 0;
+      const monthlyRate = (apr / 100) / 12;
+      const amortizedMonthlyPayment = principal * (monthlyRate * Math.pow(1 + monthlyRate, loanTermMonths)) / (Math.pow(1 + monthlyRate, loanTermMonths) - 1);
+      return amortizedMonthlyPayment * loanTermMonths - principal;
+    })();
+    const fallbackTotalAmountFinanced = Math.max(0, financing?.loanAmount ?? 0);
+    const computedTotalAmountFinanced = isLoan ? Math.max(0, principal + computedInterestAmount) : 0;
+    const totalAmountFinanced = Math.round(computedTotalAmountFinanced > 0 ? computedTotalAmountFinanced : fallbackTotalAmountFinanced);
+    const monthlyPayment = totalAmountFinanced > 0 && loanTermMonths > 0 ? totalAmountFinanced / loanTermMonths : 0;
+
+    return {
+      totalAmountFinanced,
+      balanceAfterMonths: (months: number) => {
+        if (!isLoan || !loanTermMonths || totalAmountFinanced <= 0) return 0;
+        if (months >= loanTermMonths) return 0;
+        return Math.max(0, Math.round(totalAmountFinanced - monthlyPayment * months));
+      },
+    };
+  })();
+
+  const depreciationTable = computedDepTable.map((row) => {
+    if (financingSkipped || financing?.type !== "loan") return row;
+    const loanBalance = liveLoanMetrics.balanceAfterMonths(row.year * 12);
+    const equity = row.marketValue - loanBalance;
+
+    return {
+      ...row,
+      loanBalance,
+      equity,
+      netEquityPrivate: equity,
+      netEquityTradeIn: row.tradeInValue - loanBalance,
+    };
+  });
+
   const cumulativeOwnershipCosts = depreciationTable.reduce<Array<{
     year: number;
     cumulativeRepairs: number;
@@ -1132,10 +1175,6 @@ export default function ReportPage() {
     high: "bg-danger text-danger-foreground",
   };
 
-  const financingSkipped = financing?.skipped === true;
-
-  const purchasePrice = financing?.negotiatedPrice ?? condition.askingPrice;
-  const askingPrice = condition.askingPrice;
   const floorTriggered = !!(analysis.aiFindings?.floorOverrides as any)?.triggered;
   const displayVerdict = getFinalVerdict(
     analysis.finalVerdict?.verdict,
@@ -1154,13 +1193,12 @@ export default function ReportPage() {
 
   // Chart data: values already deterministic from engine, no clamping needed
   const chartData = [
-    // Yr 0 starting point
     {
       name: "Year 0",
       "Market Value": startingFMV,
       "Trade-In Value": Math.round(priceAssessment.fairMarketTradeIn || startingFMV * 0.85),
       "Asking Price": askingPrice,
-      ...(financingSkipped ? {} : { "Loan Balance": financing?.loanAmount || 0 }),
+      ...(financingSkipped ? {} : { "Loan Balance": liveLoanMetrics.totalAmountFinanced }),
     },
     ...depreciationTable.map((row) => ({
       name: `Year ${row.year}`,
@@ -2119,9 +2157,9 @@ export default function ReportPage() {
                       <TableBody>
                         {/* Year 0 row - FMV starting point */}
                         {(() => {
-                          const loanAmt = financing?.loanAmount || 0;
+                          const loanAmt = liveLoanMetrics.totalAmountFinanced;
                           const tradeInVal = Math.round(priceAssessment.fairMarketTradeIn || startingFMV * 0.85);
-                          const yr0Equity = startingFMV - Math.round(loanAmt);
+                          const yr0Equity = startingFMV - loanAmt;
                           const yr0NetPosition = startingFMV - purchasePrice;
                           return (
                             <TableRow>
