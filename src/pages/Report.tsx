@@ -492,6 +492,10 @@ export default function ReportPage() {
             } : {}),
             ...(report.ai_findings ? {
               aiFindings: report.ai_findings as unknown as AiFindings,
+              // Restore depreciationInputs from ai_findings if stored there
+              ...((report.ai_findings as any)?.depreciationInputs ? {
+                depreciationInputs: (report.ai_findings as any).depreciationInputs as DepreciationInputs,
+              } : {}),
             } : {
               // Synthesize aiFindings from legacy DB fields for older reports
               aiFindings: synthesizeAiFindingsFromReport(report),
