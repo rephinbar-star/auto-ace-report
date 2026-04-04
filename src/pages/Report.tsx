@@ -630,6 +630,9 @@ export default function ReportPage() {
             setPricingSources(result.pricingSources);
             setPricingLastUpdated(new Date());
           }
+          if (result.maintenanceSources?.length) {
+            setMaintenanceSources(result.maintenanceSources);
+          }
           if (result.sourceBreakdown?.length) {
             setSourceBreakdown(result.sourceBreakdown);
           }
