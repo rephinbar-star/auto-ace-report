@@ -127,6 +127,14 @@ function sanitizeExpertOpinion({
 
   let sanitized = expertOpinion.trim();
 
+  // Fix #1: Replace ambiguous "aggressive" pricing language with precise framing
+  sanitized = sanitized.replace(
+    /(?:MarketCheck|KBB|data)\s+(?:and\s+\w+\s+)?(?:data\s+)?suggest[s]?\s+(?:the\s+)?price\s+is\s+aggressive/gi,
+    "The dealer appears to be pricing this unit below typical dealer retail to compensate for the mileage and undocumented history"
+  );
+  sanitized = sanitized.replace(/\bthe price is aggressive\b/gi, "the price is positioned below dealer retail benchmarks");
+  sanitized = sanitized.replace(/\baggressive pricing\b/gi, "pricing below dealer retail");
+
   if (dealRating.toLowerCase() !== "excellent") {
     sanitized = sanitized.replace(/['"]?excellent['"]?\s+deal rating/gi, `${dealRating.toLowerCase()} pricing position`);
   }
@@ -2254,7 +2262,7 @@ export default function ReportPage() {
                   if (displayVerdict === "Caution") {
                     return `${pricePart}. Elevated risk from ${riskDetails.join(", ") || "multiple concern factors"}. Budget for upcoming repairs and negotiate aggressively toward the fair offer price.`;
                   }
-                  return `${pricePart}. High risk: ${riskDetails.join(", ") || "significant concerns identified"}. This vehicle is inadvisable at the current asking price.`;
+                  return `${pricePart}. High risk: ${riskDetails.length > 0 ? riskDetails.join(" and ") + " failure" : "significant concerns identified"}. This vehicle is inadvisable at the current asking price.`;
                 })();
 
                 const verdictConfig = {
@@ -2563,9 +2571,15 @@ export default function ReportPage() {
                         Positives
                       </h4>
                       <ul className="space-y-1 text-sm">
-                        {historyAnalysis.positives.map((item, i) => (
-                          <li key={i} className="text-muted-foreground">• {item}</li>
-                        ))}
+                        {historyAnalysis.positives
+                          .filter((item) => {
+                            // Fix #4: Filter out pricing observations from vehicle health positives
+                            const lower = item.toLowerCase();
+                            return !(lower.includes("below market") || lower.includes("above market") || lower.includes("asking price") || lower.includes("dealer retail") || lower.includes("below fmv") || lower.includes("above fmv"));
+                          })
+                          .map((item, i) => (
+                            <li key={i} className="text-muted-foreground">• {item}</li>
+                          ))}
                       </ul>
                     </div>
 
@@ -2623,6 +2637,10 @@ export default function ReportPage() {
                                     ? `$${item.costLow.toLocaleString()}–$${item.costHigh.toLocaleString()}`
                                     : item.costLow ? `$${item.costLow.toLocaleString()}+` 
                                     : `Up to $${item.costHigh!.toLocaleString()}`}
+                                  {/* Fix #6: Show refurbished pricing note for battery items */}
+                                  {/battery|traction/i.test(item.concern) && item.costLow && item.costLow >= 5000 && (
+                                    <span className="font-normal text-muted-foreground"> (used/refurbished: $3,500–$6,500)</span>
+                                  )}
                                 </span>
                               )}
                             </span>
