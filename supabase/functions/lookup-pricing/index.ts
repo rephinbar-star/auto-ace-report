@@ -40,6 +40,103 @@ interface PricingResult {
   };
   sourceBreakdown?: SourceValuation[];
   detectedDealerType?: string | null;
+  outlierNotes?: string[];
+}
+
+// Source reliability weights by transaction type (higher = more reliable for that type)
+const SOURCE_RELIABILITY: Record<string, { tradeIn: number; privateParty: number; dealerRetail: number }> = {
+  "MarketCheck":     { tradeIn: 1.0, privateParty: 0.8, dealerRetail: 1.0 },
+  "Kelley Blue Book": { tradeIn: 0.6, privateParty: 1.0, dealerRetail: 0.6 },
+  "Edmunds":         { tradeIn: 0.6, privateParty: 1.0, dealerRetail: 0.6 },
+  "NADA Guides":     { tradeIn: 1.0, privateParty: 0.5, dealerRetail: 1.0 },
+};
+
+const DEFAULT_RANGE_WIDTH = 500;
+
+interface WeightedEntry {
+  source: string;
+  value: number;
+  reliabilityWeight: number;
+  confidenceWeight: number; // 1 / rangeWidth
+}
+
+function computeWeightedValue(
+  entries: WeightedEntry[],
+): { value: number; outlierNotes: string[] } {
+  if (entries.length === 0) return { value: 0, outlierNotes: [] };
+  if (entries.length === 1) return { value: Math.round(entries[0].value), outlierNotes: [] };
+
+  // Step 3: Outlier detection — flag sources >15% from median
+  const values = entries.map(e => e.value).sort((a, b) => a - b);
+  const median = values.length % 2 === 1
+    ? values[Math.floor(values.length / 2)]
+    : (values[values.length / 2 - 1] + values[values.length / 2]) / 2;
+
+  const outlierNotes: string[] = [];
+  const adjusted = entries.map(e => {
+    const deviation = Math.abs(e.value - median) / median;
+    let reliabilityMult = e.reliabilityWeight;
+    if (deviation > 0.15) {
+      reliabilityMult *= 0.5; // down-weight outlier by 50%
+      const dir = e.value < median ? "lower" : "higher";
+      outlierNotes.push(
+        `${e.source} data is ${Math.round(deviation * 100)}% ${dir} than other sources ($${e.value.toLocaleString()} vs median $${Math.round(median).toLocaleString()}).`
+      );
+    }
+    return { ...e, reliabilityWeight: reliabilityMult };
+  });
+
+  // Combined weight = reliability × confidence
+  const totalWeight = adjusted.reduce((s, e) => s + e.reliabilityWeight * e.confidenceWeight, 0);
+  if (totalWeight === 0) return { value: Math.round(median), outlierNotes };
+
+  const weighted = adjusted.reduce((s, e) => s + e.value * e.reliabilityWeight * e.confidenceWeight, 0) / totalWeight;
+  return { value: Math.round(weighted), outlierNotes };
+}
+
+function buildEntries(
+  sources: SourceValuation[],
+  txType: "tradeIn" | "privateParty" | "dealerRetail",
+): WeightedEntry[] {
+  const entries: WeightedEntry[] = [];
+  for (const src of sources) {
+    let mid: number | null = null;
+    let rangeWidth = DEFAULT_RANGE_WIDTH;
+
+    if (txType === "tradeIn") {
+      if (src.tradeIn != null && src.tradeIn > 0) {
+        mid = src.tradeIn;
+        if (src.tradeInLow != null && src.tradeInHigh != null) {
+          rangeWidth = Math.max(src.tradeInHigh - src.tradeInLow, 1);
+        }
+      }
+    } else if (txType === "privateParty") {
+      if (src.privateParty != null && src.privateParty > 0) {
+        mid = src.privateParty;
+        if (src.privatePartyLow != null && src.privatePartyHigh != null) {
+          rangeWidth = Math.max(src.privatePartyHigh - src.privatePartyLow, 1);
+        }
+      }
+    } else {
+      if (src.dealerRetail != null && src.dealerRetail > 0) {
+        mid = src.dealerRetail;
+        if (src.dealerRetailLow != null && src.dealerRetailHigh != null) {
+          rangeWidth = Math.max(src.dealerRetailHigh - src.dealerRetailLow, 1);
+        }
+      }
+    }
+
+    if (mid == null) continue;
+
+    const reliability = SOURCE_RELIABILITY[src.source] || { tradeIn: 0.7, privateParty: 0.7, dealerRetail: 0.7 };
+    entries.push({
+      source: src.source,
+      value: mid,
+      reliabilityWeight: reliability[txType],
+      confidenceWeight: 1 / rangeWidth,
+    });
+  }
+  return entries;
 }
 
 /**
@@ -87,11 +184,39 @@ serve(async (req) => {
     if (ppResult?.pricingContext) contextParts.push(ppResult.pricingContext);
     const mergedContext = contextParts.join("\n\n");
 
-    // For computed values: prefer Perplexity (cross-referenced KBB/Edmunds/NADA) over MarketCheck
-    const computedValues = ppResult?.computedValues || mcResult?.computedValues;
+    // Weighted Confidence Aggregation across all sources
+    const tradeInEntries = buildEntries(allSources, "tradeIn");
+    const privateEntries = buildEntries(allSources, "privateParty");
+    const dealerEntries = buildEntries(allSources, "dealerRetail");
+
+    const tradeInResult = computeWeightedValue(tradeInEntries);
+    const privateResult = computeWeightedValue(privateEntries);
+    const dealerResult = computeWeightedValue(dealerEntries);
+
+    const outlierNotes = [
+      ...tradeInResult.outlierNotes,
+      ...privateResult.outlierNotes,
+      ...dealerResult.outlierNotes,
+    ];
+
+    // FMV = (weightedTradeIn + weightedPrivateParty) / 2
+    // This represents true economic value, excluding dealer margin
+    const fairMarketValue = Math.round((tradeInResult.value + privateResult.value) / 2);
+
+    const computedValues = (privateResult.value > 0 || dealerResult.value > 0 || tradeInResult.value > 0)
+      ? {
+          fairMarketPrivate: fairMarketValue, // FMV = midpoint of trade-in and private party
+          fairMarketDealer: dealerResult.value,
+          fairMarketTradeIn: tradeInResult.value,
+        }
+      : mcResult?.computedValues || ppResult?.computedValues;
 
     if (!mergedContext) {
       throw new Error("No pricing data available from any source");
+    }
+
+    if (outlierNotes.length > 0) {
+      console.log(`Pricing outliers detected: ${outlierNotes.join(" | ")}`);
     }
 
     console.log(`Pricing complete: ${allSources.length} source(s), ${uniqueCitations.length} citation(s), dealerType=${detectedDealerType || "unknown"}`);
@@ -104,6 +229,7 @@ serve(async (req) => {
         computedValues,
         sourceBreakdown: allSources,
         detectedDealerType,
+        outlierNotes: outlierNotes.length > 0 ? outlierNotes : undefined,
       } as PricingResult,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
