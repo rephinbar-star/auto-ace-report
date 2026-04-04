@@ -21,10 +21,12 @@ export function FinancingDetailsCard({ financing, askingPrice, onChange }: Finan
   }, [financing]);
 
   const update = useCallback((patch: Partial<FinancingInfo>) => {
-    const next = { ...local, ...patch };
-    setLocal(next);
-    onChange(next);
-  }, [local, onChange]);
+    setLocal(prev => {
+      const next = { ...prev, ...patch };
+      onChange(next);
+      return next;
+    });
+  }, [onChange]);
 
   const purchasePrice = local.negotiatedPrice ?? askingPrice;
 
