@@ -1175,10 +1175,6 @@ export default function ReportPage() {
     high: "bg-danger text-danger-foreground",
   };
 
-  const financingSkipped = financing?.skipped === true;
-
-  const purchasePrice = financing?.negotiatedPrice ?? condition.askingPrice;
-  const askingPrice = condition.askingPrice;
   const floorTriggered = !!(analysis.aiFindings?.floorOverrides as any)?.triggered;
   const displayVerdict = getFinalVerdict(
     analysis.finalVerdict?.verdict,
