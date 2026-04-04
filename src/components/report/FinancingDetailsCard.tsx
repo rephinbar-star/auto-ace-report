@@ -1,0 +1,219 @@
+import { useState, useEffect, useCallback } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DollarSign, CreditCard, Landmark, Banknote } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { FinancingInfo } from "@/types/vehicle";
+
+interface FinancingDetailsCardProps {
+  financing: FinancingInfo;
+  askingPrice: number;
+  onChange: (updated: FinancingInfo) => void;
+}
+
+export function FinancingDetailsCard({ financing, askingPrice, onChange }: FinancingDetailsCardProps) {
+  const [local, setLocal] = useState<FinancingInfo>({ ...financing });
+
+  useEffect(() => {
+    setLocal({ ...financing });
+  }, [financing]);
+
+  const update = useCallback((patch: Partial<FinancingInfo>) => {
+    const next = { ...local, ...patch };
+    setLocal(next);
+    onChange(next);
+  }, [local, onChange]);
+
+  const purchasePrice = local.negotiatedPrice ?? askingPrice;
+
+  // Calculate monthly payment for loan
+  const computedMonthlyPayment = (() => {
+    if (local.type !== "loan" || !local.loanAmount || !local.loanTerm) return null;
+    const P = local.loanAmount;
+    const r = ((local.apr || 0) / 100) / 12;
+    const n = local.loanTerm;
+    if (r > 0) {
+      return Math.round(P * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1));
+    }
+    return Math.round(P / n);
+  })();
+
+  const typeIcon = local.type === "loan" ? <Landmark className="h-5 w-5 text-primary" />
+    : local.type === "lease" ? <CreditCard className="h-5 w-5 text-primary" />
+    : <Banknote className="h-5 w-5 text-primary" />;
+
+  const typeLabel = local.type === "loan" ? "Auto Loan" : local.type === "lease" ? "Lease" : "Cash Purchase";
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          {typeIcon}
+          Financing Details
+          <Badge variant="secondary" className="ml-auto text-xs font-normal">
+            {typeLabel}
+          </Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Financing Type Selector */}
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">Financing Type</Label>
+          <Select value={local.type} onValueChange={(v) => update({ type: v as FinancingInfo["type"] })}>
+            <SelectTrigger className="h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="loan">Auto Loan</SelectItem>
+              <SelectItem value="lease">Lease</SelectItem>
+              <SelectItem value="cash">Cash</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Purchase / Negotiated Price — always shown */}
+        <div className="space-y-1.5">
+          <Label className="text-xs text-muted-foreground">
+            {local.type === "cash" ? "Purchase Price" : "Negotiated Price"}
+          </Label>
+          <div className="relative">
+            <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              type="number"
+              className="h-9 pl-8"
+              value={purchasePrice || ""}
+              onChange={(e) => update({ negotiatedPrice: Number(e.target.value) || undefined })}
+            />
+          </div>
+        </div>
+
+        {/* Loan-specific fields */}
+        {local.type === "loan" && (
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Loan Amount</Label>
+              <div className="relative">
+                <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  type="number"
+                  className="h-9 pl-8"
+                  value={local.loanAmount || ""}
+                  onChange={(e) => update({ loanAmount: Number(e.target.value) || undefined })}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Loan Term (months)</Label>
+              <Input
+                type="number"
+                className="h-9"
+                value={local.loanTerm || ""}
+                onChange={(e) => update({ loanTerm: Number(e.target.value) || undefined })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">APR (%)</Label>
+              <Input
+                type="number"
+                step="0.1"
+                className="h-9"
+                value={local.apr ?? ""}
+                onChange={(e) => update({ apr: Number(e.target.value) || undefined })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Monthly Payment</Label>
+              <div className="flex items-center h-9 px-3 rounded-md border bg-muted/50 text-sm">
+                {computedMonthlyPayment != null ? `$${computedMonthlyPayment.toLocaleString()}` : "—"}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Lease-specific fields */}
+        {local.type === "lease" && (
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Monthly Payment</Label>
+              <div className="relative">
+                <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  type="number"
+                  className="h-9 pl-8"
+                  value={local.monthlyPayment || ""}
+                  onChange={(e) => update({ monthlyPayment: Number(e.target.value) || undefined })}
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Lease Term (months)</Label>
+              <Input
+                type="number"
+                className="h-9"
+                value={local.leaseTermMonths || ""}
+                onChange={(e) => update({ leaseTermMonths: Number(e.target.value) || undefined })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Mileage Allowance (mi/yr)</Label>
+              <Input
+                type="number"
+                className="h-9"
+                value={local.mileageAllowance || ""}
+                onChange={(e) => update({ mileageAllowance: Number(e.target.value) || undefined })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Residual Value</Label>
+              <div className="relative">
+                <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  type="number"
+                  className="h-9 pl-8"
+                  value={local.residualValue || ""}
+                  onChange={(e) => update({ residualValue: Number(e.target.value) || undefined })}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Summary line */}
+        {local.type === "loan" && computedMonthlyPayment != null && local.loanTerm && (
+          <div className="rounded-lg bg-muted/50 p-3 text-center">
+            <p className="text-sm text-muted-foreground">
+              <span className="font-semibold text-foreground">${computedMonthlyPayment.toLocaleString()}/mo</span>
+              {" "}for {local.loanTerm} months at {local.apr ?? 0}% APR
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Total interest: ${((computedMonthlyPayment * local.loanTerm) - (local.loanAmount || 0)).toLocaleString()}
+            </p>
+          </div>
+        )}
+
+        {local.type === "lease" && local.monthlyPayment && local.leaseTermMonths && (
+          <div className="rounded-lg bg-muted/50 p-3 text-center">
+            <p className="text-sm text-muted-foreground">
+              <span className="font-semibold text-foreground">${local.monthlyPayment.toLocaleString()}/mo</span>
+              {" "}for {local.leaseTermMonths} months
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Total lease cost: ${(local.monthlyPayment * local.leaseTermMonths).toLocaleString()}
+            </p>
+          </div>
+        )}
+
+        {local.type === "cash" && (
+          <div className="rounded-lg bg-muted/50 p-3 text-center">
+            <p className="text-sm text-muted-foreground">
+              Cash purchase at <span className="font-semibold text-foreground">${purchasePrice.toLocaleString()}</span>
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
