@@ -16,8 +16,13 @@ interface FinancingDetailsCardProps {
 export function FinancingDetailsCard({ financing, askingPrice, onChange }: FinancingDetailsCardProps) {
   const [local, setLocal] = useState<FinancingInfo>({ ...financing });
 
+  // Only sync from parent when the financing type changes (not on every prop update)
+  const prevTypeRef = useRef(financing.type);
   useEffect(() => {
-    setLocal({ ...financing });
+    if (financing.type !== prevTypeRef.current) {
+      prevTypeRef.current = financing.type;
+      setLocal({ ...financing });
+    }
   }, [financing]);
 
   const update = useCallback((patch: Partial<FinancingInfo>) => {
