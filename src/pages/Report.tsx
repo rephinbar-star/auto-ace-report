@@ -106,6 +106,59 @@ interface DepreciationYear {
   netEquityTradeIn: number;
 }
 
+function sanitizeExpertOpinion({
+  expertOpinion,
+  displayVerdict,
+  dealRating,
+  sellerType,
+  effectivePrice,
+  fairMarketPrivate,
+  fairMarketDealer,
+}: {
+  expertOpinion: string;
+  displayVerdict: "Conditional Buy" | "Caution" | "Avoid";
+  dealRating: string;
+  sellerType: "dealer" | "private";
+  effectivePrice: number;
+  fairMarketPrivate: number;
+  fairMarketDealer?: number;
+}): string {
+  if (!expertOpinion?.trim()) return expertOpinion;
+
+  let sanitized = expertOpinion.trim();
+
+  if (dealRating.toLowerCase() !== "excellent") {
+    sanitized = sanitized.replace(/['"]?excellent['"]?\s+deal rating/gi, `${dealRating.toLowerCase()} pricing position`);
+  }
+
+  if (displayVerdict !== "Avoid") {
+    return sanitized;
+  }
+
+  sanitized = sanitized.replace(/\b[Nn]egotiate\b/g, (match) => (match[0] === "N" ? "Avoid" : "avoid"));
+
+  const benchmark = sellerType === "dealer" && fairMarketDealer ? fairMarketDealer : fairMarketPrivate;
+  const benchmarkLabel = sellerType === "dealer" && fairMarketDealer ? "fair dealer retail" : "fair market value";
+  const priceGap = effectivePrice - benchmark;
+  const priceSentence = benchmark > 0
+    ? priceGap > 0
+      ? `The current purchase price of $${effectivePrice.toLocaleString()} is $${Math.abs(priceGap).toLocaleString()} above ${benchmarkLabel} of $${benchmark.toLocaleString()}.`
+      : priceGap < 0
+        ? `The current purchase price of $${effectivePrice.toLocaleString()} is $${Math.abs(priceGap).toLocaleString()} below ${benchmarkLabel} of $${benchmark.toLocaleString()}.`
+        : `The current purchase price of $${effectivePrice.toLocaleString()} matches ${benchmarkLabel}.`
+    : `The current purchase price is $${effectivePrice.toLocaleString()}.`;
+  const mentionsBatteryDiagnostic = /\bbattery\b|\bdiagnostic\b|\bleafspy\b/i.test(sanitized);
+  const conclusion = mentionsBatteryDiagnostic
+    ? `${priceSentence} Recommendation: avoid this vehicle unless the seller provides a clean professional battery diagnostic and reprices it to reflect the risk.`
+    : `${priceSentence} Recommendation: avoid this vehicle at the current price.`;
+
+  const paragraphs = sanitized.split(/\n\s*\n/).map((paragraph) => paragraph.trim()).filter(Boolean);
+  if (paragraphs.length === 0) return conclusion;
+
+  paragraphs[paragraphs.length - 1] = conclusion;
+  return paragraphs.join("\n\n");
+}
+
 /** Reconcile AI verdict with UVPRS score — always take the higher-risk signal */
 function getFinalVerdict(
   aiVerdict: string | undefined,
@@ -951,6 +1004,20 @@ export default function ReportPage() {
 
   // Alias for backward compat with all existing references
   const depreciationTable = computedDepTable;
+  const cumulativeOwnershipCosts = depreciationTable.reduce<Array<{
+    year: number;
+    cumulativeRepairs: number;
+    cumulativeMaintenance: number;
+  }>>((acc, row) => {
+    const previous = acc[acc.length - 1];
+    acc.push({
+      year: row.year,
+      cumulativeRepairs: (previous?.cumulativeRepairs ?? 0) + row.repairCosts,
+      cumulativeMaintenance: (previous?.cumulativeMaintenance ?? 0) + row.maintenanceCosts,
+    });
+    return acc;
+  }, []);
+  const cumulativeOwnershipCostMap = new Map(cumulativeOwnershipCosts.map((entry) => [entry.year, entry]));
 
   const handleDownloadPDF = async () => {
     setIsDownloading(true);
@@ -989,6 +1056,7 @@ export default function ReportPage() {
           trim: vehicle.trim,
           mileage: condition.mileage,
           askingPrice: condition.askingPrice,
+          purchasePrice,
         },
         priceAssessment: {
           fairMarketPrivate: priceAssessment.fairMarketPrivate,
@@ -999,7 +1067,7 @@ export default function ReportPage() {
         riskAssessment: {
           level: riskAssessment.level,
           fairOfferPrice: riskAssessment.fairOfferPrice,
-          expertOpinion: riskAssessment.expertOpinion,
+          expertOpinion: sanitizedExpertOpinion,
           depreciationRisk: riskAssessment.depreciationRisk,
           reliabilityConcerns: riskAssessment.reliabilityConcerns,
         },
@@ -1059,6 +1127,21 @@ export default function ReportPage() {
 
   const purchasePrice = financing?.negotiatedPrice ?? condition.askingPrice;
   const askingPrice = condition.askingPrice;
+  const floorTriggered = !!(analysis.aiFindings?.floorOverrides as any)?.triggered;
+  const displayVerdict = getFinalVerdict(
+    analysis.finalVerdict?.verdict,
+    uvprsResult?.totalScore,
+    floorTriggered
+  );
+  const sanitizedExpertOpinion = sanitizeExpertOpinion({
+    expertOpinion: riskAssessment.expertOpinion,
+    displayVerdict,
+    dealRating: priceAssessment.dealRating,
+    sellerType: condition.sellerType,
+    effectivePrice: purchasePrice,
+    fairMarketPrivate: priceAssessment.fairMarketPrivate,
+    fairMarketDealer: priceAssessment.fairMarketDealer,
+  });
 
   // Chart data: values already deterministic from engine, no clamping needed
   const chartData = [
@@ -1994,7 +2077,7 @@ export default function ReportPage() {
                           <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight">Trade-In<br/>Value</TableHead>
                           <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight">Est. Vehicle<br/>Value</TableHead>
                           {!financingSkipped && <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Equity</TableHead>}
-                          <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight">Net<br/>Equity</TableHead>
+                          <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight">Net<br/>Position</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -2003,6 +2086,7 @@ export default function ReportPage() {
                           const loanAmt = financing?.loanAmount || 0;
                           const tradeInVal = Math.round(priceAssessment.fairMarketTradeIn || startingFMV * 0.85);
                           const yr0Equity = startingFMV - Math.round(loanAmt);
+                          const yr0NetPosition = startingFMV - purchasePrice;
                           return (
                             <TableRow>
                               <TableCell className="font-medium text-xs whitespace-nowrap px-1.5 md:px-4">Yr 0</TableCell>
@@ -2018,8 +2102,8 @@ export default function ReportPage() {
                                   {yr0Equity < 0 ? "-" : ""}${Math.abs(yr0Equity).toLocaleString()}
                                 </TableCell>
                               )}
-                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold text-success">
-                                ${startingFMV.toLocaleString()}
+                              <TableCell className={cn("text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold", yr0NetPosition >= 0 ? "text-success" : "text-destructive")}>
+                                {yr0NetPosition < 0 ? "-" : ""}${Math.abs(yr0NetPosition).toLocaleString()}
                               </TableCell>
                             </TableRow>
                           );
@@ -2027,6 +2111,8 @@ export default function ReportPage() {
                         {depreciationTable.map((row) => {
                           const estValue = row.marketValue;
                           const isZeroValue = estValue === 0;
+                          const cumulativeCosts = cumulativeOwnershipCostMap.get(row.year);
+                          const netPosition = estValue - purchasePrice - (cumulativeCosts?.cumulativeRepairs ?? 0) - (cumulativeCosts?.cumulativeMaintenance ?? 0);
                           return (
                             <TableRow key={row.year}>
                               <TableCell className="font-medium text-xs whitespace-nowrap px-1.5 md:px-4">Yr {row.year}</TableCell>
@@ -2051,14 +2137,9 @@ export default function ReportPage() {
                                   {row.equity < 0 ? "-" : ""}${Math.abs(row.equity).toLocaleString()}
                                 </TableCell>
                               )}
-                              {(() => {
-                                const netEquity = estValue - row.repairCosts - row.maintenanceCosts;
-                                return (
-                                  <TableCell className={cn("text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold", netEquity >= 0 ? "text-success" : "text-destructive")}>
-                                    {netEquity < 0 ? "-" : ""}${Math.abs(netEquity).toLocaleString()}
-                                  </TableCell>
-                                );
-                              })()}
+                              <TableCell className={cn("text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold", netPosition >= 0 ? "text-success" : "text-destructive")}>
+                                {netPosition < 0 ? "-" : ""}${Math.abs(netPosition).toLocaleString()}
+                              </TableCell>
                             </TableRow>
                           );
                         })}
@@ -2123,7 +2204,7 @@ export default function ReportPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="prose prose-sm max-w-none dark:prose-invert">
-                    <p className="whitespace-pre-line text-foreground">{riskAssessment.expertOpinion}</p>
+                    <p className="whitespace-pre-line text-foreground">{sanitizedExpertOpinion}</p>
                   </div>
                   
                 </CardContent>
@@ -2131,14 +2212,6 @@ export default function ReportPage() {
 
               {/* Final Verdict Card - Uses UVPRS-derived verdict */}
               {(() => {
-                // Reconcile AI verdict with UVPRS score — always take the higher-risk signal
-                const floorTriggered = !!(analysis.aiFindings?.floorOverrides as any)?.triggered;
-                const displayVerdict = getFinalVerdict(
-                  analysis.finalVerdict?.verdict,
-                  uvprsResult?.totalScore,
-                  floorTriggered
-                );
-
                 // Always generate justification from actual data — never trust AI-stored text
                 const justification = (() => {
                   const askPrice = vehicleData?.condition?.askingPrice ?? 0;

@@ -345,11 +345,16 @@ FINAL RECOMMENDATION VERDICT: Every analysis MUST conclude with a clear, unambig
 - "Buy" ONLY when NONE of the above conditions apply AND overall risk assessment supports it.
 The justification MUST reference the specific triggering condition(s). The word "high-risk" in expertOpinion is incompatible with a "Buy" verdict.
 
+CONSISTENCY RULES (MANDATORY):
+- If finalVerdict.verdict is "Walk Away", expertOpinion MUST NOT contain "buy", "negotiate", "good deal", "excellent deal", or equivalent purchase-positive phrasing. Paragraph 4 must explicitly tell the user to avoid or walk away.
+- If percentDifference is above 0, the vehicle is priced above the relevant market benchmark. In that case, expertOpinion MUST NOT call the pricing or deal rating "excellent" or "good". Use the actual computed dealRating and exact dollar difference provided.
+- If the vehicle is above private-party FMV but below dealer retail, explain that those are different benchmarks rather than implying it is an excellent deal.
+
 EXPERT OPINION STRUCTURE (MANDATORY 4-PARAGRAPH FORMAT):
 P1: Open with the most critical finding and verdict orientation. If odometer issues exist, lead with those. Then recalls. Then the single highest-risk finding. State the verdict direction clearly.
 P2: Mechanical and historical concerns with specific dollar estimates. Reference reliability concern costs, chronic systems, and service history gaps. Use actual dollar figures from RepairPal/CarEdge data.
 P3: Financial analysis — price vs market positioning, depreciation outlook, TCO implications. Reference the exact computed price differences provided.
-P4: Actionable conclusion — specific pre-purchase inspection demands (what to check, estimated cost), or clear walk-away reasoning with the triggering condition.
+P4: Actionable conclusion — specific pre-purchase inspection demands (what to check, estimated cost), or clear walk-away reasoning with the triggering condition. This paragraph must match finalVerdict exactly.
 
 REPAIR COST MODEL — EXPECTED VALUE:
 The depreciationTable repairCosts field must use probability-weighted expected values, NOT 100% of estimated costs.
