@@ -241,6 +241,7 @@ export default function ReportPage() {
     evRange: number | null;
   } | null>(null);
   const [pricingSources, setPricingSources] = useState<string[]>([]);
+  const [maintenanceSources, setMaintenanceSources] = useState<string[]>([]);
   const [sourceBreakdown, setSourceBreakdown] = useState<Array<{
     source: string;
     privateParty?: number | null;
