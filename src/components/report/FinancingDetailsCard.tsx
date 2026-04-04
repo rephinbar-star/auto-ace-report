@@ -28,29 +28,31 @@ export function FinancingDetailsCard({ financing, askingPrice, onChange }: Finan
 
   const purchasePrice = local.negotiatedPrice ?? askingPrice;
 
-  // These are computed after totalAmountFinanced is known — defined below
-  let computedMonthlyPayment: number | null = null;
-
-  // Derived read-only values
+  // Derived values
   const fees = local.fees || 0;
   const downPayment = local.downPayment || 0;
+  const apr = local.apr || 0;
+  const loanTerm = local.loanTerm || 0;
+
+  // Interest Amount = total interest on the negotiated price over the loan term
+  const interestAmount = (() => {
+    if (local.type !== "loan" || !loanTerm || apr <= 0) return 0;
+    const principal = purchasePrice;
+    const r = (apr / 100) / 12;
+    const n = loanTerm;
+    const monthlyPmt = principal * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+    return Math.round((monthlyPmt * n) - principal);
+  })();
+
+  // Total Amount Financed = negotiated price + interest + fees - down payment
   const totalAmountFinanced = local.type === "loan"
-    ? Math.max(0, purchasePrice + fees - downPayment)
+    ? Math.max(0, purchasePrice + interestAmount + fees - downPayment)
     : 0;
 
-  // Now compute monthly payment from totalAmountFinanced
-  if (local.type === "loan" && totalAmountFinanced > 0 && local.loanTerm) {
-    const P = totalAmountFinanced;
-    const r = ((local.apr || 0) / 100) / 12;
-    const n = local.loanTerm;
-    computedMonthlyPayment = r > 0
-      ? Math.round(P * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1))
-      : Math.round(P / n);
-  }
-
-  const totalInterest = local.type === "loan" && computedMonthlyPayment && local.loanTerm
-    ? (computedMonthlyPayment * local.loanTerm) - totalAmountFinanced
-    : 0;
+  // Monthly Payment = Total Amount Financed / term
+  const computedMonthlyPayment = local.type === "loan" && totalAmountFinanced > 0 && loanTerm > 0
+    ? Math.round(totalAmountFinanced / loanTerm)
+    : null;
 
   // Savings banner data
   const negotiated = local.negotiatedPrice;
@@ -175,14 +177,21 @@ export function FinancingDetailsCard({ financing, askingPrice, onChange }: Finan
                   />
                 </div>
               </div>
-              {/* 5. Total Amount Financed (read-only) */}
+              {/* 5. Interest Amount (read-only) */}
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Interest Amount</Label>
+                <div className="flex items-center h-9 px-3 rounded-md border bg-muted/50 text-sm pointer-events-none select-none text-muted-foreground">
+                  ${interestAmount.toLocaleString()}
+                </div>
+              </div>
+              {/* 6. Total Amount Financed (read-only) */}
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">Total Amount Financed</Label>
                 <div className="flex items-center h-9 px-3 rounded-md border bg-muted/50 text-sm pointer-events-none select-none text-muted-foreground">
                   ${totalAmountFinanced.toLocaleString()}
                 </div>
               </div>
-              {/* 6. Payment (read-only) */}
+              {/* 7. Payment (read-only) */}
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">Monthly Payment</Label>
                 <div className="flex items-center h-9 px-3 rounded-md border bg-muted/50 text-sm pointer-events-none select-none text-muted-foreground">
@@ -192,15 +201,15 @@ export function FinancingDetailsCard({ financing, askingPrice, onChange }: Finan
             </div>
 
             {/* Summary */}
-            {computedMonthlyPayment != null && local.loanTerm && (
+            {computedMonthlyPayment != null && loanTerm > 0 && (
               <div className="rounded-lg bg-muted/50 p-3 text-center">
                 <p className="text-sm text-muted-foreground">
                   <span className="font-semibold text-foreground">${computedMonthlyPayment.toLocaleString()}/mo</span>
-                  {" "}for {local.loanTerm} months at {local.apr ?? 0}% APR
+                  {" "}for {loanTerm} months at {apr}% APR
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Total interest: ${totalInterest.toLocaleString()}
-                  {" · "}Total cost: ${((computedMonthlyPayment * local.loanTerm) + downPayment).toLocaleString()}
+                  Interest: ${interestAmount.toLocaleString()}
+                  {" · "}Total paid: ${totalAmountFinanced.toLocaleString()}
                 </p>
               </div>
             )}
