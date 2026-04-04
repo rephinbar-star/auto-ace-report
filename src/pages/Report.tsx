@@ -1960,13 +1960,18 @@ export default function ReportPage() {
                   financing={financing}
                   askingPrice={condition.askingPrice}
                   onChange={async (updated: FinancingInfo) => {
+                    // Compute loanAmount from new fields
+                    const effectivePrice = updated.negotiatedPrice ?? condition.askingPrice;
+                    const computedLoanAmount = Math.max(0, effectivePrice + (updated.fees || 0) - (updated.downPayment || 0));
+                    const withLoanAmount = { ...updated, loanAmount: computedLoanAmount };
+
                     // Recalculate loan balances
                     const updatedDepTable = (() => {
                       const table = analysis.depreciationTable;
-                      if (!table || !updated.loanAmount || !updated.loanTerm) return table;
-                      const P = updated.loanAmount;
-                      const monthlyRate = ((updated.apr || 0) / 100) / 12;
-                      const totalMonths = updated.loanTerm;
+                      if (!table || !computedLoanAmount || !withLoanAmount.loanTerm) return table;
+                      const P = computedLoanAmount;
+                      const monthlyRate = ((withLoanAmount.apr || 0) / 100) / 12;
+                      const totalMonths = withLoanAmount.loanTerm;
                       const monthlyPmt = monthlyRate > 0
                         ? P * (monthlyRate * Math.pow(1 + monthlyRate, totalMonths)) / (Math.pow(1 + monthlyRate, totalMonths) - 1)
                         : P / totalMonths;
@@ -1980,19 +1985,19 @@ export default function ReportPage() {
                       return table.map((row) => ({ ...row, loanBalance: Math.max(0, Math.round(balanceAfter(row.year * 12))) }));
                     })();
 
-                    setVehicleData((prev: any) => ({ ...prev, financing: updated }));
+                    setVehicleData((prev: any) => ({ ...prev, financing: withLoanAmount }));
                     setAnalysis((prev) => prev ? { ...prev, depreciationTable: updatedDepTable } : prev);
 
                     if (isSavedReport && id) {
                       await supabase.from("vehicle_reports").update({
-                        financing_type: updated.type,
-                        loan_amount: updated.loanAmount || null,
-                        loan_term: updated.loanTerm || null,
-                        apr: updated.apr || null,
-                        monthly_payment: updated.monthlyPayment || null,
-                        lease_term_months: updated.leaseTermMonths || null,
-                        residual_value: updated.residualValue || null,
-                        negotiated_price: updated.negotiatedPrice && updated.negotiatedPrice !== condition.askingPrice ? updated.negotiatedPrice : null,
+                        financing_type: withLoanAmount.type,
+                        loan_amount: computedLoanAmount || null,
+                        loan_term: withLoanAmount.loanTerm || null,
+                        apr: withLoanAmount.apr || null,
+                        monthly_payment: withLoanAmount.monthlyPayment || null,
+                        lease_term_months: withLoanAmount.leaseTermMonths || null,
+                        residual_value: withLoanAmount.residualValue || null,
+                        negotiated_price: withLoanAmount.negotiatedPrice && withLoanAmount.negotiatedPrice !== condition.askingPrice ? withLoanAmount.negotiatedPrice : null,
                         depreciation_table: updatedDepTable as any,
                       }).eq("id", id);
                     }
