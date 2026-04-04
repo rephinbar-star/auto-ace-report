@@ -1978,6 +1978,52 @@ export default function ReportPage() {
                 </CardContent>
               </Card>
 
+              {/* Financing Details Card — only when financing was entered */}
+              {financing && !financing.skipped && (
+                <FinancingDetailsCard
+                  financing={financing}
+                  askingPrice={condition.askingPrice}
+                  onChange={async (updated: FinancingInfo) => {
+                    // Recalculate loan balances
+                    const updatedDepTable = (() => {
+                      const table = analysis.depreciationTable;
+                      if (!table || !updated.loanAmount || !updated.loanTerm) return table;
+                      const P = updated.loanAmount;
+                      const monthlyRate = ((updated.apr || 0) / 100) / 12;
+                      const totalMonths = updated.loanTerm;
+                      const monthlyPmt = monthlyRate > 0
+                        ? P * (monthlyRate * Math.pow(1 + monthlyRate, totalMonths)) / (Math.pow(1 + monthlyRate, totalMonths) - 1)
+                        : P / totalMonths;
+                      const balanceAfter = (months: number) => {
+                        if (months >= totalMonths) return 0;
+                        if (monthlyRate > 0) {
+                          return P * Math.pow(1 + monthlyRate, months) - monthlyPmt * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate);
+                        }
+                        return Math.max(0, P - monthlyPmt * months);
+                      };
+                      return table.map((row) => ({ ...row, loanBalance: Math.max(0, Math.round(balanceAfter(row.year * 12))) }));
+                    })();
+
+                    setVehicleData((prev: any) => ({ ...prev, financing: updated }));
+                    setAnalysis((prev) => prev ? { ...prev, depreciationTable: updatedDepTable } : prev);
+
+                    if (isSavedReport && id) {
+                      await supabase.from("vehicle_reports").update({
+                        financing_type: updated.type,
+                        loan_amount: updated.loanAmount || null,
+                        loan_term: updated.loanTerm || null,
+                        apr: updated.apr || null,
+                        monthly_payment: updated.monthlyPayment || null,
+                        lease_term_months: updated.leaseTermMonths || null,
+                        residual_value: updated.residualValue || null,
+                        negotiated_price: updated.negotiatedPrice && updated.negotiatedPrice !== condition.askingPrice ? updated.negotiatedPrice : null,
+                        depreciation_table: updatedDepTable as any,
+                      }).eq("id", id);
+                    }
+                  }}
+                />
+              )}
+
               {/* Fuel Economy & TCO */}
               <FuelEconomyCard
                 mpgCity={mpgData?.mpgCity ?? null}
