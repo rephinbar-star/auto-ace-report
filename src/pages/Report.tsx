@@ -1191,6 +1191,9 @@ export default function ReportPage() {
                         setPricingSources(analysisResult.pricingSources);
                         setPricingLastUpdated(new Date());
                       }
+                      if (analysisResult.maintenanceSources?.length) {
+                        setMaintenanceSources(analysisResult.maintenanceSources);
+                      }
                       if (analysisResult.sourceBreakdown?.length) {
                         setSourceBreakdown(analysisResult.sourceBreakdown);
                       }
