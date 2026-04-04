@@ -2157,9 +2157,9 @@ export default function ReportPage() {
                       <TableBody>
                         {/* Year 0 row - FMV starting point */}
                         {(() => {
-                          const loanAmt = financing?.loanAmount || 0;
+                          const loanAmt = liveLoanMetrics.totalAmountFinanced;
                           const tradeInVal = Math.round(priceAssessment.fairMarketTradeIn || startingFMV * 0.85);
-                          const yr0Equity = startingFMV - Math.round(loanAmt);
+                          const yr0Equity = startingFMV - loanAmt;
                           const yr0NetPosition = startingFMV - purchasePrice;
                           return (
                             <TableRow>
