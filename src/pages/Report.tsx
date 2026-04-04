@@ -348,7 +348,10 @@ export default function ReportPage() {
         warranty_notes: analysis.warrantyAnalysis?.warrantyNotes || null,
         final_verdict: analysis.finalVerdict?.verdict || null,
         final_verdict_justification: analysis.finalVerdict?.justification || null,
-        ai_findings: (analysis.aiFindings as any) ?? null,
+        ai_findings: {
+          ...((analysis.aiFindings as any) ?? {}),
+          ...(analysis.depreciationInputs ? { depreciationInputs: analysis.depreciationInputs } : {}),
+        },
         status: "complete",
       });
 
@@ -489,6 +492,10 @@ export default function ReportPage() {
             } : {}),
             ...(report.ai_findings ? {
               aiFindings: report.ai_findings as unknown as AiFindings,
+              // Restore depreciationInputs from ai_findings if stored there
+              ...((report.ai_findings as any)?.depreciationInputs ? {
+                depreciationInputs: (report.ai_findings as any).depreciationInputs as DepreciationInputs,
+              } : {}),
             } : {
               // Synthesize aiFindings from legacy DB fields for older reports
               aiFindings: synthesizeAiFindingsFromReport(report),
@@ -811,7 +818,10 @@ export default function ReportPage() {
             pricing_last_updated: now.toISOString(),
             source_breakdown: result.sourceBreakdown || [],
             ...(result.detectedSellerType ? { seller_type: result.detectedSellerType } : {}),
-            ...(result.analysis.aiFindings ? { ai_findings: result.analysis.aiFindings } : {}),
+            ...(result.analysis.aiFindings ? { ai_findings: {
+              ...(result.analysis.aiFindings as any),
+              ...(result.analysis.depreciationInputs ? { depreciationInputs: result.analysis.depreciationInputs } : {}),
+            } } : {}),
           };
           // Only overwrite pricing if the new values are non-zero
           if (priceAssessment.fairMarketPrivate > 0 || priceAssessment.fairMarketDealer > 0) {

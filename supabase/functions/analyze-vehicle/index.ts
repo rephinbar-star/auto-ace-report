@@ -729,7 +729,7 @@ Provide your expert analysis.`;
                     required: ["activeServiceFaults", "knownFailurePatterns", "chassisSignal", "floorOverrides"],
                   },
                 },
-                required: ["priceAssessment", "depreciationTable", "riskAssessment", "historyAnalysis", "warrantyAnalysis", "finalVerdict", "aiFindings"],
+                required: ["priceAssessment", "depreciationInputs", "depreciationTable", "riskAssessment", "historyAnalysis", "warrantyAnalysis", "finalVerdict", "aiFindings"],
               },
             },
           },
