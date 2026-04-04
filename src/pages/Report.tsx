@@ -2073,13 +2073,13 @@ export default function ReportPage() {
                     )}
 
                     {/* Cost Data Sources */}
-                    {pricingSources.length > 0 && (
+                    {maintenanceSources.length > 0 && (
                       <div className="mt-4 rounded-lg border border-dashed p-3">
                         <p className="text-xs font-medium text-muted-foreground mb-2">Repair & Maintenance Cost Sources</p>
                         <div className="flex flex-wrap gap-2">
                           {(() => {
                             const seen = new Map<string, { displayName: string; url: string }>();
-                            for (const url of pricingSources) {
+                            for (const url of maintenanceSources) {
                               try {
                                 const hostname = new URL(url).hostname.replace("www.", "");
                                 const domain = hostname.split(".")[0];
