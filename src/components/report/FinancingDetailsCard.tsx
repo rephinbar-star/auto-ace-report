@@ -28,29 +28,31 @@ export function FinancingDetailsCard({ financing, askingPrice, onChange }: Finan
 
   const purchasePrice = local.negotiatedPrice ?? askingPrice;
 
-  // These are computed after totalAmountFinanced is known — defined below
-  let computedMonthlyPayment: number | null = null;
-
-  // Derived read-only values
+  // Derived values
   const fees = local.fees || 0;
   const downPayment = local.downPayment || 0;
+  const apr = local.apr || 0;
+  const loanTerm = local.loanTerm || 0;
+
+  // Interest Amount = total interest on the negotiated price over the loan term
+  const interestAmount = (() => {
+    if (local.type !== "loan" || !loanTerm || apr <= 0) return 0;
+    const principal = purchasePrice;
+    const r = (apr / 100) / 12;
+    const n = loanTerm;
+    const monthlyPmt = principal * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+    return Math.round((monthlyPmt * n) - principal);
+  })();
+
+  // Total Amount Financed = negotiated price + interest + fees - down payment
   const totalAmountFinanced = local.type === "loan"
-    ? Math.max(0, purchasePrice + fees - downPayment)
+    ? Math.max(0, purchasePrice + interestAmount + fees - downPayment)
     : 0;
 
-  // Now compute monthly payment from totalAmountFinanced
-  if (local.type === "loan" && totalAmountFinanced > 0 && local.loanTerm) {
-    const P = totalAmountFinanced;
-    const r = ((local.apr || 0) / 100) / 12;
-    const n = local.loanTerm;
-    computedMonthlyPayment = r > 0
-      ? Math.round(P * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1))
-      : Math.round(P / n);
-  }
-
-  const totalInterest = local.type === "loan" && computedMonthlyPayment && local.loanTerm
-    ? (computedMonthlyPayment * local.loanTerm) - totalAmountFinanced
-    : 0;
+  // Monthly Payment = Total Amount Financed / term
+  const computedMonthlyPayment = local.type === "loan" && totalAmountFinanced > 0 && loanTerm > 0
+    ? Math.round(totalAmountFinanced / loanTerm)
+    : null;
 
   // Savings banner data
   const negotiated = local.negotiatedPrice;
