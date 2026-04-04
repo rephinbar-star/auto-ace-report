@@ -788,6 +788,9 @@ export default function ReportPage() {
         if (result.pricingSources?.length) {
           setPricingSources(result.pricingSources);
         }
+        if (result.maintenanceSources?.length) {
+          setMaintenanceSources(result.maintenanceSources);
+        }
         if (result.sourceBreakdown?.length) {
           setSourceBreakdown(result.sourceBreakdown);
         }
