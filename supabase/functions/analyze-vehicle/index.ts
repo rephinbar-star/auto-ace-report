@@ -361,7 +361,13 @@ For each known failure pattern assigned to a given year:
 For each active service fault (already present / recurring):
   repairCosts contribution = 100% × costMidpoint (these are certain/near-certain)
 
-The worstCaseRepairCosts field = sum of 100% × costHigh for ALL items in that year.
+The worstCaseRepairCosts field uses ELEVATED probabilities (not 100%) to represent a realistic bad-luck scenario:
+  - For items with probability >= 70%: use 100% × costHigh
+  - For items with probability 40-69%: use 75% × costHigh
+  - For items with probability 15-39%: use 40% × costHigh
+  - For items with probability < 15%: use 15% × costHigh
+This prevents the absurd scenario where worst-case assumes every single failure happens simultaneously.
+HARD RULE: worstCaseRepairCosts must NEVER exceed 3× the expected repairCosts for the same year. If your calculation exceeds this, reduce it to 3× expected.
 
 IMPORTANT EXCEPTION: maintenanceCosts remain at 100%. Routine scheduled maintenance (oil changes, tire rotations, brake fluid, timing belt/chain service, filters, inspections) is certain — not probabilistic. Only unscheduled repairs and known failure patterns use the expected-value model.
 
@@ -571,7 +577,7 @@ Provide your expert analysis.`;
                         tradeInValue: { type: "number" },
                         loanBalance: { type: "number" },
                         repairCosts: { type: "number", description: "Probability-weighted expected annual repair costs. For known failure patterns: probabilityPercent × (costLow+costHigh)/2. For active/present faults: 100% × costMidpoint. Maintenance is separate." },
-                        worstCaseRepairCosts: { type: "number", description: "Worst-case annual repair costs = 100% × costHigh for ALL items assigned to this year. Used for range display." },
+                        worstCaseRepairCosts: { type: "number", description: "Worst-case annual repair costs using elevated probabilities (not 100% of all items). Must NEVER exceed 3× the expected repairCosts for the same year." },
                         maintenanceCosts: { type: "number", description: "Estimated annual routine maintenance costs (oil changes, brake pads, tires, filters, fluid flushes, inspections). These are scheduled/preventive services at 100% — NOT probabilistic." },
                         netEquityPrivate: { type: "number" },
                         netEquityTradeIn: { type: "number" },

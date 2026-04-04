@@ -98,6 +98,10 @@ export function computeDepreciationTable(
     const tradeIn = Math.round(marketValue * tradeInRatio);
 
     const repairs = expectedRepairsByYear[yr] ?? { expected: 0, worstCase: 0 };
+    // Cap worst-case at 3x expected to prevent absurd ranges
+    const cappedWorstCase = repairs.expected > 0
+      ? Math.min(repairs.worstCase, repairs.expected * 3)
+      : repairs.worstCase;
     const maint = maintenanceCostsByYear[yr] ?? 0;
 
     const balance = loanBalances[yr + 1] ?? 0; // yr+1 because index 0 = start
@@ -110,7 +114,7 @@ export function computeDepreciationTable(
       tradeInValue: tradeIn,
       depreciation,
       repairCosts: Math.round(repairs.expected),
-      worstCaseRepairCosts: Math.round(repairs.worstCase),
+      worstCaseRepairCosts: Math.round(cappedWorstCase),
       maintenanceCosts: Math.round(maint),
       loanBalance: balance,
       equity,

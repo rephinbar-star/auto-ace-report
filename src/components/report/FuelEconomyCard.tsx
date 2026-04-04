@@ -611,9 +611,9 @@ export function FuelEconomyCard({
                       <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent className="max-w-xs">
-                      <p className="text-sm">
-                        Expected repair costs are probability-weighted based on documented failure rates for this make/model/year. Worst case assumes all flagged repairs occur.
-                      </p>
+                       <p className="text-sm">
+                         Expected repair costs are probability-weighted based on documented failure rates for this make/model/year. Worst case uses elevated probabilities for each failure mode, capped at 3× expected.
+                       </p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
