@@ -2571,9 +2571,15 @@ export default function ReportPage() {
                         Positives
                       </h4>
                       <ul className="space-y-1 text-sm">
-                        {historyAnalysis.positives.map((item, i) => (
-                          <li key={i} className="text-muted-foreground">• {item}</li>
-                        ))}
+                        {historyAnalysis.positives
+                          .filter((item) => {
+                            // Fix #4: Filter out pricing observations from vehicle health positives
+                            const lower = item.toLowerCase();
+                            return !(lower.includes("below market") || lower.includes("above market") || lower.includes("asking price") || lower.includes("dealer retail") || lower.includes("below fmv") || lower.includes("above fmv"));
+                          })
+                          .map((item, i) => (
+                            <li key={i} className="text-muted-foreground">• {item}</li>
+                          ))}
                       </ul>
                     </div>
 
