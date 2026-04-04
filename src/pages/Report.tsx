@@ -2637,6 +2637,10 @@ export default function ReportPage() {
                                     ? `$${item.costLow.toLocaleString()}–$${item.costHigh.toLocaleString()}`
                                     : item.costLow ? `$${item.costLow.toLocaleString()}+` 
                                     : `Up to $${item.costHigh!.toLocaleString()}`}
+                                  {/* Fix #6: Show refurbished pricing note for battery items */}
+                                  {/battery|traction/i.test(item.concern) && item.costLow && item.costLow >= 5000 && (
+                                    <span className="font-normal text-muted-foreground"> (used/refurbished: $3,500–$6,500)</span>
+                                  )}
                                 </span>
                               )}
                             </span>

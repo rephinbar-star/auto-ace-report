@@ -243,12 +243,16 @@ export function scoreAiFindings(
 
   // Collect top 3 findings by score contribution
   const allFindings: { description: string; score: number }[] = [];
-  for (const f of aiFindings.activeServiceFaults) {
-    let s = SEVERITY_BASE_POINTS[f.severityClass] ?? 15;
-    if (f.occurrences >= 3) s *= 1.8; else if (f.occurrences >= 2) s *= 1.4;
-    s *= getCostModifier(f.estimatedCostPerIncident);
-    if (f.isAnomalous) s *= 1.3;
-    allFindings.push({ description: f.description, score: s });
+
+  // Fix #5: Surface odometer discrepancy and service gap as named findings
+  if (aiFindings.activeServiceFaults) {
+    for (const f of aiFindings.activeServiceFaults) {
+      let s = SEVERITY_BASE_POINTS[f.severityClass] ?? 15;
+      if (f.occurrences >= 3) s *= 1.8; else if (f.occurrences >= 2) s *= 1.4;
+      s *= getCostModifier(f.estimatedCostPerIncident);
+      if (f.isAnomalous) s *= 1.3;
+      allFindings.push({ description: f.description, score: s });
+    }
   }
   for (const p of aiFindings.knownFailurePatterns) {
     const s = (FAILURE_PATTERN_MATRIX[p.probabilityTier]?.[p.costTier] ?? 10) * (p.alreadyPresent ? 1.5 : 1);
@@ -256,6 +260,14 @@ export function scoreAiFindings(
   }
   if (aiFindings.chassisSignal.description) {
     allFindings.push({ description: aiFindings.chassisSignal.description, score: compC });
+  }
+  // Inject service gap / odometer discrepancy as named findings if significant
+  if (serviceGapMiles != null && serviceGapMiles > 20000) {
+    const isOdometer = serviceGapMiles > 30000;
+    const desc = isOdometer
+      ? `${serviceGapMiles.toLocaleString()}-mile odometer discrepancy classified as Class 4 fault — significant undocumented usage history`
+      : `${serviceGapMiles.toLocaleString()}-mile service gap — undocumented maintenance period`;
+    allFindings.push({ description: desc, score: isOdometer ? 50 : 35 });
   }
   allFindings.sort((a, b) => b.score - a.score);
   const topFindings = allFindings.slice(0, 3).map(f => f.description);
