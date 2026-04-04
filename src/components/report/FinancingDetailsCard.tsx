@@ -37,6 +37,17 @@ export function FinancingDetailsCard({ financing, askingPrice, onChange }: Finan
   const totalAmountFinanced = local.type === "loan"
     ? Math.max(0, purchasePrice + fees - downPayment)
     : 0;
+
+  // Now compute monthly payment from totalAmountFinanced
+  if (local.type === "loan" && totalAmountFinanced > 0 && local.loanTerm) {
+    const P = totalAmountFinanced;
+    const r = ((local.apr || 0) / 100) / 12;
+    const n = local.loanTerm;
+    computedMonthlyPayment = r > 0
+      ? Math.round(P * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1))
+      : Math.round(P / n);
+  }
+
   const totalInterest = local.type === "loan" && computedMonthlyPayment && local.loanTerm
     ? (computedMonthlyPayment * local.loanTerm) - totalAmountFinanced
     : 0;
