@@ -612,7 +612,7 @@ export function FuelEconomyCard({
                     </TooltipTrigger>
                     <TooltipContent className="max-w-xs">
                        <p className="text-sm">
-                         Expected repair costs are probability-weighted based on documented failure rates for this make/model/year. Worst case uses elevated probabilities for each failure mode, capped at 3× expected.
+                         Expected repair costs are probability-weighted based on documented failure rates for this make/model/year. Range reflects probability-weighted expected costs (low) to maximum plausible scenario if major failures occur (high).
                        </p>
                     </TooltipContent>
                   </Tooltip>
