@@ -655,12 +655,34 @@ export function FuelEconomyCard({
                 </span>
               </div>
             )}
+            {financingCost > 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground flex items-center gap-1">
+                  Interest &amp; Fees
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p className="text-sm">
+                          Total loan interest and dealer/doc fees from your financing details. This represents the additional cost of financing vs paying cash.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </span>
+                <span className="font-medium text-warning">
+                  +${financingCost.toLocaleString()}
+                </span>
+              </div>
+            )}
             <div className="border-t pt-3 flex items-center justify-between">
               <span className="font-semibold">Total 5-Year Cost</span>
               <span className="text-lg font-bold text-danger">
-                ${tco.totalTCO.toLocaleString()}
+                ${(tco.totalTCO + financingCost).toLocaleString()}
                 {tco.worstCaseTCO > 0 && tco.worstCaseTCO !== tco.totalTCO && (
-                  <span className="text-sm font-normal text-muted-foreground ml-1">– ${tco.worstCaseTCO.toLocaleString()}</span>
+                  <span className="text-sm font-normal text-muted-foreground ml-1">– ${(tco.worstCaseTCO + financingCost).toLocaleString()}</span>
                 )}
               </span>
             </div>
