@@ -241,6 +241,7 @@ export default function ReportPage() {
     evRange: number | null;
   } | null>(null);
   const [pricingSources, setPricingSources] = useState<string[]>([]);
+  const [maintenanceSources, setMaintenanceSources] = useState<string[]>([]);
   const [sourceBreakdown, setSourceBreakdown] = useState<Array<{
     source: string;
     privateParty?: number | null;
@@ -629,6 +630,9 @@ export default function ReportPage() {
             setPricingSources(result.pricingSources);
             setPricingLastUpdated(new Date());
           }
+          if (result.maintenanceSources?.length) {
+            setMaintenanceSources(result.maintenanceSources);
+          }
           if (result.sourceBreakdown?.length) {
             setSourceBreakdown(result.sourceBreakdown);
           }
@@ -783,6 +787,9 @@ export default function ReportPage() {
         }
         if (result.pricingSources?.length) {
           setPricingSources(result.pricingSources);
+        }
+        if (result.maintenanceSources?.length) {
+          setMaintenanceSources(result.maintenanceSources);
         }
         if (result.sourceBreakdown?.length) {
           setSourceBreakdown(result.sourceBreakdown);
@@ -1183,6 +1190,9 @@ export default function ReportPage() {
                       if (analysisResult.pricingSources?.length) {
                         setPricingSources(analysisResult.pricingSources);
                         setPricingLastUpdated(new Date());
+                      }
+                      if (analysisResult.maintenanceSources?.length) {
+                        setMaintenanceSources(analysisResult.maintenanceSources);
                       }
                       if (analysisResult.sourceBreakdown?.length) {
                         setSourceBreakdown(analysisResult.sourceBreakdown);
@@ -2063,13 +2073,13 @@ export default function ReportPage() {
                     )}
 
                     {/* Cost Data Sources */}
-                    {pricingSources.length > 0 && (
+                    {maintenanceSources.length > 0 && (
                       <div className="mt-4 rounded-lg border border-dashed p-3">
                         <p className="text-xs font-medium text-muted-foreground mb-2">Repair & Maintenance Cost Sources</p>
                         <div className="flex flex-wrap gap-2">
                           {(() => {
                             const seen = new Map<string, { displayName: string; url: string }>();
-                            for (const url of pricingSources) {
+                            for (const url of maintenanceSources) {
                               try {
                                 const hostname = new URL(url).hostname.replace("www.", "");
                                 const domain = hostname.split(".")[0];

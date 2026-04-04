@@ -884,6 +884,7 @@ Provide your expert analysis.`;
           isEstimate: mpgData.isEstimate,
         },
         pricingSources: hasPricing ? pricingData.citations : [],
+        maintenanceSources: hasMaintenance ? maintenanceData.citations : [],
         sourceBreakdown: pricingData?.sourceBreakdown || [],
         detectedSellerType: condition.sellerType,
       }),
