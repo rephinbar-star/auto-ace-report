@@ -140,9 +140,10 @@ function computeLoanBalances(
   termMonths?: number,
   skipped?: boolean
 ): number[] {
-  if (!principal || !apr || !termMonths || skipped) {
+  if (!principal || !termMonths || skipped) {
     return [0, 0, 0, 0, 0, 0];
   }
+  if (apr == null) apr = 0;
 
   const r = apr / 12 / 100;
   const n = termMonths;
