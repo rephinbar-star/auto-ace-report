@@ -168,7 +168,7 @@ export function FinancingDetailsCard({ financing, askingPrice, onChange }: Finan
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">Money Down</Label>
-                <div className="flex items-center h-9 px-3 rounded-md border bg-muted/50 text-sm">
+                <div className="flex items-center h-9 px-3 rounded-md border bg-muted/50 text-sm pointer-events-none select-none text-muted-foreground">
                   ${downPayment.toLocaleString()}
                 </div>
               </div>
