@@ -1034,6 +1034,8 @@ export default function ReportPage() {
 
     return {
       totalAmountFinanced,
+      interestAmount: Math.round(computedInterestAmount),
+      fees,
       balanceAfterMonths: (months: number) => {
         if (!isLoan || !loanTermMonths || totalAmountFinanced <= 0) return 0;
         if (months >= loanTermMonths) return 0;
@@ -2056,6 +2058,7 @@ export default function ReportPage() {
                 evRange={mpgData?.evRange ?? null}
                 onAnnualMilesChange={setUserAnnualMiles}
                 zipCode={condition?.zipCode}
+                financingCost={liveLoanMetrics.interestAmount + liveLoanMetrics.fees}
                 onZipCodeSave={async (zip) => {
                   if (!isSavedReport || !id) return;
                   await supabase
