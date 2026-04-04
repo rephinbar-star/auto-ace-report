@@ -16,6 +16,7 @@ export interface TCOResult {
   maintenanceCost5Year: number;
   mileageDepreciation?: number;
   totalTCO: number;
+  worstCaseTCO: number;
   annualFuelCost: number;
   costPerMile: number;
   breakdown: {
@@ -275,6 +276,7 @@ export function calculateTCO(
 
   // Total TCO includes purchase + fuel + repairs + maintenance + mileage depreciation
   const totalTCO = askingPrice + fuelCost5Year + repairCost5Year + maintenanceCost5Year + mileageDepreciation;
+  const worstCaseTCO = askingPrice + fuelCost5Year + worstCaseRepairCost5Year + maintenanceCost5Year + mileageDepreciation;
 
   // Cost per mile (over 5 years)
   const totalMiles = annualMiles * yearsToCalculate;
@@ -287,6 +289,7 @@ export function calculateTCO(
     worstCaseRepairCost5Year: Math.round(worstCaseRepairCost5Year),
     maintenanceCost5Year: Math.round(maintenanceCost5Year),
     totalTCO: Math.round(totalTCO),
+    worstCaseTCO: Math.round(worstCaseTCO),
     annualFuelCost: Math.round(annualFuelCost),
     costPerMile: Math.round(costPerMile * 100) / 100,
     mileageDepreciation: Math.round(mileageDepreciation),

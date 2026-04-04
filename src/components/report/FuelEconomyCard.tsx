@@ -654,8 +654,16 @@ export function FuelEconomyCard({
             )}
             <div className="border-t pt-3 flex items-center justify-between">
               <span className="font-semibold">Total 5-Year Cost</span>
-              <span className="text-lg font-bold text-danger">${tco.totalTCO.toLocaleString()}</span>
+              <span className="text-lg font-bold text-danger">
+                ${tco.totalTCO.toLocaleString()}
+                {tco.worstCaseTCO > 0 && tco.worstCaseTCO !== tco.totalTCO && (
+                  <span className="text-sm font-normal text-muted-foreground ml-1">– ${tco.worstCaseTCO.toLocaleString()}</span>
+                )}
+              </span>
             </div>
+            <p className="text-[10px] text-muted-foreground -mt-1">
+              Uses probability-weighted expected repair costs. High end reflects elevated failure probabilities (capped at 3× expected).
+            </p>
           </div>
 
           {/* Monthly Ownership Cost */}

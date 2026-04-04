@@ -402,6 +402,13 @@ AI FINDINGS CLASSIFICATION: You MUST populate the "aiFindings" field with struct
         SoH 75-85%: Class 2, base_points 15
         SoH 65-75%: Class 3, base_points 28
         SoH <65%: Class 4, base_points 50
+
+BATTERY REPLACEMENT COST GUIDANCE:
+When listing battery replacement in reliabilityConcerns, always include BOTH:
+- OEM replacement cost range (e.g., "$8,500–$12,000 for OEM pack")
+- Used/refurbished option (e.g., "used/refurbished packs: $3,500–$6,500")
+Note when refurbished replacement cost exceeds or approaches vehicle value.
+
       Do NOT apply battery health fault classification to:
         - ICE vehicles
         - HEV vehicles under 100,000 miles (hybrid batteries are generally more durable and harder to assess without dealer-level tools)

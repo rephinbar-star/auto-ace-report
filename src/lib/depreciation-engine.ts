@@ -45,6 +45,7 @@ export interface DepreciationConfig {
   startingFMV: number;           // Fair market value (private party)
   tradeInRatio?: number;         // Default 0.85
   annualMiles?: number;          // Default 12000
+  salvageFloor?: number;         // Minimum market value (scrap/parts value). Default 500
   // maintenanceCostsByYear now lives in DepreciationInputs
   // Loan amortization
   loanAmount?: number;
@@ -64,6 +65,7 @@ export function computeDepreciationTable(
     startingFMV,
     tradeInRatio = 0.85,
     annualMiles = 12000,
+    salvageFloor = 500,
     loanAmount,
     loanAPR,
     loanTermMonths,
@@ -89,8 +91,8 @@ export function computeDepreciationTable(
     // R1: Market value never increases (monotonic decrease)
     rawValue = Math.min(rawValue, prevValue - 1); // At least $1 decrease
 
-    // R5: Floor at $0
-    const marketValue = Math.max(0, Math.round(rawValue));
+    // R5: Floor at salvage value (minimum scrap/parts value)
+    const marketValue = Math.max(salvageFloor, Math.round(rawValue));
 
     // R4: Depreciation is derived from the curve
     const depreciation = Math.round(prevValue - marketValue);
