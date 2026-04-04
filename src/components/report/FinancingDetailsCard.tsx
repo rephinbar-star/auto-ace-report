@@ -41,10 +41,11 @@ export function FinancingDetailsCard({ financing, askingPrice, onChange }: Finan
   })();
 
   // Derived read-only values
-  const downPayment = local.type === "loan" && local.loanAmount
-    ? Math.max(0, purchasePrice - local.loanAmount)
+  const fees = local.fees || 0;
+  const downPayment = local.downPayment || 0;
+  const totalAmountFinanced = local.type === "loan"
+    ? Math.max(0, purchasePrice + fees - downPayment)
     : 0;
-  const totalAmountFinanced = local.loanAmount || 0;
   const totalInterest = local.type === "loan" && computedMonthlyPayment && local.loanTerm
     ? (computedMonthlyPayment * local.loanTerm) - totalAmountFinanced
     : 0;
