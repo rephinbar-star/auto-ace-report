@@ -474,11 +474,29 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
                   </div>
 
                   {/* Sales Tax Calculator */}
-                  <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
-                    <div className="flex items-center gap-2">
-                      <Calculator className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">Sales Tax Calculator</span>
+                   <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Calculator className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">Sales Tax Calculator</span>
+                      </div>
+                      {!zipCode && !detectedZip && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={handleDetectLocation}
+                          disabled={geoLoading}
+                          className="h-7 text-xs gap-1.5"
+                        >
+                          {geoLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <MapPin className="h-3 w-3" />}
+                          {geoLoading ? "Detecting…" : "Detect Location"}
+                        </Button>
+                      )}
                     </div>
+                    {geoError && (
+                      <p className="text-xs text-destructive">{geoError}</p>
+                    )}
                     
                     <div className="grid gap-4 sm:grid-cols-2">
                       <div className="space-y-2">
