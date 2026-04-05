@@ -40,27 +40,29 @@ export function FinancingDetailsCard({ financing, askingPrice, onChange }: Finan
   const downPayment = local.downPayment || 0;
   const apr = local.apr || 0;
   const loanTerm = local.loanTerm || 0;
+  const salesTaxRate = local.salesTaxRate || 0;
+  const salesTaxAmount = parseFloat(((purchasePrice || 0) * (salesTaxRate / 100)).toFixed(2));
 
-  // Principal = what's actually being financed (price + fees - down payment)
-  const principal = local.type === "loan"
-    ? Math.max(0, purchasePrice + fees - downPayment)
+  // Total Amount Financed = price + fees + sales tax - down payment (NO interest)
+  const totalAmountFinanced = local.type === "loan"
+    ? Math.max(0, purchasePrice + fees + salesTaxAmount - downPayment)
     : 0;
 
-  // Interest Amount = total interest on the principal over the loan term
+  // Interest Amount = total interest on the amount financed over the loan term
   const interestAmount = (() => {
-    if (!principal || !loanTerm || apr <= 0) return 0;
+    if (!totalAmountFinanced || !loanTerm || apr <= 0) return 0;
     const r = (apr / 100) / 12;
     const n = loanTerm;
-    const monthlyPmt = principal * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
-    return Math.round((monthlyPmt * n) - principal);
+    const monthlyPmt = totalAmountFinanced * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+    return Math.round((monthlyPmt * n) - totalAmountFinanced);
   })();
 
-  // Total Amount Financed = principal + interest
-  const totalAmountFinanced = principal + interestAmount;
+  // Total Cost = amount financed + interest
+  const totalCost = totalAmountFinanced + interestAmount;
 
-  // Monthly Payment = Total Amount Financed / term
-  const computedMonthlyPayment = totalAmountFinanced > 0 && loanTerm > 0
-    ? Math.round(totalAmountFinanced / loanTerm)
+  // Monthly Payment = Total Cost / term
+  const computedMonthlyPayment = totalCost > 0 && loanTerm > 0
+    ? Math.round(totalCost / loanTerm)
     : null;
 
   // Savings banner data
@@ -138,6 +140,26 @@ export function FinancingDetailsCard({ financing, askingPrice, onChange }: Finan
         {/* Loan-specific fields */}
         {local.type === "loan" && (
           <>
+            {/* Sales Tax fields */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Sales Tax Rate (%)</Label>
+                <Input
+                  type="number"
+                  step="0.001"
+                  className="h-9"
+                  value={local.salesTaxRate ?? ""}
+                  onChange={(e) => update({ salesTaxRate: Number(e.target.value) || undefined })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Sales Tax ($)</Label>
+                <div className="flex items-center h-9 px-3 rounded-md border bg-muted/50 text-sm pointer-events-none select-none text-muted-foreground">
+                  ${salesTaxAmount.toLocaleString()}
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               {/* 1. Loan Term */}
               <div className="space-y-1.5">
@@ -186,18 +208,18 @@ export function FinancingDetailsCard({ financing, askingPrice, onChange }: Finan
                   />
                 </div>
               </div>
-              {/* 5. Interest Amount (read-only) */}
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Interest Amount</Label>
-                <div className="flex items-center h-9 px-3 rounded-md border bg-muted/50 text-sm pointer-events-none select-none text-muted-foreground">
-                  ${interestAmount.toLocaleString()}
-                </div>
-              </div>
-              {/* 6. Total Amount Financed (read-only) */}
+              {/* 5. Total Amount Financed (read-only) — NO interest */}
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">Total Amount Financed</Label>
                 <div className="flex items-center h-9 px-3 rounded-md border bg-muted/50 text-sm pointer-events-none select-none text-muted-foreground">
                   ${totalAmountFinanced.toLocaleString()}
+                </div>
+              </div>
+              {/* 6. Interest Amount (read-only) */}
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Interest Amount</Label>
+                <div className="flex items-center h-9 px-3 rounded-md border bg-muted/50 text-sm pointer-events-none select-none text-muted-foreground">
+                  ${interestAmount.toLocaleString()}
                 </div>
               </div>
               {/* 7. Payment (read-only) */}
@@ -217,8 +239,9 @@ export function FinancingDetailsCard({ financing, askingPrice, onChange }: Finan
                   {" "}for {loanTerm} months at {apr}% APR
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Interest: ${interestAmount.toLocaleString()}
-                  {" · "}Total paid: ${totalAmountFinanced.toLocaleString()}
+                  Financed: ${totalAmountFinanced.toLocaleString()}
+                  {" · "}Interest: ${interestAmount.toLocaleString()}
+                  {" · "}Total paid: ${totalCost.toLocaleString()}
                 </p>
               </div>
             )}
