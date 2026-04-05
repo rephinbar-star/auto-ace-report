@@ -88,6 +88,7 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
             // Trigger the same ZIP-based state/county lookup
             const stateAbbr = getStateFromZip(zip);
             if (stateAbbr) {
+              countySetByAutoRef.current = true;
               setSelectedState(stateAbbr);
               setZipAutoFilled(true);
               // Try static county lookup
