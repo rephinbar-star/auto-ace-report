@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { 
   calculateTCO, 
   calculateMonthlyOwnershipCost,
+  calculateMonthlyOwnershipBreakdown,
   type TCOResult 
 } from "@/lib/tco-calculations";
 import { getStateFromZip } from "@/lib/sales-tax-data";
