@@ -40,27 +40,29 @@ export function FinancingDetailsCard({ financing, askingPrice, onChange }: Finan
   const downPayment = local.downPayment || 0;
   const apr = local.apr || 0;
   const loanTerm = local.loanTerm || 0;
+  const salesTaxRate = local.salesTaxRate || 0;
+  const salesTaxAmount = parseFloat(((purchasePrice || 0) * (salesTaxRate / 100)).toFixed(2));
 
-  // Principal = what's actually being financed (price + fees - down payment)
-  const principal = local.type === "loan"
-    ? Math.max(0, purchasePrice + fees - downPayment)
+  // Total Amount Financed = price + fees + sales tax - down payment (NO interest)
+  const totalAmountFinanced = local.type === "loan"
+    ? Math.max(0, purchasePrice + fees + salesTaxAmount - downPayment)
     : 0;
 
-  // Interest Amount = total interest on the principal over the loan term
+  // Interest Amount = total interest on the amount financed over the loan term
   const interestAmount = (() => {
-    if (!principal || !loanTerm || apr <= 0) return 0;
+    if (!totalAmountFinanced || !loanTerm || apr <= 0) return 0;
     const r = (apr / 100) / 12;
     const n = loanTerm;
-    const monthlyPmt = principal * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
-    return Math.round((monthlyPmt * n) - principal);
+    const monthlyPmt = totalAmountFinanced * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+    return Math.round((monthlyPmt * n) - totalAmountFinanced);
   })();
 
-  // Total Amount Financed = principal + interest
-  const totalAmountFinanced = principal + interestAmount;
+  // Total Cost = amount financed + interest
+  const totalCost = totalAmountFinanced + interestAmount;
 
-  // Monthly Payment = Total Amount Financed / term
-  const computedMonthlyPayment = totalAmountFinanced > 0 && loanTerm > 0
-    ? Math.round(totalAmountFinanced / loanTerm)
+  // Monthly Payment = Total Cost / term
+  const computedMonthlyPayment = totalCost > 0 && loanTerm > 0
+    ? Math.round(totalCost / loanTerm)
     : null;
 
   // Savings banner data
