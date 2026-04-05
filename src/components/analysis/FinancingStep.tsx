@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CreditCard, Banknote, Car, Calculator, Tag, BadgePercent } from "lucide-react";
+import { CreditCard, Banknote, Car, Calculator, Tag, BadgePercent, MapPin, Loader2 } from "lucide-react";
 import { FinancingInfo } from "@/types/vehicle";
 import { STATE_TAX_DATA, getCountiesForState, getCountyRate, getStateCombinedRate, getStateFromZip, getCountyFromZip, CountyTax } from "@/lib/sales-tax-data";
 
