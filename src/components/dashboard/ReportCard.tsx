@@ -168,7 +168,7 @@ export function ReportCard({ report, selectionMode, isSelected, onSelect, select
           <div className="p-3 rounded-lg bg-primary/5 border border-primary/10">
             <p className="text-xs text-muted-foreground mb-1">Fair Offer Price</p>
             <p className="text-lg font-semibold text-primary">
-              {report.final_verdict === "Avoid" ? "N/A" : `$${Number(report.fair_offer_price).toLocaleString()}`}
+              {(report.final_verdict === "Avoid" || report.final_verdict === "Walk Away") ? "N/A" : `$${Number(report.fair_offer_price).toLocaleString()}`}
             </p>
           </div>
         )}
