@@ -2387,6 +2387,39 @@ export default function ReportPage() {
                 );
               })()}
 
+              {/* Negotiation Cheat Sheet */}
+              <NegotiationCheatSheet
+                isPaid={isPaid}
+                year={vehicle.year}
+                make={vehicle.make}
+                model={vehicle.model}
+                trim={vehicle.trim}
+                mileage={condition.mileage}
+                askingPrice={condition.askingPrice}
+                condition={condition.condition}
+                sellerType={condition.sellerType}
+                fairMarketPrivate={priceAssessment.fairMarketPrivate}
+                fairMarketDealer={priceAssessment.fairMarketDealer}
+                fairMarketTradeIn={priceAssessment.fairMarketTradeIn}
+                dealRating={priceAssessment.dealRating}
+                priceDifference={priceAssessment.priceDifference}
+                accidentCount={historyAnalysis?.concerns?.filter(c => c.toLowerCase().includes("accident")).length || 0}
+                ownerCount={vehicleData?.history?.ownerCount || 1}
+                titleStatus={vehicleData?.history?.titleStatus || "clean"}
+                serviceGapMiles={vehicleData?.history?.serviceGapMiles}
+                majorServicesDue={vehicleData?.history?.majorServicesDue}
+                chronicRepairSystems={vehicleData?.history?.chronicRepairSystems}
+                reliabilityConcerns={riskAssessment.reliabilityConcerns}
+                openRecallCount={recallData?.openCount || 0}
+                recallDetails={recallData?.recalls?.slice(0, 3).map(r => r.Summary || r.Component).join("; ")}
+                verdict={displayVerdict}
+                fairOfferPrice={riskAssessment.fairOfferPrice}
+                activeFaults={analysis.aiFindings?.activeServiceFaults?.map(f => ({ system: f.system, costLow: f.estimatedCostPerIncident || 500 }))}
+                failurePatterns={analysis.aiFindings?.knownFailurePatterns?.map(p => ({ issue: p.issue, probability: p.probabilityTier, costLow: p.probabilityPercent > 50 ? 1500 : 800 }))}
+                tcoRange={tcoResult ? { low: tcoResult.totalTCO, high: tcoResult.worstCaseTCO } : undefined}
+                financingType={financing?.type}
+              />
+
               {/* Analyze Another Vehicle */}
               <Button asChild className="w-full">
                 <Link to="/analyze">
