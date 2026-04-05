@@ -61,6 +61,69 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
   const [zipAutoFilled, setZipAutoFilled] = useState<boolean>(false);
   const [selectedCounty, setSelectedCounty] = useState<string>("");
   const [availableCounties, setAvailableCounties] = useState<CountyTax[]>([]);
+  const [geoLoading, setGeoLoading] = useState(false);
+  const [geoError, setGeoError] = useState<string | null>(null);
+  const [detectedZip, setDetectedZip] = useState<string | null>(null);
+
+  // Geolocation-based ZIP detection for sales tax auto-fill
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      setGeoError("Geolocation not supported by your browser.");
+      return;
+    }
+    setGeoLoading(true);
+    setGeoError(null);
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=json`,
+            { headers: { "Accept-Language": "en", "User-Agent": "CarWise/1.0 (https://carwise.expert)" } }
+          );
+          if (!res.ok) throw new Error(`Nominatim returned ${res.status}`);
+          const data = await res.json();
+          const zip = data?.address?.postcode?.replace(/\D/g, "").substring(0, 5);
+          if (zip && zip.length === 5) {
+            setDetectedZip(zip);
+            // Trigger the same ZIP-based state/county lookup
+            const stateAbbr = getStateFromZip(zip);
+            if (stateAbbr) {
+              setSelectedState(stateAbbr);
+              setZipAutoFilled(true);
+              // Try static county lookup
+              const staticCounty = getCountyFromZip(zip);
+              if (staticCounty) {
+                const counties = getCountiesForState(stateAbbr);
+                const normalize = (s: string) => s.toLowerCase().replace(/\s*(county|parish|borough|census area)\s*/g, "").trim();
+                const matched = counties.find((c) => normalize(c.name) === normalize(staticCounty));
+                if (matched) setSelectedCounty(matched.name);
+              }
+            }
+          } else {
+            setGeoError("Couldn't determine ZIP from location.");
+          }
+        } catch {
+          setGeoError("Location lookup failed.");
+        } finally {
+          setGeoLoading(false);
+        }
+      },
+      () => {
+        setGeoError("Location access denied.");
+        setGeoLoading(false);
+      },
+      { timeout: 8000 }
+    );
+  };
+
+  // Auto-trigger geolocation if no ZIP was provided from the condition step
+  const geoTriggeredRef = useRef(false);
+  useEffect(() => {
+    if (!zipCode && !geoTriggeredRef.current && navigator.geolocation) {
+      geoTriggeredRef.current = true;
+      handleDetectLocation();
+    }
+  }, [zipCode]);
 
   const loanForm = useForm<z.infer<typeof loanSchema>>({
     resolver: zodResolver(loanSchema),
