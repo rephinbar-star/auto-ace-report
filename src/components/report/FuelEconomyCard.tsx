@@ -686,6 +686,7 @@ export function FuelEconomyCard({
                 </span>
               </div>
             )}
+            {(tco.mileageDepreciation ?? 0) > 0 && (
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground flex items-center gap-1">
                   Excess Mileage Depreciation
