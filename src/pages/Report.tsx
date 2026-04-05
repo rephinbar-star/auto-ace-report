@@ -372,6 +372,9 @@ export default function ReportPage() {
         lease_term_months: financing.leaseTermMonths || null,
         residual_value: financing.residualValue || null,
         negotiated_price: financing.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice ? financing.negotiatedPrice : null,
+        sales_tax_rate: financing.salesTaxRate ?? null,
+        fees: financing.fees ?? null,
+        down_payment: financing.downPayment ?? null,
         accident_count: history?.accidentCount ?? null,
         owner_count: history?.ownerCount ?? null,
         title_status: history?.titleStatus || null,
@@ -491,6 +494,9 @@ export default function ReportPage() {
               leaseTermMonths: report.lease_term_months,
               residualValue: report.residual_value,
               negotiatedPrice: report.negotiated_price ?? undefined,
+              salesTaxRate: report.sales_tax_rate ?? undefined,
+              fees: report.fees ?? undefined,
+              downPayment: report.down_payment ?? undefined,
               skipped: report.financing_type === 'cash' && !report.loan_amount && !report.apr && !report.monthly_payment,
             },
             history: {
@@ -1628,6 +1634,9 @@ export default function ReportPage() {
                           lease_term_months: newFinancing.leaseTermMonths || null,
                           residual_value: newFinancing.residualValue || null,
                           negotiated_price: newFinancing.negotiatedPrice && newFinancing.negotiatedPrice !== condition.askingPrice ? newFinancing.negotiatedPrice : null,
+                          sales_tax_rate: newFinancing.salesTaxRate ?? null,
+                          fees: newFinancing.fees ?? null,
+                          down_payment: newFinancing.downPayment ?? null,
                           depreciation_table: updatedDepTable as any,
                         }).eq("id", id);
                       }
@@ -2003,9 +2012,10 @@ export default function ReportPage() {
                   financing={financing}
                   askingPrice={condition.askingPrice}
                   onChange={async (updated: FinancingInfo) => {
-                    // Compute loanAmount from new fields
+                    // Compute loanAmount from new fields (matches FinancingDetailsCard formula)
                     const effectivePrice = updated.negotiatedPrice ?? condition.askingPrice;
-                    const computedLoanAmount = Math.max(0, effectivePrice + (updated.fees || 0) - (updated.downPayment || 0));
+                    const taxAmt = parseFloat(((effectivePrice || 0) * ((updated.salesTaxRate || 0) / 100)).toFixed(2));
+                    const computedLoanAmount = Math.max(0, effectivePrice + (updated.fees || 0) + taxAmt - (updated.downPayment || 0));
                     const withLoanAmount = { ...updated, loanAmount: computedLoanAmount };
 
                     // Recalculate loan balances
@@ -2041,6 +2051,9 @@ export default function ReportPage() {
                         lease_term_months: withLoanAmount.leaseTermMonths || null,
                         residual_value: withLoanAmount.residualValue || null,
                         negotiated_price: withLoanAmount.negotiatedPrice && withLoanAmount.negotiatedPrice !== condition.askingPrice ? withLoanAmount.negotiatedPrice : null,
+                        sales_tax_rate: withLoanAmount.salesTaxRate ?? null,
+                        fees: withLoanAmount.fees ?? null,
+                        down_payment: withLoanAmount.downPayment ?? null,
                         depreciation_table: updatedDepTable as any,
                       }).eq("id", id);
                     }

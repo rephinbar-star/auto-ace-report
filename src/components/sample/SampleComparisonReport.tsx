@@ -87,6 +87,9 @@ const sampleComparisonVehicles: VehicleReport[] = [
     negotiated_price: null,
     source_breakdown: [],
     ai_findings: null,
+    sales_tax_rate: null,
+    fees: null,
+    down_payment: null,
   },
   {
     id: "sample-2",
@@ -164,6 +167,9 @@ const sampleComparisonVehicles: VehicleReport[] = [
     negotiated_price: null,
     source_breakdown: [],
     ai_findings: null,
+    sales_tax_rate: null,
+    fees: null,
+    down_payment: null,
   },
   {
     id: "sample-3",
@@ -244,6 +250,9 @@ const sampleComparisonVehicles: VehicleReport[] = [
     negotiated_price: null,
     source_breakdown: [],
     ai_findings: null,
+    sales_tax_rate: null,
+    fees: null,
+    down_payment: null,
   },
 ];
 
