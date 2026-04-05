@@ -1,4 +1,5 @@
 // Total Cost of Ownership (TCO) calculation utilities
+import { estimate5YearInsurance } from "./insurance-estimate";
 
 export interface TCOConfig {
   annualMiles: number;       // Default: 12,000
