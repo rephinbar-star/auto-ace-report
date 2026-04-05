@@ -1404,7 +1404,7 @@ export default function ReportPage() {
           {/* Vehicle Specifications Card - specs always visible, equipment collapsible */}
           <Card className="mb-4">
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-lg">
+              <CardTitle className="flex items-center gap-2">
                 <Settings className="h-5 w-5 text-primary" />
                 Vehicle Specifications
               </CardTitle>
@@ -1641,7 +1641,7 @@ export default function ReportPage() {
               {/* Price Assessment */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex flex-wrap items-center gap-2 text-base">
+                  <CardTitle className="flex flex-wrap items-center gap-2">
                     <DollarSign className="h-5 w-5 text-primary" />
                     Price Assessment
                     {pricingLastUpdated && (
@@ -2511,7 +2511,7 @@ export default function ReportPage() {
                     : "border-success bg-success/5"
                 )}>
                   <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-base">
+                    <CardTitle className="flex items-center gap-2">
                       {recallData.openCount > 0 ? (
                         <ShieldAlert className="h-5 w-5 text-danger" />
                       ) : (
@@ -2785,7 +2785,7 @@ export default function ReportPage() {
                     : "border-warning bg-warning/5"
                 )}>
                   <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-base">
+                    <CardTitle className="flex items-center gap-2">
                       <ShieldCheck className="h-5 w-5" />
                       Warranty Analysis
                     </CardTitle>

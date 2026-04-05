@@ -104,7 +104,7 @@ export function DealerReview({ dealerName, listingUrl, sellerType, isPro, onAnal
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2">
             <Lock className="h-5 w-5 text-primary" />
-            <CardTitle className="text-lg">Dealer Trust Analysis</CardTitle>
+            <CardTitle>Dealer Trust Analysis</CardTitle>
           </div>
           <CardDescription>Pro feature</CardDescription>
         </CardHeader>
@@ -129,7 +129,7 @@ export function DealerReview({ dealerName, listingUrl, sellerType, isPro, onAnal
         <CardHeader>
           <div className="flex items-center gap-2">
             <Building2 className="h-5 w-5 text-primary" />
-            <CardTitle className="text-lg">Dealer Trust Analysis</CardTitle>
+            <CardTitle>Dealer Trust Analysis</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -154,7 +154,7 @@ export function DealerReview({ dealerName, listingUrl, sellerType, isPro, onAnal
         <CardHeader>
           <div className="flex items-center gap-2">
             <Building2 className="h-5 w-5 text-primary" />
-            <CardTitle className="text-lg">Dealer Trust Analysis</CardTitle>
+            <CardTitle>Dealer Trust Analysis</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
@@ -215,7 +215,7 @@ export function DealerReview({ dealerName, listingUrl, sellerType, isPro, onAnal
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Building2 className="h-5 w-5 text-primary" />
-            <CardTitle className="text-lg">Dealer Trust Analysis</CardTitle>
+            <CardTitle>Dealer Trust Analysis</CardTitle>
           </div>
           <Badge variant="secondary" className="text-xs">
             PRO
