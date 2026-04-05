@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Fuel, DollarSign, Gauge, TrendingUp, Car, HelpCircle, Zap, Battery, MapPin, Loader2 } from "lucide-react";
+import { Fuel, DollarSign, Gauge, TrendingUp, Car, HelpCircle, Zap, Battery, MapPin, Loader2, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { 
