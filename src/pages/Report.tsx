@@ -494,6 +494,9 @@ export default function ReportPage() {
               leaseTermMonths: report.lease_term_months,
               residualValue: report.residual_value,
               negotiatedPrice: report.negotiated_price ?? undefined,
+              salesTaxRate: report.sales_tax_rate ?? undefined,
+              fees: report.fees ?? undefined,
+              downPayment: report.down_payment ?? undefined,
               skipped: report.financing_type === 'cash' && !report.loan_amount && !report.apr && !report.monthly_payment,
             },
             history: {
