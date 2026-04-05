@@ -45,6 +45,10 @@ interface FuelEconomyCardProps {
   onZipCodeSave?: (zip: string) => void;
   /** Interest amount + fees from financing (added to TCO) */
   financingCost?: number;
+  /** Monthly loan/lease payment */
+  monthlyPayment?: number;
+  /** Financing type */
+  financingType?: string;
 }
 
 export function FuelEconomyCard({
