@@ -1020,26 +1020,29 @@ export default function ReportPage() {
     const downPayment = financing?.downPayment ?? 0;
     const apr = financing?.apr ?? 0;
     const loanTermMonths = financing?.loanTerm ?? 0;
-    const principal = isLoan ? Math.max(0, purchasePrice + fees - downPayment) : 0;
+    const salesTaxRate = financing?.salesTaxRate ?? 0;
+    const salesTaxAmount = parseFloat(((purchasePrice || 0) * (salesTaxRate / 100)).toFixed(2));
+    // Total Amount Financed = price + fees + sales tax - down payment (NO interest)
+    const totalAmountFinanced = isLoan ? Math.max(0, purchasePrice + fees + salesTaxAmount - downPayment) : 0;
     const computedInterestAmount = (() => {
-      if (!principal || !loanTermMonths || apr <= 0) return 0;
+      if (!totalAmountFinanced || !loanTermMonths || apr <= 0) return 0;
       const monthlyRate = (apr / 100) / 12;
-      const amortizedMonthlyPayment = principal * (monthlyRate * Math.pow(1 + monthlyRate, loanTermMonths)) / (Math.pow(1 + monthlyRate, loanTermMonths) - 1);
-      return amortizedMonthlyPayment * loanTermMonths - principal;
+      const amortizedMonthlyPayment = totalAmountFinanced * (monthlyRate * Math.pow(1 + monthlyRate, loanTermMonths)) / (Math.pow(1 + monthlyRate, loanTermMonths) - 1);
+      return amortizedMonthlyPayment * loanTermMonths - totalAmountFinanced;
     })();
-    const fallbackTotalAmountFinanced = Math.max(0, financing?.loanAmount ?? 0);
-    const computedTotalAmountFinanced = isLoan ? Math.max(0, principal + computedInterestAmount) : 0;
-    const totalAmountFinanced = Math.round(computedTotalAmountFinanced > 0 ? computedTotalAmountFinanced : fallbackTotalAmountFinanced);
-    const monthlyPayment = totalAmountFinanced > 0 && loanTermMonths > 0 ? totalAmountFinanced / loanTermMonths : 0;
+    const totalCost = totalAmountFinanced + computedInterestAmount;
+    const monthlyPayment = totalCost > 0 && loanTermMonths > 0 ? totalCost / loanTermMonths : 0;
 
     return {
-      totalAmountFinanced,
+      totalAmountFinanced: Math.round(totalAmountFinanced),
+      totalCost: Math.round(totalCost),
       interestAmount: Math.round(computedInterestAmount),
       fees,
+      salesTaxAmount: Math.round(salesTaxAmount),
       balanceAfterMonths: (months: number) => {
-        if (!isLoan || !loanTermMonths || totalAmountFinanced <= 0) return 0;
+        if (!isLoan || !loanTermMonths || totalCost <= 0) return 0;
         if (months >= loanTermMonths) return 0;
-        return Math.max(0, Math.round(totalAmountFinanced - monthlyPayment * months));
+        return Math.max(0, Math.round(totalCost - monthlyPayment * months));
       },
     };
   })();

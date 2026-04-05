@@ -140,6 +140,26 @@ export function FinancingDetailsCard({ financing, askingPrice, onChange }: Finan
         {/* Loan-specific fields */}
         {local.type === "loan" && (
           <>
+            {/* Sales Tax fields */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Sales Tax Rate (%)</Label>
+                <Input
+                  type="number"
+                  step="0.001"
+                  className="h-9"
+                  value={local.salesTaxRate ?? ""}
+                  onChange={(e) => update({ salesTaxRate: Number(e.target.value) || undefined })}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Sales Tax ($)</Label>
+                <div className="flex items-center h-9 px-3 rounded-md border bg-muted/50 text-sm pointer-events-none select-none text-muted-foreground">
+                  ${salesTaxAmount.toLocaleString()}
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               {/* 1. Loan Term */}
               <div className="space-y-1.5">
@@ -188,18 +208,18 @@ export function FinancingDetailsCard({ financing, askingPrice, onChange }: Finan
                   />
                 </div>
               </div>
-              {/* 5. Interest Amount (read-only) */}
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Interest Amount</Label>
-                <div className="flex items-center h-9 px-3 rounded-md border bg-muted/50 text-sm pointer-events-none select-none text-muted-foreground">
-                  ${interestAmount.toLocaleString()}
-                </div>
-              </div>
-              {/* 6. Total Amount Financed (read-only) */}
+              {/* 5. Total Amount Financed (read-only) — NO interest */}
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">Total Amount Financed</Label>
                 <div className="flex items-center h-9 px-3 rounded-md border bg-muted/50 text-sm pointer-events-none select-none text-muted-foreground">
                   ${totalAmountFinanced.toLocaleString()}
+                </div>
+              </div>
+              {/* 6. Interest Amount (read-only) */}
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Interest Amount</Label>
+                <div className="flex items-center h-9 px-3 rounded-md border bg-muted/50 text-sm pointer-events-none select-none text-muted-foreground">
+                  ${interestAmount.toLocaleString()}
                 </div>
               </div>
               {/* 7. Payment (read-only) */}
@@ -219,8 +239,9 @@ export function FinancingDetailsCard({ financing, askingPrice, onChange }: Finan
                   {" "}for {loanTerm} months at {apr}% APR
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Interest: ${interestAmount.toLocaleString()}
-                  {" · "}Total paid: ${totalAmountFinanced.toLocaleString()}
+                  Financed: ${totalAmountFinanced.toLocaleString()}
+                  {" · "}Interest: ${interestAmount.toLocaleString()}
+                  {" · "}Total paid: ${totalCost.toLocaleString()}
                 </p>
               </div>
             )}
