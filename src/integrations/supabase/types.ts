@@ -285,6 +285,7 @@ export type Database = {
           deal_rating: Database["public"]["Enums"]["deal_rating"] | null
           depreciation_risk: string | null
           depreciation_table: Json | null
+          down_payment: number | null
           drivetrain: string | null
           engine_size: string | null
           expert_opinion: string | null
@@ -292,6 +293,7 @@ export type Database = {
           fair_market_private: number | null
           fair_market_trade_in: number | null
           fair_offer_price: number | null
+          fees: number | null
           final_verdict: string | null
           final_verdict_justification: string | null
           financing_type: Database["public"]["Enums"]["financing_type"]
@@ -326,6 +328,7 @@ export type Database = {
           residual_value: number | null
           risk_level: Database["public"]["Enums"]["risk_level"] | null
           risk_score: number | null
+          sales_tax_rate: number | null
           seller_type: string | null
           service_gap_miles: number | null
           source_breakdown: Json | null
@@ -356,6 +359,7 @@ export type Database = {
           deal_rating?: Database["public"]["Enums"]["deal_rating"] | null
           depreciation_risk?: string | null
           depreciation_table?: Json | null
+          down_payment?: number | null
           drivetrain?: string | null
           engine_size?: string | null
           expert_opinion?: string | null
@@ -363,6 +367,7 @@ export type Database = {
           fair_market_private?: number | null
           fair_market_trade_in?: number | null
           fair_offer_price?: number | null
+          fees?: number | null
           final_verdict?: string | null
           final_verdict_justification?: string | null
           financing_type?: Database["public"]["Enums"]["financing_type"]
@@ -397,6 +402,7 @@ export type Database = {
           residual_value?: number | null
           risk_level?: Database["public"]["Enums"]["risk_level"] | null
           risk_score?: number | null
+          sales_tax_rate?: number | null
           seller_type?: string | null
           service_gap_miles?: number | null
           source_breakdown?: Json | null
@@ -427,6 +433,7 @@ export type Database = {
           deal_rating?: Database["public"]["Enums"]["deal_rating"] | null
           depreciation_risk?: string | null
           depreciation_table?: Json | null
+          down_payment?: number | null
           drivetrain?: string | null
           engine_size?: string | null
           expert_opinion?: string | null
@@ -434,6 +441,7 @@ export type Database = {
           fair_market_private?: number | null
           fair_market_trade_in?: number | null
           fair_offer_price?: number | null
+          fees?: number | null
           final_verdict?: string | null
           final_verdict_justification?: string | null
           financing_type?: Database["public"]["Enums"]["financing_type"]
@@ -468,6 +476,7 @@ export type Database = {
           residual_value?: number | null
           risk_level?: Database["public"]["Enums"]["risk_level"] | null
           risk_score?: number | null
+          sales_tax_rate?: number | null
           seller_type?: string | null
           service_gap_miles?: number | null
           source_breakdown?: Json | null
