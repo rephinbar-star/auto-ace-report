@@ -1634,6 +1634,9 @@ export default function ReportPage() {
                           lease_term_months: newFinancing.leaseTermMonths || null,
                           residual_value: newFinancing.residualValue || null,
                           negotiated_price: newFinancing.negotiatedPrice && newFinancing.negotiatedPrice !== condition.askingPrice ? newFinancing.negotiatedPrice : null,
+                          sales_tax_rate: newFinancing.salesTaxRate ?? null,
+                          fees: newFinancing.fees ?? null,
+                          down_payment: newFinancing.downPayment ?? null,
                           depreciation_table: updatedDepTable as any,
                         }).eq("id", id);
                       }
