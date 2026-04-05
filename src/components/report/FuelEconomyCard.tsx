@@ -660,7 +660,32 @@ export function FuelEconomyCard({
               <span className="text-sm text-muted-foreground">Est. Maintenance (5 yr)</span>
               <span className="font-medium">${tco.maintenanceCost5Year.toLocaleString()}</span>
             </div>
-            {(tco.mileageDepreciation ?? 0) > 0 && (
+            {tco.insuranceCost5Year > 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground flex items-center gap-1">
+                  <Shield className="h-3.5 w-3.5" />
+                  Est. Insurance (5 yr)
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p className="text-sm">
+                          Estimated based on NAIC state averages and HLDI vehicle loss data. Assumes standard driver profile (35–40 yrs, clean record, good credit, 12,000 mi/yr, full coverage). Your actual rate will vary based on personal factors.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </span>
+                <span className="font-medium">
+                  ${tco.insuranceCost5Year.toLocaleString()}
+                  {tco.insuranceCost5YearHigh > 0 && tco.insuranceCost5YearHigh !== tco.insuranceCost5Year && (
+                    <span className="text-xs text-muted-foreground ml-1">– ${tco.insuranceCost5YearHigh.toLocaleString()}</span>
+                  )}
+                </span>
+              </div>
+            )}
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground flex items-center gap-1">
                   Excess Mileage Depreciation

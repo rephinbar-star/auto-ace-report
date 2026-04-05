@@ -2053,6 +2053,7 @@ export default function ReportPage() {
                 fuelType={mpgData?.fuelType ?? null}
                 askingPrice={financing.negotiatedPrice ?? condition.askingPrice}
                 make={vehicle.make}
+                model={vehicle.model}
                 year={vehicle.year}
                 depreciationTable={depreciationTable}
                 evRange={mpgData?.evRange ?? null}
