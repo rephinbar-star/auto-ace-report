@@ -211,6 +211,11 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
         loanForm.setValue("salesTaxRate", parseFloat(rate.toFixed(3)));
       }
       countySetByAutoRef.current = false;
+      // If county was auto-set, trigger county rate immediately
+      if (selectedCounty) {
+        const rate = getCountyRate(selectedState, selectedCounty);
+        loanForm.setValue("salesTaxRate", parseFloat(rate.toFixed(3)));
+      }
     } else {
       setAvailableCounties([]);
       setSelectedCounty("");
