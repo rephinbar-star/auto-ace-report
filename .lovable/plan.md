@@ -1,52 +1,56 @@
 
 
-# Add Estimated Annual Insurance Premium to 5-Year TCO
+# Buyer Negotiation Cheat Sheet
 
 ## Overview
+Add a "Negotiation Cheat Sheet" button immediately after the Final Verdict card. Clicking it calls a new edge function that uses AI to generate a structured negotiation document, displayed in a modal with PDF download.
 
-Add a formula-based insurance cost estimate using NAIC state baseline premiums and HLDI vehicle loss indices, displayed as a range in the TCO breakdown.
+## Placement
+After the Final Verdict card (line ~2387 in Report.tsx), before the "Analyze Another Vehicle" button.
 
-## Files to Create/Modify
+## Implementation Steps
 
-### 1. Create `src/lib/insurance-estimate.ts` (NEW)
+### 1. Edge Function: `supabase/functions/generate-cheat-sheet/index.ts`
+- Accepts structured report data (vehicle, pricing, condition, history, risk, recalls, financing, TCO, aiFindings)
+- **Pre-computes the offer price deterministically server-side** using the rules from the prompt:
+  - Start from `fairMarketPrivate`
+  - Deduct per open recall ($200 avg), service gaps ($300-$1000), overdue maintenance (50% cost), known faults (75% of lowest-probability cost), unverified battery SoH ($800-$2000)
+  - Floor at `fairMarketTradeIn`, round to nearest $250
+- Builds the deduction table as structured data
+- Sends the full prompt (with all the tone/format/constraint rules from the user's spec) plus all injected numbers to Lovable AI (`google/gemini-3-flash-preview`)
+- Uses tool calling to get structured JSON back (6 sections, each with header + bullet array)
+- Returns: `{ sections: [...], deductionTable: [...], targetOfferPrice: number }`
 
-Contains three static data tables and estimation functions:
+### 2. Component: `src/components/report/NegotiationCheatSheet.tsx`
+- Dialog modal triggered by button click
+- Loading state while AI generates
+- Renders all 6 sections with headers and bullet points
+- Deduction table rendered as a formatted HTML table
+- Final offer price highlighted prominently
+- "Download PDF" button inside the modal
+- Gated to premium/pro subscribers
 
-- **NAIC State Baselines**: 50-state lookup table of average annual premiums (national avg $1,281). Stored as `Record<string, number>` mapping state codes to dollar amounts.
-- **HLDI Vehicle Loss Index**: ~200+ make/model entries mapping to relative index (100 = average). Covers most common vehicles. Falls back to make-level averages, then 100.
-- **Age Multiplier Table**: 0–3yr = 1.15, 4–7yr = 1.0, 8–12yr = 0.85, 13+ = 0.70.
-- **Coverage factor**: Default 1.0 (full coverage).
+### 3. PDF: `src/lib/generateCheatSheetPDF.ts`
+- Single-page PDF using jsPDF (already a project dependency)
+- Clean layout: document header, 6 sections with bullets, deduction table, final offer price
+- Matches the ~400-550 word constraint for single-page fit
 
-**Functions:**
-- `estimateAnnualInsurance(make, model, vehicleAge, stateCode?)` → `{ low: number, high: number }` — returns ±15% range around point estimate
-- `estimate5YearInsurance(...)` → `{ low: number, high: number }` — sums 5 years with 3% annual inflation
-- Helper to resolve state from zip code (reuse existing `sales-tax-data.ts` zip→state mapping)
+### 4. Report Page Integration (`src/pages/Report.tsx`)
+- Add `NegotiationCheatSheet` component after the verdict card (line ~2387)
+- Pass all required data: vehicle info, priceAssessment, riskAssessment, condition, history, financing, recallData, aiFindings, displayVerdict, uvprsResult
+- Gate behind premium/pro tier using existing `useSubscription` hook
 
-**Formula:** `Annual = StateBaseline × (HLDIIndex / 100) × AgeMultiplier`
-Display range: point estimate ×0.85 to ×1.15
-
-### 2. Update `src/lib/tco-calculations.ts`
-
-- Add `insuranceCost5Year` and `insuranceCost5YearHigh` to `TCOResult` and `breakdown`
-- Include insurance in `totalTCO` and `worstCaseTCO` sums
-- Call `estimate5YearInsurance` inside `calculateTCO` using new optional params (model, stateCode)
-
-### 3. Update `src/components/report/FuelEconomyCard.tsx`
-
-- Add **"Est. Insurance (5 yr)"** row after Maintenance, showing range (e.g., "$5,400 – $7,350")
-- Tooltip: "Estimated based on NAIC state averages and HLDI vehicle loss data. Assumes standard driver profile (35-40 yrs, clean record, good credit, full coverage). Your actual rate will vary."
-- Include in Total 5-Year Cost sum
-
-### 4. Update `src/pages/Report.tsx`
-
-- Pass `model` and zip-derived `stateCode` to the TCO calculation so insurance can be computed
-
-## Display Format
-
-The insurance row will show a range, not a point estimate:
+## Data Flow
+```text
+Report.tsx (all structured data)
+  → Edge function (deterministic offer calc + AI prose)
+  → Modal display + PDF download
 ```
-Est. Insurance (5 yr)          $5,400 – $7,350
-```
 
-With a disclaimer tooltip explaining the assumptions and data sources.
+## Key Safeguards
+- Offer price is computed server-side, not by AI -- prevents hallucinated numbers
+- All dollar amounts, mileage figures, and findings injected verbatim into the prompt
+- Floor at trade-in value enforced in code
+- "Avoid" verdict triggers contingency language requirement in prompt
+- No CarWise references in output (enforced in system prompt)
 
