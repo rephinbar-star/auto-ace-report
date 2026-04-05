@@ -154,7 +154,7 @@ export function DealerReview({ dealerName, listingUrl, sellerType, isPro, onAnal
         <CardHeader>
           <div className="flex items-center gap-2">
             <Building2 className="h-5 w-5 text-primary" />
-            <CardTitle className="text-lg">Dealer Trust Analysis</CardTitle>
+            <CardTitle>Dealer Trust Analysis</CardTitle>
           </div>
         </CardHeader>
         <CardContent>
