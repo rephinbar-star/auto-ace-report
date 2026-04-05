@@ -1641,7 +1641,7 @@ export default function ReportPage() {
               {/* Price Assessment */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex flex-wrap items-center gap-2">
+                  <CardTitle className="flex flex-wrap items-center gap-2 text-base">
                     <DollarSign className="h-5 w-5 text-primary" />
                     Price Assessment
                     {pricingLastUpdated && (

@@ -336,7 +336,7 @@ export function FuelEconomyCard({
   return (
     <Card className="overflow-visible">
       <CardHeader className="p-4 sm:p-6">
-        <CardTitle className="text-base sm:text-lg leading-snug">
+        <CardTitle className="text-base leading-snug">
           <Fuel className="h-5 w-5 text-primary shrink-0 inline-block mr-2 align-middle" />
           Fuel Economy &amp; Ownership Cost
         </CardTitle>
