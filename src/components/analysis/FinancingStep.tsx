@@ -26,6 +26,12 @@ import { CreditCard, Banknote, Car, Calculator, Tag, BadgePercent, MapPin, Loade
 import { FinancingInfo } from "@/types/vehicle";
 import { STATE_TAX_DATA, getCountiesForState, getCountyRate, getStateCombinedRate, getStateFromZip, getCountyFromZip, CountyTax } from "@/lib/sales-tax-data";
 
+const normalizeCountyName = (value: string) =>
+  value.toLowerCase().replace(/\s*(county|parish|borough|census area)\s*/g, "").trim();
+
+const matchCountyName = (counties: CountyTax[], countyName: string) =>
+  counties.find((county) => normalizeCountyName(county.name) === normalizeCountyName(countyName));
+
 const loanSchema = z.object({
   askingPrice: z.coerce.number().min(1, "Asking price is required"),
   salesPrice: z.coerce.number().min(1, "Negotiated price is required"),
@@ -64,6 +70,7 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
   const [geoLoading, setGeoLoading] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
   const [detectedZip, setDetectedZip] = useState<string | null>(null);
+  const effectiveZip = (zipCode || detectedZip || "").replace(/\D/g, "").slice(0, 5);
 
   // Geolocation-based ZIP detection for sales tax auto-fill
   const handleDetectLocation = () => {
@@ -85,21 +92,7 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
           const zip = data?.address?.postcode?.replace(/\D/g, "").substring(0, 5);
           if (zip && zip.length === 5) {
             setDetectedZip(zip);
-            // Trigger the same ZIP-based state/county lookup
-            const stateAbbr = getStateFromZip(zip);
-            if (stateAbbr) {
-              countySetByAutoRef.current = true;
-              setSelectedState(stateAbbr);
-              setZipAutoFilled(true);
-              // Try static county lookup
-              const staticCounty = getCountyFromZip(zip);
-              if (staticCounty) {
-                const counties = getCountiesForState(stateAbbr);
-                const normalize = (s: string) => s.toLowerCase().replace(/\s*(county|parish|borough|census area)\s*/g, "").trim();
-                const matched = counties.find((c) => normalize(c.name) === normalize(staticCounty));
-                if (matched) setSelectedCounty(matched.name);
-              }
-            }
+            setZipAutoFilled(true);
           } else {
             setGeoError("Couldn't determine ZIP from location.");
           }
@@ -152,36 +145,34 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
     }
   }, [askingPrice]);
 
-  // Auto-select state AND county from ZIP code using forward geocoding
+  // Auto-select state AND county from ZIP/geolocation using one shared lookup path
   useEffect(() => {
-    if (!zipCode || zipCode.length !== 5) return;
+    if (effectiveZip.length !== 5) return;
 
-    // 1. Immediately set state from ZIP prefix
-    const stateAbbr = getStateFromZip(zipCode);
-    if (stateAbbr) {
-      countySetByAutoRef.current = true;
-      setSelectedState(stateAbbr);
-      setZipAutoFilled(true);
-    }
+    const stateAbbr = getStateFromZip(effectiveZip);
+    if (!stateAbbr) return;
 
-    // 2. Try static ZIP→county lookup first (instant, works offline)
-    const staticCounty = getCountyFromZip(zipCode);
-    if (staticCounty && stateAbbr) {
-      const counties = getCountiesForState(stateAbbr);
-      const normalize = (s: string) =>
-        s.toLowerCase().replace(/\s*(county|parish|borough|census area)\s*/g, "").trim();
-      const matched = counties.find((c) => normalize(c.name) === normalize(staticCounty));
+    const counties = getCountiesForState(stateAbbr);
+    countySetByAutoRef.current = true;
+    setSelectedState(stateAbbr);
+    setAvailableCounties(counties);
+    setZipAutoFilled(true);
+
+    const staticCounty = getCountyFromZip(effectiveZip);
+    if (staticCounty) {
+      const matched = matchCountyName(counties, staticCounty);
       if (matched) {
         setSelectedCounty(matched.name);
-        return; // Static lookup succeeded — no API call needed
+        setCountyLookupLoading(false);
+        return;
       }
     }
 
-    // 3. Fall back to Nominatim API for counties not covered by static table
+    setSelectedCounty("");
     setCountyLookupLoading(true);
     fetch(
-      `https://nominatim.openstreetmap.org/search?postalcode=${zipCode}&country=US&format=json&addressdetails=1&limit=1`,
-      { headers: { "Accept-Language": "en" } }
+      `https://nominatim.openstreetmap.org/search?postalcode=${effectiveZip}&country=US&format=json&addressdetails=1&limit=1`,
+      { headers: { "Accept-Language": "en", "User-Agent": "CarWise/1.0 (https://carwise.expert)" } }
     )
       .then((r) => r.json())
       .then((results) => {
@@ -189,17 +180,9 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
         if (!addr) return;
 
         const countyRaw: string = addr.county || addr.state_district || "";
-        const resolvedState: string = stateAbbr || "";
+        if (!countyRaw) return;
 
-        if (!resolvedState || !countyRaw) return;
-
-        const counties = getCountiesForState(resolvedState);
-        const normalize = (s: string) =>
-          s.toLowerCase().replace(/\s*(county|parish|borough|census area)\s*/g, "").trim();
-
-        const matched = counties.find(
-          (c) => normalize(c.name) === normalize(countyRaw)
-        );
+        const matched = matchCountyName(counties, countyRaw);
 
         if (matched) {
           setSelectedCounty(matched.name);
@@ -209,7 +192,7 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
         // Silently fall back to state-level rate
       })
       .finally(() => setCountyLookupLoading(false));
-  }, [zipCode]);
+  }, [effectiveZip]);
 
   // Track whether county was set by auto-fill (ZIP/geo) to avoid clearing it
   const countySetByAutoRef = useRef(false);
@@ -524,13 +507,13 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
                             ))}
                           </SelectContent>
                         </Select>
-                        {zipAutoFilled && (zipCode || detectedZip) && (
+                        {zipAutoFilled && effectiveZip && (
                           <p className="text-xs text-muted-foreground mt-1">
                             {countyLookupLoading
                               ? "⏳ Looking up county from ZIP…"
                               : selectedCounty
-                                ? `✓ County auto-detected from ZIP ${zipCode || detectedZip}`
-                                : `✓ State auto-filled from ZIP ${zipCode || detectedZip}`}
+                                ? `✓ County auto-detected from ZIP ${effectiveZip}`
+                                : `✓ State auto-filled from ZIP ${effectiveZip}`}
                           </p>
                         )}
                       </div>
