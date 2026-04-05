@@ -144,29 +144,54 @@ export function NegotiationCheatSheet(props: NegotiationCheatSheetProps) {
 
   return (
     <>
-      <Button
+      <Card
         onClick={handleGenerate}
-        variant="outline"
-        className="w-full border-2 border-primary/30 hover:border-primary/60"
-        disabled={isLoading}
+        className={`group relative overflow-hidden cursor-pointer border-2 border-primary/20 hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 ${isLoading ? 'pointer-events-none opacity-70' : ''}`}
       >
-        {!props.isPaid ? (
-          <>
-            <Lock className="mr-2 h-4 w-4" />
-            Negotiation Cheat Sheet (Premium)
-          </>
-        ) : isLoading ? (
-          <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Generating...
-          </>
-        ) : (
-          <>
-            <FileText className="mr-2 h-4 w-4" />
-            Negotiation Cheat Sheet
-          </>
-        )}
-      </Button>
+        <CardContent className="p-0">
+          <div className="flex items-center gap-4 p-4">
+            {/* Handshake illustration */}
+            <div className="relative shrink-0 w-20 h-20 rounded-xl bg-primary/5 flex items-center justify-center overflow-hidden group-hover:scale-105 transition-transform duration-500">
+              <img
+                src={handshakeImg}
+                alt="Negotiation handshake"
+                className="w-16 h-16 object-contain animate-[pulse_3s_ease-in-out_infinite]"
+                loading="lazy"
+                width={64}
+                height={64}
+              />
+            </div>
+
+            {/* Text content */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="font-semibold text-base text-foreground">Negotiation Cheat Sheet</h3>
+                {!props.isPaid && (
+                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                    <Lock className="h-2.5 w-2.5 mr-0.5" />
+                    Premium
+                  </Badge>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground leading-snug">
+                Get a data-backed negotiation brief you can present to the seller to justify a lower price.
+              </p>
+            </div>
+
+            {/* Arrow / loading indicator */}
+            <div className="shrink-0">
+              {isLoading ? (
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              ) : (
+                <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-200" />
+              )}
+            </div>
+          </div>
+
+          {/* Animated bottom accent bar */}
+          <div className="h-1 w-full bg-gradient-to-r from-primary/0 via-primary/40 to-primary/0 group-hover:via-primary/70 transition-all duration-500" />
+        </CardContent>
+      </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
