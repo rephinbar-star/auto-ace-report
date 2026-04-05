@@ -2785,7 +2785,7 @@ export default function ReportPage() {
                     : "border-warning bg-warning/5"
                 )}>
                   <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-base">
+                    <CardTitle className="flex items-center gap-2">
                       <ShieldCheck className="h-5 w-5" />
                       Warranty Analysis
                     </CardTitle>
