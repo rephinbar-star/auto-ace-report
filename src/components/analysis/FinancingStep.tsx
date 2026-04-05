@@ -70,7 +70,10 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
   const [geoLoading, setGeoLoading] = useState(false);
   const [geoError, setGeoError] = useState<string | null>(null);
   const [detectedZip, setDetectedZip] = useState<string | null>(null);
-  const effectiveZip = (zipCode || detectedZip || "").replace(/\D/g, "").slice(0, 5);
+  const effectiveZip = zipCode?.replace(/\D/g, "").slice(0, 5) || detectedZip?.replace(/\D/g, "").slice(0, 5) || "";
+
+  // Track whether county was set by auto-fill (ZIP/geo) to avoid clearing it
+  const countySetByAutoRef = useRef(false);
 
   // Geolocation-based ZIP detection for sales tax auto-fill
   const handleDetectLocation = () => {
@@ -194,9 +197,6 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
       .finally(() => setCountyLookupLoading(false));
   }, [effectiveZip]);
 
-  // Track whether county was set by auto-fill (ZIP/geo) to avoid clearing it
-  const countySetByAutoRef = useRef(false);
-
   // Update counties when state changes
   useEffect(() => {
     if (selectedState) {
@@ -205,12 +205,17 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
       // Only reset county if it wasn't just set by auto-fill
       if (!countySetByAutoRef.current) {
         setSelectedCounty("");
+        // Default to state-only rate until county is chosen
+        const stateData = STATE_TAX_DATA.find(s => s.abbreviation === selectedState);
+        const rate = stateData ? stateData.stateRate + stateData.avgLocalRate : 0;
+        loanForm.setValue("salesTaxRate", parseFloat(rate.toFixed(3)));
       }
       countySetByAutoRef.current = false;
-      // Default to state-only rate until county is chosen
-      const stateData = STATE_TAX_DATA.find(s => s.abbreviation === selectedState);
-      const rate = stateData ? stateData.stateRate + stateData.avgLocalRate : 0;
-      loanForm.setValue("salesTaxRate", parseFloat(rate.toFixed(3)));
+      // If county was auto-set, trigger county rate immediately
+      if (selectedCounty) {
+        const rate = getCountyRate(selectedState, selectedCounty);
+        loanForm.setValue("salesTaxRate", parseFloat(rate.toFixed(3)));
+      }
     } else {
       setAvailableCounties([]);
       setSelectedCounty("");
