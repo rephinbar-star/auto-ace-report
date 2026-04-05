@@ -12,6 +12,7 @@ import {
   calculateMonthlyOwnershipCost,
   type TCOResult 
 } from "@/lib/tco-calculations";
+import { getStateFromZip } from "@/lib/sales-tax-data";
 
 // National averages as of early 2025
 const NATIONAL_AVG_GAS_PRICE = 3.25;
