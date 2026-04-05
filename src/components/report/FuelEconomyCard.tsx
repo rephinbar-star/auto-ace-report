@@ -66,6 +66,8 @@ export function FuelEconomyCard({
   zipCode,
   onZipCodeSave,
   financingCost = 0,
+  monthlyPayment = 0,
+  financingType,
 }: FuelEconomyCardProps) {
   const [annualMiles, setAnnualMiles] = useState(12000);
   const [gasPricePerGallon, setGasPricePerGallon] = useState(NATIONAL_AVG_GAS_PRICE);
