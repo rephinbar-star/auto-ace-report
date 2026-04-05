@@ -136,6 +136,8 @@ export interface FinancingInfo {
   apr?: number;
   fees?: number;       // dealer/doc/title fees
   downPayment?: number;
+  salesTaxRate?: number;   // % rate
+  salesTaxAmount?: number; // computed $ amount
   // Lease fields
   monthlyPayment?: number;
   leaseTermMonths?: number;

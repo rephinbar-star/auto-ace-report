@@ -213,12 +213,17 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
   });
 
   const handleLoanSubmit = (data: z.infer<typeof loanSchema>) => {
+    const taxAmt = parseFloat(((data.salesPrice || 0) * ((data.salesTaxRate || 0) / 100)).toFixed(2));
     onComplete({
       type: "loan",
       negotiatedPrice: data.salesPrice,
       loanAmount: data.amountFinanced,
       loanTerm: data.loanTerm,
       apr: data.apr,
+      fees: data.fees,
+      downPayment: data.downPayment,
+      salesTaxRate: data.salesTaxRate,
+      salesTaxAmount: taxAmt,
     });
   };
 
