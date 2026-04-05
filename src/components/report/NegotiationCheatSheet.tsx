@@ -4,7 +4,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FileText, Download, Loader2, Lock } from "lucide-react";
+import { FileText, Download, Loader2, Lock, ChevronRight } from "lucide-react";
+import handshakeImg from "@/assets/handshake-deal.png";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { generateCheatSheetPDF } from "@/lib/generateCheatSheetPDF";
