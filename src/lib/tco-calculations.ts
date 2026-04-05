@@ -403,8 +403,46 @@ export function getTCORating(
   }
 }
 
+export interface MonthlyOwnershipBreakdown {
+  monthlyPayment: number;
+  fuel: number;
+  repairs: number;
+  maintenance: number;
+  insuranceLow: number;
+  insuranceHigh: number;
+  totalLow: number;
+  totalHigh: number;
+}
+
 /**
- * Calculate monthly ownership cost (fuel + prorated repairs)
+ * Calculate monthly ownership cost breakdown
+ */
+export function calculateMonthlyOwnershipBreakdown(
+  tco: TCOResult,
+  monthlyPayment: number = 0
+): MonthlyOwnershipBreakdown {
+  const fuel = Math.round(tco.annualFuelCost / 12);
+  const repairs = Math.round(tco.repairCost5Year / 60);
+  const maintenance = Math.round(tco.maintenanceCost5Year / 60);
+  const insuranceLow = Math.round(tco.insuranceCost5Year / 60);
+  const insuranceHigh = Math.round(tco.insuranceCost5YearHigh / 60);
+
+  const baseCost = monthlyPayment + fuel + repairs + maintenance;
+
+  return {
+    monthlyPayment: Math.round(monthlyPayment),
+    fuel,
+    repairs,
+    maintenance,
+    insuranceLow,
+    insuranceHigh,
+    totalLow: baseCost + insuranceLow,
+    totalHigh: baseCost + insuranceHigh,
+  };
+}
+
+/**
+ * Calculate monthly ownership cost (fuel + prorated repairs) - legacy
  */
 export function calculateMonthlyOwnershipCost(tco: TCOResult): number {
   const monthlyFuel = tco.annualFuelCost / 12;
