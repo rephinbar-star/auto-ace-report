@@ -754,7 +754,21 @@ export function FuelEconomyCard({
 
               {/* Repairs */}
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Repairs</span>
+                <span className="text-muted-foreground flex items-center gap-1">
+                  Repairs
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p className="text-sm">
+                          Expected repair costs are probability-weighted based on documented failure rates for this make/model/year. Range reflects probability-weighted expected costs (low) to maximum plausible scenario if major failures occur (high).
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </span>
                 <span className="font-medium">${monthlyBreakdown.repairs.toLocaleString()}</span>
               </div>
 
