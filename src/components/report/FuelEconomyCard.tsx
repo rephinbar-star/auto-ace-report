@@ -156,6 +156,9 @@ export function FuelEconomyCard({
     );
   }, [zipCode]);
 
+  // Resolve state from ZIP for insurance estimate
+  const resolvedState = zipCode ? getStateFromZip(zipCode) : (zipInput && /^\d{5}$/.test(zipInput) ? getStateFromZip(zipInput) : null);
+
   // Calculate TCO with user-adjustable mileage and energy price
   const tco = calculateTCO(
     askingPrice,
@@ -167,7 +170,7 @@ export function FuelEconomyCard({
       gasPricePerGallon: isElectric ? gasPricePerGallon : gasPricePerGallon,
       electricityPerKwh: electricityPrice 
     },
-    { make, year }
+    { make, year, model, stateCode: resolvedState }
   );
 
   const monthlyOwnership = calculateMonthlyOwnershipCost(tco);
