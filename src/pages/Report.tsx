@@ -2411,12 +2411,11 @@ export default function ReportPage() {
                 chronicRepairSystems={vehicleData?.history?.chronicRepairSystems}
                 reliabilityConcerns={riskAssessment.reliabilityConcerns}
                 openRecallCount={recallData?.openCount || 0}
-                recallDetails={recallData?.recalls?.slice(0, 3).map(r => r.Summary || r.Component).join("; ")}
+                recallDetails={recallData?.recalls?.slice(0, 3).map(r => r.summary || r.component).join("; ")}
                 verdict={displayVerdict}
                 fairOfferPrice={riskAssessment.fairOfferPrice}
                 activeFaults={analysis.aiFindings?.activeServiceFaults?.map(f => ({ system: f.system, costLow: f.estimatedCostPerIncident || 500 }))}
                 failurePatterns={analysis.aiFindings?.knownFailurePatterns?.map(p => ({ issue: p.issue, probability: p.probabilityTier, costLow: p.probabilityPercent > 50 ? 1500 : 800 }))}
-                tcoRange={tcoResult ? { low: tcoResult.totalTCO, high: tcoResult.worstCaseTCO } : undefined}
                 financingType={financing?.type}
               />
 
