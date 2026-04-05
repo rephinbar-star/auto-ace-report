@@ -2009,9 +2009,10 @@ export default function ReportPage() {
                   financing={financing}
                   askingPrice={condition.askingPrice}
                   onChange={async (updated: FinancingInfo) => {
-                    // Compute loanAmount from new fields
+                    // Compute loanAmount from new fields (matches FinancingDetailsCard formula)
                     const effectivePrice = updated.negotiatedPrice ?? condition.askingPrice;
-                    const computedLoanAmount = Math.max(0, effectivePrice + (updated.fees || 0) - (updated.downPayment || 0));
+                    const taxAmt = parseFloat(((effectivePrice || 0) * ((updated.salesTaxRate || 0) / 100)).toFixed(2));
+                    const computedLoanAmount = Math.max(0, effectivePrice + (updated.fees || 0) + taxAmt - (updated.downPayment || 0));
                     const withLoanAmount = { ...updated, loanAmount: computedLoanAmount };
 
                     // Recalculate loan balances
