@@ -16,11 +16,12 @@ interface FinancingDetailsCardProps {
 export function FinancingDetailsCard({ financing, askingPrice, onChange }: FinancingDetailsCardProps) {
   const [local, setLocal] = useState<FinancingInfo>({ ...financing });
 
-  // Only sync from parent when the financing type changes (not on every prop update)
-  const prevTypeRef = useRef(financing.type);
+  // Sync from parent when key financing fields change (e.g. type change, or DB load populating salesTaxRate/fees/downPayment)
+  const prevSyncKeyRef = useRef(`${financing.type}-${financing.salesTaxRate}-${financing.fees}-${financing.downPayment}-${financing.loanTerm}-${financing.apr}`);
   useEffect(() => {
-    if (financing.type !== prevTypeRef.current) {
-      prevTypeRef.current = financing.type;
+    const key = `${financing.type}-${financing.salesTaxRate}-${financing.fees}-${financing.downPayment}-${financing.loanTerm}-${financing.apr}`;
+    if (key !== prevSyncKeyRef.current) {
+      prevSyncKeyRef.current = key;
       setLocal({ ...financing });
     }
   }, [financing]);
