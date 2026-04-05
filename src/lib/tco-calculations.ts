@@ -14,6 +14,8 @@ export interface TCOResult {
   repairCost5Year: number;
   worstCaseRepairCost5Year: number;
   maintenanceCost5Year: number;
+  insuranceCost5Year: number;
+  insuranceCost5YearHigh: number;
   mileageDepreciation?: number;
   totalTCO: number;
   worstCaseTCO: number;
@@ -25,6 +27,8 @@ export interface TCOResult {
     repairs: number;
     worstCaseRepairs: number;
     maintenance: number;
+    insurance: number;
+    insuranceHigh: number;
     mileageDepreciation?: number;
   };
 }
