@@ -2063,7 +2063,7 @@ export default function ReportPage() {
                 onAnnualMilesChange={setUserAnnualMiles}
                 zipCode={condition?.zipCode}
                 financingCost={liveLoanMetrics.interestAmount + liveLoanMetrics.fees}
-                monthlyPayment={liveLoanMetrics.totalAmountFinanced > 0 && (financing?.loanTerm ?? 0) > 0 ? liveLoanMetrics.totalAmountFinanced / (financing?.loanTerm ?? 1) : 0}
+                monthlyPayment={liveLoanMetrics.totalCost > 0 && (financing?.loanTerm ?? 0) > 0 ? liveLoanMetrics.totalCost / (financing?.loanTerm ?? 1) : 0}
                 financingType={financingSkipped ? undefined : financing?.type}
                 onZipCodeSave={async (zip) => {
                   if (!isSavedReport || !id) return;
