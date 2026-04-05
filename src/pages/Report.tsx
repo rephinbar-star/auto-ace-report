@@ -71,6 +71,7 @@ import { FinancingDetailsCard } from "@/components/report/FinancingDetailsCard";
 import { RiskScoreBreakdown } from "@/components/report/RiskScoreBreakdown";
 import { ServiceHistoryTimeline } from "@/components/report/ServiceHistoryTimeline";
 import { generateReportPDF } from "@/lib/generatePDF";
+import { NegotiationCheatSheet } from "@/components/report/NegotiationCheatSheet";
 import { FinancingStep } from "@/components/analysis/FinancingStep";
 import type { FinancingInfo, AiFindings } from "@/types/vehicle";
 import { cacheImages, getCachedUrls } from "@/lib/api/cache-images";
