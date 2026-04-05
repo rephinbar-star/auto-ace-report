@@ -88,6 +88,7 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
             // Trigger the same ZIP-based state/county lookup
             const stateAbbr = getStateFromZip(zip);
             if (stateAbbr) {
+              countySetByAutoRef.current = true;
               setSelectedState(stateAbbr);
               setZipAutoFilled(true);
               // Try static county lookup
@@ -158,6 +159,7 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
     // 1. Immediately set state from ZIP prefix
     const stateAbbr = getStateFromZip(zipCode);
     if (stateAbbr) {
+      countySetByAutoRef.current = true;
       setSelectedState(stateAbbr);
       setZipAutoFilled(true);
     }
@@ -209,15 +211,21 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
       .finally(() => setCountyLookupLoading(false));
   }, [zipCode]);
 
+  // Track whether county was set by auto-fill (ZIP/geo) to avoid clearing it
+  const countySetByAutoRef = useRef(false);
+
   // Update counties when state changes
   useEffect(() => {
     if (selectedState) {
       const counties = getCountiesForState(selectedState);
       setAvailableCounties(counties);
-      setSelectedCounty("");
+      // Only reset county if it wasn't just set by auto-fill
+      if (!countySetByAutoRef.current) {
+        setSelectedCounty("");
+      }
+      countySetByAutoRef.current = false;
       // Default to state-only rate until county is chosen
       const stateData = STATE_TAX_DATA.find(s => s.abbreviation === selectedState);
-      // Use combined rate (state + avg local) as the default when no county is selected
       const rate = stateData ? stateData.stateRate + stateData.avgLocalRate : 0;
       loanForm.setValue("salesTaxRate", parseFloat(rate.toFixed(3)));
     } else {
