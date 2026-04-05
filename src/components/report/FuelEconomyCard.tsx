@@ -35,6 +35,7 @@ interface FuelEconomyCardProps {
   fuelType: string | null;
   askingPrice: number;
   make: string;
+  model: string;
   year: number;
   depreciationTable?: unknown;
   evRange?: number | null;
