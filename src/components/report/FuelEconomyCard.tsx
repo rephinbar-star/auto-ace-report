@@ -793,13 +793,19 @@ export function FuelEconomyCard({
 
 
         {/* Cost Per Mile */}
-        <div className="flex items-center justify-between rounded-lg bg-primary/5 p-3">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium">Cost Per Mile</span>
-          </div>
-          <span className="text-lg font-bold text-danger">${tco.costPerMile.toFixed(2)}</span>
-        </div>
+        {(() => {
+          const monthlyMiles = annualMiles / 12;
+          const costPerMile = monthlyMiles > 0 ? monthlyBreakdown.totalLow / monthlyMiles : 0;
+          return (
+            <div className="flex items-center justify-between rounded-lg bg-primary/5 p-3">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">Cost Per Mile</span>
+              </div>
+              <span className="text-lg font-bold text-danger">${costPerMile.toFixed(2)}</span>
+            </div>
+          );
+        })()}
       </CardContent>
     </Card>
   );

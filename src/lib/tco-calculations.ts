@@ -427,17 +427,18 @@ export function calculateMonthlyOwnershipBreakdown(
   const insuranceLow = Math.round(tco.insuranceCost5Year / 60);
   const insuranceHigh = Math.round(tco.insuranceCost5YearHigh / 60);
 
-  const baseCost = monthlyPayment + fuel + repairs + maintenance;
+  const roundedPayment = Math.round(monthlyPayment);
+  const baseCost = roundedPayment + fuel + repairs + maintenance;
 
   return {
-    monthlyPayment: Math.round(monthlyPayment),
+    monthlyPayment: roundedPayment,
     fuel,
     repairs,
     maintenance,
     insuranceLow,
     insuranceHigh,
-    totalLow: baseCost + insuranceLow,
-    totalHigh: baseCost + insuranceHigh,
+    totalLow: Math.round(baseCost + insuranceLow),
+    totalHigh: Math.round(baseCost + insuranceHigh),
   };
 }
 
