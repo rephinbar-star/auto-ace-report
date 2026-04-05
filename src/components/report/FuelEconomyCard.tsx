@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Fuel, DollarSign, Gauge, TrendingUp, Car, HelpCircle, Zap, Battery, MapPin, Loader2 } from "lucide-react";
+import { Fuel, DollarSign, Gauge, TrendingUp, Car, HelpCircle, Zap, Battery, MapPin, Loader2, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { 
@@ -12,6 +12,7 @@ import {
   calculateMonthlyOwnershipCost,
   type TCOResult 
 } from "@/lib/tco-calculations";
+import { getStateFromZip } from "@/lib/sales-tax-data";
 
 // National averages as of early 2025
 const NATIONAL_AVG_GAS_PRICE = 3.25;
@@ -34,6 +35,7 @@ interface FuelEconomyCardProps {
   fuelType: string | null;
   askingPrice: number;
   make: string;
+  model: string;
   year: number;
   depreciationTable?: unknown;
   evRange?: number | null;
@@ -51,6 +53,7 @@ export function FuelEconomyCard({
   fuelType,
   askingPrice,
   make,
+  model,
   year,
   depreciationTable,
   evRange,
@@ -153,6 +156,9 @@ export function FuelEconomyCard({
     );
   }, [zipCode]);
 
+  // Resolve state from ZIP for insurance estimate
+  const resolvedState = zipCode ? getStateFromZip(zipCode) : (zipInput && /^\d{5}$/.test(zipInput) ? getStateFromZip(zipInput) : null);
+
   // Calculate TCO with user-adjustable mileage and energy price
   const tco = calculateTCO(
     askingPrice,
@@ -164,7 +170,7 @@ export function FuelEconomyCard({
       gasPricePerGallon: isElectric ? gasPricePerGallon : gasPricePerGallon,
       electricityPerKwh: electricityPrice 
     },
-    { make, year }
+    { make, year, model, stateCode: resolvedState }
   );
 
   const monthlyOwnership = calculateMonthlyOwnershipCost(tco);
@@ -654,6 +660,32 @@ export function FuelEconomyCard({
               <span className="text-sm text-muted-foreground">Est. Maintenance (5 yr)</span>
               <span className="font-medium">${tco.maintenanceCost5Year.toLocaleString()}</span>
             </div>
+            {tco.insuranceCost5Year > 0 && (
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground flex items-center gap-1">
+                  <Shield className="h-3.5 w-3.5" />
+                  Est. Insurance (5 yr)
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p className="text-sm">
+                          Estimated based on NAIC state averages and HLDI vehicle loss data. Assumes standard driver profile (35–40 yrs, clean record, good credit, 12,000 mi/yr, full coverage). Your actual rate will vary based on personal factors.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </span>
+                <span className="font-medium">
+                  ${tco.insuranceCost5Year.toLocaleString()}
+                  {tco.insuranceCost5YearHigh > 0 && tco.insuranceCost5YearHigh !== tco.insuranceCost5Year && (
+                    <span className="text-xs text-muted-foreground ml-1">– ${tco.insuranceCost5YearHigh.toLocaleString()}</span>
+                  )}
+                </span>
+              </div>
+            )}
             {(tco.mileageDepreciation ?? 0) > 0 && (
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground flex items-center gap-1">

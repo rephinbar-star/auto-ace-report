@@ -1,4 +1,5 @@
 // Total Cost of Ownership (TCO) calculation utilities
+import { estimate5YearInsurance } from "./insurance-estimate";
 
 export interface TCOConfig {
   annualMiles: number;       // Default: 12,000
@@ -14,6 +15,8 @@ export interface TCOResult {
   repairCost5Year: number;
   worstCaseRepairCost5Year: number;
   maintenanceCost5Year: number;
+  insuranceCost5Year: number;
+  insuranceCost5YearHigh: number;
   mileageDepreciation?: number;
   totalTCO: number;
   worstCaseTCO: number;
@@ -25,6 +28,8 @@ export interface TCOResult {
     repairs: number;
     worstCaseRepairs: number;
     maintenance: number;
+    insurance: number;
+    insuranceHigh: number;
     mileageDepreciation?: number;
   };
 }
@@ -242,7 +247,7 @@ export function calculateTCO(
   fuelType: string | null,
   depreciationTable: unknown,
   config: Partial<TCOConfig> = {},
-  vehicleInfo?: { make: string; year: number }
+  vehicleInfo?: { make: string; year: number; model?: string; stateCode?: string | null }
 ): TCOResult {
   const mergedConfig = { ...DEFAULT_CONFIG, ...config };
   const { yearsToCalculate, annualMiles } = mergedConfig;
@@ -258,9 +263,9 @@ export function calculateTCO(
   let baseMaintenanceCost5Year = baseCosts.maintenance;
   
   // If no data in depreciation table, estimate maintenance based on make/age
+  const currentYear = new Date().getFullYear();
+  const vehicleAge = vehicleInfo ? currentYear - vehicleInfo.year : 5;
   if (baseRepairCost5Year === 0 && baseMaintenanceCost5Year === 0 && vehicleInfo) {
-    const currentYear = new Date().getFullYear();
-    const vehicleAge = currentYear - vehicleInfo.year;
     baseMaintenanceCost5Year = estimate5YearMaintenance(vehicleInfo.make, vehicleAge);
     baseWorstCaseRepair5Year = 0;
   }
@@ -274,9 +279,16 @@ export function calculateTCO(
   // Calculate additional depreciation for excess mileage
   const mileageDepreciation = calculateMileageDepreciationAdjustment(annualMiles, yearsToCalculate);
 
-  // Total TCO includes purchase + fuel + repairs + maintenance + mileage depreciation
-  const totalTCO = askingPrice + fuelCost5Year + repairCost5Year + maintenanceCost5Year + mileageDepreciation;
-  const worstCaseTCO = askingPrice + fuelCost5Year + worstCaseRepairCost5Year + maintenanceCost5Year + mileageDepreciation;
+  // Calculate insurance estimate
+  const insuranceEst = vehicleInfo
+    ? estimate5YearInsurance(vehicleInfo.make, vehicleInfo.model || "", vehicleAge, vehicleInfo.stateCode)
+    : null;
+  const insuranceCost5Year = insuranceEst?.fiveYearPoint ?? 0;
+  const insuranceCost5YearHigh = insuranceEst?.fiveYearHigh ?? 0;
+
+  // Total TCO includes purchase + fuel + repairs + maintenance + insurance + mileage depreciation
+  const totalTCO = askingPrice + fuelCost5Year + repairCost5Year + maintenanceCost5Year + insuranceCost5Year + mileageDepreciation;
+  const worstCaseTCO = askingPrice + fuelCost5Year + worstCaseRepairCost5Year + maintenanceCost5Year + insuranceCost5YearHigh + mileageDepreciation;
 
   // Cost per mile (over 5 years)
   const totalMiles = annualMiles * yearsToCalculate;
@@ -288,6 +300,8 @@ export function calculateTCO(
     repairCost5Year: Math.round(repairCost5Year),
     worstCaseRepairCost5Year: Math.round(worstCaseRepairCost5Year),
     maintenanceCost5Year: Math.round(maintenanceCost5Year),
+    insuranceCost5Year: Math.round(insuranceCost5Year),
+    insuranceCost5YearHigh: Math.round(insuranceCost5YearHigh),
     totalTCO: Math.round(totalTCO),
     worstCaseTCO: Math.round(worstCaseTCO),
     annualFuelCost: Math.round(annualFuelCost),
@@ -299,6 +313,8 @@ export function calculateTCO(
       repairs: Math.round(repairCost5Year),
       worstCaseRepairs: Math.round(worstCaseRepairCost5Year),
       maintenance: Math.round(maintenanceCost5Year),
+      insurance: Math.round(insuranceCost5Year),
+      insuranceHigh: Math.round(insuranceCost5YearHigh),
       mileageDepreciation: Math.round(mileageDepreciation),
     },
   };
