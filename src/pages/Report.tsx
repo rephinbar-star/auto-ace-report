@@ -1203,7 +1203,7 @@ export default function ReportPage() {
       "Market Value": startingFMV,
       "Trade-In Value": Math.round(priceAssessment.fairMarketTradeIn || startingFMV * 0.85),
       "Asking Price": askingPrice,
-      ...(financingSkipped ? {} : { "Loan Balance": liveLoanMetrics.totalAmountFinanced }),
+      ...(financingSkipped ? {} : { "Loan Balance": liveLoanMetrics.totalCost }),
     },
     ...depreciationTable.map((row) => ({
       name: `Year ${row.year}`,
