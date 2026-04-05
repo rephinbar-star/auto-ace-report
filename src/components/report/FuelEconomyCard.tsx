@@ -181,7 +181,7 @@ export function FuelEconomyCard({
   );
 
   const monthlyOwnership = calculateMonthlyOwnershipCost(tco);
-
+  const monthlyBreakdown = calculateMonthlyOwnershipBreakdown(tco, monthlyPayment);
   // Determine fuel efficiency rating - different thresholds for EVs
   const getFuelRating = () => {
     if (!mpgCombined) return { label: "Unknown", color: "bg-muted text-muted-foreground" };
