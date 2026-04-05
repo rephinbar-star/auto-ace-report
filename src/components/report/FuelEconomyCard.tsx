@@ -53,6 +53,7 @@ export function FuelEconomyCard({
   fuelType,
   askingPrice,
   make,
+  model,
   year,
   depreciationTable,
   evRange,
