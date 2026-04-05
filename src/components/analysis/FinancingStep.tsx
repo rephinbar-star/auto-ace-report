@@ -516,13 +516,13 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
                             ))}
                           </SelectContent>
                         </Select>
-                        {zipAutoFilled && zipCode && (
+                        {zipAutoFilled && (zipCode || detectedZip) && (
                           <p className="text-xs text-muted-foreground mt-1">
                             {countyLookupLoading
                               ? "⏳ Looking up county from ZIP…"
                               : selectedCounty
-                                ? `✓ County auto-detected from ZIP ${zipCode}`
-                                : `✓ State auto-filled from ZIP ${zipCode}`}
+                                ? `✓ County auto-detected from ZIP ${zipCode || detectedZip}`
+                                : `✓ State auto-filled from ZIP ${zipCode || detectedZip}`}
                           </p>
                         )}
                       </div>
