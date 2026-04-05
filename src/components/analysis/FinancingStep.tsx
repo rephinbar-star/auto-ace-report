@@ -158,6 +158,7 @@ export function FinancingStep({ onComplete, onBack, askingPrice, zipCode }: Fina
     // 1. Immediately set state from ZIP prefix
     const stateAbbr = getStateFromZip(zipCode);
     if (stateAbbr) {
+      countySetByAutoRef.current = true;
       setSelectedState(stateAbbr);
       setZipAutoFilled(true);
     }
