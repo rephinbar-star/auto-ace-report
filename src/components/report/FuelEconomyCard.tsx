@@ -731,12 +731,63 @@ export function FuelEconomyCard({
           </div>
 
           {/* Monthly Ownership Cost */}
-          <div className="rounded-lg border p-3 min-w-0 mt-3 text-center">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <DollarSign className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span className="text-xs text-muted-foreground truncate">Monthly Ownership</span>
+          <div className="rounded-lg border p-4 min-w-0 mt-3 space-y-2">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <DollarSign className="h-4 w-4 text-primary shrink-0" />
+              <span className="font-bold text-sm">Total Monthly Ownership</span>
             </div>
-            <p className="text-lg font-bold">${monthlyOwnership} <span className="text-sm font-normal text-muted-foreground">(fuel + maintenance)</span></p>
+
+            <div className="space-y-1.5 text-sm">
+              {/* Monthly Payment - only if loan or lease */}
+              {monthlyPayment > 0 && (financingType === "loan" || financingType === "lease") && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Monthly Payment</span>
+                  <span className="font-medium">${monthlyBreakdown.monthlyPayment.toLocaleString()}</span>
+                </div>
+              )}
+
+              {/* Fuel/Electricity */}
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">{isElectric ? "Electricity" : "Fuel"}</span>
+                <span className="font-medium">${monthlyBreakdown.fuel.toLocaleString()}</span>
+              </div>
+
+              {/* Repairs */}
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Repairs</span>
+                <span className="font-medium">${monthlyBreakdown.repairs.toLocaleString()}</span>
+              </div>
+
+              {/* Maintenance */}
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Maintenance</span>
+                <span className="font-medium">${monthlyBreakdown.maintenance.toLocaleString()}</span>
+              </div>
+
+              {/* Insurance */}
+              {monthlyBreakdown.insuranceLow > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Insurance</span>
+                  <span className="font-medium">
+                    ${monthlyBreakdown.insuranceLow.toLocaleString()}
+                    {monthlyBreakdown.insuranceHigh > 0 && monthlyBreakdown.insuranceHigh !== monthlyBreakdown.insuranceLow && (
+                      <span className="text-xs text-muted-foreground ml-0.5">– ${monthlyBreakdown.insuranceHigh.toLocaleString()}</span>
+                    )}
+                  </span>
+                </div>
+              )}
+
+              {/* Total */}
+              <div className="border-t pt-2 flex items-center justify-between">
+                <span className="font-bold">Total Monthly Cost</span>
+                <span className="font-bold text-primary">
+                  ${monthlyBreakdown.totalLow.toLocaleString()}
+                  {monthlyBreakdown.totalHigh > 0 && monthlyBreakdown.totalHigh !== monthlyBreakdown.totalLow && (
+                    <span className="text-sm font-normal text-muted-foreground ml-0.5">– ${monthlyBreakdown.totalHigh.toLocaleString()}</span>
+                  )}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
