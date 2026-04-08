@@ -2573,6 +2573,14 @@ export default function ReportPage() {
       </main>
 
       <Footer />
+
+      <MobileBottomBar
+        verdict={displayVerdict}
+        monthlyCostRange={monthlyCostRange}
+        onCheatSheetClick={scrollToCheatSheet}
+        isPaid={isPaid}
+        heroRef={heroRef}
+      />
     </div>
   );
 }
