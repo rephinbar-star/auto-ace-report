@@ -2181,7 +2181,7 @@ export default function ReportPage() {
               </CardHeader>
               <CardContent>
                 <Tabs defaultValue="overview" className="w-full">
-                  <TabsList className="w-full mb-4">
+                  <TabsList className="w-full mb-4 overflow-x-auto">
                     <TabsTrigger value="overview" className="flex-1">Overview</TabsTrigger>
                     <TabsTrigger value="service" className="flex-1">Service Records</TabsTrigger>
                     <TabsTrigger value="recalls" className="flex-1">
