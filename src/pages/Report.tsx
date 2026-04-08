@@ -59,6 +59,9 @@ import {
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tooltip as RadixTooltip, TooltipContent as RadixTooltipContent, TooltipProvider, TooltipTrigger as RadixTooltipTrigger } from "@/components/ui/tooltip";
+import { getRiskColorToken } from "@/lib/risk-colors";
 import type { RecallItem } from "@/lib/nhtsa";
 import { getWithExpiry, removeExpirableItem } from "@/lib/storage-utils";
 import { supabase } from "@/integrations/supabase/client";
