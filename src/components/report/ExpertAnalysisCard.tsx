@@ -109,7 +109,7 @@ export function ExpertAnalysisCard({ aiFindings, sanitizedExpertOpinion, verdict
 
       {/* Part C — Full Expert Opinion Expander */}
       {sanitizedExpertOpinion && (
-        <div className="px-5 pb-5">
+        <div className="px-4 md:px-5 pb-4 md:pb-5">
           <button
             onClick={() => setExpanded(!expanded)}
             className="flex items-center justify-center gap-1 w-full text-[13px] text-neutral hover:text-foreground transition-colors py-2"
