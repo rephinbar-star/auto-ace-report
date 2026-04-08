@@ -2545,14 +2545,22 @@ export default function ReportPage() {
             <div className="p-5 space-y-3">
               <div>
                 <Button
-                  className={cn("w-full h-11 text-base font-semibold text-white", {
+                  className={cn("w-full h-12 text-base font-semibold text-white group relative overflow-hidden", {
                     "bg-risk-red hover:bg-risk-red/90": displayVerdict === "Avoid",
                     "bg-risk-amber hover:bg-risk-amber/90": displayVerdict === "Caution",
                     "bg-risk-green hover:bg-risk-green/90": displayVerdict === "Conditional Buy",
                   })}
                   onClick={scrollToCheatSheet}
                 >
-                  Get Negotiation Cheat Sheet →
+                  <span className="relative z-10 flex items-center justify-center gap-2">
+                    Get Negotiation Cheat Sheet
+                    <span className="flex items-center -mr-1">
+                      <svg className="h-5 w-5 -ml-1.5 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m9 5 7 7-7 7"/></svg>
+                      <svg className="h-5 w-5 -ml-1.5 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m9 5 7 7-7 7"/></svg>
+                      <svg className="h-5 w-5 -ml-1.5 opacity-80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m9 5 7 7-7 7"/></svg>
+                      <svg className="h-5 w-5 -ml-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m9 5 7 7-7 7"/></svg>
+                    </span>
+                  </span>
                 </Button>
                 <p className="text-xs text-neutral text-center mt-1">Data-backed price argument you can hand to the dealer</p>
               </div>
