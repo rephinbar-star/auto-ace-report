@@ -74,7 +74,7 @@ export function ExpertAnalysisCard({ aiFindings, sanitizedExpertOpinion, verdict
   return (
     <div className="report-card p-0 overflow-hidden">
       {/* Part A — Primary Finding Banner */}
-      <div className="px-5 py-4 flex items-start gap-3"
+      <div className="px-4 md:px-5 py-4 flex items-start gap-3"
            style={{
              borderLeft: `4px solid ${verdictHsl}`,
              backgroundColor: `color-mix(in srgb, ${verdictHsl} 8%, transparent)`,
