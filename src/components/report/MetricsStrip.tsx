@@ -93,7 +93,7 @@ export function MetricsStrip({
   };
 
   return (
-    <div id="section-overview" className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory">
+    <div id="section-overview" className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory" style={{ WebkitOverflowScrolling: "touch" }}>
       {cards.map((card) => (
         <button
           key={card.label}
