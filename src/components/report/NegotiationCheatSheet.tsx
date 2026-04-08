@@ -183,7 +183,7 @@ export function NegotiationCheatSheet(props: NegotiationCheatSheetProps) {
               {isLoading ? (
                 <Loader2 className="h-5 w-5 animate-spin text-primary" />
               ) : (
-                <ChevronRight className="h-5 w-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-200" />
+                <ChevronRight className="h-7 w-7 text-primary/60 group-hover:text-primary group-hover:translate-x-1 transition-all duration-200" strokeWidth={3} />
               )}
             </div>
           </div>
