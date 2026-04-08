@@ -59,6 +59,9 @@ import {
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tooltip as RadixTooltip, TooltipContent as RadixTooltipContent, TooltipProvider, TooltipTrigger as RadixTooltipTrigger } from "@/components/ui/tooltip";
+import { getRiskColorToken } from "@/lib/risk-colors";
 import type { RecallItem } from "@/lib/nhtsa";
 import { getWithExpiry, removeExpirableItem } from "@/lib/storage-utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -1790,7 +1793,14 @@ export default function ReportPage() {
           )}
 
           {/* ===== SECTION 6: FUEL ECONOMY & TCO (kept as-is) ===== */}
-          <div id="section-financials">
+          <div id="section-financials" className="space-y-6">
+            {/* Monthly Cost Hero */}
+            <div className="text-center py-6 report-card">
+              <p className="text-xs uppercase tracking-widest text-neutral mb-1">Estimated Monthly Ownership Cost</p>
+              <p className="text-[32px] font-bold text-foreground">{monthlyCostRange} / month</p>
+              <p className="text-[13px] text-neutral mt-1">All-in: payment + fuel/electricity + maintenance + insurance + expected repairs</p>
+            </div>
+
             <FuelEconomyCard
               mpgCity={mpgData?.mpgCity ?? null}
               mpgHighway={mpgData?.mpgHighway ?? null}
@@ -1812,7 +1822,6 @@ export default function ReportPage() {
                 await supabase.from("vehicle_reports").update({ zip_code: zip }).eq("id", id);
               }}
             />
-          </div>
 
           {/* ===== SECTION 7: DEPRECIATION CHART (kept as-is) ===== */}
           <Card className="overflow-hidden max-w-[calc(100vw-2rem)]">
@@ -1879,7 +1888,16 @@ export default function ReportPage() {
                           <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight">Trade-In<br/>Value</TableHead>
                           <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight">Est. Vehicle<br/>Value</TableHead>
                           {!financingSkipped && <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Equity</TableHead>}
-                          <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight">Net<br/>Position</TableHead>
+                          <TooltipProvider>
+                            <RadixTooltip>
+                              <RadixTooltipTrigger asChild>
+                                <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight cursor-help">Net<br/>Position <span className="text-[10px]">ⓘ</span></TableHead>
+                              </RadixTooltipTrigger>
+                              <RadixTooltipContent side="top" className="max-w-xs p-2">
+                                <p className="text-xs">Total financial gain/loss vs. all costs including purchase price</p>
+                              </RadixTooltipContent>
+                            </RadixTooltip>
+                          </TooltipProvider>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1975,156 +1993,173 @@ export default function ReportPage() {
               )}
             </CardContent>
           </Card>
+          </div>
 
-          {/* ===== SECTION 8: RISK ASSESSMENT ===== */}
+          {/* ===== SECTION 8: RISK ASSESSMENT — VISUAL BARS ===== */}
           <div id="section-risk" className="space-y-6">
-            {/* UVPRS Risk Score Breakdown */}
-            {uvprsResult && (
-              <RiskScoreBreakdown
-                result={uvprsResult}
-                missingHistoryReport={!vehicleData?.condition?.isBrandNew && !vehicleData?.history?.serviceRecords}
-                isUploadingHistory={isUploadingHistory}
-                onUploadHistory={async (file: File) => {
-                  setIsUploadingHistory(true);
-                  try {
-                    const mileage = vehicleData?.condition?.mileage;
-                    const result = await parseHistoryReport(file, undefined, mileage);
-                    if (!result.success || !result.history) {
-                      sonnerToast.error(result.error || "Failed to parse history report");
-                      return;
-                    }
-                    const extractedVin = result.history.vin;
-                    const updatedVehicleData = {
-                      ...vehicleData,
-                      vehicle: {
-                        ...vehicleData.vehicle,
-                        ...(extractedVin && !vehicleData.vehicle.vin ? { vin: extractedVin } : {}),
-                      },
-                      history: {
-                        ...vehicleData.history,
-                        ...result.history,
-                        serviceRecords: true,
-                      },
-                    };
-                    setVehicleData(updatedVehicleData);
-                    sessionStorage.setItem("analysisData", JSON.stringify(updatedVehicleData));
-                    sonnerToast.success("History report uploaded! Re-analyzing...");
-                    const { data: analysisResult, error: invokeError } = await supabase.functions.invoke("analyze-vehicle", {
-                      body: updatedVehicleData,
-                    });
-                    if (invokeError) throw invokeError;
-                    if (analysisResult?.success) {
-                      const newAn2 = analysisResult.analysis;
-                      if (analysis && newAn2.priceAssessment &&
-                          !(newAn2.priceAssessment.fairMarketPrivate > 0 || newAn2.priceAssessment.fairMarketDealer > 0)) {
-                        newAn2.priceAssessment = { ...newAn2.priceAssessment, ...analysis.priceAssessment };
-                      }
-                      setAnalysis(newAn2);
-                      if (analysisResult.mpgData) {
-                        setMpgData({
-                          mpgCity: analysisResult.mpgData.mpgCity,
-                          mpgHighway: analysisResult.mpgData.mpgHighway,
-                          mpgCombined: analysisResult.mpgData.mpgCombined,
-                          fuelType: analysisResult.mpgData.fuelType,
-                          evRange: analysisResult.mpgData.evRange ?? null,
-                        });
-                      }
-                      if (analysisResult.pricingSources?.length) {
-                        setPricingSources(analysisResult.pricingSources);
-                        setPricingLastUpdated(new Date());
-                      }
-                      if (analysisResult.maintenanceSources?.length) {
-                        setMaintenanceSources(analysisResult.maintenanceSources);
-                      }
-                      if (analysisResult.sourceBreakdown?.length) {
-                        setSourceBreakdown(analysisResult.sourceBreakdown);
-                      }
-                      if (isSavedReport && id) {
-                        const { priceAssessment, depreciationTable, riskAssessment, historyAnalysis } = analysisResult.analysis;
-                        const sideUpd: Record<string, any> = {
-                          deal_rating: priceAssessment.dealRating,
-                          price_difference: priceAssessment.priceDifference,
-                          risk_level: riskAssessment.level,
-                          depreciation_risk: riskAssessment.depreciationRisk,
-                          reliability_concerns: riskAssessment.reliabilityConcerns,
-                          value_proposition: riskAssessment.valueProposition,
-                          fair_offer_price: riskAssessment.fairOfferPrice,
-                          expert_opinion: riskAssessment.expertOpinion,
-                          health_score: historyAnalysis.healthScore,
-                          history_issues: historyAnalysis.concerns || [],
-                          history_positives: historyAnalysis.positives || [],
-                          depreciation_table: depreciationTable as any,
-                          has_service_records: true,
-                          accident_count: result.history?.accidentCount ?? null,
-                          owner_count: result.history?.ownerCount ?? null,
-                          title_status: result.history?.titleStatus ?? null,
-                          service_gap_miles: result.history?.serviceGapMiles ?? null,
-                          major_services_due: result.history?.majorServicesDue ?? null,
-                          major_services_done: result.history?.majorServicesDone ?? null,
-                          chronic_repair_systems: result.history?.chronicRepairSystems ?? null,
-                          ...(extractedVin && !vehicleData.vehicle.vin ? { vin: extractedVin } : {}),
-                          pricing_sources: analysisResult.pricingSources || [],
-                          pricing_last_updated: new Date().toISOString(),
-                          source_breakdown: analysisResult.sourceBreakdown || [],
-                        };
-                        if (priceAssessment.fairMarketPrivate > 0 || priceAssessment.fairMarketDealer > 0) {
-                          sideUpd.fair_market_private = priceAssessment.fairMarketPrivate;
-                          sideUpd.fair_market_dealer = priceAssessment.fairMarketDealer || null;
-                          sideUpd.fair_market_trade_in = priceAssessment.fairMarketTradeIn;
-                        }
-                        await supabase.from("vehicle_reports").update(sideUpd).eq("id", id);
-                      }
-                      sonnerToast.success("Report updated with history data!");
-                    } else {
-                      throw new Error(analysisResult?.error || "Re-analysis failed");
-                    }
-                  } catch (err) {
-                    console.error("History upload error:", err);
-                    sonnerToast.error("Failed to process history report");
-                  } finally {
-                    setIsUploadingHistory(false);
-                  }
-                }}
-              />
-            )}
-
-            {/* Risk Factors */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-warning" />
-                  Risk Factors
+                  <ShieldAlert className="h-5 w-5 text-primary" />
+                  Purchase Risk Profile
+                  {uvprsResult && (
+                    <Badge className={cn("ml-auto text-xs", {
+                      "bg-risk-green text-white": uvprsResult.totalScore <= 30,
+                      "bg-risk-amber text-white": uvprsResult.totalScore > 30 && uvprsResult.totalScore <= 55,
+                      "bg-risk-red text-white": uvprsResult.totalScore > 55,
+                    })}>
+                      {uvprsResult.totalScore} / 100 — {uvprsResult.riskLabel}
+                    </Badge>
+                  )}
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
+              <CardContent className="space-y-6">
+                {/* Upload CarFax banner */}
+                {!vehicleData?.condition?.isBrandNew && !vehicleData?.history?.serviceRecords && (
+                  <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-destructive">
+                    <span>⚠ Risk Score adversely affected — no CarFax/AutoCheck provided</span>
+                    <input
+                      ref={headerHistoryInputRef}
+                      type="file"
+                      accept=".pdf"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        e.target.value = "";
+                        setIsUploadingHistory(true);
+                        try {
+                          const mileage = vehicleData?.condition?.mileage;
+                          const result = await parseHistoryReport(file, undefined, mileage);
+                          if (!result.success || !result.history) {
+                            sonnerToast.error(result.error || "Failed to parse history report");
+                            return;
+                          }
+                          const extractedVin = result.history.vin;
+                          const updatedVehicleData = {
+                            ...vehicleData,
+                            vehicle: { ...vehicleData.vehicle, ...(extractedVin && !vehicleData.vehicle.vin ? { vin: extractedVin } : {}) },
+                            history: { ...vehicleData.history, ...result.history, serviceRecords: true },
+                          };
+                          setVehicleData(updatedVehicleData);
+                          sessionStorage.setItem("analysisData", JSON.stringify(updatedVehicleData));
+                          sonnerToast.success("History report uploaded! Re-analyzing...");
+                          const { data: analysisResult, error: invokeError } = await supabase.functions.invoke("analyze-vehicle", { body: updatedVehicleData });
+                          if (invokeError) throw invokeError;
+                          if (analysisResult?.success) {
+                            const newAn2 = analysisResult.analysis;
+                            if (analysis && newAn2.priceAssessment && !(newAn2.priceAssessment.fairMarketPrivate > 0 || newAn2.priceAssessment.fairMarketDealer > 0)) {
+                              newAn2.priceAssessment = { ...newAn2.priceAssessment, ...analysis.priceAssessment };
+                            }
+                            setAnalysis(newAn2);
+                            if (analysisResult.mpgData) setMpgData({ mpgCity: analysisResult.mpgData.mpgCity, mpgHighway: analysisResult.mpgData.mpgHighway, mpgCombined: analysisResult.mpgData.mpgCombined, fuelType: analysisResult.mpgData.fuelType, evRange: analysisResult.mpgData.evRange ?? null });
+                            if (analysisResult.pricingSources?.length) { setPricingSources(analysisResult.pricingSources); setPricingLastUpdated(new Date()); }
+                            if (analysisResult.maintenanceSources?.length) setMaintenanceSources(analysisResult.maintenanceSources);
+                            if (analysisResult.sourceBreakdown?.length) setSourceBreakdown(analysisResult.sourceBreakdown);
+                            if (isSavedReport && id) {
+                              const { priceAssessment: pa, depreciationTable: dt, riskAssessment: ra, historyAnalysis: ha } = analysisResult.analysis;
+                              const sideUpd: Record<string, any> = {
+                                deal_rating: pa.dealRating, price_difference: pa.priceDifference, risk_level: ra.level,
+                                depreciation_risk: ra.depreciationRisk, reliability_concerns: ra.reliabilityConcerns,
+                                value_proposition: ra.valueProposition, fair_offer_price: ra.fairOfferPrice, expert_opinion: ra.expertOpinion,
+                                health_score: ha.healthScore, history_issues: ha.concerns || [], history_positives: ha.positives || [],
+                                depreciation_table: dt as any, has_service_records: true,
+                                accident_count: result.history?.accidentCount ?? null, owner_count: result.history?.ownerCount ?? null,
+                                title_status: result.history?.titleStatus ?? null, service_gap_miles: result.history?.serviceGapMiles ?? null,
+                                major_services_due: result.history?.majorServicesDue ?? null, major_services_done: result.history?.majorServicesDone ?? null,
+                                chronic_repair_systems: result.history?.chronicRepairSystems ?? null,
+                                ...(extractedVin && !vehicleData.vehicle.vin ? { vin: extractedVin } : {}),
+                                pricing_sources: analysisResult.pricingSources || [], pricing_last_updated: new Date().toISOString(),
+                                source_breakdown: analysisResult.sourceBreakdown || [],
+                              };
+                              if (pa.fairMarketPrivate > 0 || pa.fairMarketDealer > 0) {
+                                sideUpd.fair_market_private = pa.fairMarketPrivate;
+                                sideUpd.fair_market_dealer = pa.fairMarketDealer || null;
+                                sideUpd.fair_market_trade_in = pa.fairMarketTradeIn;
+                              }
+                              await supabase.from("vehicle_reports").update(sideUpd).eq("id", id);
+                            }
+                            sonnerToast.success("Report updated with history data!");
+                          } else { throw new Error(analysisResult?.error || "Re-analysis failed"); }
+                        } catch (err) { console.error("History upload error:", err); sonnerToast.error("Failed to process history report"); }
+                        finally { setIsUploadingHistory(false); }
+                      }}
+                    />
+                    <Button variant="outline" size="sm" className="border-risk-green bg-risk-green text-white hover:bg-risk-green/90"
+                      onClick={() => headerHistoryInputRef.current?.click()} disabled={isUploadingHistory}>
+                      {isUploadingHistory ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Upload className="mr-1.5 h-3.5 w-3.5" />}
+                      {isUploadingHistory ? "Processing..." : "Upload CarFax/AutoCheck"}
+                    </Button>
+                  </div>
+                )}
+
+                {/* Visual bar chart rows */}
+                {uvprsResult && (
+                  <div className="space-y-2.5">
+                    {[...uvprsResult.factors]
+                      .sort((a, b) => (b.weight * b.score) - (a.weight * a.score))
+                      .map((factor) => {
+                        const barColor = !factor.known ? "bg-muted-foreground/30"
+                          : factor.score <= 30 ? "bg-risk-green"
+                          : factor.score <= 65 ? "bg-risk-amber"
+                          : "bg-risk-red";
+                        const textColor = !factor.known ? "text-neutral"
+                          : factor.score <= 30 ? "text-risk-green"
+                          : factor.score <= 65 ? "text-risk-amber"
+                          : "text-risk-red";
+                        return (
+                          <div key={factor.key} className="flex items-center gap-1">
+                            <span className="min-w-[180px] text-[13px] text-foreground">
+                              {factor.label} <span className="text-neutral">({Math.round(factor.weight * 100)}%)</span>
+                            </span>
+                            <div className="flex-1 mx-3 h-2 bg-muted rounded">
+                              <div
+                                className={cn("h-2 rounded transition-all", barColor)}
+                                style={{ width: `${factor.known ? factor.score : 50}%` }}
+                              />
+                            </div>
+                            <span className={cn("w-12 text-right text-[13px] font-semibold", textColor)}>
+                              {factor.known ? Math.round(factor.score) : "N/A"}
+                            </span>
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
+
+                {/* Reliability Concerns */}
+                {riskAssessment.reliabilityConcerns.length > 0 && (
+                  <div className="border-t pt-4 space-y-2">
+                    <p className="text-sm font-semibold">Reliability Concerns</p>
+                    {riskAssessment.reliabilityConcerns.map((item, i) => {
+                      const avgCost = ((item.costLow ?? 0) + (item.costHigh ?? 0)) / 2;
+                      const prob = avgCost > 3000 ? "High" : avgCost > 1000 ? "Moderate" : "Low";
+                      const probColor = prob === "High" ? "bg-risk-red/15 text-risk-red" : prob === "Moderate" ? "bg-risk-amber/15 text-risk-amber" : "bg-muted text-neutral";
+                      return (
+                        <div key={i} className="flex items-center gap-2 text-[13px]">
+                          <span className="flex-1 text-foreground">{item.concern}</span>
+                          <Badge className={cn("text-[10px] font-medium px-2 py-0.5 shrink-0", probColor)}>
+                            {prob} likelihood
+                          </Badge>
+                          {(item.costLow || item.costHigh) && (
+                            <span className="text-xs text-risk-red font-medium shrink-0 w-28 text-right">
+                              {item.costLow && item.costHigh
+                                ? `$${item.costLow.toLocaleString()}–$${item.costHigh.toLocaleString()}`
+                                : item.costLow ? `$${item.costLow.toLocaleString()}+`
+                                : `Up to $${item.costHigh!.toLocaleString()}`}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Depreciation Risk & Value Proposition */}
+                <div className="border-t pt-4 space-y-3">
                   <div>
                     <p className="text-sm font-medium">Depreciation Risk</p>
                     <p className="text-sm text-neutral">{riskAssessment.depreciationRisk}</p>
-                  </div>
-                  <div>
-                    <p className="mb-2 text-sm font-medium">Reliability Concerns</p>
-                    <ul className="space-y-2">
-                      {riskAssessment.reliabilityConcerns.map((item, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm">
-                          <Wrench className="mt-0.5 h-3 w-3 shrink-0 text-warning" />
-                          <span className="text-neutral">
-                            {item.concern}
-                            {(item.costLow || item.costHigh) && (
-                              <span className="ml-1 font-medium text-destructive">
-                                — Est. {item.costLow && item.costHigh
-                                  ? `$${item.costLow.toLocaleString()}–$${item.costHigh.toLocaleString()}`
-                                  : item.costLow ? `$${item.costLow.toLocaleString()}+`
-                                  : `Up to $${item.costHigh!.toLocaleString()}`}
-                                {/battery|traction/i.test(item.concern) && item.costLow && item.costLow >= 5000 && (
-                                  <span className="font-normal text-neutral"> (used/refurbished: $3,500–$6,500)</span>
-                                )}
-                              </span>
-                            )}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
                   </div>
                   <div className="rounded-lg bg-muted p-4">
                     <p className="text-sm font-medium">Value Proposition</p>
@@ -2135,192 +2170,193 @@ export default function ReportPage() {
             </Card>
           </div>
 
-          {/* ===== SECTION 9: HISTORY & CONDITION ===== */}
-          <div id="section-history" className="space-y-6">
-            {/* Vehicle Health Score */}
+          {/* ===== SECTION 9: VEHICLE HISTORY — TABBED ===== */}
+          <div id="section-history">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Car className="h-5 w-5 text-primary" />
-                  Vehicle Health
+                  Vehicle History
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {(() => {
-                  const score = historyAnalysis.healthScore;
-                  const scoreColor = score <= 33 ? 'text-risk-red' : score <= 66 ? 'text-risk-amber' : 'text-risk-green';
-                  const barColor = score <= 33 ? '[&>div]:bg-risk-red' : score <= 66 ? '[&>div]:bg-risk-amber' : '[&>div]:bg-risk-green';
-                  return (
-                    <>
-                      <div className="mb-4 text-center">
-                        <div className={`text-4xl font-bold ${scoreColor}`}>{score}</div>
-                        <p className="text-sm text-neutral">out of 100</p>
+                <Tabs defaultValue="overview" className="w-full">
+                  <TabsList className="w-full mb-4">
+                    <TabsTrigger value="overview" className="flex-1">Overview</TabsTrigger>
+                    <TabsTrigger value="service" className="flex-1">Service Records</TabsTrigger>
+                    <TabsTrigger value="recalls" className="flex-1">
+                      Safety Recalls
+                      {recallData && recallData.openCount > 0 && (
+                        <Badge className="ml-1.5 bg-risk-red text-white text-[10px] px-1.5 py-0">{recallData.openCount}</Badge>
+                      )}
+                    </TabsTrigger>
+                  </TabsList>
+
+                  {/* Tab: Overview — Vehicle Health */}
+                  <TabsContent value="overview">
+                    {(() => {
+                      const score = historyAnalysis.healthScore;
+                      const scoreColor = score <= 33 ? 'text-risk-red' : score <= 66 ? 'text-risk-amber' : 'text-risk-green';
+                      const barColor = score <= 33 ? '[&>div]:bg-risk-red' : score <= 66 ? '[&>div]:bg-risk-amber' : '[&>div]:bg-risk-green';
+                      return (
+                        <>
+                          <div className="mb-4 text-center">
+                            <div className={`text-4xl font-bold ${scoreColor}`}>{score}</div>
+                            <p className="text-sm text-neutral">out of 100</p>
+                          </div>
+                          <Progress value={score} className={`h-3 ${barColor}`} />
+                        </>
+                      );
+                    })()}
+                    <div className="mt-6 space-y-4">
+                      <div>
+                        <h4 className="mb-2 flex items-center gap-2 text-sm font-medium text-risk-green">
+                          <CheckCircle className="h-4 w-4" />
+                          Positives
+                        </h4>
+                        <ul className="space-y-1 text-sm">
+                          {historyAnalysis.positives
+                            .filter((item) => {
+                              const lower = item.toLowerCase();
+                              return !(lower.includes("below market") || lower.includes("above market") || lower.includes("asking price") || lower.includes("dealer retail") || lower.includes("below fmv") || lower.includes("above fmv"));
+                            })
+                            .map((item, i) => (
+                              <li key={i} className="text-neutral">• {item}</li>
+                            ))}
+                        </ul>
                       </div>
-                      <Progress value={score} className={`h-3 ${barColor}`} />
-                    </>
-                  );
-                })()}
-                <div className="mt-6 space-y-4">
-                  <div>
-                    <h4 className="mb-2 flex items-center gap-2 text-sm font-medium text-risk-green">
-                      <CheckCircle className="h-4 w-4" />
-                      Positives
-                    </h4>
-                    <ul className="space-y-1 text-sm">
-                      {historyAnalysis.positives
-                        .filter((item) => {
-                          const lower = item.toLowerCase();
-                          return !(lower.includes("below market") || lower.includes("above market") || lower.includes("asking price") || lower.includes("dealer retail") || lower.includes("below fmv") || lower.includes("above fmv"));
-                        })
-                        .map((item, i) => (
-                          <li key={i} className="text-neutral">• {item}</li>
-                        ))}
-                    </ul>
-                  </div>
-                  <div>
-                    <h4 className="mb-2 flex items-center gap-2 text-sm font-medium text-risk-red">
-                      <XCircle className="h-4 w-4" />
-                      Concerns
-                    </h4>
-                    <ul className="space-y-1 text-sm">
-                      {historyAnalysis.concerns.map((item, i) => (
-                        <li key={i} className="text-neutral">• {item}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
+                      <div>
+                        <h4 className="mb-2 flex items-center gap-2 text-sm font-medium text-risk-red">
+                          <XCircle className="h-4 w-4" />
+                          Concerns
+                        </h4>
+                        <ul className="space-y-1 text-sm">
+                          {historyAnalysis.concerns.map((item, i) => (
+                            <li key={i} className="text-neutral">• {item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  {/* Tab: Service Records */}
+                  <TabsContent value="service">
+                    <ServiceHistoryTimeline
+                      serviceGapMiles={vehicleData?.history?.serviceGapMiles}
+                      majorServicesDue={vehicleData?.history?.majorServicesDue}
+                      majorServicesDone={vehicleData?.history?.majorServicesDone}
+                      chronicRepairSystems={vehicleData?.history?.chronicRepairSystems}
+                      hasServiceRecords={vehicleData?.history?.serviceRecords}
+                      mileage={condition.mileage}
+                    />
+                  </TabsContent>
+
+                  {/* Tab: Safety Recalls + Warranty */}
+                  <TabsContent value="recalls" className="space-y-4">
+                    {recallData && !recallData.isLoading && (
+                      <div className={cn("rounded-lg border-2 p-4", recallData.openCount > 0 ? "border-risk-red bg-risk-red/5" : "border-risk-green bg-risk-green/5")}>
+                        <div className="flex items-center gap-2 mb-3">
+                          {recallData.openCount > 0 ? <ShieldAlert className="h-5 w-5 text-risk-red" /> : <ShieldCheck className="h-5 w-5 text-risk-green" />}
+                          <span className="text-sm font-semibold">Safety Recalls</span>
+                          <Badge className={cn("ml-auto text-xs", recallData.openCount > 0 ? "bg-risk-red text-white" : "bg-risk-green text-white")}>
+                            {recallData.openCount > 0 ? `${recallData.openCount} Open` : recallData.count > 0 ? "All Resolved" : "None on Record"}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-neutral mb-3">Via NHTSA · {vehicle.year} {vehicle.make} {vehicle.model}</p>
+                        {recallData.openCount > 0 && (
+                          <div className="flex items-start gap-2 rounded-md border border-risk-red/30 bg-risk-red/10 px-3 py-2 mb-3">
+                            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-risk-red" />
+                            <p className="text-xs text-risk-red font-medium">
+                              {recallData.openCount} open {recallData.openCount === 1 ? "recall" : "recalls"} found. Ensure resolved before purchasing.
+                            </p>
+                          </div>
+                        )}
+                        {recallData.count === 0 && (
+                          <div className="flex items-center gap-2 rounded-md border border-risk-green/30 bg-risk-green/10 px-3 py-2">
+                            <CheckCircle className="h-4 w-4 shrink-0 text-risk-green" />
+                            <p className="text-xs text-risk-green font-medium">No recalls on record for this year/make/model.</p>
+                          </div>
+                        )}
+                        {recallData.recalls.length > 0 && (
+                          <Accordion type="multiple" className="w-full">
+                            {recallData.recalls.map((recall, i) => (
+                              <AccordionItem key={i} value={`recall-${i}`} className="border-b border-border/50 last:border-0">
+                                <AccordionTrigger className="py-2 text-left hover:no-underline">
+                                  <span className="text-xs font-semibold leading-snug pr-2">{recall.component || `Recall #${i + 1}`}</span>
+                                </AccordionTrigger>
+                                <AccordionContent className="pb-3 space-y-2">
+                                  {recall.campaignNumber && <p className="text-xs text-neutral"><span className="font-medium">Campaign:</span> {recall.campaignNumber}</p>}
+                                  <p className="text-xs text-neutral leading-relaxed">{recall.summary}</p>
+                                  {recall.remedyDescription && (
+                                    <div className="rounded-md bg-muted px-3 py-2">
+                                      <p className="text-xs font-medium mb-0.5">Remedy</p>
+                                      <p className="text-xs text-neutral">{recall.remedyDescription}</p>
+                                    </div>
+                                  )}
+                                </AccordionContent>
+                              </AccordionItem>
+                            ))}
+                          </Accordion>
+                        )}
+                        <div className="flex flex-wrap gap-2 pt-2">
+                          {vehicle.vin ? (
+                            <a href={`https://www.nhtsa.gov/vehicle/${vehicle.vin}/complaints`} target="_blank" rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-neutral hover:text-foreground transition-colors">
+                              <ExternalLink className="h-3 w-3" />VIN Complaints on NHTSA
+                            </a>
+                          ) : (
+                            <a href={`https://www.nhtsa.gov/vehicle-safety/recalls#recall--${encodeURIComponent(vehicle.make)}`} target="_blank" rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-neutral hover:text-foreground transition-colors">
+                              <ExternalLink className="h-3 w-3" />Search Recalls on NHTSA
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    {recallData?.isLoading && (
+                      <div className="flex items-center gap-3 p-4">
+                        <Loader2 className="h-4 w-4 animate-spin text-neutral" />
+                        <p className="text-sm text-neutral">Checking NHTSA recall database...</p>
+                      </div>
+                    )}
+
+                    {/* Warranty Analysis */}
+                    {analysis.warrantyAnalysis && (
+                      <div className={cn("rounded-lg border-2 p-4", {
+                        "border-risk-green bg-risk-green/5": analysis.warrantyAnalysis.warrantyStatus === "active",
+                        "border-risk-red bg-risk-red/5": analysis.warrantyAnalysis.warrantyStatus === "expired",
+                        "border-risk-amber bg-risk-amber/5": analysis.warrantyAnalysis.warrantyStatus === "unknown",
+                      })}>
+                        <div className="flex items-center gap-2 mb-3">
+                          <ShieldCheck className="h-5 w-5" />
+                          <span className="text-sm font-semibold">Warranty Analysis</span>
+                        </div>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-neutral">Status</span>
+                            <Badge variant={analysis.warrantyAnalysis.warrantyStatus === "active" ? "default" : "destructive"}>
+                              {analysis.warrantyAnalysis.warrantyStatus === "active" ? "Active" : analysis.warrantyAnalysis.warrantyStatus === "expired" ? "Expired" : "Unknown"}
+                            </Badge>
+                          </div>
+                          {analysis.warrantyAnalysis.warrantyMonthsRemaining != null && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-neutral">Months Remaining</span>
+                              <span className="font-semibold">{analysis.warrantyAnalysis.warrantyMonthsRemaining}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-neutral">Risk Reduction</span>
+                            <span className="font-semibold">{analysis.warrantyAnalysis.riskReductionFactor}%</span>
+                          </div>
+                          <Progress value={analysis.warrantyAnalysis.riskReductionFactor} className="h-2" />
+                          <p className="text-sm text-neutral">{analysis.warrantyAnalysis.warrantyNotes}</p>
+                        </div>
+                      </div>
+                    )}
+                  </TabsContent>
+                </Tabs>
               </CardContent>
             </Card>
-
-            {/* Service History Timeline */}
-            <ServiceHistoryTimeline
-              serviceGapMiles={vehicleData?.history?.serviceGapMiles}
-              majorServicesDue={vehicleData?.history?.majorServicesDue}
-              majorServicesDone={vehicleData?.history?.majorServicesDone}
-              chronicRepairSystems={vehicleData?.history?.chronicRepairSystems}
-              hasServiceRecords={vehicleData?.history?.serviceRecords}
-              mileage={condition.mileage}
-            />
-
-            {/* NHTSA Recalls */}
-            {recallData && !recallData.isLoading && (
-              <Card className={cn(
-                "border-2",
-                recallData.openCount > 0 ? "border-risk-red bg-risk-red/5" : "border-risk-green bg-risk-green/5"
-              )}>
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2">
-                    {recallData.openCount > 0 ? (
-                      <ShieldAlert className="h-5 w-5 text-risk-red" />
-                    ) : (
-                      <ShieldCheck className="h-5 w-5 text-risk-green" />
-                    )}
-                    Safety Recalls
-                    <Badge className={cn("ml-auto text-xs", recallData.openCount > 0 ? "bg-risk-red text-white" : "bg-risk-green text-white")}>
-                      {recallData.openCount > 0 ? `${recallData.openCount} Open` : recallData.count > 0 ? "All Resolved" : "None on Record"}
-                    </Badge>
-                  </CardTitle>
-                  <p className="text-xs text-neutral">Via NHTSA · {vehicle.year} {vehicle.make} {vehicle.model}</p>
-                </CardHeader>
-                <CardContent className="space-y-3 pt-0">
-                  {recallData.openCount > 0 && (
-                    <div className="flex items-start gap-2 rounded-md border border-risk-red/30 bg-risk-red/10 px-3 py-2">
-                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-risk-red" />
-                      <p className="text-xs text-risk-red font-medium">
-                        {recallData.openCount} open {recallData.openCount === 1 ? "recall" : "recalls"} found for this vehicle. Ensure they have been resolved before purchasing.
-                      </p>
-                    </div>
-                  )}
-                  {recallData.count === 0 && (
-                    <div className="flex items-center gap-2 rounded-md border border-risk-green/30 bg-risk-green/10 px-3 py-2">
-                      <CheckCircle className="h-4 w-4 shrink-0 text-risk-green" />
-                      <p className="text-xs text-risk-green font-medium">No recalls on record for this year/make/model.</p>
-                    </div>
-                  )}
-                  {recallData.recalls.length > 0 && (
-                    <Accordion type="multiple" className="w-full">
-                      {recallData.recalls.map((recall, i) => (
-                        <AccordionItem key={i} value={`recall-${i}`} className="border-b border-border/50 last:border-0">
-                          <AccordionTrigger className="py-2 text-left hover:no-underline">
-                            <span className="text-xs font-semibold leading-snug pr-2">{recall.component || `Recall #${i + 1}`}</span>
-                          </AccordionTrigger>
-                          <AccordionContent className="pb-3 space-y-2">
-                            {recall.campaignNumber && (
-                              <p className="text-xs text-neutral"><span className="font-medium">Campaign:</span> {recall.campaignNumber}</p>
-                            )}
-                            <p className="text-xs text-neutral leading-relaxed">{recall.summary}</p>
-                            {recall.remedyDescription && (
-                              <div className="rounded-md bg-muted px-3 py-2">
-                                <p className="text-xs font-medium mb-0.5">Remedy</p>
-                                <p className="text-xs text-neutral">{recall.remedyDescription}</p>
-                              </div>
-                            )}
-                          </AccordionContent>
-                        </AccordionItem>
-                      ))}
-                    </Accordion>
-                  )}
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {vehicle.vin ? (
-                      <a href={`https://www.nhtsa.gov/vehicle/${vehicle.vin}/complaints`} target="_blank" rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-neutral hover:text-foreground transition-colors">
-                        <ExternalLink className="h-3 w-3" />VIN Complaints on NHTSA
-                      </a>
-                    ) : (
-                      <a href={`https://www.nhtsa.gov/vehicle-safety/recalls#recall--${encodeURIComponent(vehicle.make)}`} target="_blank" rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-neutral hover:text-foreground transition-colors">
-                        <ExternalLink className="h-3 w-3" />Search Recalls on NHTSA
-                      </a>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-            {recallData?.isLoading && (
-              <Card>
-                <CardContent className="flex items-center gap-3 p-4">
-                  <Loader2 className="h-4 w-4 animate-spin text-neutral" />
-                  <p className="text-sm text-neutral">Checking NHTSA recall database...</p>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Warranty Analysis */}
-            {analysis.warrantyAnalysis && (
-              <Card className={cn(
-                "border-2",
-                analysis.warrantyAnalysis.warrantyStatus === "active" ? "border-risk-green bg-risk-green/5"
-                  : analysis.warrantyAnalysis.warrantyStatus === "expired" ? "border-risk-red bg-risk-red/5"
-                  : "border-risk-amber bg-risk-amber/5"
-              )}>
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2">
-                    <ShieldCheck className="h-5 w-5" />
-                    Warranty Analysis
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-neutral">Status</span>
-                    <Badge variant={analysis.warrantyAnalysis.warrantyStatus === "active" ? "default" : "destructive"}>
-                      {analysis.warrantyAnalysis.warrantyStatus === "active" ? "Active" : analysis.warrantyAnalysis.warrantyStatus === "expired" ? "Expired" : "Unknown"}
-                    </Badge>
-                  </div>
-                  {analysis.warrantyAnalysis.warrantyMonthsRemaining != null && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-neutral">Months Remaining</span>
-                      <span className="font-semibold">{analysis.warrantyAnalysis.warrantyMonthsRemaining}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-neutral">Risk Reduction</span>
-                    <span className="font-semibold">{analysis.warrantyAnalysis.riskReductionFactor}%</span>
-                  </div>
-                  <Progress value={analysis.warrantyAnalysis.riskReductionFactor} className="h-2" />
-                  <p className="text-sm text-neutral">{analysis.warrantyAnalysis.warrantyNotes}</p>
-                </CardContent>
-              </Card>
-            )}
           </div>
 
           {/* ===== SECTION 10: VEHICLE SPECIFICATIONS ===== */}
@@ -2458,13 +2494,80 @@ export default function ReportPage() {
             />
           </div>
 
-          {/* ===== ANALYZE ANOTHER VEHICLE ===== */}
-          <Button asChild className="w-full">
-            <Link to="/analyze">
-              <Car className="mr-2 h-4 w-4" />
-              Analyze Another Vehicle
-            </Link>
-          </Button>
+          {/* ===== VERDICT DECISION GATE ===== */}
+          <Card className="overflow-hidden">
+            {/* Top band — verdict repeat */}
+            <div className={cn("p-5 border-b-2", {
+              "bg-risk-red/10 border-risk-red": displayVerdict === "Avoid",
+              "bg-risk-amber/10 border-risk-amber": displayVerdict === "Caution",
+              "bg-risk-green/10 border-risk-green": displayVerdict === "Conditional Buy",
+            })}>
+              <div className="flex items-center gap-3 flex-wrap">
+                <Badge className={cn("text-base px-4 py-1", {
+                  "bg-risk-red text-white": displayVerdict === "Avoid",
+                  "bg-risk-amber text-white": displayVerdict === "Caution",
+                  "bg-risk-green text-white": displayVerdict === "Conditional Buy",
+                })}>
+                  {displayVerdict}
+                </Badge>
+                {uvprsResult && (
+                  <span className="text-sm text-neutral">Risk Score: <span className="font-bold text-foreground">{uvprsResult.totalScore}/100</span></span>
+                )}
+              </div>
+              {analysis.finalVerdict?.justification && (
+                <p className="text-sm text-neutral mt-2 leading-relaxed">{analysis.finalVerdict.justification}</p>
+              )}
+            </div>
+
+            {/* Contingency block */}
+            {(displayVerdict === "Avoid" || displayVerdict === "Caution") && (
+              <div className="mx-5 mt-4 border-l-4 border-risk-amber bg-risk-amber/5 rounded-r-md p-4">
+                <p className="text-sm font-semibold mb-2">This vehicle may be reconsidered if:</p>
+                <ul className="space-y-1.5">
+                  {riskAssessment.reliabilityConcerns.slice(0, 3).map((item, i) => (
+                    <li key={i} className="text-sm text-neutral flex items-start gap-2">
+                      <span className="text-risk-amber mt-0.5">•</span>
+                      <span>Seller confirms resolution of: {item.concern}</span>
+                    </li>
+                  ))}
+                  {recallData && recallData.openCount > 0 && (
+                    <li className="text-sm text-neutral flex items-start gap-2">
+                      <span className="text-risk-amber mt-0.5">•</span>
+                      <span>All {recallData.openCount} open safety {recallData.openCount === 1 ? "recall" : "recalls"} confirmed resolved</span>
+                    </li>
+                  )}
+                </ul>
+              </div>
+            )}
+
+            {/* Action buttons */}
+            <div className="p-5 space-y-3">
+              <div>
+                <Button
+                  className={cn("w-full h-11 text-base font-semibold text-white", {
+                    "bg-risk-red hover:bg-risk-red/90": displayVerdict === "Avoid",
+                    "bg-risk-amber hover:bg-risk-amber/90": displayVerdict === "Caution",
+                    "bg-risk-green hover:bg-risk-green/90": displayVerdict === "Conditional Buy",
+                  })}
+                  onClick={scrollToCheatSheet}
+                >
+                  Get Negotiation Cheat Sheet →
+                </Button>
+                <p className="text-xs text-neutral text-center mt-1">Data-backed price argument you can hand to the dealer</p>
+              </div>
+              <div>
+                <Button variant="outline" className="w-full h-11 text-base">
+                  Get Personalized Insurance Quotes
+                </Button>
+                <p className="text-xs text-neutral text-center mt-1">Compare rates from 80+ insurers</p>
+              </div>
+              <div className="text-center pt-1">
+                <Link to="/analyze" className="text-[13px] text-neutral hover:text-foreground transition-colors">
+                  Analyze a Different Vehicle
+                </Link>
+              </div>
+            </div>
+          </Card>
         </div>
       </main>
 
