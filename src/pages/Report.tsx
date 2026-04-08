@@ -291,6 +291,11 @@ export default function ReportPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
   const headerHistoryInputRef = useRef<HTMLInputElement>(null);
+  const heroRef = useRef<HTMLDivElement>(null);
+  const cheatSheetRef = useRef<HTMLDivElement>(null);
+  const scrollToCheatSheet = useCallback(() => {
+    cheatSheetRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
   const [isSaving, setIsSaving] = useState(false);
   const [excludeRepairs, setExcludeRepairs] = useState(false);
   const [userAnnualMiles, setUserAnnualMiles] = useState(12000);
