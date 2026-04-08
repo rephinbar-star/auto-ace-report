@@ -2552,14 +2552,12 @@ export default function ReportPage() {
                   })}
                   onClick={scrollToCheatSheet}
                 >
-                  <span className="relative z-10 flex items-center justify-center gap-2">
-                    Get Negotiation Cheat Sheet
-                    <span className="flex items-center -mr-1">
-                      <svg className="h-5 w-5 -ml-1.5 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m9 5 7 7-7 7"/></svg>
-                      <svg className="h-5 w-5 -ml-1.5 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m9 5 7 7-7 7"/></svg>
-                      <svg className="h-5 w-5 -ml-1.5 opacity-80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m9 5 7 7-7 7"/></svg>
-                      <svg className="h-5 w-5 -ml-1.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m9 5 7 7-7 7"/></svg>
-                    </span>
+                  Get Negotiation Cheat Sheet
+                  <span className="ml-1 tracking-[-0.2em] font-black text-lg">
+                    <span className="opacity-30">›</span>
+                    <span className="opacity-50">›</span>
+                    <span className="opacity-75">›</span>
+                    <span>›</span>
                   </span>
                 </Button>
                 <p className="text-xs text-neutral text-center mt-1">Data-backed price argument you can hand to the dealer</p>
