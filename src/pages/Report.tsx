@@ -1230,14 +1230,8 @@ export default function ReportPage() {
     })),
   ];
 
-  // Refs for sticky nav
-  const heroRef = useRef<HTMLDivElement>(null);
 
-  // Cheat sheet trigger callback
-  const cheatSheetRef = useRef<HTMLDivElement>(null);
-  const scrollToCheatSheet = useCallback(() => {
-    cheatSheetRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, []);
+
 
   // Compute monthly cost range for metrics strip
   const monthlyCostRange = (() => {
