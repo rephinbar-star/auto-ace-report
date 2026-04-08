@@ -1250,8 +1250,11 @@ export default function ReportPage() {
       { annualMiles: userAnnualMiles },
       { make: vehicle.make, year: vehicle.year }
     );
-    const low = Math.round(tco.monthlyOwnership);
-    const high = Math.round(tco.monthlyOwnershipHigh ?? low);
+    const tco5YearTotal = tco.totalTCO;
+    const months = 60;
+    const low = Math.round(tco5YearTotal / months);
+    const highTotal = tco.worstCaseTCO;
+    const high = Math.round(highTotal / months);
     return low === high ? `$${low}` : `$${low}–$${high}`;
   })();
 
