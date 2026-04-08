@@ -88,6 +88,7 @@ import { convertLegacyTable, computeDepreciationTable, type ComputedDepreciation
 import { calculateUVPRS, uvprsToLegacyRiskLevel, type UVPRSResult } from "@/lib/uvprs-scoring";
 import { lookupRecalls } from "@/lib/nhtsa";
 import { parseHistoryReport } from "@/lib/api/parse-history";
+import { MobileBottomBar } from "@/components/report/MobileBottomBar";
 
 // Parse reliability_concerns from DB (jsonb) into typed array
 function parseReliabilityConcerns(raw: unknown): Array<{ concern: string; costLow?: number | null; costHigh?: number | null }> {
