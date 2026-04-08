@@ -1279,7 +1279,7 @@ export default function ReportPage() {
         onCheatSheetClick={scrollToCheatSheet}
       />
       
-      <main className="flex-1 bg-surface-muted py-8">
+      <main className="flex-1 bg-surface-muted py-8 pb-20 md:pb-8">
         <div className="mx-auto max-w-[900px] px-4 space-y-6">
           {/* Back Navigation */}
           {backToComparisonUrl && (
