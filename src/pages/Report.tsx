@@ -1742,9 +1742,9 @@ export default function ReportPage() {
                 <VisuallyHidden><DialogTitle>Edit Financing Details</DialogTitle></VisuallyHidden>
                 <div className="py-2">
                   <FinancingStep
-                    data={financing || { type: "loan" } as FinancingInfo}
                     askingPrice={condition.askingPrice}
-                    onNext={async (newFinancing) => {
+                    onBack={() => setShowFinancingDialog(false)}
+                    onComplete={async (newFinancing) => {
                       setShowFinancingDialog(false);
                       const effectivePrice = newFinancing.negotiatedPrice ?? condition.askingPrice;
                       const taxAmt = parseFloat(((effectivePrice || 0) * ((newFinancing.salesTaxRate || 0) / 100)).toFixed(2));
