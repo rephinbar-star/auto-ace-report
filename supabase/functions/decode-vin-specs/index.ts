@@ -84,10 +84,93 @@ serve(async (req) => {
       }
     }
 
+    // If MarketCheck failed but we have NHTSA data, build a response from NHTSA alone
     if (!specs && !optionsPackages) {
+      const getVal = (variable: string): string | null => {
+        const r = nhtsaResults.find((x: any) => x.Variable === variable);
+        return r?.Value || null;
+      };
+      const nhtsaYear = getVal("Model Year");
+      const nhtsaMake = getVal("Make");
+      const nhtsaModel = getVal("Model");
+
+      if (!nhtsaYear || !nhtsaMake || !nhtsaModel) {
+        return new Response(
+          JSON.stringify({ success: false, error: "VIN decode not available — external API quota exhausted and NHTSA returned insufficient data" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      console.log(`MarketCheck unavailable, using NHTSA-only fallback for ${vin}`);
+
+      const nhtsaDisplacement = nhtsa.displacement ? parseFloat(nhtsa.displacement) : null;
+      const nhtsaCylinders = nhtsa.cylinders ? parseInt(nhtsa.cylinders) : null;
+      const nhtsaHp = nhtsa.hp ? parseFloat(nhtsa.hp) : null;
+      let engineDetail: string | null = null;
+      {
+        const parts: string[] = [];
+        if (nhtsaDisplacement) parts.push(`${nhtsaDisplacement}L`);
+        if (nhtsa.configuration) parts.push(nhtsa.configuration);
+        if (nhtsaCylinders) parts.push(`${nhtsaCylinders}-cyl`);
+        if (nhtsaHp) parts.push(`${nhtsaHp}hp`);
+        if (parts.length > 0) engineDetail = parts.join(" ");
+      }
+
+      // Build NHTSA-only equipment from safety/tech fields
+      const nhtsaEquipment: Record<string, string[]> = {};
+      const nhtsaEquipFields: [string, string][] = [
+        ["Air Bag Loc Front", "Safety"], ["Air Bag Loc Side", "Safety"], ["Air Bag Loc Curtain", "Safety"],
+        ["Anti-lock Braking System (ABS)", "Safety"], ["Electronic Stability Control (ESC)", "Safety"],
+        ["Traction Control", "Safety"], ["Backup Camera", "Technology"], ["Parking Assist", "Technology"],
+        ["Blind Spot Monitoring", "Safety"], ["Lane Departure Warning (LDW)", "Safety"],
+        ["Forward Collision Warning", "Safety"], ["Adaptive Cruise Control (ACC)", "Technology"],
+        ["Keyless Ignition", "Technology"], ["Daytime Running Light (DRL)", "Exterior"],
+      ];
+      const seenEquip = new Set<string>();
+      for (const [field, cat] of nhtsaEquipFields) {
+        const r = nhtsaResults.find((x: any) => x.Variable === field);
+        const val = r?.Value;
+        if (val && val !== "Not Applicable") {
+          const label = val === "Standard" ? field : `${field}: ${val}`;
+          const key = label.toLowerCase();
+          if (!seenEquip.has(key)) {
+            seenEquip.add(key);
+            if (!nhtsaEquipment[cat]) nhtsaEquipment[cat] = [];
+            nhtsaEquipment[cat].push(label);
+          }
+        }
+      }
+
+      const result = {
+        success: true,
+        data: {
+          year: parseInt(nhtsaYear),
+          make: nhtsaMake,
+          model: nhtsaModel,
+          trim: nhtsa.trim || null,
+          bodyStyle: nhtsa.bodyStyle || null,
+          transmission: nhtsa.transmission || null,
+          drivetrain: nhtsa.drivetrain || null,
+          fuelType: nhtsa.fuelType || null,
+          engineSize: nhtsaDisplacement ? `${nhtsaDisplacement}L` : null,
+          engine: engineDetail,
+          engineHp: nhtsaHp,
+          engineTorque: null,
+          engineCylinders: nhtsaCylinders,
+          engineAspiration: null,
+          msrp: null,
+          exteriorColor: null,
+          interiorColor: null,
+          installedEquipment: Object.values(nhtsaEquipment).flat(),
+          categorizedEquipment: nhtsaEquipment,
+          optionPackages: [],
+          seatingCapacity: null,
+        },
+      };
+
       return new Response(
-        JSON.stringify({ success: false, error: "NeoVIN decode not available for this VIN" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify(result),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
