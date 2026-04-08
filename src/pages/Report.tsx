@@ -1995,155 +1995,171 @@ export default function ReportPage() {
           </Card>
           </div>
 
-          {/* ===== SECTION 8: RISK ASSESSMENT ===== */}
+          {/* ===== SECTION 8: RISK ASSESSMENT — VISUAL BARS ===== */}
           <div id="section-risk" className="space-y-6">
-            {/* UVPRS Risk Score Breakdown */}
-            {uvprsResult && (
-              <RiskScoreBreakdown
-                result={uvprsResult}
-                missingHistoryReport={!vehicleData?.condition?.isBrandNew && !vehicleData?.history?.serviceRecords}
-                isUploadingHistory={isUploadingHistory}
-                onUploadHistory={async (file: File) => {
-                  setIsUploadingHistory(true);
-                  try {
-                    const mileage = vehicleData?.condition?.mileage;
-                    const result = await parseHistoryReport(file, undefined, mileage);
-                    if (!result.success || !result.history) {
-                      sonnerToast.error(result.error || "Failed to parse history report");
-                      return;
-                    }
-                    const extractedVin = result.history.vin;
-                    const updatedVehicleData = {
-                      ...vehicleData,
-                      vehicle: {
-                        ...vehicleData.vehicle,
-                        ...(extractedVin && !vehicleData.vehicle.vin ? { vin: extractedVin } : {}),
-                      },
-                      history: {
-                        ...vehicleData.history,
-                        ...result.history,
-                        serviceRecords: true,
-                      },
-                    };
-                    setVehicleData(updatedVehicleData);
-                    sessionStorage.setItem("analysisData", JSON.stringify(updatedVehicleData));
-                    sonnerToast.success("History report uploaded! Re-analyzing...");
-                    const { data: analysisResult, error: invokeError } = await supabase.functions.invoke("analyze-vehicle", {
-                      body: updatedVehicleData,
-                    });
-                    if (invokeError) throw invokeError;
-                    if (analysisResult?.success) {
-                      const newAn2 = analysisResult.analysis;
-                      if (analysis && newAn2.priceAssessment &&
-                          !(newAn2.priceAssessment.fairMarketPrivate > 0 || newAn2.priceAssessment.fairMarketDealer > 0)) {
-                        newAn2.priceAssessment = { ...newAn2.priceAssessment, ...analysis.priceAssessment };
-                      }
-                      setAnalysis(newAn2);
-                      if (analysisResult.mpgData) {
-                        setMpgData({
-                          mpgCity: analysisResult.mpgData.mpgCity,
-                          mpgHighway: analysisResult.mpgData.mpgHighway,
-                          mpgCombined: analysisResult.mpgData.mpgCombined,
-                          fuelType: analysisResult.mpgData.fuelType,
-                          evRange: analysisResult.mpgData.evRange ?? null,
-                        });
-                      }
-                      if (analysisResult.pricingSources?.length) {
-                        setPricingSources(analysisResult.pricingSources);
-                        setPricingLastUpdated(new Date());
-                      }
-                      if (analysisResult.maintenanceSources?.length) {
-                        setMaintenanceSources(analysisResult.maintenanceSources);
-                      }
-                      if (analysisResult.sourceBreakdown?.length) {
-                        setSourceBreakdown(analysisResult.sourceBreakdown);
-                      }
-                      if (isSavedReport && id) {
-                        const { priceAssessment, depreciationTable, riskAssessment, historyAnalysis } = analysisResult.analysis;
-                        const sideUpd: Record<string, any> = {
-                          deal_rating: priceAssessment.dealRating,
-                          price_difference: priceAssessment.priceDifference,
-                          risk_level: riskAssessment.level,
-                          depreciation_risk: riskAssessment.depreciationRisk,
-                          reliability_concerns: riskAssessment.reliabilityConcerns,
-                          value_proposition: riskAssessment.valueProposition,
-                          fair_offer_price: riskAssessment.fairOfferPrice,
-                          expert_opinion: riskAssessment.expertOpinion,
-                          health_score: historyAnalysis.healthScore,
-                          history_issues: historyAnalysis.concerns || [],
-                          history_positives: historyAnalysis.positives || [],
-                          depreciation_table: depreciationTable as any,
-                          has_service_records: true,
-                          accident_count: result.history?.accidentCount ?? null,
-                          owner_count: result.history?.ownerCount ?? null,
-                          title_status: result.history?.titleStatus ?? null,
-                          service_gap_miles: result.history?.serviceGapMiles ?? null,
-                          major_services_due: result.history?.majorServicesDue ?? null,
-                          major_services_done: result.history?.majorServicesDone ?? null,
-                          chronic_repair_systems: result.history?.chronicRepairSystems ?? null,
-                          ...(extractedVin && !vehicleData.vehicle.vin ? { vin: extractedVin } : {}),
-                          pricing_sources: analysisResult.pricingSources || [],
-                          pricing_last_updated: new Date().toISOString(),
-                          source_breakdown: analysisResult.sourceBreakdown || [],
-                        };
-                        if (priceAssessment.fairMarketPrivate > 0 || priceAssessment.fairMarketDealer > 0) {
-                          sideUpd.fair_market_private = priceAssessment.fairMarketPrivate;
-                          sideUpd.fair_market_dealer = priceAssessment.fairMarketDealer || null;
-                          sideUpd.fair_market_trade_in = priceAssessment.fairMarketTradeIn;
-                        }
-                        await supabase.from("vehicle_reports").update(sideUpd).eq("id", id);
-                      }
-                      sonnerToast.success("Report updated with history data!");
-                    } else {
-                      throw new Error(analysisResult?.error || "Re-analysis failed");
-                    }
-                  } catch (err) {
-                    console.error("History upload error:", err);
-                    sonnerToast.error("Failed to process history report");
-                  } finally {
-                    setIsUploadingHistory(false);
-                  }
-                }}
-              />
-            )}
-
-            {/* Risk Factors */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-warning" />
-                  Risk Factors
+                  <ShieldAlert className="h-5 w-5 text-primary" />
+                  Purchase Risk Profile
+                  {uvprsResult && (
+                    <Badge className={cn("ml-auto text-xs", {
+                      "bg-risk-green text-white": uvprsResult.totalScore <= 30,
+                      "bg-risk-amber text-white": uvprsResult.totalScore > 30 && uvprsResult.totalScore <= 55,
+                      "bg-risk-red text-white": uvprsResult.totalScore > 55,
+                    })}>
+                      {uvprsResult.totalScore} / 100 — {uvprsResult.riskLabel}
+                    </Badge>
+                  )}
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
+              <CardContent className="space-y-6">
+                {/* Upload CarFax banner */}
+                {!vehicleData?.condition?.isBrandNew && !vehicleData?.history?.serviceRecords && (
+                  <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-destructive">
+                    <span>⚠ Risk Score adversely affected — no CarFax/AutoCheck provided</span>
+                    <input
+                      ref={headerHistoryInputRef}
+                      type="file"
+                      accept=".pdf"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        e.target.value = "";
+                        setIsUploadingHistory(true);
+                        try {
+                          const mileage = vehicleData?.condition?.mileage;
+                          const result = await parseHistoryReport(file, undefined, mileage);
+                          if (!result.success || !result.history) {
+                            sonnerToast.error(result.error || "Failed to parse history report");
+                            return;
+                          }
+                          const extractedVin = result.history.vin;
+                          const updatedVehicleData = {
+                            ...vehicleData,
+                            vehicle: { ...vehicleData.vehicle, ...(extractedVin && !vehicleData.vehicle.vin ? { vin: extractedVin } : {}) },
+                            history: { ...vehicleData.history, ...result.history, serviceRecords: true },
+                          };
+                          setVehicleData(updatedVehicleData);
+                          sessionStorage.setItem("analysisData", JSON.stringify(updatedVehicleData));
+                          sonnerToast.success("History report uploaded! Re-analyzing...");
+                          const { data: analysisResult, error: invokeError } = await supabase.functions.invoke("analyze-vehicle", { body: updatedVehicleData });
+                          if (invokeError) throw invokeError;
+                          if (analysisResult?.success) {
+                            const newAn2 = analysisResult.analysis;
+                            if (analysis && newAn2.priceAssessment && !(newAn2.priceAssessment.fairMarketPrivate > 0 || newAn2.priceAssessment.fairMarketDealer > 0)) {
+                              newAn2.priceAssessment = { ...newAn2.priceAssessment, ...analysis.priceAssessment };
+                            }
+                            setAnalysis(newAn2);
+                            if (analysisResult.mpgData) setMpgData({ mpgCity: analysisResult.mpgData.mpgCity, mpgHighway: analysisResult.mpgData.mpgHighway, mpgCombined: analysisResult.mpgData.mpgCombined, fuelType: analysisResult.mpgData.fuelType, evRange: analysisResult.mpgData.evRange ?? null });
+                            if (analysisResult.pricingSources?.length) { setPricingSources(analysisResult.pricingSources); setPricingLastUpdated(new Date()); }
+                            if (analysisResult.maintenanceSources?.length) setMaintenanceSources(analysisResult.maintenanceSources);
+                            if (analysisResult.sourceBreakdown?.length) setSourceBreakdown(analysisResult.sourceBreakdown);
+                            if (isSavedReport && id) {
+                              const { priceAssessment: pa, depreciationTable: dt, riskAssessment: ra, historyAnalysis: ha } = analysisResult.analysis;
+                              const sideUpd: Record<string, any> = {
+                                deal_rating: pa.dealRating, price_difference: pa.priceDifference, risk_level: ra.level,
+                                depreciation_risk: ra.depreciationRisk, reliability_concerns: ra.reliabilityConcerns,
+                                value_proposition: ra.valueProposition, fair_offer_price: ra.fairOfferPrice, expert_opinion: ra.expertOpinion,
+                                health_score: ha.healthScore, history_issues: ha.concerns || [], history_positives: ha.positives || [],
+                                depreciation_table: dt as any, has_service_records: true,
+                                accident_count: result.history?.accidentCount ?? null, owner_count: result.history?.ownerCount ?? null,
+                                title_status: result.history?.titleStatus ?? null, service_gap_miles: result.history?.serviceGapMiles ?? null,
+                                major_services_due: result.history?.majorServicesDue ?? null, major_services_done: result.history?.majorServicesDone ?? null,
+                                chronic_repair_systems: result.history?.chronicRepairSystems ?? null,
+                                ...(extractedVin && !vehicleData.vehicle.vin ? { vin: extractedVin } : {}),
+                                pricing_sources: analysisResult.pricingSources || [], pricing_last_updated: new Date().toISOString(),
+                                source_breakdown: analysisResult.sourceBreakdown || [],
+                              };
+                              if (pa.fairMarketPrivate > 0 || pa.fairMarketDealer > 0) {
+                                sideUpd.fair_market_private = pa.fairMarketPrivate;
+                                sideUpd.fair_market_dealer = pa.fairMarketDealer || null;
+                                sideUpd.fair_market_trade_in = pa.fairMarketTradeIn;
+                              }
+                              await supabase.from("vehicle_reports").update(sideUpd).eq("id", id);
+                            }
+                            sonnerToast.success("Report updated with history data!");
+                          } else { throw new Error(analysisResult?.error || "Re-analysis failed"); }
+                        } catch (err) { console.error("History upload error:", err); sonnerToast.error("Failed to process history report"); }
+                        finally { setIsUploadingHistory(false); }
+                      }}
+                    />
+                    <Button variant="outline" size="sm" className="border-risk-green bg-risk-green text-white hover:bg-risk-green/90"
+                      onClick={() => headerHistoryInputRef.current?.click()} disabled={isUploadingHistory}>
+                      {isUploadingHistory ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Upload className="mr-1.5 h-3.5 w-3.5" />}
+                      {isUploadingHistory ? "Processing..." : "Upload CarFax/AutoCheck"}
+                    </Button>
+                  </div>
+                )}
+
+                {/* Visual bar chart rows */}
+                {uvprsResult && (
+                  <div className="space-y-2.5">
+                    {[...uvprsResult.factors]
+                      .sort((a, b) => (b.weight * b.score) - (a.weight * a.score))
+                      .map((factor) => {
+                        const barColor = !factor.known ? "bg-muted-foreground/30"
+                          : factor.score <= 30 ? "bg-risk-green"
+                          : factor.score <= 65 ? "bg-risk-amber"
+                          : "bg-risk-red";
+                        const textColor = !factor.known ? "text-neutral"
+                          : factor.score <= 30 ? "text-risk-green"
+                          : factor.score <= 65 ? "text-risk-amber"
+                          : "text-risk-red";
+                        return (
+                          <div key={factor.key} className="flex items-center gap-1">
+                            <span className="min-w-[180px] text-[13px] text-foreground">
+                              {factor.label} <span className="text-neutral">({Math.round(factor.weight * 100)}%)</span>
+                            </span>
+                            <div className="flex-1 mx-3 h-2 bg-muted rounded">
+                              <div
+                                className={cn("h-2 rounded transition-all", barColor)}
+                                style={{ width: `${factor.known ? factor.score : 50}%` }}
+                              />
+                            </div>
+                            <span className={cn("w-12 text-right text-[13px] font-semibold", textColor)}>
+                              {factor.known ? Math.round(factor.score) : "N/A"}
+                            </span>
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
+
+                {/* Reliability Concerns */}
+                {riskAssessment.reliabilityConcerns.length > 0 && (
+                  <div className="border-t pt-4 space-y-2">
+                    <p className="text-sm font-semibold">Reliability Concerns</p>
+                    {riskAssessment.reliabilityConcerns.map((item, i) => {
+                      const avgCost = ((item.costLow ?? 0) + (item.costHigh ?? 0)) / 2;
+                      const prob = avgCost > 3000 ? "High" : avgCost > 1000 ? "Moderate" : "Low";
+                      const probColor = prob === "High" ? "bg-risk-red/15 text-risk-red" : prob === "Moderate" ? "bg-risk-amber/15 text-risk-amber" : "bg-muted text-neutral";
+                      return (
+                        <div key={i} className="flex items-center gap-2 text-[13px]">
+                          <span className="flex-1 text-foreground">{item.concern}</span>
+                          <Badge className={cn("text-[10px] font-medium px-2 py-0.5 shrink-0", probColor)}>
+                            {prob} likelihood
+                          </Badge>
+                          {(item.costLow || item.costHigh) && (
+                            <span className="text-xs text-risk-red font-medium shrink-0 w-28 text-right">
+                              {item.costLow && item.costHigh
+                                ? `$${item.costLow.toLocaleString()}–$${item.costHigh.toLocaleString()}`
+                                : item.costLow ? `$${item.costLow.toLocaleString()}+`
+                                : `Up to $${item.costHigh!.toLocaleString()}`}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Depreciation Risk & Value Proposition */}
+                <div className="border-t pt-4 space-y-3">
                   <div>
                     <p className="text-sm font-medium">Depreciation Risk</p>
                     <p className="text-sm text-neutral">{riskAssessment.depreciationRisk}</p>
-                  </div>
-                  <div>
-                    <p className="mb-2 text-sm font-medium">Reliability Concerns</p>
-                    <ul className="space-y-2">
-                      {riskAssessment.reliabilityConcerns.map((item, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm">
-                          <Wrench className="mt-0.5 h-3 w-3 shrink-0 text-warning" />
-                          <span className="text-neutral">
-                            {item.concern}
-                            {(item.costLow || item.costHigh) && (
-                              <span className="ml-1 font-medium text-destructive">
-                                — Est. {item.costLow && item.costHigh
-                                  ? `$${item.costLow.toLocaleString()}–$${item.costHigh.toLocaleString()}`
-                                  : item.costLow ? `$${item.costLow.toLocaleString()}+`
-                                  : `Up to $${item.costHigh!.toLocaleString()}`}
-                                {/battery|traction/i.test(item.concern) && item.costLow && item.costLow >= 5000 && (
-                                  <span className="font-normal text-neutral"> (used/refurbished: $3,500–$6,500)</span>
-                                )}
-                              </span>
-                            )}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
                   </div>
                   <div className="rounded-lg bg-muted p-4">
                     <p className="text-sm font-medium">Value Proposition</p>
