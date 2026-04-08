@@ -93,13 +93,13 @@ export function MetricsStrip({
   };
 
   return (
-    <div id="section-overview" className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory">
+    <div id="section-overview" className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide snap-x snap-mandatory" style={{ WebkitOverflowScrolling: "touch" }}>
       {cards.map((card) => (
         <button
           key={card.label}
           onClick={() => scrollTo(card.scrollTarget)}
           className={cn(
-            "report-card flex-1 min-w-[130px] p-3 text-left snap-start cursor-pointer hover:border-primary/30 transition-colors",
+            "report-card flex-1 min-w-[130px] p-2.5 md:p-3 text-left snap-start cursor-pointer hover:border-primary/30 transition-colors",
             card.tintRed && "bg-risk-red/5"
           )}
         >

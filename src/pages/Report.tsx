@@ -88,6 +88,7 @@ import { convertLegacyTable, computeDepreciationTable, type ComputedDepreciation
 import { calculateUVPRS, uvprsToLegacyRiskLevel, type UVPRSResult } from "@/lib/uvprs-scoring";
 import { lookupRecalls } from "@/lib/nhtsa";
 import { parseHistoryReport } from "@/lib/api/parse-history";
+import { MobileBottomBar } from "@/components/report/MobileBottomBar";
 
 // Parse reliability_concerns from DB (jsonb) into typed array
 function parseReliabilityConcerns(raw: unknown): Array<{ concern: string; costLow?: number | null; costHigh?: number | null }> {
@@ -1278,7 +1279,7 @@ export default function ReportPage() {
         onCheatSheetClick={scrollToCheatSheet}
       />
       
-      <main className="flex-1 bg-surface-muted py-8">
+      <main className="flex-1 bg-surface-muted py-8 pb-20 md:pb-8">
         <div className="mx-auto max-w-[900px] px-4 space-y-6">
           {/* Back Navigation */}
           {backToComparisonUrl && (
@@ -1648,7 +1649,7 @@ export default function ReportPage() {
                           return (
                             <div key={src.source} className="rounded-md bg-muted/50 p-2.5">
                               <p className="text-xs font-semibold text-foreground mb-1.5">{src.source}</p>
-                              <div className="grid grid-cols-3 gap-2 text-xs">
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
                                 {tradeInVal && <div><span className="text-neutral">Trade-In</span><p className="font-medium text-foreground">{tradeInVal}</p></div>}
                                 {privateVal && <div><span className="text-neutral">Private Party</span><p className="font-medium text-foreground">{privateVal}</p></div>}
                                 {dealerVal && <div><span className="text-neutral">Dealer Retail</span><p className="font-medium text-foreground">{dealerVal}</p></div>}
@@ -2109,7 +2110,7 @@ export default function ReportPage() {
                           : "text-risk-red";
                         return (
                           <div key={factor.key} className="flex items-center gap-1">
-                            <span className="min-w-[180px] text-[13px] text-foreground">
+                            <span className="min-w-[120px] md:min-w-[180px] text-[13px] text-foreground">
                               {factor.label} <span className="text-neutral">({Math.round(factor.weight * 100)}%)</span>
                             </span>
                             <div className="flex-1 mx-3 h-2 bg-muted rounded">
@@ -2181,7 +2182,7 @@ export default function ReportPage() {
               </CardHeader>
               <CardContent>
                 <Tabs defaultValue="overview" className="w-full">
-                  <TabsList className="w-full mb-4">
+                  <TabsList className="w-full mb-4 overflow-x-auto">
                     <TabsTrigger value="overview" className="flex-1">Overview</TabsTrigger>
                     <TabsTrigger value="service" className="flex-1">Service Records</TabsTrigger>
                     <TabsTrigger value="recalls" className="flex-1">
@@ -2572,6 +2573,14 @@ export default function ReportPage() {
       </main>
 
       <Footer />
+
+      <MobileBottomBar
+        verdict={displayVerdict}
+        monthlyCostRange={monthlyCostRange}
+        onCheatSheetClick={scrollToCheatSheet}
+        isPaid={isPaid}
+        heroRef={heroRef}
+      />
     </div>
   );
 }

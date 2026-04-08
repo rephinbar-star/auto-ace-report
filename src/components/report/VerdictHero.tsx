@@ -89,7 +89,7 @@ export const VerdictHero = forwardRef<HTMLDivElement, VerdictHeroProps>(({
     <div ref={ref} className="report-card p-0 overflow-hidden">
       <div className="flex flex-col-reverse md:flex-row">
         {/* Left zone */}
-        <div className="flex-1 p-5 md:p-6 md:w-[55%]">
+        <div className="flex-1 p-4 md:p-6 md:w-[55%]">
           {/* Image or initials */}
           {images && images.length > 0 ? (
             <div className="h-[200px] w-full rounded-lg overflow-hidden mb-4">
@@ -129,7 +129,7 @@ export const VerdictHero = forwardRef<HTMLDivElement, VerdictHeroProps>(({
         </div>
 
         {/* Right zone — verdict */}
-        <div className="md:w-[45%] p-5 md:p-6">
+        <div className="md:w-[45%] p-4 md:p-6">
           <div className="rounded-xl p-6 flex flex-col items-center text-center"
                style={{
                  backgroundColor: `color-mix(in srgb, ${verdictHsl} 10%, transparent)`,
