@@ -60,6 +60,13 @@ export default {
           DEFAULT: "hsl(var(--danger))",
           foreground: "hsl(var(--danger-foreground))",
         },
+        "risk-red": "hsl(var(--risk-red))",
+        "risk-amber": "hsl(var(--risk-amber))",
+        "risk-green": "hsl(var(--risk-green))",
+        neutral: "hsl(var(--neutral))",
+        surface: "hsl(var(--surface))",
+        "surface-muted": "hsl(var(--surface-muted))",
+        "border-card": "hsl(var(--border-card))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
