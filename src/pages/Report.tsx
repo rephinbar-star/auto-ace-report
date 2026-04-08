@@ -2109,7 +2109,7 @@ export default function ReportPage() {
                           : "text-risk-red";
                         return (
                           <div key={factor.key} className="flex items-center gap-1">
-                            <span className="min-w-[180px] text-[13px] text-foreground">
+                            <span className="min-w-[120px] md:min-w-[180px] text-[13px] text-foreground">
                               {factor.label} <span className="text-neutral">({Math.round(factor.weight * 100)}%)</span>
                             </span>
                             <div className="flex-1 mx-3 h-2 bg-muted rounded">
