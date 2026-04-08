@@ -2170,192 +2170,193 @@ export default function ReportPage() {
             </Card>
           </div>
 
-          {/* ===== SECTION 9: HISTORY & CONDITION ===== */}
-          <div id="section-history" className="space-y-6">
-            {/* Vehicle Health Score */}
+          {/* ===== SECTION 9: VEHICLE HISTORY — TABBED ===== */}
+          <div id="section-history">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Car className="h-5 w-5 text-primary" />
-                  Vehicle Health
+                  Vehicle History
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {(() => {
-                  const score = historyAnalysis.healthScore;
-                  const scoreColor = score <= 33 ? 'text-risk-red' : score <= 66 ? 'text-risk-amber' : 'text-risk-green';
-                  const barColor = score <= 33 ? '[&>div]:bg-risk-red' : score <= 66 ? '[&>div]:bg-risk-amber' : '[&>div]:bg-risk-green';
-                  return (
-                    <>
-                      <div className="mb-4 text-center">
-                        <div className={`text-4xl font-bold ${scoreColor}`}>{score}</div>
-                        <p className="text-sm text-neutral">out of 100</p>
+                <Tabs defaultValue="overview" className="w-full">
+                  <TabsList className="w-full mb-4">
+                    <TabsTrigger value="overview" className="flex-1">Overview</TabsTrigger>
+                    <TabsTrigger value="service" className="flex-1">Service Records</TabsTrigger>
+                    <TabsTrigger value="recalls" className="flex-1">
+                      Safety Recalls
+                      {recallData && recallData.openCount > 0 && (
+                        <Badge className="ml-1.5 bg-risk-red text-white text-[10px] px-1.5 py-0">{recallData.openCount}</Badge>
+                      )}
+                    </TabsTrigger>
+                  </TabsList>
+
+                  {/* Tab: Overview — Vehicle Health */}
+                  <TabsContent value="overview">
+                    {(() => {
+                      const score = historyAnalysis.healthScore;
+                      const scoreColor = score <= 33 ? 'text-risk-red' : score <= 66 ? 'text-risk-amber' : 'text-risk-green';
+                      const barColor = score <= 33 ? '[&>div]:bg-risk-red' : score <= 66 ? '[&>div]:bg-risk-amber' : '[&>div]:bg-risk-green';
+                      return (
+                        <>
+                          <div className="mb-4 text-center">
+                            <div className={`text-4xl font-bold ${scoreColor}`}>{score}</div>
+                            <p className="text-sm text-neutral">out of 100</p>
+                          </div>
+                          <Progress value={score} className={`h-3 ${barColor}`} />
+                        </>
+                      );
+                    })()}
+                    <div className="mt-6 space-y-4">
+                      <div>
+                        <h4 className="mb-2 flex items-center gap-2 text-sm font-medium text-risk-green">
+                          <CheckCircle className="h-4 w-4" />
+                          Positives
+                        </h4>
+                        <ul className="space-y-1 text-sm">
+                          {historyAnalysis.positives
+                            .filter((item) => {
+                              const lower = item.toLowerCase();
+                              return !(lower.includes("below market") || lower.includes("above market") || lower.includes("asking price") || lower.includes("dealer retail") || lower.includes("below fmv") || lower.includes("above fmv"));
+                            })
+                            .map((item, i) => (
+                              <li key={i} className="text-neutral">• {item}</li>
+                            ))}
+                        </ul>
                       </div>
-                      <Progress value={score} className={`h-3 ${barColor}`} />
-                    </>
-                  );
-                })()}
-                <div className="mt-6 space-y-4">
-                  <div>
-                    <h4 className="mb-2 flex items-center gap-2 text-sm font-medium text-risk-green">
-                      <CheckCircle className="h-4 w-4" />
-                      Positives
-                    </h4>
-                    <ul className="space-y-1 text-sm">
-                      {historyAnalysis.positives
-                        .filter((item) => {
-                          const lower = item.toLowerCase();
-                          return !(lower.includes("below market") || lower.includes("above market") || lower.includes("asking price") || lower.includes("dealer retail") || lower.includes("below fmv") || lower.includes("above fmv"));
-                        })
-                        .map((item, i) => (
-                          <li key={i} className="text-neutral">• {item}</li>
-                        ))}
-                    </ul>
-                  </div>
-                  <div>
-                    <h4 className="mb-2 flex items-center gap-2 text-sm font-medium text-risk-red">
-                      <XCircle className="h-4 w-4" />
-                      Concerns
-                    </h4>
-                    <ul className="space-y-1 text-sm">
-                      {historyAnalysis.concerns.map((item, i) => (
-                        <li key={i} className="text-neutral">• {item}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
+                      <div>
+                        <h4 className="mb-2 flex items-center gap-2 text-sm font-medium text-risk-red">
+                          <XCircle className="h-4 w-4" />
+                          Concerns
+                        </h4>
+                        <ul className="space-y-1 text-sm">
+                          {historyAnalysis.concerns.map((item, i) => (
+                            <li key={i} className="text-neutral">• {item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  {/* Tab: Service Records */}
+                  <TabsContent value="service">
+                    <ServiceHistoryTimeline
+                      serviceGapMiles={vehicleData?.history?.serviceGapMiles}
+                      majorServicesDue={vehicleData?.history?.majorServicesDue}
+                      majorServicesDone={vehicleData?.history?.majorServicesDone}
+                      chronicRepairSystems={vehicleData?.history?.chronicRepairSystems}
+                      hasServiceRecords={vehicleData?.history?.serviceRecords}
+                      mileage={condition.mileage}
+                    />
+                  </TabsContent>
+
+                  {/* Tab: Safety Recalls + Warranty */}
+                  <TabsContent value="recalls" className="space-y-4">
+                    {recallData && !recallData.isLoading && (
+                      <div className={cn("rounded-lg border-2 p-4", recallData.openCount > 0 ? "border-risk-red bg-risk-red/5" : "border-risk-green bg-risk-green/5")}>
+                        <div className="flex items-center gap-2 mb-3">
+                          {recallData.openCount > 0 ? <ShieldAlert className="h-5 w-5 text-risk-red" /> : <ShieldCheck className="h-5 w-5 text-risk-green" />}
+                          <span className="text-sm font-semibold">Safety Recalls</span>
+                          <Badge className={cn("ml-auto text-xs", recallData.openCount > 0 ? "bg-risk-red text-white" : "bg-risk-green text-white")}>
+                            {recallData.openCount > 0 ? `${recallData.openCount} Open` : recallData.count > 0 ? "All Resolved" : "None on Record"}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-neutral mb-3">Via NHTSA · {vehicle.year} {vehicle.make} {vehicle.model}</p>
+                        {recallData.openCount > 0 && (
+                          <div className="flex items-start gap-2 rounded-md border border-risk-red/30 bg-risk-red/10 px-3 py-2 mb-3">
+                            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-risk-red" />
+                            <p className="text-xs text-risk-red font-medium">
+                              {recallData.openCount} open {recallData.openCount === 1 ? "recall" : "recalls"} found. Ensure resolved before purchasing.
+                            </p>
+                          </div>
+                        )}
+                        {recallData.count === 0 && (
+                          <div className="flex items-center gap-2 rounded-md border border-risk-green/30 bg-risk-green/10 px-3 py-2">
+                            <CheckCircle className="h-4 w-4 shrink-0 text-risk-green" />
+                            <p className="text-xs text-risk-green font-medium">No recalls on record for this year/make/model.</p>
+                          </div>
+                        )}
+                        {recallData.recalls.length > 0 && (
+                          <Accordion type="multiple" className="w-full">
+                            {recallData.recalls.map((recall, i) => (
+                              <AccordionItem key={i} value={`recall-${i}`} className="border-b border-border/50 last:border-0">
+                                <AccordionTrigger className="py-2 text-left hover:no-underline">
+                                  <span className="text-xs font-semibold leading-snug pr-2">{recall.component || `Recall #${i + 1}`}</span>
+                                </AccordionTrigger>
+                                <AccordionContent className="pb-3 space-y-2">
+                                  {recall.campaignNumber && <p className="text-xs text-neutral"><span className="font-medium">Campaign:</span> {recall.campaignNumber}</p>}
+                                  <p className="text-xs text-neutral leading-relaxed">{recall.summary}</p>
+                                  {recall.remedyDescription && (
+                                    <div className="rounded-md bg-muted px-3 py-2">
+                                      <p className="text-xs font-medium mb-0.5">Remedy</p>
+                                      <p className="text-xs text-neutral">{recall.remedyDescription}</p>
+                                    </div>
+                                  )}
+                                </AccordionContent>
+                              </AccordionItem>
+                            ))}
+                          </Accordion>
+                        )}
+                        <div className="flex flex-wrap gap-2 pt-2">
+                          {vehicle.vin ? (
+                            <a href={`https://www.nhtsa.gov/vehicle/${vehicle.vin}/complaints`} target="_blank" rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-neutral hover:text-foreground transition-colors">
+                              <ExternalLink className="h-3 w-3" />VIN Complaints on NHTSA
+                            </a>
+                          ) : (
+                            <a href={`https://www.nhtsa.gov/vehicle-safety/recalls#recall--${encodeURIComponent(vehicle.make)}`} target="_blank" rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-neutral hover:text-foreground transition-colors">
+                              <ExternalLink className="h-3 w-3" />Search Recalls on NHTSA
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    {recallData?.isLoading && (
+                      <div className="flex items-center gap-3 p-4">
+                        <Loader2 className="h-4 w-4 animate-spin text-neutral" />
+                        <p className="text-sm text-neutral">Checking NHTSA recall database...</p>
+                      </div>
+                    )}
+
+                    {/* Warranty Analysis */}
+                    {analysis.warrantyAnalysis && (
+                      <div className={cn("rounded-lg border-2 p-4", {
+                        "border-risk-green bg-risk-green/5": analysis.warrantyAnalysis.warrantyStatus === "active",
+                        "border-risk-red bg-risk-red/5": analysis.warrantyAnalysis.warrantyStatus === "expired",
+                        "border-risk-amber bg-risk-amber/5": analysis.warrantyAnalysis.warrantyStatus === "unknown",
+                      })}>
+                        <div className="flex items-center gap-2 mb-3">
+                          <ShieldCheck className="h-5 w-5" />
+                          <span className="text-sm font-semibold">Warranty Analysis</span>
+                        </div>
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-neutral">Status</span>
+                            <Badge variant={analysis.warrantyAnalysis.warrantyStatus === "active" ? "default" : "destructive"}>
+                              {analysis.warrantyAnalysis.warrantyStatus === "active" ? "Active" : analysis.warrantyAnalysis.warrantyStatus === "expired" ? "Expired" : "Unknown"}
+                            </Badge>
+                          </div>
+                          {analysis.warrantyAnalysis.warrantyMonthsRemaining != null && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-neutral">Months Remaining</span>
+                              <span className="font-semibold">{analysis.warrantyAnalysis.warrantyMonthsRemaining}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm text-neutral">Risk Reduction</span>
+                            <span className="font-semibold">{analysis.warrantyAnalysis.riskReductionFactor}%</span>
+                          </div>
+                          <Progress value={analysis.warrantyAnalysis.riskReductionFactor} className="h-2" />
+                          <p className="text-sm text-neutral">{analysis.warrantyAnalysis.warrantyNotes}</p>
+                        </div>
+                      </div>
+                    )}
+                  </TabsContent>
+                </Tabs>
               </CardContent>
             </Card>
-
-            {/* Service History Timeline */}
-            <ServiceHistoryTimeline
-              serviceGapMiles={vehicleData?.history?.serviceGapMiles}
-              majorServicesDue={vehicleData?.history?.majorServicesDue}
-              majorServicesDone={vehicleData?.history?.majorServicesDone}
-              chronicRepairSystems={vehicleData?.history?.chronicRepairSystems}
-              hasServiceRecords={vehicleData?.history?.serviceRecords}
-              mileage={condition.mileage}
-            />
-
-            {/* NHTSA Recalls */}
-            {recallData && !recallData.isLoading && (
-              <Card className={cn(
-                "border-2",
-                recallData.openCount > 0 ? "border-risk-red bg-risk-red/5" : "border-risk-green bg-risk-green/5"
-              )}>
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2">
-                    {recallData.openCount > 0 ? (
-                      <ShieldAlert className="h-5 w-5 text-risk-red" />
-                    ) : (
-                      <ShieldCheck className="h-5 w-5 text-risk-green" />
-                    )}
-                    Safety Recalls
-                    <Badge className={cn("ml-auto text-xs", recallData.openCount > 0 ? "bg-risk-red text-white" : "bg-risk-green text-white")}>
-                      {recallData.openCount > 0 ? `${recallData.openCount} Open` : recallData.count > 0 ? "All Resolved" : "None on Record"}
-                    </Badge>
-                  </CardTitle>
-                  <p className="text-xs text-neutral">Via NHTSA · {vehicle.year} {vehicle.make} {vehicle.model}</p>
-                </CardHeader>
-                <CardContent className="space-y-3 pt-0">
-                  {recallData.openCount > 0 && (
-                    <div className="flex items-start gap-2 rounded-md border border-risk-red/30 bg-risk-red/10 px-3 py-2">
-                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-risk-red" />
-                      <p className="text-xs text-risk-red font-medium">
-                        {recallData.openCount} open {recallData.openCount === 1 ? "recall" : "recalls"} found for this vehicle. Ensure they have been resolved before purchasing.
-                      </p>
-                    </div>
-                  )}
-                  {recallData.count === 0 && (
-                    <div className="flex items-center gap-2 rounded-md border border-risk-green/30 bg-risk-green/10 px-3 py-2">
-                      <CheckCircle className="h-4 w-4 shrink-0 text-risk-green" />
-                      <p className="text-xs text-risk-green font-medium">No recalls on record for this year/make/model.</p>
-                    </div>
-                  )}
-                  {recallData.recalls.length > 0 && (
-                    <Accordion type="multiple" className="w-full">
-                      {recallData.recalls.map((recall, i) => (
-                        <AccordionItem key={i} value={`recall-${i}`} className="border-b border-border/50 last:border-0">
-                          <AccordionTrigger className="py-2 text-left hover:no-underline">
-                            <span className="text-xs font-semibold leading-snug pr-2">{recall.component || `Recall #${i + 1}`}</span>
-                          </AccordionTrigger>
-                          <AccordionContent className="pb-3 space-y-2">
-                            {recall.campaignNumber && (
-                              <p className="text-xs text-neutral"><span className="font-medium">Campaign:</span> {recall.campaignNumber}</p>
-                            )}
-                            <p className="text-xs text-neutral leading-relaxed">{recall.summary}</p>
-                            {recall.remedyDescription && (
-                              <div className="rounded-md bg-muted px-3 py-2">
-                                <p className="text-xs font-medium mb-0.5">Remedy</p>
-                                <p className="text-xs text-neutral">{recall.remedyDescription}</p>
-                              </div>
-                            )}
-                          </AccordionContent>
-                        </AccordionItem>
-                      ))}
-                    </Accordion>
-                  )}
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {vehicle.vin ? (
-                      <a href={`https://www.nhtsa.gov/vehicle/${vehicle.vin}/complaints`} target="_blank" rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-neutral hover:text-foreground transition-colors">
-                        <ExternalLink className="h-3 w-3" />VIN Complaints on NHTSA
-                      </a>
-                    ) : (
-                      <a href={`https://www.nhtsa.gov/vehicle-safety/recalls#recall--${encodeURIComponent(vehicle.make)}`} target="_blank" rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-neutral hover:text-foreground transition-colors">
-                        <ExternalLink className="h-3 w-3" />Search Recalls on NHTSA
-                      </a>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-            {recallData?.isLoading && (
-              <Card>
-                <CardContent className="flex items-center gap-3 p-4">
-                  <Loader2 className="h-4 w-4 animate-spin text-neutral" />
-                  <p className="text-sm text-neutral">Checking NHTSA recall database...</p>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Warranty Analysis */}
-            {analysis.warrantyAnalysis && (
-              <Card className={cn(
-                "border-2",
-                analysis.warrantyAnalysis.warrantyStatus === "active" ? "border-risk-green bg-risk-green/5"
-                  : analysis.warrantyAnalysis.warrantyStatus === "expired" ? "border-risk-red bg-risk-red/5"
-                  : "border-risk-amber bg-risk-amber/5"
-              )}>
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2">
-                    <ShieldCheck className="h-5 w-5" />
-                    Warranty Analysis
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-neutral">Status</span>
-                    <Badge variant={analysis.warrantyAnalysis.warrantyStatus === "active" ? "default" : "destructive"}>
-                      {analysis.warrantyAnalysis.warrantyStatus === "active" ? "Active" : analysis.warrantyAnalysis.warrantyStatus === "expired" ? "Expired" : "Unknown"}
-                    </Badge>
-                  </div>
-                  {analysis.warrantyAnalysis.warrantyMonthsRemaining != null && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-neutral">Months Remaining</span>
-                      <span className="font-semibold">{analysis.warrantyAnalysis.warrantyMonthsRemaining}</span>
-                    </div>
-                  )}
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-neutral">Risk Reduction</span>
-                    <span className="font-semibold">{analysis.warrantyAnalysis.riskReductionFactor}%</span>
-                  </div>
-                  <Progress value={analysis.warrantyAnalysis.riskReductionFactor} className="h-2" />
-                  <p className="text-sm text-neutral">{analysis.warrantyAnalysis.warrantyNotes}</p>
-                </CardContent>
-              </Card>
-            )}
           </div>
 
           {/* ===== SECTION 10: VEHICLE SPECIFICATIONS ===== */}
