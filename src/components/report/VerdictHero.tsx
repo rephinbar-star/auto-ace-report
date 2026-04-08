@@ -129,7 +129,7 @@ export const VerdictHero = forwardRef<HTMLDivElement, VerdictHeroProps>(({
         </div>
 
         {/* Right zone — verdict */}
-        <div className="md:w-[45%] p-5 md:p-6">
+        <div className="md:w-[45%] p-4 md:p-6">
           <div className="rounded-xl p-6 flex flex-col items-center text-center"
                style={{
                  backgroundColor: `color-mix(in srgb, ${verdictHsl} 10%, transparent)`,

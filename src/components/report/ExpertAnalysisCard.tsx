@@ -89,7 +89,7 @@ export function ExpertAnalysisCard({ aiFindings, sanitizedExpertOpinion, verdict
 
       {/* Part B — Key Findings Grid */}
       {findings.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-5 pt-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 md:p-5 pt-3">
           {findings.map((f, i) => (
             <div key={i} className={cn("rounded-lg border-l-2 pl-3 pr-2 py-2", getSeverityColor(f.severity))}>
               <div className="flex items-center gap-1.5">

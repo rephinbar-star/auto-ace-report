@@ -183,7 +183,13 @@
     background: hsl(var(--surface));
     border: 1px solid hsl(var(--border-card));
     border-radius: 12px;
-    padding: 20px 24px;
+    padding: 16px;
+  }
+
+  @media (min-width: 768px) {
+    .report-card {
+      padding: 20px 24px;
+    }
   }
 
   .scrollbar-hide {
