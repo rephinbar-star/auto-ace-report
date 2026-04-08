@@ -1993,6 +1993,7 @@ export default function ReportPage() {
               )}
             </CardContent>
           </Card>
+          </div>
 
           {/* ===== SECTION 8: RISK ASSESSMENT ===== */}
           <div id="section-risk" className="space-y-6">
