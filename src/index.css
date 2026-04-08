@@ -154,6 +154,10 @@
     font-feature-settings: "rlig" 1, "calt" 1;
     overflow-x: hidden;
   }
+
+  [id^="section-"] {
+    scroll-margin-top: 60px;
+  }
 }
 
 @layer utilities {
