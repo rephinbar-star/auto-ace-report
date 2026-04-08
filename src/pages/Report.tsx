@@ -2494,13 +2494,80 @@ export default function ReportPage() {
             />
           </div>
 
-          {/* ===== ANALYZE ANOTHER VEHICLE ===== */}
-          <Button asChild className="w-full">
-            <Link to="/analyze">
-              <Car className="mr-2 h-4 w-4" />
-              Analyze Another Vehicle
-            </Link>
-          </Button>
+          {/* ===== VERDICT DECISION GATE ===== */}
+          <Card className="overflow-hidden">
+            {/* Top band — verdict repeat */}
+            <div className={cn("p-5 border-b-2", {
+              "bg-risk-red/10 border-risk-red": displayVerdict === "Avoid",
+              "bg-risk-amber/10 border-risk-amber": displayVerdict === "Caution",
+              "bg-risk-green/10 border-risk-green": displayVerdict === "Conditional Buy",
+            })}>
+              <div className="flex items-center gap-3 flex-wrap">
+                <Badge className={cn("text-base px-4 py-1", {
+                  "bg-risk-red text-white": displayVerdict === "Avoid",
+                  "bg-risk-amber text-white": displayVerdict === "Caution",
+                  "bg-risk-green text-white": displayVerdict === "Conditional Buy",
+                })}>
+                  {displayVerdict}
+                </Badge>
+                {uvprsResult && (
+                  <span className="text-sm text-neutral">Risk Score: <span className="font-bold text-foreground">{uvprsResult.totalScore}/100</span></span>
+                )}
+              </div>
+              {analysis.finalVerdict?.justification && (
+                <p className="text-sm text-neutral mt-2 leading-relaxed">{analysis.finalVerdict.justification}</p>
+              )}
+            </div>
+
+            {/* Contingency block */}
+            {(displayVerdict === "Avoid" || displayVerdict === "Caution") && (
+              <div className="mx-5 mt-4 border-l-4 border-risk-amber bg-risk-amber/5 rounded-r-md p-4">
+                <p className="text-sm font-semibold mb-2">This vehicle may be reconsidered if:</p>
+                <ul className="space-y-1.5">
+                  {riskAssessment.reliabilityConcerns.slice(0, 3).map((item, i) => (
+                    <li key={i} className="text-sm text-neutral flex items-start gap-2">
+                      <span className="text-risk-amber mt-0.5">•</span>
+                      <span>Seller confirms resolution of: {item.concern}</span>
+                    </li>
+                  ))}
+                  {recallData && recallData.openCount > 0 && (
+                    <li className="text-sm text-neutral flex items-start gap-2">
+                      <span className="text-risk-amber mt-0.5">•</span>
+                      <span>All {recallData.openCount} open safety {recallData.openCount === 1 ? "recall" : "recalls"} confirmed resolved</span>
+                    </li>
+                  )}
+                </ul>
+              </div>
+            )}
+
+            {/* Action buttons */}
+            <div className="p-5 space-y-3">
+              <div>
+                <Button
+                  className={cn("w-full h-11 text-base font-semibold text-white", {
+                    "bg-risk-red hover:bg-risk-red/90": displayVerdict === "Avoid",
+                    "bg-risk-amber hover:bg-risk-amber/90": displayVerdict === "Caution",
+                    "bg-risk-green hover:bg-risk-green/90": displayVerdict === "Conditional Buy",
+                  })}
+                  onClick={scrollToCheatSheet}
+                >
+                  Get Negotiation Cheat Sheet →
+                </Button>
+                <p className="text-xs text-neutral text-center mt-1">Data-backed price argument you can hand to the dealer</p>
+              </div>
+              <div>
+                <Button variant="outline" className="w-full h-11 text-base">
+                  Get Personalized Insurance Quotes
+                </Button>
+                <p className="text-xs text-neutral text-center mt-1">Compare rates from 80+ insurers</p>
+              </div>
+              <div className="text-center pt-1">
+                <Link to="/analyze" className="text-[13px] text-neutral hover:text-foreground transition-colors">
+                  Analyze a Different Vehicle
+                </Link>
+              </div>
+            </div>
+          </Card>
         </div>
       </main>
 
