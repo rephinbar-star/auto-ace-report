@@ -1888,7 +1888,16 @@ export default function ReportPage() {
                           <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight">Trade-In<br/>Value</TableHead>
                           <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight">Est. Vehicle<br/>Value</TableHead>
                           {!financingSkipped && <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Equity</TableHead>}
-                          <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight">Net<br/>Position</TableHead>
+                          <TooltipProvider>
+                            <RadixTooltip>
+                              <RadixTooltipTrigger asChild>
+                                <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight cursor-help">Net<br/>Position <span className="text-[10px]">ⓘ</span></TableHead>
+                              </RadixTooltipTrigger>
+                              <RadixTooltipContent side="top" className="max-w-xs p-2">
+                                <p className="text-xs">Total financial gain/loss vs. all costs including purchase price</p>
+                              </RadixTooltipContent>
+                            </RadixTooltip>
+                          </TooltipProvider>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
