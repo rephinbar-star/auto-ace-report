@@ -1630,7 +1630,7 @@ export default function ReportPage() {
               <Collapsible>
                 <CollapsibleTrigger className="flex items-center gap-1 text-[13px] text-neutral hover:text-foreground mt-4">
                   View All Pricing Sources
-                  <svg className="h-4 w-4 shrink-0 transition-transform duration-200 [[data-state=open]>&]:rotate-180" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                  <svg className="h-5 w-5 shrink-0 transition-transform duration-200 [[data-state=open]>&]:rotate-180" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="rounded-lg border border-dashed p-3 space-y-3 mt-2">
@@ -1873,7 +1873,7 @@ export default function ReportPage() {
               <Collapsible className="mt-6">
                 <CollapsibleTrigger className="flex items-center gap-1 text-[13px] text-neutral hover:text-foreground">
                   Detailed Year-by-Year Breakdown
-                  <svg className="h-4 w-4 shrink-0 transition-transform duration-200 [[data-state=open]>&]:rotate-180" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                  <svg className="h-5 w-5 shrink-0 transition-transform duration-200 [[data-state=open]>&]:rotate-180" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
                   <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0 mt-3" style={{ maxWidth: 'calc(100vw - 2rem)' }}>
@@ -2412,7 +2412,7 @@ export default function ReportPage() {
                     <div className="border-t pt-3">
                       <CollapsibleTrigger className="flex w-full items-center justify-between text-left hover:opacity-80 transition-opacity">
                         <p className="text-sm font-semibold">Standard Equipment</p>
-                        <svg className="h-4 w-4 shrink-0 text-neutral transition-transform duration-200 [[data-state=open]>&]:rotate-180" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                        <svg className="h-5 w-5 shrink-0 text-neutral transition-transform duration-200 [[data-state=open]>&]:rotate-180" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                       </CollapsibleTrigger>
                       <CollapsibleContent className="mt-2">
                         {(vehicle as any).categorizedEquipment && Object.keys((vehicle as any).categorizedEquipment).length > 0 ? (
