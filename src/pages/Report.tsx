@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
@@ -72,6 +72,10 @@ import { RiskScoreBreakdown } from "@/components/report/RiskScoreBreakdown";
 import { ServiceHistoryTimeline } from "@/components/report/ServiceHistoryTimeline";
 import { generateReportPDF } from "@/lib/generatePDF";
 import { NegotiationCheatSheet } from "@/components/report/NegotiationCheatSheet";
+import { StickyNavBar } from "@/components/report/StickyNavBar";
+import { VerdictHero } from "@/components/report/VerdictHero";
+import { MetricsStrip } from "@/components/report/MetricsStrip";
+import { ExpertAnalysisCard } from "@/components/report/ExpertAnalysisCard";
 import { FinancingStep } from "@/components/analysis/FinancingStep";
 import type { FinancingInfo, AiFindings } from "@/types/vehicle";
 import { cacheImages, getCachedUrls } from "@/lib/api/cache-images";
@@ -287,6 +291,11 @@ export default function ReportPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
   const headerHistoryInputRef = useRef<HTMLInputElement>(null);
+  const heroRef = useRef<HTMLDivElement>(null);
+  const cheatSheetRef = useRef<HTMLDivElement>(null);
+  const scrollToCheatSheet = useCallback(() => {
+    cheatSheetRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
   const [isSaving, setIsSaving] = useState(false);
   const [excludeRepairs, setExcludeRepairs] = useState(false);
   const [userAnnualMiles, setUserAnnualMiles] = useState(12000);
@@ -1221,68 +1230,762 @@ export default function ReportPage() {
     })),
   ];
 
+
+
+
+  // Compute monthly cost range for metrics strip
+  const monthlyCostRange = (() => {
+    const effectivePrice = financing.negotiatedPrice ?? condition.askingPrice;
+    const tco = calculateTCO(
+      effectivePrice,
+      mpgData?.mpgCombined ?? null,
+      mpgData?.fuelType ?? null,
+      depreciationTable,
+      { annualMiles: userAnnualMiles },
+      { make: vehicle.make, year: vehicle.year }
+    );
+    const tco5YearTotal = tco.totalTCO;
+    const months = 60;
+    const low = Math.round(tco5YearTotal / months);
+    const highTotal = tco.worstCaseTCO;
+    const high = Math.round(highTotal / months);
+    return low === high ? `$${low}` : `$${low}–$${high}`;
+  })();
+
+  // Warranty context string
+  const warrantyContext = (() => {
+    if (!analysis.warrantyAnalysis) return "Not available";
+    const wa = analysis.warrantyAnalysis;
+    if (wa.warrantyStatus === "active" && wa.warrantyMonthsRemaining != null) {
+      return `${wa.warrantyMonthsRemaining} months remaining`;
+    }
+    return wa.warrantyNotes || "See details below";
+  })();
+
   return (
     <div className={cn("flex min-h-screen flex-col", isMobile && "force-mobile")}>
       <Header />
+
+      {/* Sticky Navigation Bar */}
+      <StickyNavBar
+        verdict={displayVerdict}
+        vehicleLabel={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
+        heroRef={heroRef}
+        isPaid={isPaid}
+        onCheatSheetClick={scrollToCheatSheet}
+      />
       
-      <main className="flex-1 bg-gradient-hero py-8">
-        <div className="container mx-auto max-w-6xl px-4 overflow-x-hidden">
+      <main className="flex-1 bg-surface-muted py-8">
+        <div className="mx-auto max-w-[900px] px-4 space-y-6">
           {/* Back Navigation */}
           {backToComparisonUrl && (
-            <Button 
-              variant="ghost" 
-              className="mb-4 -ml-2" 
-              asChild
-            >
+            <Button variant="ghost" className="mb-4 -ml-2" asChild>
               <Link to={backToComparisonUrl}>
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Comparison
               </Link>
             </Button>
           )}
-          
-          {/* Report Header */}
-          <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">
-                {vehicle.year} {vehicle.make} {vehicle.model}
-              </h1>
-              <p className="text-muted-foreground">
-                {vehicle.vin && <>VIN# {vehicle.vin} • </>}{condition.mileage.toLocaleString()} miles • Asking ${condition.askingPrice.toLocaleString()}
-              </p>
+
+          {/* ===== SECTION 1: VERDICT HERO ===== */}
+          <VerdictHero
+            ref={heroRef}
+            vehicle={vehicle}
+            mileage={condition.mileage}
+            askingPrice={condition.askingPrice}
+            images={condition.images}
+            verdict={displayVerdict}
+            riskScore={uvprsResult?.totalScore}
+            riskLabel={uvprsResult?.riskLabel}
+            aiFindings={analysis.aiFindings}
+            onReAnalyze={refreshPricing}
+            onUploadHistory={() => headerHistoryInputRef.current?.click()}
+            onDownloadPDF={handleDownloadPDF}
+            isRefreshing={isRefreshingPricing}
+            isDownloading={isDownloading}
+            onCheatSheetClick={scrollToCheatSheet}
+            isPaid={isPaid}
+          />
+          {/* Hidden file input for header upload */}
+          <input
+            type="file"
+            ref={headerHistoryInputRef}
+            accept=".pdf"
+            className="hidden"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              e.target.value = "";
+              setIsRefreshingPricing(true);
+              try {
+                const mileage = vehicleData?.condition?.mileage;
+                const result = await parseHistoryReport(file, undefined, mileage);
+                if (!result.success || !result.history) {
+                  sonnerToast.error(result.error || "Failed to parse history report");
+                  return;
+                }
+                const existingVin = vehicleData.vehicle.vin;
+                const extractedVin = result.history.vin;
+                const shouldSetVin = !existingVin && extractedVin;
+                const updatedVehicleData = {
+                  ...vehicleData,
+                  vehicle: {
+                    ...vehicleData.vehicle,
+                    ...(shouldSetVin ? { vin: extractedVin } : {}),
+                  },
+                  history: {
+                    ...vehicleData.history,
+                    ...result.history,
+                    serviceRecords: true,
+                  },
+                };
+                setVehicleData(updatedVehicleData);
+                sessionStorage.setItem("analysisData", JSON.stringify(updatedVehicleData));
+                sonnerToast.success("History report uploaded! Re-analyzing...");
+                const { data: analysisResult, error: invokeError } = await supabase.functions.invoke("analyze-vehicle", {
+                  body: updatedVehicleData,
+                });
+                if (invokeError) throw invokeError;
+                if (analysisResult?.success) {
+                  const newAn1 = analysisResult.analysis;
+                  if (analysis && newAn1.priceAssessment &&
+                      !(newAn1.priceAssessment.fairMarketPrivate > 0 || newAn1.priceAssessment.fairMarketDealer > 0)) {
+                    newAn1.priceAssessment = { ...newAn1.priceAssessment, ...analysis.priceAssessment };
+                  }
+                  setAnalysis(newAn1);
+                  if (analysisResult.mpgData) {
+                    setMpgData({
+                      mpgCity: analysisResult.mpgData.mpgCity,
+                      mpgHighway: analysisResult.mpgData.mpgHighway,
+                      mpgCombined: analysisResult.mpgData.mpgCombined,
+                      fuelType: analysisResult.mpgData.fuelType,
+                      evRange: analysisResult.mpgData.evRange ?? null,
+                    });
+                  }
+                  if (analysisResult.pricingSources?.length) {
+                    setPricingSources(analysisResult.pricingSources);
+                    setPricingLastUpdated(new Date());
+                  }
+                  if (analysisResult.maintenanceSources?.length) {
+                    setMaintenanceSources(analysisResult.maintenanceSources);
+                  }
+                  if (analysisResult.sourceBreakdown?.length) {
+                    setSourceBreakdown(analysisResult.sourceBreakdown);
+                  }
+                  if (isSavedReport && id) {
+                    const histUpd: Record<string, any> = {
+                      deal_rating: priceAssessment.dealRating,
+                      price_difference: priceAssessment.priceDifference,
+                      risk_level: riskAssessment.level,
+                      depreciation_risk: riskAssessment.depreciationRisk,
+                      reliability_concerns: riskAssessment.reliabilityConcerns,
+                      value_proposition: riskAssessment.valueProposition,
+                      fair_offer_price: riskAssessment.fairOfferPrice,
+                      expert_opinion: riskAssessment.expertOpinion,
+                      health_score: historyAnalysis.healthScore,
+                      history_issues: historyAnalysis.concerns || [],
+                      history_positives: historyAnalysis.positives || [],
+                      depreciation_table: depreciationTable as any,
+                      pricing_sources: analysisResult.pricingSources || [],
+                      pricing_last_updated: new Date().toISOString(),
+                      source_breakdown: analysisResult.sourceBreakdown || [],
+                      ...(shouldSetVin ? { vin: extractedVin } : {}),
+                    };
+                    if (priceAssessment.fairMarketPrivate > 0 || priceAssessment.fairMarketDealer > 0) {
+                      histUpd.fair_market_private = priceAssessment.fairMarketPrivate;
+                      histUpd.fair_market_dealer = priceAssessment.fairMarketDealer || null;
+                      histUpd.fair_market_trade_in = priceAssessment.fairMarketTradeIn;
+                    }
+                    await supabase.from("vehicle_reports").update(histUpd).eq("id", id);
+                  }
+                  sonnerToast.success("Analysis updated with history data!");
+                } else {
+                  throw new Error(analysisResult?.error || "Re-analysis failed");
+                }
+              } catch (err) {
+                console.error("History upload error:", err);
+                sonnerToast.error("Failed to re-analyze with history report");
+              } finally {
+                setIsRefreshingPricing(false);
+              }
+            }}
+          />
+
+          {/* ===== SECTION 2: METRICS STRIP ===== */}
+          <MetricsStrip
+            priceDifference={priceAssessment.priceDifference}
+            fairMarketPrivate={priceAssessment.fairMarketPrivate}
+            riskScore={uvprsResult?.totalScore ?? null}
+            riskLabel={uvprsResult?.riskLabel || "Calculating..."}
+            healthScore={historyAnalysis.healthScore}
+            monthlyCostRange={monthlyCostRange}
+            openRecalls={recallData?.openCount ?? 0}
+            resolvedRecalls={(recallData?.count ?? 0) - (recallData?.openCount ?? 0)}
+            warrantyStatus={analysis.warrantyAnalysis?.warrantyStatus || "unknown"}
+            warrantyContext={warrantyContext}
+          />
+
+          {/* ===== SECTION 3: EXPERT ANALYSIS ===== */}
+          <ExpertAnalysisCard
+            aiFindings={analysis.aiFindings}
+            sanitizedExpertOpinion={sanitizedExpertOpinion}
+            verdict={displayVerdict}
+            riskScore={uvprsResult?.totalScore}
+          />
+
+          {/* ===== SECTION 4: PRICING ANALYSIS ===== */}
+          <div id="section-pricing" className="report-card">
+            {/* "Is this a good deal?" header */}
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-foreground">Is this a good deal?</h2>
+              {(() => {
+                const hasMarketData = priceAssessment.fairMarketPrivate > 0 || (priceAssessment.fairMarketDealer ?? 0) > 0;
+                if (!hasMarketData) return <p className="text-sm text-neutral mt-1">Market pricing data is not available for this vehicle.</p>;
+                const below = priceAssessment.priceDifference <= 0;
+                return (
+                  <p className={cn("text-sm font-medium mt-1", below ? "text-risk-green" : "text-risk-red")}>
+                    {below ? "Yes" : "No"} — priced ${Math.abs(priceAssessment.priceDifference).toLocaleString()} {below ? "below" : "above"} fair market value
+                  </p>
+                );
+              })()}
             </div>
-            <div className="flex flex-wrap gap-2">
-              {!isSavedReport && !backToComparisonUrl && (
-                <Button variant="outline" size="sm" asChild>
-                  <Link to="/dashboard">
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Dashboard
-                  </Link>
-                </Button>
+
+            {/* Price Assessment header with badges */}
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <DollarSign className="h-5 w-5 text-primary" />
+              <span className="font-semibold">Price Assessment</span>
+              {pricingLastUpdated && (
+                <span className="text-xs text-neutral">
+                  (last updated {pricingLastUpdated.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "2-digit" })})
+                </span>
               )}
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={refreshPricing}
-                disabled={isRefreshingPricing}
-              >
-                {isRefreshingPricing ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              <div className="ml-auto flex items-center gap-2">
+                {pricingSources.length > 0 ? (
+                  <Badge variant="outline" className="gap-1 border-risk-green/30 bg-risk-green/10 text-risk-green text-xs font-medium">
+                    <BadgeCheck className="h-3 w-3" />
+                    Market Verified
+                  </Badge>
                 ) : (
-                  <RefreshCw className="mr-2 h-4 w-4" />
+                  <Badge variant="outline" className="gap-1 border-neutral/30 bg-muted text-neutral text-xs font-medium">
+                    <Bot className="h-3 w-3" />
+                    AI Estimated
+                  </Badge>
                 )}
-                {isRefreshingPricing ? "Re-Analyzing..." : "Re-Analyze"}
-              </Button>
-              <input
-                type="file"
-                ref={headerHistoryInputRef}
-                accept=".pdf"
-                className="hidden"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  e.target.value = "";
-                  setIsRefreshingPricing(true);
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" disabled={isRefreshingPricing} title="Refresh pricing data">
+                      <RefreshCw className={cn("h-3.5 w-3.5", isRefreshingPricing && "animate-spin")} />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Refresh Market Data?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will re-run the full AI analysis with the latest market pricing data. This uses credits and may take 10–20 seconds.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={refreshPricing}>Refresh</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+
+            {/* Existing price bar visualization — kept as-is */}
+            <div className="space-y-4">
+              {(() => {
+                const hasMarketData = (priceAssessment.fairMarketPrivate > 0 || (priceAssessment.fairMarketDealer ?? 0) > 0);
+
+                if (!hasMarketData) {
+                  return (
+                    <div className="relative pt-14 pb-4 mt-2">
+                      <div className="absolute top-0 right-4 flex flex-col items-center">
+                        <p className="text-[10px] text-neutral text-center mb-0.5">Asking Price</p>
+                        <div className="rounded-lg border bg-card px-3 py-1.5 text-sm font-bold shadow-sm whitespace-nowrap">
+                          ${condition.askingPrice.toLocaleString()}
+                        </div>
+                      </div>
+                      <div className="relative h-2.5 w-full">
+                        <div className="absolute inset-0 rounded-full overflow-hidden">
+                          <div className="absolute inset-0 rounded-full bg-muted" />
+                        </div>
+                        <div className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: "85%", top: "50%" }}>
+                          <div className="h-5 w-5 rounded-full border-[3px] border-warning bg-background shadow-md" />
+                        </div>
+                      </div>
+                      <p className="text-xs text-neutral mt-3 text-center">Market comparison unavailable — only asking price is shown.</p>
+                    </div>
+                  );
+                }
+
+                const fairMarketValue = condition.sellerType === "dealer"
+                  ? (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate)
+                  : priceAssessment.fairMarketPrivate;
+                const markers: { label: string; value: number; isAsking?: boolean; isFairMarket?: boolean }[] = [];
+                if (priceAssessment.fairMarketTradeIn > 0) markers.push({ label: "Trade-In", value: priceAssessment.fairMarketTradeIn });
+                if (fairMarketValue > 0) markers.push({ label: "Fair Market Value", value: fairMarketValue, isFairMarket: true });
+                if (priceAssessment.fairMarketDealer && priceAssessment.fairMarketDealer > 0 && condition.sellerType !== "dealer") markers.push({ label: "Dealer Retail", value: priceAssessment.fairMarketDealer });
+                if (condition.sellerType === "dealer" && priceAssessment.fairMarketPrivate > 0) markers.push({ label: "Private Sale", value: priceAssessment.fairMarketPrivate });
+                markers.push({ label: "Asking Price", value: condition.askingPrice, isAsking: true });
+
+                const tradeInVal = priceAssessment.fairMarketTradeIn > 0 ? priceAssessment.fairMarketTradeIn : fairMarketValue * 0.85;
+                const fmvVal = fairMarketValue;
+                const barMin = tradeInVal * 0.90;
+                const barMax = fmvVal * 1.35;
+                const barRange = barMax - barMin || 1;
+                const toPct = (v: number) => Math.max(5, Math.min(92, ((v - barMin) / barRange) * 100));
+                const fmvPct = toPct(fmvVal);
+
+                return (
+                  <div className={cn("relative pb-14 mt-2", financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice ? "pt-24" : "pt-14")}>
+                    {(() => {
+                      const askPct = toPct(condition.askingPrice);
+                      const hasNegotiated = !!(financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice);
+                      const clampStyle = askPct > 80
+                        ? { left: `${askPct}%`, transform: "translateX(-80%)" }
+                        : askPct < 20 ? { left: `${askPct}%`, transform: "translateX(-20%)" }
+                        : { left: `${askPct}%`, transform: "translateX(-50%)" };
+                      const topStyle = hasNegotiated ? { top: "2.5rem" } : { top: 0 };
+                      return (
+                        <div className="absolute flex flex-col items-center" style={{ ...clampStyle, ...topStyle }}>
+                          <p className="text-[10px] text-neutral text-center mb-0.5">Asking Price</p>
+                          <div className="rounded-lg border bg-card px-3 py-1.5 text-sm font-bold shadow-sm whitespace-nowrap">
+                            ${condition.askingPrice.toLocaleString()}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice && (() => {
+                      const negPct = toPct(financing.negotiatedPrice);
+                      const clampStyle = negPct > 80
+                        ? { left: `${negPct}%`, transform: "translateX(-80%)" }
+                        : negPct < 20 ? { left: `${negPct}%`, transform: "translateX(-20%)" }
+                        : { left: `${negPct}%`, transform: "translateX(-50%)" };
+                      return (
+                        <div className="absolute top-0 flex flex-col items-center" style={{ ...clampStyle, bottom: "3.5rem" }}>
+                          <p className="text-[10px] text-risk-green text-center mb-0.5 font-medium">Negotiated Price</p>
+                          <div className="rounded-lg border border-risk-green/40 bg-risk-green/10 px-3 py-1.5 text-sm font-bold shadow-sm whitespace-nowrap text-risk-green">
+                            ${financing.negotiatedPrice.toLocaleString()}
+                          </div>
+                          <div className="flex-1 mt-1 w-px bg-risk-green/60" />
+                        </div>
+                      );
+                    })()}
+
+                    <div className="relative h-2.5 w-full">
+                      <div className="absolute inset-0 rounded-full overflow-hidden">
+                        <div className="absolute inset-0 rounded-full" style={{
+                          background: `linear-gradient(to right, hsl(145 60% 36%) 0%, hsl(var(--success)) ${fmvPct * 0.5}%, hsl(var(--success)) ${fmvPct}%, hsl(var(--warning)) ${fmvPct + (100 - fmvPct) * 0.6}%, hsl(var(--danger)) 100%)`
+                        }} />
+                      </div>
+                      {(() => {
+                        const askPct = toPct(condition.askingPrice);
+                        return (
+                          <div className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${askPct}%`, top: "50%" }}>
+                            <div className="h-5 w-5 rounded-full border-[3px] border-warning bg-background shadow-md" />
+                          </div>
+                        );
+                      })()}
+                      {financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice && (() => {
+                        const negPct = toPct(financing.negotiatedPrice);
+                        return (
+                          <div className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${negPct}%`, top: "50%" }}>
+                            <div className="h-5 w-5 rounded-full border-[3px] border-risk-green bg-background shadow-md" />
+                          </div>
+                        );
+                      })()}
+                    </div>
+
+                    <div className="relative mt-5">
+                      {markers.filter(m => !m.isAsking).map((m) => {
+                        const mPct = toPct(m.value);
+                        const markerStyle = mPct > 85
+                          ? { left: `${mPct}%`, transform: "translateX(-90%)" }
+                          : mPct < 15 ? { left: `${mPct}%`, transform: "translateX(-10%)" }
+                          : { left: `${mPct}%`, transform: "translateX(-50%)" };
+                        const textAlign = mPct > 85 ? "text-right" : mPct < 15 ? "text-left" : "text-center";
+                        return (
+                          <div key={m.label} className={cn("absolute", textAlign)} style={markerStyle}>
+                            <div className={cn("mb-0.5 h-2.5 w-px", m.isFairMarket ? "bg-primary" : "bg-neutral/40", mPct > 85 ? "ml-auto" : mPct < 15 ? "" : "mx-auto")} />
+                            <p className={cn("text-[10px] leading-tight whitespace-nowrap", m.isFairMarket ? "font-medium text-primary" : "text-neutral")}>{m.label}</p>
+                            <p className={cn("text-xs font-semibold whitespace-nowrap", m.isFairMarket && "text-primary")}>${m.value.toLocaleString()}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Pricing Sources — collapsible */}
+            {pricingSources.length > 0 && (
+              <Collapsible>
+                <CollapsibleTrigger className="flex items-center gap-1 text-[13px] text-neutral hover:text-foreground mt-4">
+                  View All Pricing Sources
+                  <svg className="h-4 w-4 shrink-0 transition-transform duration-200 [[data-state=open]>&]:rotate-180" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="rounded-lg border border-dashed p-3 space-y-3 mt-2">
+                    {sourceBreakdown.length > 0 && (
+                      <div className="space-y-2">
+                        {sourceBreakdown.map((src) => {
+                          const range = (low?: number | null, high?: number | null, mid?: number | null) => {
+                            if (low && high) return `$${low.toLocaleString()} – $${high.toLocaleString()}`;
+                            if (mid) return `$${mid.toLocaleString()}`;
+                            return null;
+                          };
+                          const privateVal = range(src.privatePartyLow, src.privatePartyHigh, src.privateParty);
+                          const dealerVal = range(src.dealerRetailLow, src.dealerRetailHigh, src.dealerRetail);
+                          const tradeInVal = range(src.tradeInLow, src.tradeInHigh, src.tradeIn);
+                          if (!privateVal && !dealerVal && !tradeInVal) return null;
+                          return (
+                            <div key={src.source} className="rounded-md bg-muted/50 p-2.5">
+                              <p className="text-xs font-semibold text-foreground mb-1.5">{src.source}</p>
+                              <div className="grid grid-cols-3 gap-2 text-xs">
+                                {tradeInVal && <div><span className="text-neutral">Trade-In</span><p className="font-medium text-foreground">{tradeInVal}</p></div>}
+                                {privateVal && <div><span className="text-neutral">Private Party</span><p className="font-medium text-foreground">{privateVal}</p></div>}
+                                {dealerVal && <div><span className="text-neutral">Dealer Retail</span><p className="font-medium text-foreground">{dealerVal}</p></div>}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-2">
+                      {(() => {
+                        const knownSources: Record<string, string> = {
+                          kbb: "Kelley Blue Book", repairpal: "RepairPal", edmunds: "Edmunds",
+                          carfax: "CARFAX", autocheck: "AutoCheck", cargurus: "CarGurus",
+                          nada: "NADA Guides", nadaguides: "NADA Guides", truecar: "TrueCar",
+                          marketcheck: "MarketCheck", yourmechanic: "YourMechanic",
+                        };
+                        const seen = new Map<string, { displayName: string; url: string }>();
+                        for (const url of pricingSources) {
+                          try {
+                            const hostname = new URL(url).hostname.replace("www.", "");
+                            const domain = hostname.split(".")[0];
+                            if (!seen.has(domain)) {
+                              seen.set(domain, { displayName: knownSources[domain] || domain.charAt(0).toUpperCase() + domain.slice(1), url });
+                            }
+                          } catch {}
+                        }
+                        return Array.from(seen.values()).map(({ displayName, url }) => (
+                          <a key={displayName} href={url} target="_blank" rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-neutral hover:text-foreground transition-colors">
+                            <ExternalLink className="h-3 w-3" />{displayName}
+                          </a>
+                        ));
+                      })()}
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+          </div>
+
+          {/* ===== SECTION 5: FINANCING (moved below pricing) ===== */}
+          {financing && !financing.skipped && (
+            <FinancingDetailsCard
+              financing={financing}
+              askingPrice={condition.askingPrice}
+              onChange={async (updated: FinancingInfo) => {
+                const effectivePrice = updated.negotiatedPrice ?? condition.askingPrice;
+                const taxAmt = parseFloat(((effectivePrice || 0) * ((updated.salesTaxRate || 0) / 100)).toFixed(2));
+                const computedLoanAmount = Math.max(0, effectivePrice + (updated.fees || 0) + taxAmt - (updated.downPayment || 0));
+                const withLoanAmount = { ...updated, loanAmount: computedLoanAmount };
+                const updatedDepTable = (() => {
+                  const table = analysis.depreciationTable;
+                  if (!table || !computedLoanAmount || !withLoanAmount.loanTerm) return table;
+                  const P = computedLoanAmount;
+                  const monthlyRate = ((withLoanAmount.apr || 0) / 100) / 12;
+                  const totalMonths = withLoanAmount.loanTerm;
+                  const monthlyPmt = monthlyRate > 0
+                    ? P * (monthlyRate * Math.pow(1 + monthlyRate, totalMonths)) / (Math.pow(1 + monthlyRate, totalMonths) - 1)
+                    : P / totalMonths;
+                  const balanceAfter = (months: number) => {
+                    if (months >= totalMonths) return 0;
+                    if (monthlyRate > 0) return P * Math.pow(1 + monthlyRate, months) - monthlyPmt * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate);
+                    return Math.max(0, P - monthlyPmt * months);
+                  };
+                  return table.map((row) => ({ ...row, loanBalance: Math.max(0, Math.round(balanceAfter(row.year * 12))) }));
+                })();
+                setVehicleData((prev: any) => ({ ...prev, financing: withLoanAmount }));
+                setAnalysis((prev) => prev ? { ...prev, depreciationTable: updatedDepTable } : prev);
+                if (isSavedReport && id) {
+                  await supabase.from("vehicle_reports").update({
+                    financing_type: withLoanAmount.type,
+                    loan_amount: computedLoanAmount || null,
+                    loan_term: withLoanAmount.loanTerm || null,
+                    apr: withLoanAmount.apr || null,
+                    monthly_payment: withLoanAmount.monthlyPayment || null,
+                    lease_term_months: withLoanAmount.leaseTermMonths || null,
+                    residual_value: withLoanAmount.residualValue || null,
+                    negotiated_price: withLoanAmount.negotiatedPrice && withLoanAmount.negotiatedPrice !== condition.askingPrice ? withLoanAmount.negotiatedPrice : null,
+                    sales_tax_rate: withLoanAmount.salesTaxRate ?? null,
+                    fees: withLoanAmount.fees ?? null,
+                    down_payment: withLoanAmount.downPayment ?? null,
+                    depreciation_table: updatedDepTable as any,
+                  }).eq("id", id);
+                }
+              }}
+            />
+          )}
+
+          {/* Financing Dialog (for adding financing from cash) */}
+          {financingSkipped && (
+            <Dialog open={showFinancingDialog} onOpenChange={setShowFinancingDialog}>
+              <DialogContent className="max-w-md">
+                <VisuallyHidden><DialogTitle>Edit Financing Details</DialogTitle></VisuallyHidden>
+                <div className="py-2">
+                  <FinancingStep
+                    askingPrice={condition.askingPrice}
+                    onBack={() => setShowFinancingDialog(false)}
+                    onComplete={async (newFinancing) => {
+                      setShowFinancingDialog(false);
+                      const effectivePrice = newFinancing.negotiatedPrice ?? condition.askingPrice;
+                      const taxAmt = parseFloat(((effectivePrice || 0) * ((newFinancing.salesTaxRate || 0) / 100)).toFixed(2));
+                      const computedLoanAmount = Math.max(0, effectivePrice + (newFinancing.fees || 0) + taxAmt - (newFinancing.downPayment || 0));
+                      const withLoanAmount = { ...newFinancing, loanAmount: computedLoanAmount };
+                      const updatedDepTable = (() => {
+                        const table = analysis.depreciationTable;
+                        if (!table || !computedLoanAmount || !withLoanAmount.loanTerm) return table;
+                        const P = computedLoanAmount;
+                        const monthlyRate = ((withLoanAmount.apr || 0) / 100) / 12;
+                        const totalMonths = withLoanAmount.loanTerm;
+                        const monthlyPmt = monthlyRate > 0
+                          ? P * (monthlyRate * Math.pow(1 + monthlyRate, totalMonths)) / (Math.pow(1 + monthlyRate, totalMonths) - 1)
+                          : P / totalMonths;
+                        const balanceAfter = (months: number) => {
+                          if (months >= totalMonths) return 0;
+                          if (monthlyRate > 0) return P * Math.pow(1 + monthlyRate, months) - monthlyPmt * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate);
+                          return Math.max(0, P - monthlyPmt * months);
+                        };
+                        return table.map((row) => ({ ...row, loanBalance: Math.max(0, Math.round(balanceAfter(row.year * 12))) }));
+                      })();
+                      setVehicleData((prev: any) => ({ ...prev, financing: { ...withLoanAmount, skipped: false } }));
+                      setAnalysis((prev) => prev ? { ...prev, depreciationTable: updatedDepTable } : prev);
+                      if (isSavedReport && id) {
+                        await supabase.from("vehicle_reports").update({
+                          financing_type: withLoanAmount.type,
+                          loan_amount: computedLoanAmount || null,
+                          loan_term: withLoanAmount.loanTerm || null,
+                          apr: withLoanAmount.apr || null,
+                          monthly_payment: withLoanAmount.monthlyPayment || null,
+                          negotiated_price: withLoanAmount.negotiatedPrice && withLoanAmount.negotiatedPrice !== condition.askingPrice ? withLoanAmount.negotiatedPrice : null,
+                          sales_tax_rate: withLoanAmount.salesTaxRate ?? null,
+                          fees: withLoanAmount.fees ?? null,
+                          down_payment: withLoanAmount.downPayment ?? null,
+                          depreciation_table: updatedDepTable as any,
+                        }).eq("id", id);
+                      }
+                    }}
+                  />
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
+
+          {/* ===== SECTION 6: FUEL ECONOMY & TCO (kept as-is) ===== */}
+          <div id="section-financials">
+            <FuelEconomyCard
+              mpgCity={mpgData?.mpgCity ?? null}
+              mpgHighway={mpgData?.mpgHighway ?? null}
+              mpgCombined={mpgData?.mpgCombined ?? null}
+              fuelType={mpgData?.fuelType ?? null}
+              askingPrice={financing.negotiatedPrice ?? condition.askingPrice}
+              make={vehicle.make}
+              model={vehicle.model}
+              year={vehicle.year}
+              depreciationTable={depreciationTable}
+              evRange={mpgData?.evRange ?? null}
+              onAnnualMilesChange={setUserAnnualMiles}
+              zipCode={condition?.zipCode}
+              financingCost={liveLoanMetrics.interestAmount + liveLoanMetrics.fees}
+              monthlyPayment={liveLoanMetrics.totalCost > 0 && (financing?.loanTerm ?? 0) > 0 ? liveLoanMetrics.totalCost / (financing?.loanTerm ?? 1) : 0}
+              financingType={financingSkipped ? undefined : financing?.type}
+              onZipCodeSave={async (zip) => {
+                if (!isSavedReport || !id) return;
+                await supabase.from("vehicle_reports").update({ zip_code: zip }).eq("id", id);
+              }}
+            />
+          </div>
+
+          {/* ===== SECTION 7: DEPRECIATION CHART (kept as-is) ===== */}
+          <Card className="overflow-hidden max-w-[calc(100vw-2rem)]">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 flex-wrap">
+                <TrendingDown className="h-5 w-5 text-primary shrink-0" />
+                <span>5-Year Depreciation & Equity</span>
+                {pricingSources.length > 0 ? (
+                  <Badge variant="outline" className="ml-auto gap-1 border-risk-green/30 bg-risk-green/10 text-risk-green text-xs font-medium">
+                    <BadgeCheck className="h-3 w-3" />
+                    Market Verified
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="ml-auto gap-1 border-neutral/30 bg-muted text-neutral text-xs font-medium">
+                    <Bot className="h-3 w-3" />
+                    AI Estimated
+                  </Badge>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 md:p-6">
+              <div className="h-[300px] w-full min-w-0 overflow-hidden">
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                    <XAxis dataKey="name" className="text-xs" />
+                    <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} className="text-xs" />
+                    <Tooltip
+                      formatter={(value: number) => `$${value.toLocaleString()}`}
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "8px"
+                      }}
+                    />
+                    <Legend />
+                    <Line type="monotone" dataKey="Market Value" stroke="hsl(var(--success))" strokeWidth={2} />
+                    <Line type="monotone" dataKey="Trade-In Value" stroke="hsl(var(--warning))" strokeWidth={2} />
+                    {!financingSkipped && (
+                      <Line type="monotone" dataKey="Loan Balance" stroke="#3b82f6" strokeWidth={2} strokeDasharray="5 5" />
+                    )}
+                    <Line type="monotone" dataKey="Asking Price" stroke="hsl(var(--danger))" strokeWidth={2} strokeDasharray="6 3" dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Depreciation Table — collapsed by default */}
+              <Collapsible className="mt-6">
+                <CollapsibleTrigger className="flex items-center gap-1 text-[13px] text-neutral hover:text-foreground">
+                  Detailed Year-by-Year Breakdown
+                  <svg className="h-4 w-4 shrink-0 transition-transform duration-200 [[data-state=open]>&]:rotate-180" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0 mt-3" style={{ maxWidth: 'calc(100vw - 2rem)' }}>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-xs whitespace-nowrap px-1.5 md:px-4">Year</TableHead>
+                          {!financingSkipped && <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight">Loan<br/>Balance</TableHead>}
+                          <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Repairs</TableHead>
+                          <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Maint.</TableHead>
+                          <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Depreciation</TableHead>
+                          <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight">Market<br/>Value</TableHead>
+                          <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight">Trade-In<br/>Value</TableHead>
+                          <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight">Est. Vehicle<br/>Value</TableHead>
+                          {!financingSkipped && <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Equity</TableHead>}
+                          <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight">Net<br/>Position</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(() => {
+                          const loanAmt = liveLoanMetrics.totalCost;
+                          const tradeInVal = Math.round(priceAssessment.fairMarketTradeIn || startingFMV * 0.85);
+                          const yr0Equity = startingFMV - loanAmt;
+                          const yr0NetPosition = startingFMV - purchasePrice;
+                          return (
+                            <TableRow>
+                              <TableCell className="font-medium text-xs whitespace-nowrap px-1.5 md:px-4">Yr 0</TableCell>
+                              {!financingSkipped && <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${Math.round(loanAmt).toLocaleString()}</TableCell>}
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 text-danger">$0</TableCell>
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 text-danger">$0</TableCell>
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold text-destructive">$0</TableCell>
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${startingFMV.toLocaleString()}</TableCell>
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${tradeInVal.toLocaleString()}</TableCell>
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold text-foreground">${startingFMV.toLocaleString()}</TableCell>
+                              {!financingSkipped && (
+                                <TableCell className={cn("text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold", yr0Equity >= 0 ? "text-risk-green" : "text-destructive")}>
+                                  {yr0Equity < 0 ? "-" : ""}${Math.abs(yr0Equity).toLocaleString()}
+                                </TableCell>
+                              )}
+                              <TableCell className={cn("text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold", yr0NetPosition >= 0 ? "text-risk-green" : "text-destructive")}>
+                                {yr0NetPosition < 0 ? "-" : ""}${Math.abs(yr0NetPosition).toLocaleString()}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })()}
+                        {depreciationTable.map((row) => {
+                          const estValue = row.marketValue;
+                          const isZeroValue = estValue === 0;
+                          const cumulativeCosts = cumulativeOwnershipCostMap.get(row.year);
+                          const netPosition = estValue - purchasePrice - (cumulativeCosts?.cumulativeRepairs ?? 0) - (cumulativeCosts?.cumulativeMaintenance ?? 0);
+                          return (
+                            <TableRow key={row.year}>
+                              <TableCell className="font-medium text-xs whitespace-nowrap px-1.5 md:px-4">Yr {row.year}</TableCell>
+                              {!financingSkipped && <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${row.loanBalance.toLocaleString()}</TableCell>}
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 text-danger">${row.repairCosts.toLocaleString()}</TableCell>
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 text-danger">${row.maintenanceCosts.toLocaleString()}</TableCell>
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold text-destructive">-${row.depreciation.toLocaleString()}</TableCell>
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${row.marketValue.toLocaleString()}</TableCell>
+                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${row.tradeInValue.toLocaleString()}</TableCell>
+                              <TableCell className={cn("text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold", isZeroValue ? "text-destructive" : "text-foreground")}>
+                                ${estValue.toLocaleString()}
+                                {isZeroValue && <span className="text-[10px] block text-neutral">Repair costs may exceed value</span>}
+                              </TableCell>
+                              {!financingSkipped && (
+                                <TableCell className={cn("text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold", row.equity >= 0 ? "text-risk-green" : "text-destructive")}>
+                                  {row.equity < 0 ? "-" : ""}${Math.abs(row.equity).toLocaleString()}
+                                </TableCell>
+                              )}
+                              <TableCell className={cn("text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold", netPosition >= 0 ? "text-risk-green" : "text-destructive")}>
+                                {netPosition < 0 ? "-" : ""}${Math.abs(netPosition).toLocaleString()}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  {financingSkipped && (
+                    <p className="text-xs text-neutral mt-2">
+                      <span className="font-bold">*Does not include Taxes and Fees included in the purchase since no financing data was provided</span>
+                    </p>
+                  )}
+                </CollapsibleContent>
+              </Collapsible>
+
+              {/* Cost Data Sources */}
+              {maintenanceSources.length > 0 && (
+                <div className="mt-4 rounded-lg border border-dashed p-3">
+                  <p className="text-xs font-medium text-neutral mb-2">Repair & Maintenance Cost Sources</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(() => {
+                      const seen = new Map<string, { displayName: string; url: string }>();
+                      for (const url of maintenanceSources) {
+                        try {
+                          const hostname = new URL(url).hostname.replace("www.", "");
+                          const domain = hostname.split(".")[0];
+                          if (!seen.has(domain)) seen.set(domain, { displayName: domain.charAt(0).toUpperCase() + domain.slice(1), url });
+                        } catch {}
+                      }
+                      return Array.from(seen.values()).map(({ displayName, url }) => (
+                        <a key={displayName} href={url} target="_blank" rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-neutral hover:text-foreground transition-colors">
+                          <ExternalLink className="h-3 w-3" />{displayName}
+                        </a>
+                      ));
+                    })()}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* ===== SECTION 8: RISK ASSESSMENT ===== */}
+          <div id="section-risk" className="space-y-6">
+            {/* UVPRS Risk Score Breakdown */}
+            {uvprsResult && (
+              <RiskScoreBreakdown
+                result={uvprsResult}
+                missingHistoryReport={!vehicleData?.condition?.isBrandNew && !vehicleData?.history?.serviceRecords}
+                isUploadingHistory={isUploadingHistory}
+                onUploadHistory={async (file: File) => {
+                  setIsUploadingHistory(true);
                   try {
                     const mileage = vehicleData?.condition?.mileage;
                     const result = await parseHistoryReport(file, undefined, mileage);
@@ -1290,15 +1993,12 @@ export default function ReportPage() {
                       sonnerToast.error(result.error || "Failed to parse history report");
                       return;
                     }
-                    // Only use extracted VIN if report has no VIN yet AND it looks like it matches
-                    const existingVin = vehicleData.vehicle.vin;
                     const extractedVin = result.history.vin;
-                    const shouldSetVin = !existingVin && extractedVin;
                     const updatedVehicleData = {
                       ...vehicleData,
                       vehicle: {
                         ...vehicleData.vehicle,
-                        ...(shouldSetVin ? { vin: extractedVin } : {}),
+                        ...(extractedVin && !vehicleData.vehicle.vin ? { vin: extractedVin } : {}),
                       },
                       history: {
                         ...vehicleData.history,
@@ -1314,12 +2014,12 @@ export default function ReportPage() {
                     });
                     if (invokeError) throw invokeError;
                     if (analysisResult?.success) {
-                      const newAn1 = analysisResult.analysis;
-                      if (analysis && newAn1.priceAssessment &&
-                          !(newAn1.priceAssessment.fairMarketPrivate > 0 || newAn1.priceAssessment.fairMarketDealer > 0)) {
-                        newAn1.priceAssessment = { ...newAn1.priceAssessment, ...analysis.priceAssessment };
+                      const newAn2 = analysisResult.analysis;
+                      if (analysis && newAn2.priceAssessment &&
+                          !(newAn2.priceAssessment.fairMarketPrivate > 0 || newAn2.priceAssessment.fairMarketDealer > 0)) {
+                        newAn2.priceAssessment = { ...newAn2.priceAssessment, ...analysis.priceAssessment };
                       }
-                      setAnalysis(newAn1);
+                      setAnalysis(newAn2);
                       if (analysisResult.mpgData) {
                         setMpgData({
                           mpgCity: analysisResult.mpgData.mpgCity,
@@ -1340,7 +2040,8 @@ export default function ReportPage() {
                         setSourceBreakdown(analysisResult.sourceBreakdown);
                       }
                       if (isSavedReport && id) {
-                        const histUpd: Record<string, any> = {
+                        const { priceAssessment, depreciationTable, riskAssessment, historyAnalysis } = analysisResult.analysis;
+                        const sideUpd: Record<string, any> = {
                           deal_rating: priceAssessment.dealRating,
                           price_difference: priceAssessment.priceDifference,
                           risk_level: riskAssessment.level,
@@ -1353,66 +2054,277 @@ export default function ReportPage() {
                           history_issues: historyAnalysis.concerns || [],
                           history_positives: historyAnalysis.positives || [],
                           depreciation_table: depreciationTable as any,
+                          has_service_records: true,
+                          accident_count: result.history?.accidentCount ?? null,
+                          owner_count: result.history?.ownerCount ?? null,
+                          title_status: result.history?.titleStatus ?? null,
+                          service_gap_miles: result.history?.serviceGapMiles ?? null,
+                          major_services_due: result.history?.majorServicesDue ?? null,
+                          major_services_done: result.history?.majorServicesDone ?? null,
+                          chronic_repair_systems: result.history?.chronicRepairSystems ?? null,
+                          ...(extractedVin && !vehicleData.vehicle.vin ? { vin: extractedVin } : {}),
                           pricing_sources: analysisResult.pricingSources || [],
                           pricing_last_updated: new Date().toISOString(),
                           source_breakdown: analysisResult.sourceBreakdown || [],
-                          ...(shouldSetVin ? { vin: extractedVin } : {}),
                         };
                         if (priceAssessment.fairMarketPrivate > 0 || priceAssessment.fairMarketDealer > 0) {
-                          histUpd.fair_market_private = priceAssessment.fairMarketPrivate;
-                          histUpd.fair_market_dealer = priceAssessment.fairMarketDealer || null;
-                          histUpd.fair_market_trade_in = priceAssessment.fairMarketTradeIn;
+                          sideUpd.fair_market_private = priceAssessment.fairMarketPrivate;
+                          sideUpd.fair_market_dealer = priceAssessment.fairMarketDealer || null;
+                          sideUpd.fair_market_trade_in = priceAssessment.fairMarketTradeIn;
                         }
-                        await supabase.from("vehicle_reports").update(histUpd).eq("id", id);
+                        await supabase.from("vehicle_reports").update(sideUpd).eq("id", id);
                       }
-                      sonnerToast.success("Analysis updated with history data!");
+                      sonnerToast.success("Report updated with history data!");
                     } else {
                       throw new Error(analysisResult?.error || "Re-analysis failed");
                     }
                   } catch (err) {
                     console.error("History upload error:", err);
-                    sonnerToast.error("Failed to re-analyze with history report");
+                    sonnerToast.error("Failed to process history report");
                   } finally {
-                    setIsRefreshingPricing(false);
+                    setIsUploadingHistory(false);
                   }
                 }}
               />
-              <Button 
-                size="sm"
-                className="bg-emerald-600 hover:bg-emerald-700 text-white border-none"
-                onClick={() => headerHistoryInputRef.current?.click()}
-                disabled={isRefreshingPricing}
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                Upload CarFax/AutoCheck
-              </Button>
-              <Button 
-                size="sm"
-                className="bg-[#FAA187] hover:bg-[#f08e72] text-black border-none"
-                onClick={handleDownloadPDF}
-                disabled={isDownloading}
-              >
-                {isDownloading ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M8.5 21H4a1 1 0 01-1-1V4a1 1 0 011-1h16a1 1 0 011 1v16a1 1 0 01-1 1h-4.5" />
-                    <path d="M8.5 21L3 14l4-1.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    <path d="M15.5 21L21 14l-4-1.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    <text x="7" y="11.5" fontSize="6" fontWeight="bold" fill="currentColor" fontFamily="Arial">PDF</text>
-                  </svg>
-                )}
-                {isDownloading ? "Generating..." : "Download PDF"}
-              </Button>
-            </div>
+            )}
+
+            {/* Risk Factors */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-warning" />
+                  Risk Factors
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm font-medium">Depreciation Risk</p>
+                    <p className="text-sm text-neutral">{riskAssessment.depreciationRisk}</p>
+                  </div>
+                  <div>
+                    <p className="mb-2 text-sm font-medium">Reliability Concerns</p>
+                    <ul className="space-y-2">
+                      {riskAssessment.reliabilityConcerns.map((item, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm">
+                          <Wrench className="mt-0.5 h-3 w-3 shrink-0 text-warning" />
+                          <span className="text-neutral">
+                            {item.concern}
+                            {(item.costLow || item.costHigh) && (
+                              <span className="ml-1 font-medium text-destructive">
+                                — Est. {item.costLow && item.costHigh
+                                  ? `$${item.costLow.toLocaleString()}–$${item.costHigh.toLocaleString()}`
+                                  : item.costLow ? `$${item.costLow.toLocaleString()}+`
+                                  : `Up to $${item.costHigh!.toLocaleString()}`}
+                                {/battery|traction/i.test(item.concern) && item.costLow && item.costLow >= 5000 && (
+                                  <span className="font-normal text-neutral"> (used/refurbished: $3,500–$6,500)</span>
+                                )}
+                              </span>
+                            )}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="rounded-lg bg-muted p-4">
+                    <p className="text-sm font-medium">Value Proposition</p>
+                    <p className="text-sm text-neutral">{riskAssessment.valueProposition}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Non-Standard Options Card */}
+          {/* ===== SECTION 9: HISTORY & CONDITION ===== */}
+          <div id="section-history" className="space-y-6">
+            {/* Vehicle Health Score */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Car className="h-5 w-5 text-primary" />
+                  Vehicle Health
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {(() => {
+                  const score = historyAnalysis.healthScore;
+                  const scoreColor = score <= 33 ? 'text-risk-red' : score <= 66 ? 'text-risk-amber' : 'text-risk-green';
+                  const barColor = score <= 33 ? '[&>div]:bg-risk-red' : score <= 66 ? '[&>div]:bg-risk-amber' : '[&>div]:bg-risk-green';
+                  return (
+                    <>
+                      <div className="mb-4 text-center">
+                        <div className={`text-4xl font-bold ${scoreColor}`}>{score}</div>
+                        <p className="text-sm text-neutral">out of 100</p>
+                      </div>
+                      <Progress value={score} className={`h-3 ${barColor}`} />
+                    </>
+                  );
+                })()}
+                <div className="mt-6 space-y-4">
+                  <div>
+                    <h4 className="mb-2 flex items-center gap-2 text-sm font-medium text-risk-green">
+                      <CheckCircle className="h-4 w-4" />
+                      Positives
+                    </h4>
+                    <ul className="space-y-1 text-sm">
+                      {historyAnalysis.positives
+                        .filter((item) => {
+                          const lower = item.toLowerCase();
+                          return !(lower.includes("below market") || lower.includes("above market") || lower.includes("asking price") || lower.includes("dealer retail") || lower.includes("below fmv") || lower.includes("above fmv"));
+                        })
+                        .map((item, i) => (
+                          <li key={i} className="text-neutral">• {item}</li>
+                        ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <h4 className="mb-2 flex items-center gap-2 text-sm font-medium text-risk-red">
+                      <XCircle className="h-4 w-4" />
+                      Concerns
+                    </h4>
+                    <ul className="space-y-1 text-sm">
+                      {historyAnalysis.concerns.map((item, i) => (
+                        <li key={i} className="text-neutral">• {item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
+            {/* Service History Timeline */}
+            <ServiceHistoryTimeline
+              serviceGapMiles={vehicleData?.history?.serviceGapMiles}
+              majorServicesDue={vehicleData?.history?.majorServicesDue}
+              majorServicesDone={vehicleData?.history?.majorServicesDone}
+              chronicRepairSystems={vehicleData?.history?.chronicRepairSystems}
+              hasServiceRecords={vehicleData?.history?.serviceRecords}
+              mileage={condition.mileage}
+            />
 
+            {/* NHTSA Recalls */}
+            {recallData && !recallData.isLoading && (
+              <Card className={cn(
+                "border-2",
+                recallData.openCount > 0 ? "border-risk-red bg-risk-red/5" : "border-risk-green bg-risk-green/5"
+              )}>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2">
+                    {recallData.openCount > 0 ? (
+                      <ShieldAlert className="h-5 w-5 text-risk-red" />
+                    ) : (
+                      <ShieldCheck className="h-5 w-5 text-risk-green" />
+                    )}
+                    Safety Recalls
+                    <Badge className={cn("ml-auto text-xs", recallData.openCount > 0 ? "bg-risk-red text-white" : "bg-risk-green text-white")}>
+                      {recallData.openCount > 0 ? `${recallData.openCount} Open` : recallData.count > 0 ? "All Resolved" : "None on Record"}
+                    </Badge>
+                  </CardTitle>
+                  <p className="text-xs text-neutral">Via NHTSA · {vehicle.year} {vehicle.make} {vehicle.model}</p>
+                </CardHeader>
+                <CardContent className="space-y-3 pt-0">
+                  {recallData.openCount > 0 && (
+                    <div className="flex items-start gap-2 rounded-md border border-risk-red/30 bg-risk-red/10 px-3 py-2">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-risk-red" />
+                      <p className="text-xs text-risk-red font-medium">
+                        {recallData.openCount} open {recallData.openCount === 1 ? "recall" : "recalls"} found for this vehicle. Ensure they have been resolved before purchasing.
+                      </p>
+                    </div>
+                  )}
+                  {recallData.count === 0 && (
+                    <div className="flex items-center gap-2 rounded-md border border-risk-green/30 bg-risk-green/10 px-3 py-2">
+                      <CheckCircle className="h-4 w-4 shrink-0 text-risk-green" />
+                      <p className="text-xs text-risk-green font-medium">No recalls on record for this year/make/model.</p>
+                    </div>
+                  )}
+                  {recallData.recalls.length > 0 && (
+                    <Accordion type="multiple" className="w-full">
+                      {recallData.recalls.map((recall, i) => (
+                        <AccordionItem key={i} value={`recall-${i}`} className="border-b border-border/50 last:border-0">
+                          <AccordionTrigger className="py-2 text-left hover:no-underline">
+                            <span className="text-xs font-semibold leading-snug pr-2">{recall.component || `Recall #${i + 1}`}</span>
+                          </AccordionTrigger>
+                          <AccordionContent className="pb-3 space-y-2">
+                            {recall.campaignNumber && (
+                              <p className="text-xs text-neutral"><span className="font-medium">Campaign:</span> {recall.campaignNumber}</p>
+                            )}
+                            <p className="text-xs text-neutral leading-relaxed">{recall.summary}</p>
+                            {recall.remedyDescription && (
+                              <div className="rounded-md bg-muted px-3 py-2">
+                                <p className="text-xs font-medium mb-0.5">Remedy</p>
+                                <p className="text-xs text-neutral">{recall.remedyDescription}</p>
+                              </div>
+                            )}
+                          </AccordionContent>
+                        </AccordionItem>
+                      ))}
+                    </Accordion>
+                  )}
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {vehicle.vin ? (
+                      <a href={`https://www.nhtsa.gov/vehicle/${vehicle.vin}/complaints`} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-neutral hover:text-foreground transition-colors">
+                        <ExternalLink className="h-3 w-3" />VIN Complaints on NHTSA
+                      </a>
+                    ) : (
+                      <a href={`https://www.nhtsa.gov/vehicle-safety/recalls#recall--${encodeURIComponent(vehicle.make)}`} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-neutral hover:text-foreground transition-colors">
+                        <ExternalLink className="h-3 w-3" />Search Recalls on NHTSA
+                      </a>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            {recallData?.isLoading && (
+              <Card>
+                <CardContent className="flex items-center gap-3 p-4">
+                  <Loader2 className="h-4 w-4 animate-spin text-neutral" />
+                  <p className="text-sm text-neutral">Checking NHTSA recall database...</p>
+                </CardContent>
+              </Card>
+            )}
 
-          {/* Vehicle Specifications Card - specs always visible, equipment collapsible */}
-          <Card className="mb-4">
+            {/* Warranty Analysis */}
+            {analysis.warrantyAnalysis && (
+              <Card className={cn(
+                "border-2",
+                analysis.warrantyAnalysis.warrantyStatus === "active" ? "border-risk-green bg-risk-green/5"
+                  : analysis.warrantyAnalysis.warrantyStatus === "expired" ? "border-risk-red bg-risk-red/5"
+                  : "border-risk-amber bg-risk-amber/5"
+              )}>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2">
+                    <ShieldCheck className="h-5 w-5" />
+                    Warranty Analysis
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-neutral">Status</span>
+                    <Badge variant={analysis.warrantyAnalysis.warrantyStatus === "active" ? "default" : "destructive"}>
+                      {analysis.warrantyAnalysis.warrantyStatus === "active" ? "Active" : analysis.warrantyAnalysis.warrantyStatus === "expired" ? "Expired" : "Unknown"}
+                    </Badge>
+                  </div>
+                  {analysis.warrantyAnalysis.warrantyMonthsRemaining != null && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-neutral">Months Remaining</span>
+                      <span className="font-semibold">{analysis.warrantyAnalysis.warrantyMonthsRemaining}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-neutral">Risk Reduction</span>
+                    <span className="font-semibold">{analysis.warrantyAnalysis.riskReductionFactor}%</span>
+                  </div>
+                  <Progress value={analysis.warrantyAnalysis.riskReductionFactor} className="h-2" />
+                  <p className="text-sm text-neutral">{analysis.warrantyAnalysis.warrantyNotes}</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* ===== SECTION 10: VEHICLE SPECIFICATIONS ===== */}
+          <Card>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2">
                 <Settings className="h-5 w-5 text-primary" />
@@ -1421,124 +2333,59 @@ export default function ReportPage() {
             </CardHeader>
             <CardContent className="px-5 pb-5 pt-0">
               <div className="flex flex-col gap-4">
-                {/* MSRP highlight */}
                 {vehicle.msrp && (
                   <div className="flex items-center gap-2 text-sm">
                     <DollarSign className="h-4 w-4 text-primary" />
-                    <span className="text-muted-foreground">Original MSRP:</span>
+                    <span className="text-neutral">Original MSRP:</span>
                     <span className="font-semibold">${Number(vehicle.msrp).toLocaleString()}</span>
                   </div>
                 )}
-
-                {/* Basic specs grid */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                   {(vehicle.engine || vehicle.engineSize) && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Settings className="h-4 w-4 text-muted-foreground" />
-                      <span>{vehicle.engine || vehicle.engineSize}</span>
-                    </div>
+                    <div className="flex items-center gap-2 text-sm"><Settings className="h-4 w-4 text-neutral" /><span>{vehicle.engine || vehicle.engineSize}</span></div>
                   )}
-                  {vehicle.engineHp && (
-                    <div className="text-sm">
-                      <span className="text-muted-foreground">HP:</span>{" "}
-                      <span className="font-medium">{vehicle.engineHp}</span>
-                    </div>
-                  )}
-                  {vehicle.engineTorque && (
-                    <div className="text-sm">
-                      <span className="text-muted-foreground">Torque:</span>{" "}
-                      <span className="font-medium">{vehicle.engineTorque} lb-ft</span>
-                    </div>
-                  )}
-                  {vehicle.engineCylinders && (
-                    <div className="text-sm">
-                      <span className="text-muted-foreground">Cylinders:</span>{" "}
-                      <span className="font-medium">{vehicle.engineCylinders}</span>
-                    </div>
-                  )}
-                  {vehicle.transmission && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Wrench className="h-4 w-4 text-muted-foreground" />
-                      <span>{vehicle.transmission}</span>
-                    </div>
-                  )}
-                  {vehicle.drivetrain && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Car className="h-4 w-4 text-muted-foreground" />
-                      <span>{vehicle.drivetrain}</span>
-                    </div>
-                  )}
-                  {vehicle.fuelType && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Gauge className="h-4 w-4 text-muted-foreground" />
-                      <span>{vehicle.fuelType}</span>
-                    </div>
-                  )}
-                  {vehicle.exteriorColor && (
-                    <div className="text-sm">
-                      <span className="text-muted-foreground">Ext:</span>{" "}
-                      <span>{vehicle.exteriorColor}</span>
-                    </div>
-                  )}
-                  {vehicle.interiorColor && (
-                    <div className="text-sm">
-                      <span className="text-muted-foreground">Int:</span>{" "}
-                      <span>{vehicle.interiorColor}</span>
-                    </div>
-                  )}
-                  {vehicle.bodyStyle && (
-                    <div className="text-sm">
-                      <span className="text-muted-foreground">Body:</span>{" "}
-                      <span>{vehicle.bodyStyle}</span>
-                    </div>
-                  )}
-                  {vehicle.trim && (
-                    <div className="text-sm">
-                      <span className="text-muted-foreground">Trim:</span>{" "}
-                      <span className="font-medium">{vehicle.trim}</span>
-                    </div>
-                  )}
+                  {vehicle.engineHp && <div className="text-sm"><span className="text-neutral">HP:</span> <span className="font-medium">{vehicle.engineHp}</span></div>}
+                  {vehicle.engineTorque && <div className="text-sm"><span className="text-neutral">Torque:</span> <span className="font-medium">{vehicle.engineTorque} lb-ft</span></div>}
+                  {vehicle.engineCylinders && <div className="text-sm"><span className="text-neutral">Cylinders:</span> <span className="font-medium">{vehicle.engineCylinders}</span></div>}
+                  {vehicle.transmission && <div className="flex items-center gap-2 text-sm"><Wrench className="h-4 w-4 text-neutral" /><span>{vehicle.transmission}</span></div>}
+                  {vehicle.drivetrain && <div className="flex items-center gap-2 text-sm"><Car className="h-4 w-4 text-neutral" /><span>{vehicle.drivetrain}</span></div>}
+                  {vehicle.fuelType && <div className="flex items-center gap-2 text-sm"><Gauge className="h-4 w-4 text-neutral" /><span>{vehicle.fuelType}</span></div>}
+                  {vehicle.exteriorColor && <div className="text-sm"><span className="text-neutral">Ext:</span> <span>{vehicle.exteriorColor}</span></div>}
+                  {vehicle.interiorColor && <div className="text-sm"><span className="text-neutral">Int:</span> <span>{vehicle.interiorColor}</span></div>}
+                  {vehicle.bodyStyle && <div className="text-sm"><span className="text-neutral">Body:</span> <span>{vehicle.bodyStyle}</span></div>}
+                  {vehicle.trim && <div className="text-sm"><span className="text-neutral">Trim:</span> <span className="font-medium">{vehicle.trim}</span></div>}
                 </div>
-
-                {/* Non-Standard Options & Packages */}
                 {vehicle.optionPackages && vehicle.optionPackages.length > 0 && (
                   <div className="border-t pt-3">
                     <div className="flex items-center gap-2 mb-2">
                       <BadgeCheck className="h-4 w-4 text-primary" />
                       <p className="text-sm font-semibold">Non-Standard Options &amp; Packages</p>
                     </div>
-                    <p className="text-xs text-muted-foreground mb-2">Factory-installed options and premium packages beyond standard equipment</p>
+                    <p className="text-xs text-neutral mb-2">Factory-installed options and premium packages beyond standard equipment</p>
                     <div className="flex flex-wrap gap-2">
                       {vehicle.optionPackages.map((pkg: any, i: number) => {
                         const label = typeof pkg === "string" ? pkg : pkg?.name || String(pkg);
-                        return (
-                          <Badge key={i} variant="outline" className="text-sm px-3 py-1">
-                            {label}
-                          </Badge>
-                        );
+                        return <Badge key={i} variant="outline" className="text-sm px-3 py-1">{label}</Badge>;
                       })}
                     </div>
                   </div>
                 )}
-
                 {vehicle.installedEquipment && vehicle.installedEquipment.length > 0 && (
                   <Collapsible defaultOpen={false}>
                     <div className="border-t pt-3">
                       <CollapsibleTrigger className="flex w-full items-center justify-between text-left hover:opacity-80 transition-opacity">
                         <p className="text-sm font-semibold">Standard Equipment</p>
-                        <svg className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 [[data-state=open]>&]:rotate-180" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                        <svg className="h-4 w-4 shrink-0 text-neutral transition-transform duration-200 [[data-state=open]>&]:rotate-180" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                       </CollapsibleTrigger>
                       <CollapsibleContent className="mt-2">
                         {(vehicle as any).categorizedEquipment && Object.keys((vehicle as any).categorizedEquipment).length > 0 ? (
                           <div className="space-y-3">
                             {Object.entries((vehicle as any).categorizedEquipment as Record<string, string[]>).sort(([a], [b]) => a.localeCompare(b)).map(([category, items]) => (
                               <div key={category}>
-                                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{category}</p>
+                                <p className="text-xs font-semibold text-neutral uppercase tracking-wider mb-1.5">{category}</p>
                                 <div className="flex flex-wrap gap-1.5">
                                   {items.map((item: string, i: number) => (
-                                    <Badge key={i} variant="secondary" className="text-xs font-normal">
-                                      {item}
-                                    </Badge>
+                                    <Badge key={i} variant="secondary" className="text-xs font-normal">{item}</Badge>
                                   ))}
                                 </div>
                               </div>
@@ -1546,14 +2393,9 @@ export default function ReportPage() {
                           </div>
                         ) : (
                           <div className="flex flex-wrap gap-1.5">
-                            {vehicle.installedEquipment.map((item: any, i: number) => {
-                              const label = typeof item === "string" ? item : item?.name || String(item);
-                              return (
-                                <Badge key={i} variant="secondary" className="text-xs font-normal">
-                                  {label}
-                                </Badge>
-                              );
-                            })}
+                            {vehicle.installedEquipment.map((item: string, i: number) => (
+                              <Badge key={i} variant="secondary" className="text-xs font-normal">{item}</Badge>
+                            ))}
                           </div>
                         )}
                       </CollapsibleContent>
@@ -1564,1312 +2406,65 @@ export default function ReportPage() {
             </CardContent>
           </Card>
 
-          {/* Financing Details CTA - always shown for what-if scenarios */}
-          <>
-            <button
-              onClick={() => setShowFinancingDialog(true)}
-              className="w-full mb-4 flex items-center justify-center gap-3 rounded-xl border-2 border-dashed border-blue-400/50 bg-blue-50 hover:bg-blue-100 hover:border-blue-500/70 dark:bg-blue-950/30 dark:hover:bg-blue-950/50 dark:border-blue-500/40 px-6 py-5 text-base font-semibold text-blue-600 dark:text-blue-400 transition-colors"
-            >
-              <DollarSign className="h-5 w-5" />
-               Add or Edit Financing Details to Explore Your True Cost of Ownership and Break-Even Timing with your Financing
-            </button>
+          {/* ===== SECTION 11: VEHICLE IMAGES ===== */}
+          {condition?.images && condition.images.length > 1 && (
+            <VehicleImageGallery
+              images={condition.images}
+              vehicleName={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
+              listingUrl={condition.listingUrl}
+            />
+          )}
 
-            <Dialog open={showFinancingDialog} onOpenChange={setShowFinancingDialog}>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0">
-                <VisuallyHidden>
-                  <DialogTitle>{financingSkipped ? "Add" : "Edit"} Financing Details</DialogTitle>
-                </VisuallyHidden>
-                <div className="p-1">
-                  <FinancingStep
-                    askingPrice={condition.askingPrice}
-                    zipCode={condition.zipCode}
-                    onBack={() => setShowFinancingDialog(false)}
-                    onComplete={async (newFinancing: FinancingInfo) => {
-                      setShowFinancingDialog(false);
+          {/* ===== SECTION 12: DEALER REVIEW ===== */}
+          <DealerReview
+            dealerName={condition?.sellerName}
+            listingUrl={condition?.listingUrl}
+            sellerType={condition?.sellerType}
+            isPro={isPro}
+            onAnalysisComplete={setDealerAnalysis}
+          />
 
-                      // Recalculate loan balances in the depreciation table using amortization
-                      const updatedDepTable = (() => {
-                        const table = analysis.depreciationTable;
-                        if (!table || !newFinancing.loanAmount || !newFinancing.loanTerm) return table;
-
-                        const P = newFinancing.loanAmount;
-                        const monthlyRate = ((newFinancing.apr || 0) / 100) / 12;
-                        const totalMonths = newFinancing.loanTerm;
-
-                        const monthlyPmt = monthlyRate > 0
-                          ? P * (monthlyRate * Math.pow(1 + monthlyRate, totalMonths)) / (Math.pow(1 + monthlyRate, totalMonths) - 1)
-                          : P / totalMonths;
-
-                        const balanceAfter = (months: number) => {
-                          if (months >= totalMonths) return 0;
-                          if (monthlyRate > 0) {
-                            return P * Math.pow(1 + monthlyRate, months) - monthlyPmt * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate);
-                          }
-                          return Math.max(0, P - monthlyPmt * months);
-                        };
-
-                        return table.map((row) => ({
-                          ...row,
-                          loanBalance: Math.max(0, Math.round(balanceAfter(row.year * 12))),
-                        }));
-                      })();
-
-                      // Update local state — chart & table re-render immediately
-                      setVehicleData((prev: any) => ({
-                        ...prev,
-                        financing: newFinancing,
-                      }));
-                      setAnalysis((prev) => prev ? {
-                        ...prev,
-                        depreciationTable: updatedDepTable,
-                      } : prev);
-
-                      // Persist to DB
-                      if (isSavedReport && id) {
-                        await supabase.from("vehicle_reports").update({
-                          financing_type: newFinancing.type,
-                          loan_amount: newFinancing.loanAmount || null,
-                          loan_term: newFinancing.loanTerm || null,
-                          apr: newFinancing.apr || null,
-                          monthly_payment: newFinancing.monthlyPayment || null,
-                          lease_term_months: newFinancing.leaseTermMonths || null,
-                          residual_value: newFinancing.residualValue || null,
-                          negotiated_price: newFinancing.negotiatedPrice && newFinancing.negotiatedPrice !== condition.askingPrice ? newFinancing.negotiatedPrice : null,
-                          sales_tax_rate: newFinancing.salesTaxRate ?? null,
-                          fees: newFinancing.fees ?? null,
-                          down_payment: newFinancing.downPayment ?? null,
-                          depreciation_table: updatedDepTable as any,
-                        }).eq("id", id);
-                      }
-                    }}
-                  />
-                </div>
-              </DialogContent>
-            </Dialog>
-          </>
-
-          <div className="grid gap-8 lg:grid-cols-3 min-w-0">
-            {/* Left Column - Main Content */}
-            <div className="space-y-8 lg:col-span-2 min-w-0">
-              {/* Price Assessment */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex flex-wrap items-center gap-2">
-                    <DollarSign className="h-5 w-5 text-primary" />
-                    Price Assessment
-                    {pricingLastUpdated && (
-                      <span className="text-xs font-normal text-muted-foreground">
-                        (last updated {pricingLastUpdated.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "2-digit" })})
-                      </span>
-                    )}
-                    <div className="ml-auto flex items-center gap-2">
-                      {pricingSources.length > 0 ? (
-                        <Badge variant="outline" className="gap-1 border-success/30 bg-success/10 text-success text-xs font-medium">
-                          <BadgeCheck className="h-3 w-3" />
-                          Market Verified
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="gap-1 border-muted-foreground/30 bg-muted text-muted-foreground text-xs font-medium">
-                          <Bot className="h-3 w-3" />
-                          AI Estimated
-                        </Badge>
-                      )}
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            disabled={isRefreshingPricing}
-                            title="Refresh pricing data"
-                          >
-                            <RefreshCw className={cn("h-3.5 w-3.5", isRefreshingPricing && "animate-spin")} />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Refresh Market Data?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will re-run the full AI analysis with the latest market pricing data. This uses credits and may take 10–20 seconds.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={refreshPricing}>Refresh</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-6">
-                    {/* Price vs. Market visualization */}
-                    {(() => {
-                      const low = priceAssessment.fairMarketTradeIn;
-                      const high = (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate) * 1.15;
-                      const range = high - low || 1;
-
-                      const hasMarketData = (priceAssessment.fairMarketPrivate > 0 || (priceAssessment.fairMarketDealer ?? 0) > 0);
-
-                      return (
-                        <div className="space-y-4">
-                          <div>
-                            <h3 className="text-lg font-semibold">Price vs. Market</h3>
-                            {hasMarketData ? (
-                              <p className="mt-1 text-sm text-muted-foreground">
-                                Asking price is{" "}
-                                <span className={cn("font-semibold", priceAssessment.priceDifference > 0 ? "text-danger" : "text-success")}>
-                                  {priceAssessment.priceDifference > 0 ? "$" + Math.abs(priceAssessment.priceDifference).toLocaleString() + " above" : "$" + Math.abs(priceAssessment.priceDifference).toLocaleString() + " below"}
-                                </span>
-                                {" "}Dealer Retail
-                                {priceAssessment.fairMarketPrivate > 0 && (() => {
-                                  const fmvDiff = condition.askingPrice - priceAssessment.fairMarketPrivate;
-                                  return (
-                                    <>
-                                      {" "}and{" "}
-                                      <span className={cn("font-semibold", fmvDiff > 0 ? "text-danger" : "text-success")}>
-                                        {"$" + Math.abs(fmvDiff).toLocaleString() + (fmvDiff > 0 ? " above" : " below")}
-                                      </span>
-                                      {" "}Fair Market Value
-                                    </>
-                                  );
-                                })()}
-                                .
-                              </p>
-                            ) : (
-                              <p className="mt-1 text-sm text-muted-foreground">
-                                Market pricing data is not available for this vehicle.
-                              </p>
-                            )}
-                          </div>
-
-                          {/* Price bar visualization */}
-                          {(() => {
-                            if (!hasMarketData) {
-                              // No market data — show simplified asking price only
-                              return (
-                                <div className="relative pt-14 pb-4 mt-2">
-                                  <div className="absolute top-0 right-4 flex flex-col items-center">
-                                    <p className="text-[10px] text-muted-foreground text-center mb-0.5">Asking Price</p>
-                                    <div className="rounded-lg border bg-card px-3 py-1.5 text-sm font-bold shadow-sm whitespace-nowrap">
-                                      ${condition.askingPrice.toLocaleString()}
-                                    </div>
-                                  </div>
-                                  <div className="relative h-2.5 w-full">
-                                    <div className="absolute inset-0 rounded-full overflow-hidden">
-                                      <div className="absolute inset-0 rounded-full bg-muted" />
-                                    </div>
-                                    <div className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: "85%", top: "50%" }}>
-                                      <div className="h-5 w-5 rounded-full border-[3px] border-warning bg-background shadow-md" />
-                                    </div>
-                                  </div>
-                                  <p className="text-xs text-muted-foreground mt-3 text-center">Market comparison unavailable — only asking price is shown.</p>
-                                </div>
-                              );
-                            }
-
-                            // Build markers array for all values on the bar
-                            const fairMarketValue = condition.sellerType === "dealer"
-                              ? (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate)
-                              : priceAssessment.fairMarketPrivate;
-                            const markers: { label: string; value: number; isAsking?: boolean; isFairMarket?: boolean }[] = [];
-                            if (priceAssessment.fairMarketTradeIn > 0) {
-                              markers.push({ label: "Trade-In", value: priceAssessment.fairMarketTradeIn });
-                            }
-                            if (fairMarketValue > 0) {
-                              markers.push({ label: "Fair Market Value", value: fairMarketValue, isFairMarket: true });
-                            }
-                            if (priceAssessment.fairMarketDealer && priceAssessment.fairMarketDealer > 0 && condition.sellerType !== "dealer") {
-                              markers.push({ label: "Dealer Retail", value: priceAssessment.fairMarketDealer });
-                            }
-                            if (condition.sellerType === "dealer" && priceAssessment.fairMarketPrivate > 0) {
-                              markers.push({ label: "Private Sale", value: priceAssessment.fairMarketPrivate });
-                            }
-                            markers.push({ label: "Asking Price", value: condition.askingPrice, isAsking: true });
-
-                            // Anchor gradient to actual values
-                            const tradeInVal = priceAssessment.fairMarketTradeIn > 0 ? priceAssessment.fairMarketTradeIn : fairMarketValue * 0.85;
-                            const fmvVal = fairMarketValue;
-                            const barMin = tradeInVal * 0.90;
-                            const barMax = fmvVal * 1.35;
-                            const barRange = barMax - barMin || 1;
-                            const toPct = (v: number) => Math.max(5, Math.min(92, ((v - barMin) / barRange) * 100));
-
-                            const fmvPct = toPct(fmvVal);
-
-                            return (
-                              <>
-                                {/* Desktop: horizontal gradient bar */}
-                                 <div className={cn("relative pb-14 mt-2", financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice ? "pt-24" : "pt-14")}>
-                                   {/* Asking price floating label */}
-                                   {(() => {
-                                     const askPct = toPct(condition.askingPrice);
-                                     const hasNegotiated = !!(financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice);
-                                     const clampStyle = askPct > 80
-                                       ? { left: `${askPct}%`, transform: "translateX(-80%)" }
-                                       : askPct < 20
-                                         ? { left: `${askPct}%`, transform: "translateX(-20%)" }
-                                         : { left: `${askPct}%`, transform: "translateX(-50%)" };
-                                     const topStyle = hasNegotiated ? { top: "2.5rem" } : { top: 0 };
-                                     return (
-                                       <div className="absolute flex flex-col items-center" style={{ ...clampStyle, ...topStyle }}>
-                                         <p className="text-[10px] text-muted-foreground text-center mb-0.5">Asking Price</p>
-                                         <div className="rounded-lg border bg-card px-3 py-1.5 text-sm font-bold shadow-sm whitespace-nowrap">
-                                           ${condition.askingPrice.toLocaleString()}
-                                         </div>
-                                       </div>
-                                     );
-                                   })()}
-
-                                   {/* Negotiated price floating label */}
-                                   {financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice && (() => {
-                                     const negPct = toPct(financing.negotiatedPrice);
-                                     const clampStyle = negPct > 80
-                                       ? { left: `${negPct}%`, transform: "translateX(-80%)" }
-                                       : negPct < 20
-                                         ? { left: `${negPct}%`, transform: "translateX(-20%)" }
-                                         : { left: `${negPct}%`, transform: "translateX(-50%)" };
-                                     return (
-                                       <div className="absolute top-0 flex flex-col items-center" style={{ ...clampStyle, bottom: "3.5rem" }}>
-                                         <p className="text-[10px] text-success text-center mb-0.5 font-medium">Negotiated Price</p>
-                                         <div className="rounded-lg border border-success/40 bg-success/10 px-3 py-1.5 text-sm font-bold shadow-sm whitespace-nowrap text-success">
-                                           ${financing.negotiatedPrice.toLocaleString()}
-                                         </div>
-                                         <div className="flex-1 mt-1 w-px bg-success/60" />
-                                       </div>
-                                     );
-                                   })()}
-
-                                  {/* Gradient bar + dots */}
-                                  <div className="relative h-2.5 w-full">
-                                    <div className="absolute inset-0 rounded-full overflow-hidden">
-                                      <div className="absolute inset-0 rounded-full" style={{
-                                        background: `linear-gradient(to right, hsl(145 60% 36%) 0%, hsl(var(--success)) ${fmvPct * 0.5}%, hsl(var(--success)) ${fmvPct}%, hsl(var(--warning)) ${fmvPct + (100 - fmvPct) * 0.6}%, hsl(var(--danger)) 100%)`
-                                      }} />
-                                    </div>
-                                     {/* Asking price dot */}
-                                     {(() => {
-                                       const askPct = toPct(condition.askingPrice);
-                                       return (
-                                         <div
-                                           className="absolute -translate-x-1/2 -translate-y-1/2"
-                                           style={{ left: `${askPct}%`, top: "50%" }}
-                                         >
-                                           <div className="h-5 w-5 rounded-full border-[3px] border-warning bg-background shadow-md" />
-                                         </div>
-                                       );
-                                     })()}
-                                     {/* Negotiated price dot */}
-                                     {financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice && (() => {
-                                       const negPct = toPct(financing.negotiatedPrice);
-                                       return (
-                                         <div
-                                           className="absolute -translate-x-1/2 -translate-y-1/2"
-                                           style={{ left: `${negPct}%`, top: "50%" }}
-                                         >
-                                           <div className="h-5 w-5 rounded-full border-[3px] border-success bg-background shadow-md" />
-                                         </div>
-                                       );
-                                     })()}
-                                  </div>
-
-                                  {/* Desktop markers — only non-asking, non-zero */}
-                                  <div className="relative mt-5">
-                                    {markers.filter(m => !m.isAsking).map((m) => {
-                                      const mPct = toPct(m.value);
-                                      const markerStyle = mPct > 85
-                                        ? { left: `${mPct}%`, transform: "translateX(-90%)" }
-                                        : mPct < 15
-                                          ? { left: `${mPct}%`, transform: "translateX(-10%)" }
-                                          : { left: `${mPct}%`, transform: "translateX(-50%)" };
-                                      const textAlign = mPct > 85 ? "text-right" : mPct < 15 ? "text-left" : "text-center";
-                                      return (
-                                        <div
-                                          key={m.label}
-                                          className={cn("absolute", textAlign)}
-                                          style={markerStyle}
-                                        >
-                                          <div className={cn("mb-0.5 h-2.5 w-px", m.isFairMarket ? "bg-primary" : "bg-muted-foreground/40", mPct > 85 ? "ml-auto" : mPct < 15 ? "" : "mx-auto")} />
-                                          <p className={cn("text-[10px] leading-tight whitespace-nowrap", m.isFairMarket ? "font-medium text-primary" : "text-muted-foreground")}>{m.label}</p>
-                                          <p className={cn("text-xs font-semibold whitespace-nowrap", m.isFairMarket && "text-primary")}>${m.value.toLocaleString()}</p>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-
-                              </>
-                            );
-                          })()}
-
-                        </div>
-                      );
-                    })()}
-
-                    {/* Pricing Sources */}
-                    {pricingSources.length > 0 && (
-                      <div className="rounded-lg border border-dashed p-3 space-y-3">
-                        <p className="text-xs font-medium text-muted-foreground mb-2">Pricing Sources</p>
-                        
-                        {/* Per-source valuation breakdown */}
-                        {sourceBreakdown.length > 0 && (
-                          <div className="space-y-2">
-                            {sourceBreakdown.map((src) => {
-                              const fmt = (v?: number | null) => v ? `$${v.toLocaleString()}` : null;
-                              const range = (low?: number | null, high?: number | null, mid?: number | null) => {
-                                if (low && high) return `$${low.toLocaleString()} – $${high.toLocaleString()}`;
-                                if (mid) return `$${mid.toLocaleString()}`;
-                                return null;
-                              };
-                              const privateVal = range(src.privatePartyLow, src.privatePartyHigh, src.privateParty);
-                              const dealerVal = range(src.dealerRetailLow, src.dealerRetailHigh, src.dealerRetail);
-                              const tradeInVal = range(src.tradeInLow, src.tradeInHigh, src.tradeIn);
-                              const hasAny = privateVal || dealerVal || tradeInVal;
-                              if (!hasAny) return null;
-                              return (
-                                <div key={src.source} className="rounded-md bg-muted/50 p-2.5">
-                                  <p className="text-xs font-semibold text-foreground mb-1.5">{src.source}</p>
-                                  <div className="grid grid-cols-3 gap-2 text-xs">
-                                    {tradeInVal && (
-                                      <div>
-                                        <span className="text-muted-foreground">Trade-In</span>
-                                        <p className="font-medium text-foreground">{tradeInVal}</p>
-                                      </div>
-                                    )}
-                                    {privateVal && (
-                                      <div>
-                                        <span className="text-muted-foreground">Private Party</span>
-                                        <p className="font-medium text-foreground">{privateVal}</p>
-                                      </div>
-                                    )}
-                                    {dealerVal && (
-                                      <div>
-                                        <span className="text-muted-foreground">Dealer Retail</span>
-                                        <p className="font-medium text-foreground">{dealerVal}</p>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-
-                        {/* Source links */}
-                        <div className="flex flex-wrap gap-2">
-                          {(() => {
-                            const knownSources: Record<string, string> = {
-                              kbb: "Kelley Blue Book",
-                              repairpal: "RepairPal",
-                              edmunds: "Edmunds",
-                              carfax: "CARFAX",
-                              autocheck: "AutoCheck",
-                              cargurus: "CarGurus",
-                              nada: "NADA Guides",
-                              nadaguides: "NADA Guides",
-                              truecar: "TrueCar",
-                              marketcheck: "MarketCheck",
-                              yourmechanic: "YourMechanic",
-                            };
-                            const seen = new Map<string, { displayName: string; url: string }>();
-                            for (const url of pricingSources) {
-                              try {
-                                const hostname = new URL(url).hostname.replace("www.", "");
-                                const domain = hostname.split(".")[0];
-                                if (!seen.has(domain)) {
-                                  seen.set(domain, {
-                                    displayName: knownSources[domain] || domain.charAt(0).toUpperCase() + domain.slice(1),
-                                    url,
-                                  });
-                                }
-                              } catch {
-                                // skip malformed URLs
-                              }
-                            }
-                            return Array.from(seen.values()).map(({ displayName, url }) => (
-                              <a
-                                key={displayName}
-                                href={url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                              >
-                                <ExternalLink className="h-3 w-3" />
-                                {displayName}
-                              </a>
-                            ));
-                          })()}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Financing Details Card — only when financing was entered */}
-              {financing && !financing.skipped && (
-                <FinancingDetailsCard
-                  financing={financing}
-                  askingPrice={condition.askingPrice}
-                  onChange={async (updated: FinancingInfo) => {
-                    // Compute loanAmount from new fields (matches FinancingDetailsCard formula)
-                    const effectivePrice = updated.negotiatedPrice ?? condition.askingPrice;
-                    const taxAmt = parseFloat(((effectivePrice || 0) * ((updated.salesTaxRate || 0) / 100)).toFixed(2));
-                    const computedLoanAmount = Math.max(0, effectivePrice + (updated.fees || 0) + taxAmt - (updated.downPayment || 0));
-                    const withLoanAmount = { ...updated, loanAmount: computedLoanAmount };
-
-                    // Recalculate loan balances
-                    const updatedDepTable = (() => {
-                      const table = analysis.depreciationTable;
-                      if (!table || !computedLoanAmount || !withLoanAmount.loanTerm) return table;
-                      const P = computedLoanAmount;
-                      const monthlyRate = ((withLoanAmount.apr || 0) / 100) / 12;
-                      const totalMonths = withLoanAmount.loanTerm;
-                      const monthlyPmt = monthlyRate > 0
-                        ? P * (monthlyRate * Math.pow(1 + monthlyRate, totalMonths)) / (Math.pow(1 + monthlyRate, totalMonths) - 1)
-                        : P / totalMonths;
-                      const balanceAfter = (months: number) => {
-                        if (months >= totalMonths) return 0;
-                        if (monthlyRate > 0) {
-                          return P * Math.pow(1 + monthlyRate, months) - monthlyPmt * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate);
-                        }
-                        return Math.max(0, P - monthlyPmt * months);
-                      };
-                      return table.map((row) => ({ ...row, loanBalance: Math.max(0, Math.round(balanceAfter(row.year * 12))) }));
-                    })();
-
-                    setVehicleData((prev: any) => ({ ...prev, financing: withLoanAmount }));
-                    setAnalysis((prev) => prev ? { ...prev, depreciationTable: updatedDepTable } : prev);
-
-                    if (isSavedReport && id) {
-                      await supabase.from("vehicle_reports").update({
-                        financing_type: withLoanAmount.type,
-                        loan_amount: computedLoanAmount || null,
-                        loan_term: withLoanAmount.loanTerm || null,
-                        apr: withLoanAmount.apr || null,
-                        monthly_payment: withLoanAmount.monthlyPayment || null,
-                        lease_term_months: withLoanAmount.leaseTermMonths || null,
-                        residual_value: withLoanAmount.residualValue || null,
-                        negotiated_price: withLoanAmount.negotiatedPrice && withLoanAmount.negotiatedPrice !== condition.askingPrice ? withLoanAmount.negotiatedPrice : null,
-                        sales_tax_rate: withLoanAmount.salesTaxRate ?? null,
-                        fees: withLoanAmount.fees ?? null,
-                        down_payment: withLoanAmount.downPayment ?? null,
-                        depreciation_table: updatedDepTable as any,
-                      }).eq("id", id);
-                    }
-                  }}
-                />
-              )}
-
-              {/* Fuel Economy & TCO */}
-              <FuelEconomyCard
-                mpgCity={mpgData?.mpgCity ?? null}
-                mpgHighway={mpgData?.mpgHighway ?? null}
-                mpgCombined={mpgData?.mpgCombined ?? null}
-                fuelType={mpgData?.fuelType ?? null}
-                askingPrice={financing.negotiatedPrice ?? condition.askingPrice}
-                make={vehicle.make}
-                model={vehicle.model}
-                year={vehicle.year}
-                depreciationTable={depreciationTable}
-                evRange={mpgData?.evRange ?? null}
-                onAnnualMilesChange={setUserAnnualMiles}
-                zipCode={condition?.zipCode}
-                financingCost={liveLoanMetrics.interestAmount + liveLoanMetrics.fees}
-                monthlyPayment={liveLoanMetrics.totalCost > 0 && (financing?.loanTerm ?? 0) > 0 ? liveLoanMetrics.totalCost / (financing?.loanTerm ?? 1) : 0}
-                financingType={financingSkipped ? undefined : financing?.type}
-                onZipCodeSave={async (zip) => {
-                  if (!isSavedReport || !id) return;
-                  await supabase
-                    .from("vehicle_reports")
-                    .update({ zip_code: zip })
-                    .eq("id", id);
-                }}
-              />
-
-              {/* Depreciation Chart */}
-              <Card className="overflow-hidden max-w-[calc(100vw-2rem)]">
-                <CardHeader>
-                <CardTitle className="flex items-center gap-2 flex-wrap">
-                    <TrendingDown className="h-5 w-5 text-primary shrink-0" />
-                    <span>5-Year Depreciation & Equity</span>
-                    {pricingSources.length > 0 ? (
-                      <Badge variant="outline" className="ml-auto gap-1 border-success/30 bg-success/10 text-success text-xs font-medium">
-                        <BadgeCheck className="h-3 w-3" />
-                        Market Verified
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="ml-auto gap-1 border-muted-foreground/30 bg-muted text-muted-foreground text-xs font-medium">
-                        <Bot className="h-3 w-3" />
-                        AI Estimated
-                      </Badge>
-                    )}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-3 md:p-6">
-                  <div className="h-[300px] w-full min-w-0 overflow-hidden">
-                    <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                        <XAxis dataKey="name" className="text-xs" />
-                        <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} className="text-xs" />
-                        <Tooltip 
-                          formatter={(value: number) => `$${value.toLocaleString()}`}
-                          contentStyle={{ 
-                            backgroundColor: "hsl(var(--card))", 
-                            border: "1px solid hsl(var(--border))",
-                            borderRadius: "8px"
-                          }}
-                        />
-                        <Legend />
-                        <Line 
-                          type="monotone" 
-                          dataKey="Market Value" 
-                          stroke="hsl(var(--success))" 
-                          strokeWidth={2}
-                        />
-                        <Line 
-                          type="monotone" 
-                          dataKey="Trade-In Value" 
-                          stroke="hsl(var(--warning))" 
-                          strokeWidth={2}
-                        />
-                        {!financingSkipped && (
-                        <Line 
-                          type="monotone" 
-                          dataKey="Loan Balance" 
-                          stroke="#3b82f6"
-                          strokeWidth={2}
-                          strokeDasharray="5 5"
-                        />
-                        )}
-                        <Line 
-                          type="monotone" 
-                          dataKey="Asking Price" 
-                          stroke="hsl(var(--danger))" 
-                          strokeWidth={2}
-                          strokeDasharray="6 3"
-                          dot={false}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  {/* Depreciation Table */}
-                  <div className="mt-6">
-                    <div className="mb-4">
-                      <h4 className="text-sm font-medium">Detailed Breakdown</h4>
-                    </div>
-                    <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0" style={{ maxWidth: 'calc(100vw - 2rem)' }}>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="text-xs whitespace-nowrap px-1.5 md:px-4">Year</TableHead>
-                          {!financingSkipped && <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight">Loan<br/>Balance</TableHead>}
-                          <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Repairs</TableHead>
-                          <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Maint.</TableHead>
-                          <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Depreciation</TableHead>
-                          <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight">Market<br/>Value</TableHead>
-                          <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight">Trade-In<br/>Value</TableHead>
-                          <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight">Est. Vehicle<br/>Value</TableHead>
-                          {!financingSkipped && <TableHead className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">Equity</TableHead>}
-                          <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight">Net<br/>Position</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {/* Year 0 row - FMV starting point */}
-                        {(() => {
-                          const loanAmt = liveLoanMetrics.totalCost;
-                          const tradeInVal = Math.round(priceAssessment.fairMarketTradeIn || startingFMV * 0.85);
-                          const yr0Equity = startingFMV - loanAmt;
-                          const yr0NetPosition = startingFMV - purchasePrice;
-                          return (
-                            <TableRow>
-                              <TableCell className="font-medium text-xs whitespace-nowrap px-1.5 md:px-4">Yr 0</TableCell>
-                              {!financingSkipped && <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${Math.round(loanAmt).toLocaleString()}</TableCell>}
-                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 text-danger">$0</TableCell>
-                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 text-danger">$0</TableCell>
-                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold text-destructive">$0</TableCell>
-                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${startingFMV.toLocaleString()}</TableCell>
-                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${tradeInVal.toLocaleString()}</TableCell>
-                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold text-foreground">${startingFMV.toLocaleString()}</TableCell>
-                              {!financingSkipped && (
-                                <TableCell className={cn("text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold", yr0Equity >= 0 ? "text-success" : "text-destructive")}>
-                                  {yr0Equity < 0 ? "-" : ""}${Math.abs(yr0Equity).toLocaleString()}
-                                </TableCell>
-                              )}
-                              <TableCell className={cn("text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold", yr0NetPosition >= 0 ? "text-success" : "text-destructive")}>
-                                {yr0NetPosition < 0 ? "-" : ""}${Math.abs(yr0NetPosition).toLocaleString()}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })()}
-                        {depreciationTable.map((row) => {
-                          const estValue = row.marketValue;
-                          const isZeroValue = estValue === 0;
-                          const cumulativeCosts = cumulativeOwnershipCostMap.get(row.year);
-                          const netPosition = estValue - purchasePrice - (cumulativeCosts?.cumulativeRepairs ?? 0) - (cumulativeCosts?.cumulativeMaintenance ?? 0);
-                          return (
-                            <TableRow key={row.year}>
-                              <TableCell className="font-medium text-xs whitespace-nowrap px-1.5 md:px-4">Yr {row.year}</TableCell>
-                              {!financingSkipped && <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${row.loanBalance.toLocaleString()}</TableCell>}
-                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 text-danger">
-                                ${row.repairCosts.toLocaleString()}
-                              </TableCell>
-                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 text-danger">
-                                ${row.maintenanceCosts.toLocaleString()}
-                              </TableCell>
-                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold text-destructive">
-                                -${row.depreciation.toLocaleString()}
-                              </TableCell>
-                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${row.marketValue.toLocaleString()}</TableCell>
-                              <TableCell className="text-right text-xs whitespace-nowrap px-1.5 md:px-4">${row.tradeInValue.toLocaleString()}</TableCell>
-                              <TableCell className={cn("text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold", isZeroValue ? "text-destructive" : "text-foreground")}>
-                                ${estValue.toLocaleString()}
-                                {isZeroValue && <span className="text-[10px] block text-muted-foreground">Repair costs may exceed value</span>}
-                              </TableCell>
-                              {!financingSkipped && (
-                                <TableCell className={cn("text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold", row.equity >= 0 ? "text-success" : "text-destructive")}>
-                                  {row.equity < 0 ? "-" : ""}${Math.abs(row.equity).toLocaleString()}
-                                </TableCell>
-                              )}
-                              <TableCell className={cn("text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold", netPosition >= 0 ? "text-success" : "text-destructive")}>
-                                {netPosition < 0 ? "-" : ""}${Math.abs(netPosition).toLocaleString()}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                    </div>
-
-                    {financingSkipped && (
-                      <p className="text-xs text-muted-foreground mt-2">
-                        <span className="font-bold">*Does not include Taxes and Fees included in the purchase since no financing data was provided</span>
-                      </p>
-                    )}
-
-                    {/* Cost Data Sources */}
-                    {maintenanceSources.length > 0 && (
-                      <div className="mt-4 rounded-lg border border-dashed p-3">
-                        <p className="text-xs font-medium text-muted-foreground mb-2">Repair & Maintenance Cost Sources</p>
-                        <div className="flex flex-wrap gap-2">
-                          {(() => {
-                            const seen = new Map<string, { displayName: string; url: string }>();
-                            for (const url of maintenanceSources) {
-                              try {
-                                const hostname = new URL(url).hostname.replace("www.", "");
-                                const domain = hostname.split(".")[0];
-                                if (!seen.has(domain)) {
-                                  seen.set(domain, {
-                                    displayName: domain.charAt(0).toUpperCase() + domain.slice(1),
-                                    url,
-                                  });
-                                }
-                              } catch {
-                                // skip malformed URLs
-                              }
-                            }
-                            return Array.from(seen.values()).map(({ displayName, url }) => (
-                              <a
-                                key={displayName}
-                                href={url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                              >
-                                <ExternalLink className="h-3 w-3" />
-                                {displayName}
-                              </a>
-                            ));
-                          })()}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Expert Opinion */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-primary" />
-                    Expert Opinion
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="prose prose-sm max-w-none dark:prose-invert">
-                    <p className="whitespace-pre-line text-foreground">{sanitizedExpertOpinion}</p>
-                  </div>
-                  
-                </CardContent>
-              </Card>
-
-              {/* Final Verdict Card - Uses UVPRS-derived verdict */}
-              {(() => {
-                // Always generate justification from actual data — never trust AI-stored text
-                const justification = (() => {
-                  const askPrice = vehicleData?.condition?.askingPrice ?? 0;
-                  const negPrice = vehicleData?.financing?.negotiatedPrice;
-                  const effectivePrice = negPrice ?? askPrice;
-                  const dealerVal = priceAssessment?.fairMarketDealer;
-                  const privateVal = priceAssessment?.fairMarketPrivate ?? 0;
-                  const refVal = dealerVal || privateVal;
-                  const priceDiff = refVal ? effectivePrice - refVal : 0;
-                  const priceDir = priceDiff > 0 ? "above" : "below";
-                  const absDiff = Math.abs(priceDiff);
-                  const titleClean = vehicleData?.history?.titleStatus === "clean";
-                  const accidents = vehicleData?.history?.accidentCount ?? 0;
-                  const chronic = vehicleData?.history?.chronicRepairSystems ?? [];
-                  const concerns = analysis.riskAssessment?.reliabilityConcerns ?? [];
-
-                  // Build concise parts from structured data
-                  const pricePart = refVal
-                    ? `Priced $${absDiff.toLocaleString()} ${priceDir} fair market${dealerVal ? " dealer" : ""} value ($${refVal.toLocaleString()})`
-                    : "";
-                  const titlePart = titleClean ? "clean title" : vehicleData?.history?.titleStatus ? `${vehicleData.history.titleStatus} title` : "";
-                  const accidentPart = accidents > 0 ? `${accidents} reported accident(s)` : "";
-                  const chronicPart = chronic.length > 0 ? `documented ${chronic.join(" & ")} system issues` : "";
-                  // Use short concern names from reliabilityConcerns, NOT raw verbose issue text
-                  const topConcerns = concerns.slice(0, 2).map((c: any) => {
-                    const name = typeof c === "string" ? c : c.concern || "";
-                    // Extract just the first key phrase (before parenthetical or cost details)
-                    return name.split("(")[0].split(" - ")[0].trim();
-                  }).filter(Boolean);
-                  const concernPart = topConcerns.length > 0 ? topConcerns.join(" and ") : "";
-                  const riskDetails = [chronicPart, accidentPart, concernPart].filter(Boolean);
-
-                  if (displayVerdict === "Conditional Buy" && uvprsResult && uvprsResult.totalScore <= 30) {
-                    const positives = [pricePart, titlePart, accidents === 0 ? "no reported accidents" : ""].filter(Boolean).join(", ");
-                    return `${positives}. Low overall risk supports a confident purchase at the fair offer price.`;
-                  }
-                  if (displayVerdict === "Conditional Buy") {
-                    return `${pricePart}${titlePart ? ` with ${titlePart}` : ""}, though ${riskDetails.join(", ") || "moderate risk factors"} warrant a pre-purchase inspection (PPI) before committing. Negotiate toward the fair offer price.`;
-                  }
-                  if (displayVerdict === "Caution") {
-                    return `${pricePart}. Elevated risk from ${riskDetails.join(", ") || "multiple concern factors"}. Budget for upcoming repairs and negotiate aggressively toward the fair offer price.`;
-                  }
-                  return `${pricePart}. High risk: ${riskDetails.length > 0 ? riskDetails.join(" and ") + " failure" : "significant concerns identified"}. Even at this 'attractive' price, this vehicle represents too high risk for purchase.`;
-                })();
-
-                const verdictConfig = {
-                  "Buy": { icon: <ThumbsUp className="h-10 w-10 text-success" />, border: "border-success bg-success/5", badge: "bg-success text-success-foreground" },
-                  "Conditional Buy": { icon: <HandCoins className="h-10 w-10 text-warning" />, border: "border-warning bg-warning/5", badge: "bg-warning text-warning-foreground" },
-                  "Negotiate": { icon: <HandCoins className="h-10 w-10 text-warning" />, border: "border-warning bg-warning/5", badge: "bg-warning text-warning-foreground" },
-                  "Caution": { icon: <AlertTriangle className="h-10 w-10 text-orange-500" />, border: "border-orange-500 bg-orange-500/5", badge: "bg-orange-500 text-white" },
-                  "Walk Away": { icon: <ThumbsDown className="h-10 w-10 text-danger" />, border: "border-danger bg-danger/5", badge: "bg-danger text-danger-foreground" },
-                  "Avoid": { icon: <ThumbsDown className="h-10 w-10 text-danger" />, border: "border-danger bg-danger/5", badge: "bg-danger text-danger-foreground" },
-                };
-                const config = verdictConfig[displayVerdict] || verdictConfig["Conditional Buy"];
-
-                return (
-                  <Card className={cn("border-2", config.border)}>
-                    <CardContent className="p-6">
-                      <div className="flex flex-col sm:flex-row items-center gap-6">
-                        <div className="flex flex-col items-center gap-2 shrink-0">
-                          {config.icon}
-                          <Badge className={cn("text-lg px-4 py-1", config.badge)}>
-                            {displayVerdict.toUpperCase()}
-                          </Badge>
-                        </div>
-                        <div className="flex-1 text-center sm:text-left">
-                          <p className="text-sm text-muted-foreground">{justification}</p>
-                        </div>
-                        <div className="shrink-0 text-center sm:border-l sm:pl-6">
-                          <p className="mb-1 text-sm font-semibold">Fair Offer Price</p>
-                          <p className="text-3xl font-bold">{displayVerdict === "Avoid" ? "N/A" : `$${riskAssessment.fairOfferPrice.toLocaleString()}`}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })()}
-
-              {/* Negotiation Cheat Sheet */}
-              <NegotiationCheatSheet
-                isPaid={isPaid}
-                year={vehicle.year}
-                make={vehicle.make}
-                model={vehicle.model}
-                trim={vehicle.trim}
-                mileage={condition.mileage}
-                askingPrice={condition.askingPrice}
-                condition={condition.condition}
-                sellerType={condition.sellerType}
-                fairMarketPrivate={priceAssessment.fairMarketPrivate}
-                fairMarketDealer={priceAssessment.fairMarketDealer}
-                fairMarketTradeIn={priceAssessment.fairMarketTradeIn}
-                dealRating={priceAssessment.dealRating}
-                priceDifference={priceAssessment.priceDifference}
-                accidentCount={historyAnalysis?.concerns?.filter(c => c.toLowerCase().includes("accident")).length || 0}
-                ownerCount={vehicleData?.history?.ownerCount || 1}
-                titleStatus={vehicleData?.history?.titleStatus || "clean"}
-                serviceGapMiles={vehicleData?.history?.serviceGapMiles}
-                majorServicesDue={vehicleData?.history?.majorServicesDue}
-                chronicRepairSystems={vehicleData?.history?.chronicRepairSystems}
-                reliabilityConcerns={riskAssessment.reliabilityConcerns}
-                openRecallCount={recallData?.openCount || 0}
-                recallDetails={recallData?.recalls?.slice(0, 3).map(r => r.summary || r.component).join("; ")}
-                verdict={displayVerdict}
-                fairOfferPrice={riskAssessment.fairOfferPrice}
-                activeFaults={analysis.aiFindings?.activeServiceFaults?.map(f => ({ system: f.system, costLow: f.estimatedCostPerIncident || 500 }))}
-                failurePatterns={analysis.aiFindings?.knownFailurePatterns?.map(p => ({ issue: p.issue, probability: p.probabilityTier, costLow: p.probabilityPercent > 50 ? 1500 : 800 }))}
-                financingType={financing?.type}
-              />
-
-              {/* Analyze Another Vehicle */}
-              <Button asChild className="w-full">
-                <Link to="/analyze">
-                  <Car className="mr-2 h-4 w-4" />
-                  Analyze Another Vehicle
-                </Link>
-              </Button>
-            </div>
-
-            {/* Right Column - Sidebar */}
-            <div className="space-y-6">
-              {/* Vehicle Images Gallery */}
-              {condition?.images && condition.images.length > 0 && (
-                <VehicleImageGallery 
-                  images={condition.images}
-                  vehicleName={`${vehicle.year} ${vehicle.make} ${vehicle.model}`}
-                  listingUrl={condition.listingUrl}
-                />
-              )}
-
-              {/* UVPRS Risk Score Breakdown */}
-              {uvprsResult && (
-                <RiskScoreBreakdown 
-                  result={uvprsResult} 
-                  missingHistoryReport={!vehicleData?.condition?.isBrandNew && !vehicleData?.history?.serviceRecords}
-                  isUploadingHistory={isUploadingHistory}
-                  onUploadHistory={async (file: File) => {
-                    setIsUploadingHistory(true);
-                    try {
-                      const mileage = vehicleData?.condition?.mileage;
-                      const result = await parseHistoryReport(file, undefined, mileage);
-                      if (!result.success || !result.history) {
-                        sonnerToast.error(result.error || "Failed to parse history report");
-                        return;
-                      }
-                      // Merge parsed history into vehicleData
-                      const extractedVin = result.history.vin;
-                      const updatedVehicleData = {
-                        ...vehicleData,
-                        vehicle: {
-                          ...vehicleData.vehicle,
-                          // Set VIN if extracted and not already set
-                          ...(extractedVin && !vehicleData.vehicle.vin ? { vin: extractedVin } : {}),
-                        },
-                        history: {
-                          ...vehicleData.history,
-                          ...result.history,
-                          serviceRecords: true,
-                        },
-                      };
-                      setVehicleData(updatedVehicleData);
-                      // Update sessionStorage so re-analyze picks it up
-                      sessionStorage.setItem("analysisData", JSON.stringify(updatedVehicleData));
-                      sonnerToast.success("History report uploaded! Re-analyzing...");
-                      // Trigger re-analysis with updated data
-                      const { data: analysisResult, error: invokeError } = await supabase.functions.invoke("analyze-vehicle", {
-                        body: updatedVehicleData,
-                      });
-                      if (invokeError) throw invokeError;
-                      if (analysisResult?.success) {
-                        const newAn2 = analysisResult.analysis;
-                        if (analysis && newAn2.priceAssessment &&
-                            !(newAn2.priceAssessment.fairMarketPrivate > 0 || newAn2.priceAssessment.fairMarketDealer > 0)) {
-                          newAn2.priceAssessment = { ...newAn2.priceAssessment, ...analysis.priceAssessment };
-                        }
-                        setAnalysis(newAn2);
-                        if (analysisResult.mpgData) {
-                          setMpgData({
-                            mpgCity: analysisResult.mpgData.mpgCity,
-                            mpgHighway: analysisResult.mpgData.mpgHighway,
-                            mpgCombined: analysisResult.mpgData.mpgCombined,
-                            fuelType: analysisResult.mpgData.fuelType,
-                            evRange: analysisResult.mpgData.evRange ?? null,
-                          });
-                        }
-                        if (analysisResult.pricingSources?.length) {
-                          setPricingSources(analysisResult.pricingSources);
-                          setPricingLastUpdated(new Date());
-                        }
-                        if (analysisResult.sourceBreakdown?.length) {
-                          setSourceBreakdown(analysisResult.sourceBreakdown);
-                        }
-                        // Update saved report if applicable
-                        if (isSavedReport && id) {
-                          const { priceAssessment, depreciationTable, riskAssessment, historyAnalysis } = analysisResult.analysis;
-                          const sideUpd: Record<string, any> = {
-                            deal_rating: priceAssessment.dealRating,
-                            price_difference: priceAssessment.priceDifference,
-                            risk_level: riskAssessment.level,
-                            depreciation_risk: riskAssessment.depreciationRisk,
-                            reliability_concerns: riskAssessment.reliabilityConcerns,
-                            value_proposition: riskAssessment.valueProposition,
-                            fair_offer_price: riskAssessment.fairOfferPrice,
-                            expert_opinion: riskAssessment.expertOpinion,
-                            health_score: historyAnalysis.healthScore,
-                            history_issues: historyAnalysis.concerns || [],
-                            history_positives: historyAnalysis.positives || [],
-                            depreciation_table: depreciationTable as any,
-                            has_service_records: true,
-                            accident_count: result.history?.accidentCount ?? null,
-                            owner_count: result.history?.ownerCount ?? null,
-                            title_status: result.history?.titleStatus ?? null,
-                            service_gap_miles: result.history?.serviceGapMiles ?? null,
-                            major_services_due: result.history?.majorServicesDue ?? null,
-                            major_services_done: result.history?.majorServicesDone ?? null,
-                            chronic_repair_systems: result.history?.chronicRepairSystems ?? null,
-                            ...(extractedVin && !vehicleData.vehicle.vin ? { vin: extractedVin } : {}),
-                            pricing_sources: analysisResult.pricingSources || [],
-                            pricing_last_updated: new Date().toISOString(),
-                            source_breakdown: analysisResult.sourceBreakdown || [],
-                          };
-                          if (priceAssessment.fairMarketPrivate > 0 || priceAssessment.fairMarketDealer > 0) {
-                            sideUpd.fair_market_private = priceAssessment.fairMarketPrivate;
-                            sideUpd.fair_market_dealer = priceAssessment.fairMarketDealer || null;
-                            sideUpd.fair_market_trade_in = priceAssessment.fairMarketTradeIn;
-                          }
-                          await supabase.from("vehicle_reports").update(sideUpd).eq("id", id);
-                        }
-                        sonnerToast.success("Report updated with history data!");
-                      } else {
-                        throw new Error(analysisResult?.error || "Re-analysis failed");
-                      }
-                    } catch (err) {
-                      console.error("History upload error:", err);
-                      sonnerToast.error("Failed to process history report");
-                    } finally {
-                      setIsUploadingHistory(false);
-                    }
-                  }}
-                />
-              )}
-
-              {/* NHTSA Recall Card */}
-              {recallData && !recallData.isLoading && (
-                <Card className={cn(
-                  "border-2",
-                  recallData.openCount > 0
-                    ? "border-danger bg-danger/5"
-                    : "border-success bg-success/5"
-                )}>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2">
-                      {recallData.openCount > 0 ? (
-                        <ShieldAlert className="h-5 w-5 text-danger" />
-                      ) : (
-                        <ShieldCheck className="h-5 w-5 text-success" />
-                      )}
-                      Safety Recalls
-                      <Badge
-                        className={cn(
-                          "ml-auto text-xs",
-                          recallData.openCount > 0
-                            ? "bg-danger text-danger-foreground"
-                            : "bg-success text-success-foreground"
-                        )}
-                      >
-                        {recallData.openCount > 0
-                          ? `${recallData.openCount} Open`
-                          : recallData.count > 0
-                          ? "All Resolved"
-                          : "None on Record"}
-                      </Badge>
-                    </CardTitle>
-                    <p className="text-xs text-muted-foreground">
-                      Via NHTSA · {vehicle.year} {vehicle.make} {vehicle.model}
-                    </p>
-                  </CardHeader>
-                  <CardContent className="space-y-3 pt-0">
-                    {recallData.openCount > 0 && (
-                      <div className="flex items-start gap-2 rounded-md border border-danger/30 bg-danger/10 px-3 py-2">
-                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-danger" />
-                        <p className="text-xs text-danger font-medium">
-                          {recallData.openCount} open {recallData.openCount === 1 ? "recall" : "recalls"} found for this vehicle. Ensure they have been resolved before purchasing.
-                        </p>
-                      </div>
-                    )}
-                    {recallData.count === 0 && (
-                      <div className="flex items-center gap-2 rounded-md border border-success/30 bg-success/10 px-3 py-2">
-                        <CheckCircle className="h-4 w-4 shrink-0 text-success" />
-                        <p className="text-xs text-success font-medium">No recalls on record for this year/make/model.</p>
-                      </div>
-                    )}
-                    {recallData.recalls.length > 0 && (
-                      <Accordion type="multiple" className="w-full">
-                        {recallData.recalls.map((recall, i) => (
-                          <AccordionItem key={i} value={`recall-${i}`} className="border-b border-border/50 last:border-0">
-                            <AccordionTrigger className="py-2 text-left hover:no-underline">
-                              <span className="text-xs font-semibold leading-snug pr-2">{recall.component || `Recall #${i + 1}`}</span>
-                            </AccordionTrigger>
-                            <AccordionContent className="pb-3 space-y-2">
-                              {recall.campaignNumber && (
-                                <p className="text-xs text-muted-foreground">
-                                  <span className="font-medium">Campaign:</span> {recall.campaignNumber}
-                                </p>
-                              )}
-                              <p className="text-xs text-muted-foreground leading-relaxed">{recall.summary}</p>
-                              {recall.remedyDescription && (
-                                <div className="rounded-md bg-muted px-3 py-2">
-                                  <p className="text-xs font-medium mb-0.5">Remedy</p>
-                                  <p className="text-xs text-muted-foreground">{recall.remedyDescription}</p>
-                                </div>
-                              )}
-                            </AccordionContent>
-                          </AccordionItem>
-                        ))}
-                      </Accordion>
-                    )}
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      {vehicle.vin ? (
-                        <a
-                          href={`https://www.nhtsa.gov/vehicle/${vehicle.vin}/complaints`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          <ExternalLink className="h-3 w-3" />
-                          VIN Complaints on NHTSA
-                        </a>
-                      ) : (
-                        <a
-                          href={`https://www.nhtsa.gov/vehicle-safety/recalls#recall--${encodeURIComponent(vehicle.make)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          <ExternalLink className="h-3 w-3" />
-                          Search Recalls on NHTSA
-                        </a>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-              {recallData?.isLoading && (
-                <Card>
-                  <CardContent className="flex items-center gap-3 p-4">
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">Checking NHTSA recall database...</p>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Vehicle Health Score */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Car className="h-5 w-5 text-primary" />
-                    Vehicle Health
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {(() => {
-                    const score = historyAnalysis.healthScore;
-                    const scoreColor = score <= 33 ? 'text-red-500' : score <= 66 ? 'text-orange-500' : 'text-emerald-500';
-                    const barColor = score <= 33 ? '[&>div]:bg-red-500' : score <= 66 ? '[&>div]:bg-orange-500' : '[&>div]:bg-emerald-500';
-                    return (
-                      <>
-                        <div className="mb-4 text-center">
-                          <div className={`text-4xl font-bold ${scoreColor}`}>{score}</div>
-                          <p className="text-sm text-muted-foreground">out of 100</p>
-                        </div>
-                        <Progress value={score} className={`h-3 ${barColor}`} />
-                      </>
-                    );
-                  })()}
-
-                  <div className="mt-6 space-y-4">
-                    <div>
-                      <h4 className="mb-2 flex items-center gap-2 text-sm font-medium text-success">
-                        <CheckCircle className="h-4 w-4" />
-                        Positives
-                      </h4>
-                      <ul className="space-y-1 text-sm">
-                        {historyAnalysis.positives
-                          .filter((item) => {
-                            // Fix #4: Filter out pricing observations from vehicle health positives
-                            const lower = item.toLowerCase();
-                            return !(lower.includes("below market") || lower.includes("above market") || lower.includes("asking price") || lower.includes("dealer retail") || lower.includes("below fmv") || lower.includes("above fmv"));
-                          })
-                          .map((item, i) => (
-                            <li key={i} className="text-muted-foreground">• {item}</li>
-                          ))}
-                      </ul>
-                    </div>
-
-                    <div>
-                      <h4 className="mb-2 flex items-center gap-2 text-sm font-medium text-danger">
-                        <XCircle className="h-4 w-4" />
-                        Concerns
-                      </h4>
-                      <ul className="space-y-1 text-sm">
-                        {historyAnalysis.concerns.map((item, i) => (
-                          <li key={i} className="text-muted-foreground">• {item}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Service History Timeline */}
-              <ServiceHistoryTimeline
-                serviceGapMiles={vehicleData?.history?.serviceGapMiles}
-                majorServicesDue={vehicleData?.history?.majorServicesDue}
-                majorServicesDone={vehicleData?.history?.majorServicesDone}
-                chronicRepairSystems={vehicleData?.history?.chronicRepairSystems}
-                hasServiceRecords={vehicleData?.history?.serviceRecords}
-                mileage={condition.mileage}
-              />
-
-              {/* Risk Factors */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <AlertTriangle className="h-5 w-5 text-warning" />
-                    Risk Factors
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-sm font-medium">Depreciation Risk</p>
-                      <p className="text-sm text-muted-foreground">{riskAssessment.depreciationRisk}</p>
-                    </div>
-
-                    <div>
-                      <p className="mb-2 text-sm font-medium">Reliability Concerns</p>
-                      <ul className="space-y-2">
-                        {riskAssessment.reliabilityConcerns.map((item, i) => (
-                          <li key={i} className="flex items-start gap-2 text-sm">
-                            <Wrench className="mt-0.5 h-3 w-3 shrink-0 text-warning" />
-                            <span className="text-muted-foreground">
-                              {item.concern}
-                              {(item.costLow || item.costHigh) && (
-                                <span className="ml-1 font-medium text-destructive">
-                                  — Est. {item.costLow && item.costHigh 
-                                    ? `$${item.costLow.toLocaleString()}–$${item.costHigh.toLocaleString()}`
-                                    : item.costLow ? `$${item.costLow.toLocaleString()}+` 
-                                    : `Up to $${item.costHigh!.toLocaleString()}`}
-                                  {/* Fix #6: Show refurbished pricing note for battery items */}
-                                  {/battery|traction/i.test(item.concern) && item.costLow && item.costLow >= 5000 && (
-                                    <span className="font-normal text-muted-foreground"> (used/refurbished: $3,500–$6,500)</span>
-                                  )}
-                                </span>
-                              )}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    <div className="rounded-lg bg-muted p-4">
-                      <p className="text-sm font-medium">Value Proposition</p>
-                      <p className="text-sm text-muted-foreground">{riskAssessment.valueProposition}</p>
-                    </div>
-
-                    {/* Reliability Cost Sources */}
-                    {pricingSources.length > 0 && (
-                      <div className="mt-4 rounded-lg border border-dashed p-3">
-                        <p className="text-xs font-medium text-muted-foreground mb-2">Cost Data Sources</p>
-                        <div className="flex flex-wrap gap-2">
-                          {(() => {
-                            const seen = new Map<string, { displayName: string; url: string }>();
-                            for (const url of pricingSources) {
-                              try {
-                                const hostname = new URL(url).hostname.replace("www.", "");
-                                const domain = hostname.split(".")[0];
-                                if (!seen.has(domain)) {
-                                  seen.set(domain, {
-                                    displayName: domain.charAt(0).toUpperCase() + domain.slice(1),
-                                    url,
-                                  });
-                                }
-                              } catch {
-                                // skip
-                              }
-                            }
-                            return Array.from(seen.values()).map(({ displayName, url }) => (
-                              <a
-                                key={displayName}
-                                href={url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                              >
-                                <ExternalLink className="h-3 w-3" />
-                                {displayName}
-                              </a>
-                            ));
-                          })()}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Dealer Trust Analysis - Pro Feature */}
-              <DealerReview
-                dealerName={condition?.sellerName}
-                listingUrl={condition?.listingUrl}
-                sellerType={condition?.sellerType}
-                isPro={isPro}
-                onAnalysisComplete={setDealerAnalysis}
-              />
-
-              {/* Warranty Status Card */}
-              {analysis.warrantyAnalysis && (
-                <Card className={cn(
-                  "border-2",
-                  analysis.warrantyAnalysis.warrantyStatus === "active" ? "border-success bg-success/5"
-                    : analysis.warrantyAnalysis.warrantyStatus === "expired" ? "border-danger bg-danger/5"
-                    : "border-warning bg-warning/5"
-                )}>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2">
-                      <ShieldCheck className="h-5 w-5" />
-                      Warranty Analysis
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Status</span>
-                      <Badge variant={analysis.warrantyAnalysis.warrantyStatus === "active" ? "default" : "destructive"}>
-                        {analysis.warrantyAnalysis.warrantyStatus === "active" ? "Active" : analysis.warrantyAnalysis.warrantyStatus === "expired" ? "Expired" : "Unknown"}
-                      </Badge>
-                    </div>
-                    {analysis.warrantyAnalysis.warrantyMonthsRemaining != null && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Months Remaining</span>
-                        <span className="font-semibold">{analysis.warrantyAnalysis.warrantyMonthsRemaining}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Risk Reduction</span>
-                      <span className="font-semibold">{analysis.warrantyAnalysis.riskReductionFactor}%</span>
-                    </div>
-                    <Progress value={analysis.warrantyAnalysis.riskReductionFactor} className="h-2" />
-                    <p className="text-sm text-muted-foreground">{analysis.warrantyAnalysis.warrantyNotes}</p>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Final Verdict moved to main content area */}
-
-              {/* Ad Placeholder */}
-              <div className="rounded-lg border-2 border-dashed border-muted bg-muted/20 p-4 text-center">
-                <p className="text-xs text-muted-foreground">Advertisement</p>
-              </div>
-            </div>
+          {/* ===== SECTION 13: NEGOTIATION CHEAT SHEET ===== */}
+          <div ref={cheatSheetRef}>
+            <NegotiationCheatSheet
+              isPaid={isPaid}
+              year={vehicle.year}
+              make={vehicle.make}
+              model={vehicle.model}
+              trim={vehicle.trim}
+              mileage={condition.mileage}
+              askingPrice={condition.askingPrice}
+              condition={condition.condition}
+              sellerType={condition.sellerType}
+              fairMarketPrivate={priceAssessment.fairMarketPrivate}
+              fairMarketDealer={priceAssessment.fairMarketDealer}
+              fairMarketTradeIn={priceAssessment.fairMarketTradeIn}
+              dealRating={priceAssessment.dealRating}
+              priceDifference={priceAssessment.priceDifference}
+              accidentCount={historyAnalysis?.concerns?.filter(c => c.toLowerCase().includes("accident")).length || 0}
+              ownerCount={vehicleData?.history?.ownerCount || 1}
+              titleStatus={vehicleData?.history?.titleStatus || "clean"}
+              serviceGapMiles={vehicleData?.history?.serviceGapMiles}
+              majorServicesDue={vehicleData?.history?.majorServicesDue}
+              chronicRepairSystems={vehicleData?.history?.chronicRepairSystems}
+              reliabilityConcerns={riskAssessment.reliabilityConcerns}
+              openRecallCount={recallData?.openCount || 0}
+              recallDetails={recallData?.recalls?.slice(0, 3).map(r => r.summary || r.component).join("; ")}
+              verdict={displayVerdict}
+              fairOfferPrice={riskAssessment.fairOfferPrice}
+              activeFaults={analysis.aiFindings?.activeServiceFaults?.map(f => ({ system: f.system, costLow: f.estimatedCostPerIncident || 500 }))}
+              failurePatterns={analysis.aiFindings?.knownFailurePatterns?.map(p => ({ issue: p.issue, probability: p.probabilityTier, costLow: p.probabilityPercent > 50 ? 1500 : 800 }))}
+              financingType={financing?.type}
+            />
           </div>
+
+          {/* ===== ANALYZE ANOTHER VEHICLE ===== */}
+          <Button asChild className="w-full">
+            <Link to="/analyze">
+              <Car className="mr-2 h-4 w-4" />
+              Analyze Another Vehicle
+            </Link>
+          </Button>
         </div>
       </main>
 
