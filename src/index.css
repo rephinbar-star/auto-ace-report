@@ -168,6 +168,22 @@
   .glass {
     @apply bg-card/80 backdrop-blur-md;
   }
+
+  /* Report page card style */
+  .report-card {
+    background: hsl(var(--surface));
+    border: 1px solid hsl(var(--border-card));
+    border-radius: 12px;
+    padding: 20px 24px;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* Force-mobile overrides: when JS detects a mobile UA, override md: breakpoints */
