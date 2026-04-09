@@ -126,13 +126,27 @@ export function generateCheatSheetPDF(data: CheatSheetData) {
     }
   }
 
-  // Footer disclaimer
-  if (y > 260) { doc.addPage(); y = margin; }
-  y += 3;
-  doc.setFontSize(6);
-  doc.setTextColor(140);
-  doc.text("This document is for informational purposes. Pricing estimates are based on publicly available market data.", margin, y);
-  doc.setTextColor(0);
+  // Footer on every page
+  const totalPages = doc.getNumberOfPages();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const currentYear = new Date().getFullYear();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(6);
+    doc.setTextColor(140);
+    doc.text(
+      "This document is for informational purposes. Pricing estimates are based on publicly available market data.",
+      margin,
+      pageHeight - 10
+    );
+    doc.text(
+      `© ${currentYear} CarWise. All rights reserved.`,
+      pageWidth - margin,
+      pageHeight - 10,
+      { align: "right" }
+    );
+    doc.setTextColor(0);
+  }
 
   doc.save(`Negotiation_Brief_${data.vehicleLabel.replace(/\s+/g, "_")}.pdf`);
 }
