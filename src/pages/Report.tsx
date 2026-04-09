@@ -74,7 +74,7 @@ import { FinancingDetailsCard } from "@/components/report/FinancingDetailsCard";
 import { RiskScoreBreakdown } from "@/components/report/RiskScoreBreakdown";
 import { ServiceHistoryTimeline } from "@/components/report/ServiceHistoryTimeline";
 import { generateReportPDF } from "@/lib/generatePDF";
-import { NegotiationCheatSheet } from "@/components/report/NegotiationCheatSheet";
+import { NegotiationCheatSheet, type NegotiationCheatSheetHandle } from "@/components/report/NegotiationCheatSheet";
 import { StickyNavBar } from "@/components/report/StickyNavBar";
 import { VerdictHero } from "@/components/report/VerdictHero";
 import { MetricsStrip } from "@/components/report/MetricsStrip";
@@ -299,8 +299,11 @@ export default function ReportPage() {
   const headerHistoryInputRef = useRef<HTMLInputElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
   const cheatSheetRef = useRef<HTMLDivElement>(null);
+  const cheatSheetHandle = useRef<NegotiationCheatSheetHandle>(null);
   const scrollToCheatSheet = useCallback(() => {
     cheatSheetRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Small delay to let scroll finish, then trigger the dialog
+    setTimeout(() => cheatSheetHandle.current?.trigger(), 600);
   }, []);
   const [isSaving, setIsSaving] = useState(false);
   const [excludeRepairs, setExcludeRepairs] = useState(false);
@@ -2476,6 +2479,7 @@ export default function ReportPage() {
           {/* ===== SECTION 13: NEGOTIATION CHEAT SHEET ===== */}
           <div ref={cheatSheetRef}>
             <NegotiationCheatSheet
+              ref={cheatSheetHandle}
               isPaid={isPaid}
               year={vehicle.year}
               make={vehicle.make}

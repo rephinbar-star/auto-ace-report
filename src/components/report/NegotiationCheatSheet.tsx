@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, forwardRef, useImperativeHandle } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
@@ -71,10 +71,16 @@ interface NegotiationCheatSheetProps {
   financingType?: string;
 }
 
-export function NegotiationCheatSheet(props: NegotiationCheatSheetProps) {
+export interface NegotiationCheatSheetHandle {
+  trigger: () => void;
+}
+
+export const NegotiationCheatSheet = forwardRef<NegotiationCheatSheetHandle, NegotiationCheatSheetProps>(function NegotiationCheatSheet(props, ref) {
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<CheatSheetResult | null>(null);
+
+  useImperativeHandle(ref, () => ({ trigger: handleGenerate }));
 
   const handleGenerate = async () => {
     if (!props.isPaid) {
@@ -297,4 +303,4 @@ export function NegotiationCheatSheet(props: NegotiationCheatSheetProps) {
       </Dialog>
     </>
   );
-}
+});
