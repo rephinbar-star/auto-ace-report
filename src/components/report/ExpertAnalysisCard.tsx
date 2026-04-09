@@ -1,7 +1,6 @@
-import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { getVerdictHsl } from "@/lib/risk-colors";
-import { AlertTriangle, Info, ChevronDown } from "lucide-react";
+import { AlertTriangle, Info } from "lucide-react";
 import type { AiFindings, ActiveServiceFault, KnownFailurePattern } from "@/types/vehicle";
 
 interface ExpertAnalysisCardProps {
@@ -14,7 +13,7 @@ interface ExpertAnalysisCardProps {
 interface CombinedFinding {
   name: string;
   detail: string;
-  severity: number; // 0-5
+  severity: number;
   costLow?: number;
   costHigh?: number;
 }
@@ -60,11 +59,9 @@ function getSeverityIcon(severity: number): string {
 }
 
 export function ExpertAnalysisCard({ aiFindings, sanitizedExpertOpinion, verdict, riskScore }: ExpertAnalysisCardProps) {
-  const [expanded, setExpanded] = useState(false);
   const verdictHsl = getVerdictHsl(verdict);
   const findings = combineFindingsFromAI(aiFindings);
 
-  // Top finding for banner
   const topFinding = findings[0]?.detail ||
     (aiFindings?.activeServiceFaults?.[0]?.description) ||
     "No critical findings identified";
@@ -107,24 +104,12 @@ export function ExpertAnalysisCard({ aiFindings, sanitizedExpertOpinion, verdict
         </div>
       )}
 
-      {/* Part C — Full Expert Opinion Expander */}
+      {/* Part C — Full Expert Opinion (always visible) */}
       {sanitizedExpertOpinion && (
         <div className="px-4 md:px-5 pb-4 md:pb-5">
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="flex items-center justify-center gap-1 w-full text-[13px] text-neutral hover:text-foreground transition-colors py-2"
-          >
-            Read Full Expert Analysis
-            <ChevronDown className={cn("h-4 w-4 transition-transform duration-200", expanded && "rotate-180")} />
-          </button>
-          <div className={cn(
-            "overflow-hidden transition-all duration-300",
-            expanded ? "max-h-[2000px] opacity-100" : "max-h-0 opacity-0"
-          )}>
-            <div className="prose prose-sm max-w-none dark:prose-invert pt-2">
-              <p className="whitespace-pre-line text-foreground text-sm">{sanitizedExpertOpinion}</p>
-            </div>
-          </div>
+          <p className="whitespace-pre-line text-[14px] text-[#374151] leading-[1.6] mt-4 dark:text-foreground">
+            {sanitizedExpertOpinion}
+          </p>
         </div>
       )}
     </div>
