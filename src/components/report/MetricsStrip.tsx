@@ -8,6 +8,7 @@ interface MetricCard {
   colorToken?: string;
   tintRed?: boolean;
   scrollTarget: string;
+  historyTab?: string;
 }
 
 interface MetricsStripProps {
@@ -21,6 +22,7 @@ interface MetricsStripProps {
   resolvedRecalls: number;
   warrantyStatus: string;
   warrantyContext: string;
+  onHistoryTabChange?: (tab: string) => void;
 }
 
 const colorClasses: Record<string, string> = {
@@ -33,12 +35,12 @@ const colorClasses: Record<string, string> = {
 export function MetricsStrip({
   priceDifference, fairMarketPrivate, riskScore, riskLabel,
   healthScore, monthlyCostRange, openRecalls, resolvedRecalls,
-  warrantyStatus, warrantyContext,
+  warrantyStatus, warrantyContext, onHistoryTabChange,
 }: MetricsStripProps) {
   const priceBelow = priceDifference <= 0;
   const priceToken = priceBelow ? "risk-green" : "risk-red";
   const riskToken = riskScore != null ? getRiskColorToken(riskScore) : "neutral";
-  const healthToken = getRiskColorToken(100 - healthScore); // invert: high health = low risk color
+  const healthToken = getRiskColorToken(100 - healthScore);
   const recallToken = openRecalls > 0 ? "risk-red" : "risk-green";
   const warrantyToken = warrantyStatus === "active" ? "risk-green" : warrantyStatus === "expired" ? "risk-red" : "risk-amber";
 
@@ -63,6 +65,7 @@ export function MetricsStrip({
       context: "See condition details",
       colorToken: healthToken,
       scrollTarget: "section-history",
+      historyTab: "service",
     },
     {
       label: "MONTHLY OWNERSHIP",
@@ -78,6 +81,7 @@ export function MetricsStrip({
       colorToken: recallToken,
       tintRed: openRecalls > 0,
       scrollTarget: "section-history",
+      historyTab: "recalls",
     },
     {
       label: "WARRANTY",
@@ -85,11 +89,15 @@ export function MetricsStrip({
       context: warrantyContext,
       colorToken: warrantyToken,
       scrollTarget: "section-history",
+      historyTab: "overview",
     },
   ];
 
-  const scrollTo = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const handleClick = (card: MetricCard) => {
+    if (card.historyTab && onHistoryTabChange) {
+      onHistoryTabChange(card.historyTab);
+    }
+    document.getElementById(card.scrollTarget)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   return (
@@ -97,7 +105,7 @@ export function MetricsStrip({
       {cards.map((card) => (
         <button
           key={card.label}
-          onClick={() => scrollTo(card.scrollTarget)}
+          onClick={() => handleClick(card)}
           className={cn(
             "report-card flex-1 min-w-[130px] px-2.5 py-2 md:px-3 md:py-2.5 text-left snap-start cursor-pointer border border-transparent transition-all duration-200 hover:border-primary hover:shadow-md hover:shadow-primary/10 hover:-translate-y-0.5",
             card.tintRed && "bg-risk-red/5"

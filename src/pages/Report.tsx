@@ -343,6 +343,7 @@ export default function ReportPage() {
     isLoading: boolean;
   } | null>(null);
   const [showFinancingDialog, setShowFinancingDialog] = useState(false);
+  const [historyTab, setHistoryTab] = useState("overview");
   
   // Check if coming from comparison
   const fromComparison = searchParams.get("from") === "compare";
@@ -1429,6 +1430,7 @@ export default function ReportPage() {
             resolvedRecalls={(recallData?.count ?? 0) - (recallData?.openCount ?? 0)}
             warrantyStatus={analysis.warrantyAnalysis?.warrantyStatus || "unknown"}
             warrantyContext={warrantyContext}
+            onHistoryTabChange={setHistoryTab}
           />
 
           {/* ===== SECTION 3: EXPERT ANALYSIS ===== */}
@@ -2206,7 +2208,7 @@ export default function ReportPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <Tabs defaultValue="overview" className="w-full">
+                <Tabs value={historyTab} onValueChange={setHistoryTab} className="w-full">
                   <TabsList className="w-full mb-4 overflow-x-auto">
                     <TabsTrigger value="overview" className="flex-1">Overview</TabsTrigger>
                     <TabsTrigger value="service" className="flex-1">Service Records</TabsTrigger>
