@@ -1240,24 +1240,30 @@ export default function ReportPage() {
 
 
 
-  // Compute monthly cost range for metrics strip
-  const monthlyCostRange = (() => {
+  // Compute monthly ownership breakdown (single source of truth)
+  const monthlyOwnership = (() => {
     const effectivePrice = financing.negotiatedPrice ?? condition.askingPrice;
+    const fuelTypeVal = mpgData?.fuelType ?? null;
+    const isEV = fuelTypeVal?.toLowerCase().includes("electric") ?? false;
     const tco = calculateTCO(
       effectivePrice,
       mpgData?.mpgCombined ?? null,
-      mpgData?.fuelType ?? null,
+      fuelTypeVal,
       depreciationTable,
       { annualMiles: userAnnualMiles },
-      { make: vehicle.make, year: vehicle.year }
+      { make: vehicle.make, year: vehicle.year, model: vehicle.model }
     );
-    const tco5YearTotal = tco.totalTCO;
-    const months = 60;
-    const low = Math.round(tco5YearTotal / months);
-    const highTotal = tco.worstCaseTCO;
-    const high = Math.round(highTotal / months);
-    return low === high ? `$${low}` : `$${low}–$${high}`;
+    const monthlyPmt = liveLoanMetrics.totalCost > 0 && (financing?.loanTerm ?? 0) > 0
+      ? liveLoanMetrics.totalCost / (financing?.loanTerm ?? 1)
+      : 0;
+    const bd = calculateMonthlyOwnershipBreakdown(tco, monthlyPmt);
+    const hasFinancing = !financingSkipped && (financing?.type === "loan" || financing?.type === "lease");
+    const range = bd.totalLow === bd.totalHigh
+      ? `$${bd.totalLow.toLocaleString()}`
+      : `$${bd.totalLow.toLocaleString()}–$${bd.totalHigh.toLocaleString()}`;
+    return { breakdown: bd, range, isEV, hasFinancing };
   })();
+  const monthlyCostRange = monthlyOwnership.range;
 
   // Warranty context string
   const warrantyContext = (() => {
@@ -1442,33 +1448,12 @@ export default function ReportPage() {
           />
 
           {/* ===== SECTION 4: MONTHLY OWNERSHIP COST ===== */}
-          {(() => {
-            const effectivePrice = financing.negotiatedPrice ?? condition.askingPrice;
-            const mpgCombinedVal = mpgData?.mpgCombined ?? null;
-            const fuelTypeVal = mpgData?.fuelType ?? null;
-            const isEV = fuelTypeVal?.toLowerCase().includes("electric") ?? false;
-            const tcoForMonthly = calculateTCO(
-              effectivePrice,
-              mpgCombinedVal,
-              fuelTypeVal,
-              depreciationTable,
-              { annualMiles: userAnnualMiles },
-              { make: vehicle.make, year: vehicle.year, model: vehicle.model, stateCode: condition?.zipCode ? undefined : null }
-            );
-            const monthlyPmt = liveLoanMetrics.totalCost > 0 && (financing?.loanTerm ?? 0) > 0
-              ? liveLoanMetrics.totalCost / (financing?.loanTerm ?? 1)
-              : 0;
-            const bd = calculateMonthlyOwnershipBreakdown(tcoForMonthly, monthlyPmt);
-            const hasFinancing = !financingSkipped && (financing?.type === "loan" || financing?.type === "lease");
-            return (
-              <MonthlyOwnershipCostCard
-                monthlyCostRange={monthlyCostRange}
-                breakdown={bd}
-                isElectric={isEV}
-                hasFinancing={hasFinancing}
-              />
-            );
-          })()}
+          <MonthlyOwnershipCostCard
+            monthlyCostRange={monthlyCostRange}
+            breakdown={monthlyOwnership.breakdown}
+            isElectric={monthlyOwnership.isEV}
+            hasFinancing={monthlyOwnership.hasFinancing}
+          />
 
           {/* ===== SECTION 5: PRICING ANALYSIS ===== */}
           <div id="section-pricing" className="report-card">
