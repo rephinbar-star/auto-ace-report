@@ -135,7 +135,7 @@ export function generateCheatSheetPDF(data: CheatSheetData) {
     doc.setFontSize(6);
     doc.setTextColor(140);
     doc.text(
-      "This document is for informational purposes. Pricing estimates are based on publicly available market data.",
+      "Pricing estimates are based on publicly available market data.",
       margin,
       pageHeight - 10
     );
