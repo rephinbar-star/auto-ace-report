@@ -343,6 +343,7 @@ export default function ReportPage() {
     isLoading: boolean;
   } | null>(null);
   const [showFinancingDialog, setShowFinancingDialog] = useState(false);
+  const [historyTab, setHistoryTab] = useState("overview");
   
   // Check if coming from comparison
   const fromComparison = searchParams.get("from") === "compare";
