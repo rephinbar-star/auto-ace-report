@@ -1430,6 +1430,7 @@ export default function ReportPage() {
             resolvedRecalls={(recallData?.count ?? 0) - (recallData?.openCount ?? 0)}
             warrantyStatus={analysis.warrantyAnalysis?.warrantyStatus || "unknown"}
             warrantyContext={warrantyContext}
+            onHistoryTabChange={setHistoryTab}
           />
 
           {/* ===== SECTION 3: EXPERT ANALYSIS ===== */}
