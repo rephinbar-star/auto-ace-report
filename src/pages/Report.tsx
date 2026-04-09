@@ -74,7 +74,7 @@ import { FinancingDetailsCard } from "@/components/report/FinancingDetailsCard";
 import { RiskScoreBreakdown } from "@/components/report/RiskScoreBreakdown";
 import { ServiceHistoryTimeline } from "@/components/report/ServiceHistoryTimeline";
 import { generateReportPDF } from "@/lib/generatePDF";
-import { NegotiationCheatSheet } from "@/components/report/NegotiationCheatSheet";
+import { NegotiationCheatSheet, type NegotiationCheatSheetHandle } from "@/components/report/NegotiationCheatSheet";
 import { StickyNavBar } from "@/components/report/StickyNavBar";
 import { VerdictHero } from "@/components/report/VerdictHero";
 import { MetricsStrip } from "@/components/report/MetricsStrip";
