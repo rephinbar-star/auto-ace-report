@@ -1448,33 +1448,12 @@ export default function ReportPage() {
           />
 
           {/* ===== SECTION 4: MONTHLY OWNERSHIP COST ===== */}
-          {(() => {
-            const effectivePrice = financing.negotiatedPrice ?? condition.askingPrice;
-            const mpgCombinedVal = mpgData?.mpgCombined ?? null;
-            const fuelTypeVal = mpgData?.fuelType ?? null;
-            const isEV = fuelTypeVal?.toLowerCase().includes("electric") ?? false;
-            const tcoForMonthly = calculateTCO(
-              effectivePrice,
-              mpgCombinedVal,
-              fuelTypeVal,
-              depreciationTable,
-              { annualMiles: userAnnualMiles },
-              { make: vehicle.make, year: vehicle.year, model: vehicle.model, stateCode: condition?.zipCode ? undefined : null }
-            );
-            const monthlyPmt = liveLoanMetrics.totalCost > 0 && (financing?.loanTerm ?? 0) > 0
-              ? liveLoanMetrics.totalCost / (financing?.loanTerm ?? 1)
-              : 0;
-            const bd = calculateMonthlyOwnershipBreakdown(tcoForMonthly, monthlyPmt);
-            const hasFinancing = !financingSkipped && (financing?.type === "loan" || financing?.type === "lease");
-            return (
-              <MonthlyOwnershipCostCard
-                monthlyCostRange={monthlyCostRange}
-                breakdown={bd}
-                isElectric={isEV}
-                hasFinancing={hasFinancing}
-              />
-            );
-          })()}
+          <MonthlyOwnershipCostCard
+            monthlyCostRange={monthlyCostRange}
+            breakdown={monthlyOwnership.breakdown}
+            isElectric={monthlyOwnership.isEV}
+            hasFinancing={monthlyOwnership.hasFinancing}
+          />
 
           {/* ===== SECTION 5: PRICING ANALYSIS ===== */}
           <div id="section-pricing" className="report-card">
