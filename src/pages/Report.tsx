@@ -89,6 +89,8 @@ import { calculateUVPRS, uvprsToLegacyRiskLevel, type UVPRSResult } from "@/lib/
 import { lookupRecalls } from "@/lib/nhtsa";
 import { parseHistoryReport } from "@/lib/api/parse-history";
 import { MobileBottomBar } from "@/components/report/MobileBottomBar";
+import { MonthlyOwnershipCostCard } from "@/components/report/MonthlyOwnershipCostCard";
+import { calculateMonthlyOwnershipBreakdown } from "@/lib/tco-calculations";
 
 // Parse reliability_concerns from DB (jsonb) into typed array
 function parseReliabilityConcerns(raw: unknown): Array<{ concern: string; costLow?: number | null; costHigh?: number | null }> {
@@ -1437,7 +1439,36 @@ export default function ReportPage() {
             riskScore={uvprsResult?.totalScore}
           />
 
-          {/* ===== SECTION 4: PRICING ANALYSIS ===== */}
+          {/* ===== SECTION 4: MONTHLY OWNERSHIP COST ===== */}
+          {(() => {
+            const effectivePrice = financing.negotiatedPrice ?? condition.askingPrice;
+            const mpgCombinedVal = mpgData?.mpgCombined ?? null;
+            const fuelTypeVal = mpgData?.fuelType ?? null;
+            const isEV = fuelTypeVal?.toLowerCase().includes("electric") ?? false;
+            const tcoForMonthly = calculateTCO(
+              effectivePrice,
+              mpgCombinedVal,
+              fuelTypeVal,
+              depreciationTable,
+              { annualMiles: userAnnualMiles },
+              { make: vehicle.make, year: vehicle.year, model: vehicle.model, stateCode: condition?.zipCode ? undefined : null }
+            );
+            const monthlyPmt = liveLoanMetrics.totalCost > 0 && (financing?.loanTerm ?? 0) > 0
+              ? liveLoanMetrics.totalCost / (financing?.loanTerm ?? 1)
+              : 0;
+            const bd = calculateMonthlyOwnershipBreakdown(tcoForMonthly, monthlyPmt);
+            const hasFinancing = !financingSkipped && (financing?.type === "loan" || financing?.type === "lease");
+            return (
+              <MonthlyOwnershipCostCard
+                monthlyCostRange={monthlyCostRange}
+                breakdown={bd}
+                isElectric={isEV}
+                hasFinancing={hasFinancing}
+              />
+            );
+          })()}
+
+          {/* ===== SECTION 5: PRICING ANALYSIS ===== */}
           <div id="section-pricing" className="report-card">
             {/* "Is this a good deal?" header */}
             <div className="mb-4">
@@ -1794,13 +1825,7 @@ export default function ReportPage() {
           )}
 
           {/* ===== SECTION 6: FUEL ECONOMY & TCO (kept as-is) ===== */}
-          <div id="section-financials" className="space-y-6">
-            {/* Monthly Cost Hero */}
-            <div className="text-center py-6 report-card">
-              <p className="text-xs uppercase tracking-widest text-neutral mb-1">Estimated Monthly Ownership Cost</p>
-              <p className="text-[32px] font-bold text-foreground">{monthlyCostRange} / month</p>
-              <p className="text-[13px] text-neutral mt-1">All-in: payment + fuel/electricity + maintenance + insurance + expected repairs</p>
-            </div>
+          <div id="section-tco" className="space-y-6">
 
             <FuelEconomyCard
               mpgCity={mpgData?.mpgCity ?? null}
