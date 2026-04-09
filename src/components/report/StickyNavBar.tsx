@@ -63,6 +63,10 @@ export function StickyNavBar({ verdict, vehicleLabel, heroRef, isPaid, onCheatSh
   };
 
   const scrollTo = (id: string) => {
+    if (id === "section-overview") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
