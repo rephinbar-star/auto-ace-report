@@ -1,116 +1,84 @@
 
 
-# Mobile Responsiveness Implementation Plan
+# Implementation Plan: Expert Analysis + Monthly Ownership Cost Changes
 
 ## Summary
-Apply mobile-first responsive styles across all report sections and add a sticky bottom bar for mobile users. The breakpoint is 768px (Tailwind `md:`).
+Two targeted changes: (1) Remove collapse from Expert Analysis, making all content permanently visible. (2) Create a new standalone Monthly Ownership Cost section positioned between Expert Analysis and Pricing.
 
 ---
 
-## 1. Sticky Bottom Bar (Mobile Only)
-
-**New component: `src/components/report/MobileBottomBar.tsx`**
-
-- Fixed bottom, full width, white bg, 1px top border, h-[56px], px-4, z-[60]
-- Hidden on `md:` and above (`md:hidden`)
-- Left: Verdict badge (small pill) + "· $XXX/mo" text
-- Right: "Cheat Sheet" button (primary, small)
-- Props: `verdict`, `monthlyCostRange`, `onCheatSheetClick`, `isPaid`, `visible` (same IntersectionObserver logic as StickyNavBar — only show when hero scrolled past)
-
----
-
-## 2. VerdictHero Mobile Adjustments
-
-**File: `src/components/report/VerdictHero.tsx`**
-
-- Change `flex-col-reverse` to ensure verdict zone renders FIRST on mobile (currently `flex-col-reverse md:flex-row` which already puts right zone first — verify this is correct since the right zone contains the verdict)
-- Reduce card padding to `p-4 md:p-5` on left zone, same on right zone
-
----
-
-## 3. MetricsStrip Mobile
-
-**File: `src/components/report/MetricsStrip.tsx`**
-
-- Already has `overflow-x-auto` and `snap-x`. Add: `-webkit-overflow-scrolling: touch` via style prop and `scrollbar-hide` class
-- Ensure `min-w-[130px]` is on each card
-- Reduce card padding to `p-2.5 md:p-3`
-
----
-
-## 4. ExpertAnalysisCard Mobile
+## Change 1: Expert Analysis — Remove Collapse
 
 **File: `src/components/report/ExpertAnalysisCard.tsx`**
 
-- Findings grid: already `grid-cols-1 md:grid-cols-3` — correct
-- Reduce padding: `p-4 md:p-5`
+- Remove `useState` import and `expanded` state (line 63)
+- Remove `ChevronDown` from imports (line 4)
+- Remove the toggle button and collapse wrapper (lines 113-128)
+- Replace with plain visible text: `<p>` with classes `whitespace-pre-line text-[14px] text-[#374151] leading-[1.6]` and `mt-4`
+- Keep Part A (banner) and Part B (findings grid) untouched
+
+**File: `src/pages/Report.tsx`** (section header)
+- Find where the Expert Analysis section header says "Expert Opinion" or similar, rename to "Expert Analysis" if needed. Currently it's rendered via `ExpertAnalysisCard` with no external header — no change needed in Report.tsx for this.
 
 ---
 
-## 5. Pricing Section Mobile
+## Change 2: Monthly Ownership Cost — New Standalone Section
 
-**File: `src/pages/Report.tsx` (section-pricing area, ~line 1440)**
+**New file: `src/components/report/MonthlyOwnershipCostCard.tsx`**
 
-- Pricing sources grid: change `grid-cols-3` to `grid-cols-2 md:grid-cols-3`
-- Reduce report-card padding on mobile
+A self-contained card component that receives:
+- `monthlyCostRange: string` (already computed in Report.tsx)
+- `monthlyBreakdown` data (monthlyPayment, fuel, repairs, maintenance, insuranceLow, insuranceHigh, totalLow, totalHigh)
+- `isElectric: boolean`
+- `hasFinancing: boolean`
 
----
-
-## 6. Risk Bars Mobile
-
-**File: `src/pages/Report.tsx` (~line 2112)**
-
-- Factor name: `min-w-[120px] md:min-w-[180px]`
-- Reliability concerns: stack cost + badge below name on mobile using flex-wrap
-
----
-
-## 7. Vehicle History Tabs Mobile
-
-**File: `src/pages/Report.tsx` (~line 2184)**
-
-- TabsList: add `overflow-x-auto` for horizontal scroll if needed
-- Already using `flex-1` tabs — should be fine
-
----
-
-## 8. StickyNavBar Mobile
-
-**File: `src/components/report/StickyNavBar.tsx`**
-
-- Center nav links already have `hidden md:flex` — correct
-- Verify mobile shows only verdict badge + cheat sheet button
-
----
-
-## 9. Global Card Padding Mobile
-
-**File: `src/index.css`**
-
-- Update `.report-card` to use `padding: 16px` on mobile, `20px 24px` on `md:`
-- Add `.scrollbar-hide` utility if not already present
-
----
-
-## 10. Bottom Bar Integration in Report.tsx
+Renders:
+- Card container (white bg, border, rounded-xl, p-6)
+- Headline: uppercase label, 32px bold value, subtext
+- Row list with border-bottom dividers for each cost component
+- Total row with divider
+- Footnote text
+- Two text links below card: "View 5-year cost breakdown" (scrolls to depreciation) and "Edit financing details" (scrolls to financing)
 
 **File: `src/pages/Report.tsx`**
 
-- Import and render `MobileBottomBar` at the bottom of the page
-- Pass verdict, monthlyCostRange, cheatSheet handler, isPaid
-- Add `pb-16 md:pb-0` to main content on mobile to account for bottom bar height
+- Compute `monthlyBreakdown` at the Report level using `calculateMonthlyOwnershipBreakdown` (same calculation FuelEconomyCard does internally) — requires computing TCO first, which is already done for `monthlyCostRange`
+- Insert `<MonthlyOwnershipCostCard>` between Expert Analysis (line ~1438) and Pricing (line ~1440), with `id="section-financials"`
+- Move `id="section-financials"` from the current TCO section (line 1797) to this new section
+- Remove the "Monthly Cost Hero" block (lines 1799-1803) from the TCO section to avoid duplication
+- Remove the "Monthly Ownership Cost" breakdown block from FuelEconomyCard (lines 733-819) or keep it but hidden — cleaner to remove it since the data now lives in the dedicated section
+- Give the TCO/Depreciation section a new id (e.g., `id="section-tco"`)
+
+**File: `src/components/report/StickyNavBar.tsx`**
+
+- Update sections array to reflect new order — no change needed since "Financials" anchor just moves up in page position; the id stays `section-financials`
+
+**File: `src/components/report/FuelEconomyCard.tsx`**
+
+- Remove the "Monthly Ownership Cost" block (lines 733-819) to avoid duplication
+- Keep the "Total 5-Year Cost" and "Cost Per Mile" displays
 
 ---
 
-## Files Summary
+## Section Order After Changes
+1. Verdict Hero
+2. Metrics Strip
+3. Expert Analysis (fully visible)
+4. **Monthly Ownership Cost** (`id="section-financials"`) — NEW
+5. Pricing Analysis (`id="section-pricing"`)
+6. TCO + Depreciation (no longer has `section-financials` id)
+7. Risk Profile
+8. Vehicle History
+9. Verdict + Actions
 
-| File | Action |
+---
+
+## Files Modified
+
+| File | Change |
 |------|--------|
-| `src/components/report/MobileBottomBar.tsx` | Create |
-| `src/components/report/VerdictHero.tsx` | Minor padding adjustments |
-| `src/components/report/MetricsStrip.tsx` | Scrollbar-hide, touch scrolling, padding |
-| `src/components/report/ExpertAnalysisCard.tsx` | Padding adjustments |
-| `src/components/report/StickyNavBar.tsx` | Already mobile-ready, verify |
-| `src/pages/Report.tsx` | Risk bar min-width, pricing grid cols, bottom bar integration, bottom padding |
-| `src/index.css` | report-card responsive padding, scrollbar-hide utility |
+| `src/components/report/ExpertAnalysisCard.tsx` | Remove collapse state, button, animation; show text permanently |
+| `src/components/report/MonthlyOwnershipCostCard.tsx` | **New** — standalone monthly cost section |
+| `src/pages/Report.tsx` | Compute monthlyBreakdown, insert new section, remove duplicate monthly hero, move `section-financials` id |
+| `src/components/report/FuelEconomyCard.tsx` | Remove monthly ownership breakdown block (lines 733-819) |
 
