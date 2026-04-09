@@ -303,4 +303,4 @@ export const NegotiationCheatSheet = forwardRef<NegotiationCheatSheetHandle, Neg
       </Dialog>
     </>
   );
-}
+});
