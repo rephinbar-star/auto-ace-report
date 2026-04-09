@@ -56,7 +56,7 @@ export function MonthlyOwnershipCostCard({
           Estimated Monthly Ownership Cost
         </p>
         <p className="text-[32px] font-bold text-foreground leading-tight">
-          {monthlyCostRange} / month
+          {totalVal} / month
         </p>
         <p className="text-[13px] text-neutral mt-1">
           All-in: payment + {isElectric ? "electricity" : "fuel"} + maintenance + insurance + expected repairs
