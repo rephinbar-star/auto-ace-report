@@ -1825,13 +1825,7 @@ export default function ReportPage() {
           )}
 
           {/* ===== SECTION 6: FUEL ECONOMY & TCO (kept as-is) ===== */}
-          <div id="section-financials" className="space-y-6">
-            {/* Monthly Cost Hero */}
-            <div className="text-center py-6 report-card">
-              <p className="text-xs uppercase tracking-widest text-neutral mb-1">Estimated Monthly Ownership Cost</p>
-              <p className="text-[32px] font-bold text-foreground">{monthlyCostRange} / month</p>
-              <p className="text-[13px] text-neutral mt-1">All-in: payment + fuel/electricity + maintenance + insurance + expected repairs</p>
-            </div>
+          <div id="section-tco" className="space-y-6">
 
             <FuelEconomyCard
               mpgCity={mpgData?.mpgCity ?? null}
