@@ -2479,6 +2479,7 @@ export default function ReportPage() {
           {/* ===== SECTION 13: NEGOTIATION CHEAT SHEET ===== */}
           <div ref={cheatSheetRef}>
             <NegotiationCheatSheet
+              ref={cheatSheetHandle}
               isPaid={isPaid}
               year={vehicle.year}
               make={vehicle.make}
