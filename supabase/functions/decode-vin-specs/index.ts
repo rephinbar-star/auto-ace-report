@@ -95,9 +95,10 @@ serve(async (req) => {
       const nhtsaModel = getVal("Model");
 
       if (!nhtsaYear || !nhtsaMake || !nhtsaModel) {
+        console.warn(`NHTSA fallback also insufficient for ${vin} — returning graceful fallback`);
         return new Response(
-          JSON.stringify({ success: false, error: "VIN decode not available — external API quota exhausted and NHTSA returned insufficient data" }),
-          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ success: false, error: "VIN decode temporarily unavailable", fallback: true }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
