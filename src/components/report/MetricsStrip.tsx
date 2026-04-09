@@ -99,15 +99,15 @@ export function MetricsStrip({
           key={card.label}
           onClick={() => scrollTo(card.scrollTarget)}
           className={cn(
-            "report-card flex-1 min-w-[130px] p-2.5 md:p-3 text-left snap-start cursor-pointer hover:border-primary/30 transition-colors",
+            "report-card flex-1 min-w-[130px] px-2.5 py-2 md:px-3 md:py-2.5 text-left snap-start cursor-pointer border border-transparent transition-all duration-200 hover:border-primary hover:shadow-md hover:shadow-primary/10 hover:-translate-y-0.5",
             card.tintRed && "bg-risk-red/5"
           )}
         >
-          <p className="text-[11px] uppercase tracking-wider text-neutral font-medium">{card.label}</p>
-          <p className={cn("text-lg font-bold mt-1", colorClasses[card.colorToken || "neutral"])}>
+          <p className="text-[11px] uppercase tracking-wider text-neutral font-medium leading-tight">{card.label}</p>
+          <p className={cn("text-lg font-bold mt-0.5 leading-tight", colorClasses[card.colorToken || "neutral"])}>
             {card.value}
           </p>
-          <p className="text-[11px] text-neutral mt-0.5">{card.context}</p>
+          <p className="text-[11px] text-neutral mt-0.5 leading-tight">{card.context}</p>
         </button>
       ))}
     </div>
