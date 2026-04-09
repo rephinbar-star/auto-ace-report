@@ -299,8 +299,11 @@ export default function ReportPage() {
   const headerHistoryInputRef = useRef<HTMLInputElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
   const cheatSheetRef = useRef<HTMLDivElement>(null);
+  const cheatSheetHandle = useRef<NegotiationCheatSheetHandle>(null);
   const scrollToCheatSheet = useCallback(() => {
     cheatSheetRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Small delay to let scroll finish, then trigger the dialog
+    setTimeout(() => cheatSheetHandle.current?.trigger(), 600);
   }, []);
   const [isSaving, setIsSaving] = useState(false);
   const [excludeRepairs, setExcludeRepairs] = useState(false);
