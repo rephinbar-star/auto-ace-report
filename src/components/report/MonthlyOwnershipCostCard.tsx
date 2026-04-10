@@ -154,6 +154,15 @@ export function MonthlyOwnershipCostCard({
                           {financingExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                         </button>
                       )}
+                      {row.key === "energy" && (
+                        <button
+                          onClick={() => setEnergyExpanded(!energyExpanded)}
+                          className="text-xs font-normal text-neutral hover:text-foreground transition-colors flex items-center gap-0.5"
+                        >
+                          view details
+                          {energyExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                        </button>
+                      )}
                       {row.key === "repairs" && (
                         <TooltipProvider delayDuration={100}>
                           <Tooltip>
@@ -188,13 +197,8 @@ export function MonthlyOwnershipCostCard({
               )}
 
               {/* Expandable energy details */}
-              {row.key === "energy" && (
-                <Collapsible open={energyExpanded} onOpenChange={setEnergyExpanded}>
-                  <CollapsibleTrigger className="w-full flex items-center justify-center py-1 text-xs text-neutral hover:text-foreground transition-colors"
-                    style={{ borderBottom: "1px solid hsl(var(--border))" }}>
-                    {energyExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="py-3 space-y-3" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
+              {row.key === "energy" && energyExpanded && (
+                <div className="py-3 space-y-3" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
                     {mpgCombined && (
                       <div className="flex items-center gap-3 text-xs text-neutral">
                         {isElectric ? <Zap className="h-3.5 w-3.5 shrink-0" /> : <Fuel className="h-3.5 w-3.5 shrink-0" />}
@@ -236,8 +240,7 @@ export function MonthlyOwnershipCostCard({
                         </div>
                       </div>
                     )}
-                  </CollapsibleContent>
-                </Collapsible>
+                </div>
               )}
             </div>
           ))}
