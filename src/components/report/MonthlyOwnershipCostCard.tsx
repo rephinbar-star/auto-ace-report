@@ -13,6 +13,7 @@ interface MonthlyOwnershipCostCardProps {
   isElectric: boolean;
   hasFinancing: boolean;
   verdict?: string;
+  fuelType?: string | null;
   // Fuel economy details for expandable electricity row
   mpgCity?: number | null;
   mpgCombined?: number | null;
@@ -30,6 +31,7 @@ export function MonthlyOwnershipCostCard({
   isElectric,
   hasFinancing,
   verdict,
+  fuelType,
   mpgCity,
   mpgCombined,
   mpgHighway,
@@ -49,8 +51,10 @@ export function MonthlyOwnershipCostCard({
     rows.push({ label: "Loan Payment", value: "—", key: "loan" });
   }
 
+  const energyLabel = isElectric ? "Electricity" : fuelType?.toLowerCase() === "diesel" ? "Diesel" : "Gas";
+
   rows.push({
-    label: isElectric ? "Electricity" : "Fuel",
+    label: energyLabel,
     value: `$${breakdown.fuel.toLocaleString()}`,
     key: "energy",
   });
@@ -91,7 +95,7 @@ export function MonthlyOwnershipCostCard({
           {totalVal} / month
         </p>
         <p className="text-[13px] text-neutral mt-1">
-          All-in: payment + {isElectric ? "electricity" : "fuel"} + maintenance + insurance + expected repairs
+          All-in: payment + {energyLabel.toLowerCase()} + maintenance + insurance + expected repairs
         </p>
 
         {/* Component Breakdown */}
@@ -163,7 +167,7 @@ export function MonthlyOwnershipCostCard({
                     </p>
                     {annualFuelCost != null && (
                       <p className="text-xs text-neutral">
-                        Annual {isElectric ? "electricity" : "fuel"}: ${annualFuelCost.toLocaleString()} (~${Math.round(annualFuelCost / 12)}/mo)
+                        Annual {energyLabel.toLowerCase()}: ${annualFuelCost.toLocaleString()} (~${Math.round(annualFuelCost / 12)}/mo)
                       </p>
                     )}
                     {/* Mileage slider */}
