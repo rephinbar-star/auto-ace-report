@@ -116,10 +116,7 @@ export function MonthlyOwnershipCostCard({
         {rows.map((row, i) => (
             <div key={row.key}>
               <div
-                className={cn(
-                  "py-3 text-[14px]",
-                  row.key === "insurance" ? "space-y-1" : "flex items-center justify-between"
-                )}
+                className="flex items-center justify-between py-3 text-[14px]"
                 style={i < rows.length - 1 ? { borderBottom: row.key === "energy" && energyExpanded ? undefined : "1px solid hsl(var(--border))" } : undefined}
               >
                 {row.key === "insurance" ? (
