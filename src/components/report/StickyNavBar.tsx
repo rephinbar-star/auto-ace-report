@@ -19,6 +19,7 @@ const sections = [
   { id: "section-financials", label: "Financials" },
   { id: "section-risk", label: "Risk" },
   { id: "section-history", label: "History" },
+  { id: "section-verdict", label: "Negotiation Cheat Sheet" },
 ];
 
 export function StickyNavBar({ verdict, vehicleLabel, heroRef, isPaid, onCheatSheetClick }: StickyNavBarProps) {
