@@ -1840,30 +1840,8 @@ export default function ReportPage() {
             </Dialog>
           )}
 
-          {/* ===== SECTION 6: FUEL ECONOMY & TCO (kept as-is) ===== */}
+          {/* ===== SECTION 6: 5-YEAR TCO (Fix 7: Fuel Economy collapsed into Monthly Cost) ===== */}
           <div id="section-tco" className="space-y-6">
-
-            <FuelEconomyCard
-              mpgCity={mpgData?.mpgCity ?? null}
-              mpgHighway={mpgData?.mpgHighway ?? null}
-              mpgCombined={mpgData?.mpgCombined ?? null}
-              fuelType={mpgData?.fuelType ?? null}
-              askingPrice={financing.negotiatedPrice ?? condition.askingPrice}
-              make={vehicle.make}
-              model={vehicle.model}
-              year={vehicle.year}
-              depreciationTable={depreciationTable}
-              evRange={mpgData?.evRange ?? null}
-              onAnnualMilesChange={setUserAnnualMiles}
-              zipCode={condition?.zipCode}
-              financingCost={liveLoanMetrics.interestAmount + liveLoanMetrics.fees}
-              monthlyPayment={liveLoanMetrics.totalCost > 0 && (financing?.loanTerm ?? 0) > 0 ? liveLoanMetrics.totalCost / (financing?.loanTerm ?? 1) : 0}
-              financingType={financingSkipped ? undefined : financing?.type}
-              onZipCodeSave={async (zip) => {
-                if (!isSavedReport || !id) return;
-                await supabase.from("vehicle_reports").update({ zip_code: zip }).eq("id", id);
-              }}
-            />
 
           {/* ===== SECTION 7: DEPRECIATION CHART (kept as-is) ===== */}
           <Card className="overflow-hidden max-w-[calc(100vw-2rem)]">
