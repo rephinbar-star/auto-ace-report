@@ -31,7 +31,7 @@ export function StickyNavBar({ verdict, vehicleLabel, heroRef, isPaid, onCheatSh
     const onScroll = () => {
       const offset = 150; // header + sticky nav height
       let current = "section-overview";
-      for (const s of sections) {
+      for (const s of allTrackedSections) {
         const el = document.getElementById(s.id);
         if (el) {
           const top = el.getBoundingClientRect().top;
