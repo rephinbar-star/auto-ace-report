@@ -68,7 +68,11 @@ export function StickyNavBar({ verdict, vehicleLabel, heroRef, isPaid, onCheatSh
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const el = document.getElementById(id);
+    if (el) {
+      const top = el.getBoundingClientRect().top + window.scrollY - 130;
+      window.scrollTo({ top, behavior: "smooth" });
+    }
   };
 
   if (!visible) return null;
