@@ -1469,7 +1469,7 @@ export default function ReportPage() {
           <div id="section-pricing" className="report-card">
             {/* "Is this a good deal?" header */}
             <div className="mb-4">
-              <h2 className="text-lg font-semibold text-foreground">Is this a good deal?</h2>
+              <h2 className="text-lg font-semibold text-foreground">Asking Price vs. Market Assessment</h2>
               {(() => {
                 const hasMarketData = priceAssessment.fairMarketPrivate > 0 || (priceAssessment.fairMarketDealer ?? 0) > 0;
                 if (!hasMarketData) return <p className="text-sm text-neutral mt-1">Market pricing data is not available for this vehicle.</p>;
