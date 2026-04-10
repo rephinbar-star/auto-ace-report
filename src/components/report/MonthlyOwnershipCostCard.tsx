@@ -228,6 +228,19 @@ export function MonthlyOwnershipCostCard({
               )}
             </div>
           ))}
+        </div>
+
+        {/* Divider + Total */}
+        <div className="border-t border-border my-4" />
+        <div className="flex items-center justify-between">
+          <span className="text-[15px] font-semibold text-foreground">Total Monthly Cost</span>
+          <span className="text-[15px] font-semibold text-foreground">{totalVal}</span>
+        </div>
+
+        {/* Footnote */}
+        <p className="text-[11px] text-muted-foreground mt-2">
+          Repair estimate is probability-weighted. Range reflects expected cost (low) to maximum plausible scenario (high).
+        </p>
       </div>
 
       {/* Links below the card */}
