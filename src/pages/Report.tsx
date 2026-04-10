@@ -1443,6 +1443,7 @@ export default function ReportPage() {
           />
 
           {/* ===== SECTION 3: EXPERT ANALYSIS ===== */}
+          <div id="section-expert">
           <ExpertAnalysisCard
             aiFindings={analysis.aiFindings}
             sanitizedExpertOpinion={sanitizedExpertOpinion}
