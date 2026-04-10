@@ -13,6 +13,7 @@ interface MonthlyOwnershipCostCardProps {
   isElectric: boolean;
   hasFinancing: boolean;
   verdict?: string;
+  fuelType?: string | null;
   // Fuel economy details for expandable electricity row
   mpgCity?: number | null;
   mpgCombined?: number | null;
@@ -30,6 +31,7 @@ export function MonthlyOwnershipCostCard({
   isElectric,
   hasFinancing,
   verdict,
+  fuelType,
   mpgCity,
   mpgCombined,
   mpgHighway,
