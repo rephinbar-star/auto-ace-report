@@ -112,11 +112,11 @@ export function MonthlyOwnershipCostCard({
 
         {/* Component Breakdown */}
         <div className="mt-6">
-          {rows.map((row, i) => (
+        {rows.map((row, i) => (
             <div key={row.key}>
               <div
                 className="flex items-center justify-between py-3 text-[14px]"
-                style={i < rows.length - 1 ? { borderBottom: row.key === "energy" && energyExpanded ? undefined : "1px solid hsl(var(--border))" } : undefined}
+                style={i < rows.length - 1 ? { borderBottom: row.key === "energy" && energyExpanded ? undefined : row.key === "loan" && financingExpanded ? undefined : "1px solid hsl(var(--border))" } : undefined}
               >
                 <span className="text-foreground flex items-center gap-1.5">
                   {row.label}
@@ -152,6 +152,27 @@ export function MonthlyOwnershipCostCard({
                   )}
                 </span>
               </div>
+
+              {/* Inline financing details after loan row */}
+              {row.key === "loan" && showFinancingInline && (
+                <Collapsible open={financingExpanded} onOpenChange={setFinancingExpanded}>
+                  <CollapsibleTrigger className="w-full flex items-center justify-center py-1 text-xs text-neutral hover:text-foreground transition-colors"
+                    style={{ borderBottom: "1px solid hsl(var(--border))" }}>
+                    <span className="flex items-center gap-1">
+                      Edit financing details
+                      {financingExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                    </span>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="py-3" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
+                    <FinancingDetailsCard
+                      financing={financing!}
+                      askingPrice={askingPrice!}
+                      onChange={onFinancingChange!}
+                      embedded
+                    />
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
 
               {/* Expandable energy details */}
               {row.key === "energy" && (
@@ -207,42 +228,6 @@ export function MonthlyOwnershipCostCard({
               )}
             </div>
           ))}
-        </div>
-
-        {/* Divider + Total */}
-        <div className="border-t border-border my-4" />
-        <div className="flex items-center justify-between">
-          <span className="text-[15px] font-semibold text-foreground">Total Monthly Cost</span>
-          <span className="text-[15px] font-semibold text-foreground">{totalVal}</span>
-        </div>
-
-        {/* Footnote */}
-        <p className="text-[11px] text-muted-foreground mt-2">
-          Repair estimate is probability-weighted. Range reflects expected cost (low) to maximum plausible scenario (high).
-        </p>
-
-        {/* Inline financing details (collapsible) */}
-        {showFinancingInline && (
-          <>
-            <div className="border-t border-border my-4" />
-            <Collapsible open={financingExpanded} onOpenChange={setFinancingExpanded}>
-              <CollapsibleTrigger className="w-full flex items-center justify-between text-[13px] text-neutral hover:text-foreground transition-colors">
-                <span>Edit financing details</span>
-                <span className="flex items-center gap-1">
-                  {financingExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                </span>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-4">
-                <FinancingDetailsCard
-                  financing={financing}
-                  askingPrice={askingPrice}
-                  onChange={onFinancingChange}
-                  embedded
-                />
-              </CollapsibleContent>
-            </Collapsible>
-          </>
-        )}
       </div>
 
       {/* Links below the card */}
