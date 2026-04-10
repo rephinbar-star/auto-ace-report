@@ -103,7 +103,7 @@ export function StickyNavBar({ verdict, vehicleLabel, heroRef, isPaid, onCheatSh
                   : "text-neutral hover:text-foreground"
               )}
             >
-              Negotiation Cheat Sheet
+              Negotiation Sheet
             </button>
           )}
         </nav>
