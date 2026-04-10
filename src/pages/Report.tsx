@@ -69,7 +69,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useSubscription } from "@/hooks/useSubscription";
 import { VehicleImageGallery } from "@/components/report/VehicleImageGallery";
 import { DealerReview } from "@/components/report/DealerReview";
-import { FuelEconomyCard } from "@/components/report/FuelEconomyCard";
+// FuelEconomyCard removed — fuel economy details collapsed into MonthlyOwnershipCostCard (Fix 7)
 import { FinancingDetailsCard } from "@/components/report/FinancingDetailsCard";
 import { RiskScoreBreakdown } from "@/components/report/RiskScoreBreakdown";
 import { ServiceHistoryTimeline } from "@/components/report/ServiceHistoryTimeline";
