@@ -2520,7 +2520,7 @@ export default function ReportPage() {
                 financingType={financing?.type}
               />
               <div>
-                <Button variant="outline" className="w-full h-11 text-base">
+                <Button variant="outline" className="w-full h-11 text-base bg-orange-100 border-orange-200 text-orange-700 hover:bg-orange-300 hover:border-orange-300 hover:text-orange-900">
                   Get Personalized Insurance Quotes
                 </Button>
                 <p className="text-xs text-neutral text-center mt-1">Compare rates from 80+ insurers</p>
