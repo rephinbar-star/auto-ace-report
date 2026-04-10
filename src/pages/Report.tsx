@@ -1448,6 +1448,7 @@ export default function ReportPage() {
             sanitizedExpertOpinion={sanitizedExpertOpinion}
             verdict={displayVerdict}
             riskScore={uvprsResult?.totalScore}
+            reliabilityConcerns={riskAssessment.reliabilityConcerns}
           />
 
           {/* ===== SECTION 4: MONTHLY OWNERSHIP COST ===== */}
