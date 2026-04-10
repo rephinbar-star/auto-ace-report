@@ -1443,6 +1443,12 @@ export default function ReportPage() {
             onHistoryTabChange={setHistoryTab}
           />
 
+          {/* ===== SECTION 2B: EXPERT FINDINGS STRIP ===== */}
+          <ExpertFindingsStrip
+            aiFindings={analysis.aiFindings}
+            reliabilityConcerns={riskAssessment.reliabilityConcerns}
+          />
+
           {/* ===== SECTION 3: EXPERT ANALYSIS ===== */}
           <div id="section-expert">
           <ExpertAnalysisCard
