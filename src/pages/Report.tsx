@@ -1443,6 +1443,7 @@ export default function ReportPage() {
           />
 
           {/* ===== SECTION 3: EXPERT ANALYSIS ===== */}
+          <div id="section-expert">
           <ExpertAnalysisCard
             aiFindings={analysis.aiFindings}
             sanitizedExpertOpinion={sanitizedExpertOpinion}
@@ -1450,6 +1451,7 @@ export default function ReportPage() {
             riskScore={uvprsResult?.totalScore}
             reliabilityConcerns={riskAssessment.reliabilityConcerns}
           />
+          </div>
 
           {/* ===== SECTION 4: MONTHLY OWNERSHIP COST ===== */}
           <MonthlyOwnershipCostCard
