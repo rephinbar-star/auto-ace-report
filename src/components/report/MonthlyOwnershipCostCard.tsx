@@ -185,8 +185,6 @@ export function MonthlyOwnershipCostCard({
                     embedded
                   />
                 </div>
-                  </CollapsibleContent>
-                </Collapsible>
               )}
 
               {/* Expandable energy details */}
