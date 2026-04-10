@@ -121,6 +121,52 @@ export const VerdictHero = forwardRef<HTMLDivElement, VerdictHeroProps>(({
             {mileage.toLocaleString()} miles • ${askingPrice.toLocaleString()}
           </p>
 
+          {/* Compact specs row (Fix 8) */}
+          {(() => {
+            const specs = [
+              vehicle.bodyStyle,
+              vehicle.drivetrain,
+              vehicle.fuelType,
+              vehicle.exteriorColor,
+              vehicle.trim ? `Trim: ${vehicle.trim}` : null,
+            ].filter(Boolean);
+            if (specs.length === 0) return null;
+            return (
+              <div className="mt-1.5">
+                <p className="text-xs text-neutral">{specs.join(" · ")}</p>
+                {vehicle.installedEquipment && vehicle.installedEquipment.length > 0 && (
+                  <Collapsible>
+                    <CollapsibleTrigger className="text-xs text-neutral hover:text-foreground hover:underline transition-colors mt-1 inline-block">
+                      View standard equipment ↓
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-2">
+                      {(vehicle as any).categorizedEquipment && Object.keys((vehicle as any).categorizedEquipment).length > 0 ? (
+                        <div className="space-y-2">
+                          {Object.entries((vehicle as any).categorizedEquipment as Record<string, string[]>).sort(([a], [b]) => a.localeCompare(b)).map(([category, items]) => (
+                            <div key={category}>
+                              <p className="text-[10px] font-semibold text-neutral uppercase tracking-wider mb-1">{category}</p>
+                              <div className="flex flex-wrap gap-1">
+                                {items.map((item: string, i: number) => (
+                                  <Badge key={i} variant="secondary" className="text-[10px] font-normal py-0">{item}</Badge>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          {vehicle.installedEquipment.map((item: string, i: number) => (
+                            <Badge key={i} variant="secondary" className="text-[10px] font-normal py-0">{item}</Badge>
+                          ))}
+                        </div>
+                      )}
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
+              </div>
+            );
+          })()}
+
           {/* Action row */}
           <div className="flex flex-wrap gap-3 mt-3">
             <Button variant="outline" size="sm" className="h-9 text-[13px] border-border-card"
@@ -137,6 +183,17 @@ export const VerdictHero = forwardRef<HTMLDivElement, VerdictHeroProps>(({
               onClick={onDownloadPDF} disabled={isDownloading}>
               {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
               {isDownloading ? "Generating..." : "Download PDF"}
+            </Button>
+            <Button variant="outline" size="sm" className="h-9 text-[13px] border-border-card"
+              onClick={() => {
+                navigator.clipboard.writeText(window.location.href).then(() => {
+                  toast("Report link copied to clipboard", { duration: 2000 });
+                }).catch(() => {
+                  toast.error("Failed to copy link");
+                });
+              }}>
+              <Share2 className="mr-2 h-4 w-4" />
+              Share Report
             </Button>
           </div>
         </div>
