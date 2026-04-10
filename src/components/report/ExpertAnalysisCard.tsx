@@ -84,6 +84,10 @@ export function ExpertAnalysisCard({ aiFindings, sanitizedExpertOpinion, verdict
 
   return (
     <div className="report-card p-0 overflow-hidden">
+      {/* Heading */}
+      <div className="px-4 md:px-5 pt-5 pb-2">
+        <h3 className="text-lg font-semibold text-foreground">Expert Opinion</h3>
+      </div>
       {/* Part A — Primary Finding Banner */}
       <div className="px-4 md:px-5 py-4 flex items-start gap-3"
            style={{
