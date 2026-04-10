@@ -74,7 +74,7 @@ export function StickyNavBar({ verdict, vehicleLabel, heroRef, isPaid, onCheatSh
   if (!visible) return null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 border-b border-border-card bg-surface h-[52px] flex items-center px-4 animate-fade-in">
+    <div className="fixed top-16 left-0 right-0 z-40 border-b border-border-card bg-surface h-[52px] flex items-center px-4 animate-fade-in">
       <div className="mx-auto flex w-full max-w-[900px] items-center justify-between gap-3">
         {/* Left: verdict + vehicle */}
         <div className="flex items-center gap-2 min-w-0">
