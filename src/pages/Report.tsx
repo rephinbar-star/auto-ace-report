@@ -1751,55 +1751,50 @@ export default function ReportPage() {
             })()}
             annualMiles={userAnnualMiles}
             onAnnualMilesChange={setUserAnnualMiles}
+            financing={financing}
+            financingSkipped={financingSkipped}
+            askingPrice={condition.askingPrice}
+            onFinancingChange={async (updated: FinancingInfo) => {
+              const effectivePrice = updated.negotiatedPrice ?? condition.askingPrice;
+              const taxAmt = parseFloat(((effectivePrice || 0) * ((updated.salesTaxRate || 0) / 100)).toFixed(2));
+              const computedLoanAmount = Math.max(0, effectivePrice + (updated.fees || 0) + taxAmt - (updated.downPayment || 0));
+              const withLoanAmount = { ...updated, loanAmount: computedLoanAmount };
+              const updatedDepTable = (() => {
+                const table = analysis.depreciationTable;
+                if (!table || !computedLoanAmount || !withLoanAmount.loanTerm) return table;
+                const P = computedLoanAmount;
+                const monthlyRate = ((withLoanAmount.apr || 0) / 100) / 12;
+                const totalMonths = withLoanAmount.loanTerm;
+                const monthlyPmt = monthlyRate > 0
+                  ? P * (monthlyRate * Math.pow(1 + monthlyRate, totalMonths)) / (Math.pow(1 + monthlyRate, totalMonths) - 1)
+                  : P / totalMonths;
+                const balanceAfter = (months: number) => {
+                  if (months >= totalMonths) return 0;
+                  if (monthlyRate > 0) return P * Math.pow(1 + monthlyRate, months) - monthlyPmt * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate);
+                  return Math.max(0, P - monthlyPmt * months);
+                };
+                return table.map((row) => ({ ...row, loanBalance: Math.max(0, Math.round(balanceAfter(row.year * 12))) }));
+              })();
+              setVehicleData((prev: any) => ({ ...prev, financing: withLoanAmount }));
+              setAnalysis((prev) => prev ? { ...prev, depreciationTable: updatedDepTable } : prev);
+              if (isSavedReport && id) {
+                await supabase.from("vehicle_reports").update({
+                  financing_type: withLoanAmount.type,
+                  loan_amount: computedLoanAmount || null,
+                  loan_term: withLoanAmount.loanTerm || null,
+                  apr: withLoanAmount.apr || null,
+                  monthly_payment: withLoanAmount.monthlyPayment || null,
+                  lease_term_months: withLoanAmount.leaseTermMonths || null,
+                  residual_value: withLoanAmount.residualValue || null,
+                  negotiated_price: withLoanAmount.negotiatedPrice && withLoanAmount.negotiatedPrice !== condition.askingPrice ? withLoanAmount.negotiatedPrice : null,
+                  sales_tax_rate: withLoanAmount.salesTaxRate ?? null,
+                  fees: withLoanAmount.fees ?? null,
+                  down_payment: withLoanAmount.downPayment ?? null,
+                  depreciation_table: updatedDepTable as any,
+                }).eq("id", id);
+              }
+            }}
           />
-
-          {/* ===== SECTION 5: FINANCING (moved below pricing) ===== */}
-          {financing && !financing.skipped && (
-            <FinancingDetailsCard
-              financing={financing}
-              askingPrice={condition.askingPrice}
-              onChange={async (updated: FinancingInfo) => {
-                const effectivePrice = updated.negotiatedPrice ?? condition.askingPrice;
-                const taxAmt = parseFloat(((effectivePrice || 0) * ((updated.salesTaxRate || 0) / 100)).toFixed(2));
-                const computedLoanAmount = Math.max(0, effectivePrice + (updated.fees || 0) + taxAmt - (updated.downPayment || 0));
-                const withLoanAmount = { ...updated, loanAmount: computedLoanAmount };
-                const updatedDepTable = (() => {
-                  const table = analysis.depreciationTable;
-                  if (!table || !computedLoanAmount || !withLoanAmount.loanTerm) return table;
-                  const P = computedLoanAmount;
-                  const monthlyRate = ((withLoanAmount.apr || 0) / 100) / 12;
-                  const totalMonths = withLoanAmount.loanTerm;
-                  const monthlyPmt = monthlyRate > 0
-                    ? P * (monthlyRate * Math.pow(1 + monthlyRate, totalMonths)) / (Math.pow(1 + monthlyRate, totalMonths) - 1)
-                    : P / totalMonths;
-                  const balanceAfter = (months: number) => {
-                    if (months >= totalMonths) return 0;
-                    if (monthlyRate > 0) return P * Math.pow(1 + monthlyRate, months) - monthlyPmt * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate);
-                    return Math.max(0, P - monthlyPmt * months);
-                  };
-                  return table.map((row) => ({ ...row, loanBalance: Math.max(0, Math.round(balanceAfter(row.year * 12))) }));
-                })();
-                setVehicleData((prev: any) => ({ ...prev, financing: withLoanAmount }));
-                setAnalysis((prev) => prev ? { ...prev, depreciationTable: updatedDepTable } : prev);
-                if (isSavedReport && id) {
-                  await supabase.from("vehicle_reports").update({
-                    financing_type: withLoanAmount.type,
-                    loan_amount: computedLoanAmount || null,
-                    loan_term: withLoanAmount.loanTerm || null,
-                    apr: withLoanAmount.apr || null,
-                    monthly_payment: withLoanAmount.monthlyPayment || null,
-                    lease_term_months: withLoanAmount.leaseTermMonths || null,
-                    residual_value: withLoanAmount.residualValue || null,
-                    negotiated_price: withLoanAmount.negotiatedPrice && withLoanAmount.negotiatedPrice !== condition.askingPrice ? withLoanAmount.negotiatedPrice : null,
-                    sales_tax_rate: withLoanAmount.salesTaxRate ?? null,
-                    fees: withLoanAmount.fees ?? null,
-                    down_payment: withLoanAmount.downPayment ?? null,
-                    depreciation_table: updatedDepTable as any,
-                  }).eq("id", id);
-                }
-              }}
-            />
-          )}
 
           {/* Financing Dialog (for adding financing from cash) */}
           {financingSkipped && (
