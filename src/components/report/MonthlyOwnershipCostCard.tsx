@@ -58,9 +58,9 @@ export function MonthlyOwnershipCostCard({
   const rows: Array<{ label: string; value: string; key: string }> = [];
 
   if (hasFinancing && breakdown.monthlyPayment > 0) {
-    rows.push({ label: "Loan Payment", value: `$${breakdown.monthlyPayment.toLocaleString()}`, key: "loan" });
+    rows.push({ label: "Loan/Lease Payment", value: `$${breakdown.monthlyPayment.toLocaleString()}`, key: "loan" });
   } else {
-    rows.push({ label: "Loan Payment", value: "—", key: "loan" });
+    rows.push({ label: "Loan/Lease Payment", value: "—", key: "loan" });
   }
 
   const energyLabel = isElectric ? "Electricity" : fuelType?.toLowerCase() === "diesel" ? "Diesel" : "Gas";
@@ -150,7 +150,7 @@ export function MonthlyOwnershipCostCard({
                           onClick={() => setFinancingExpanded(!financingExpanded)}
                           className="text-xs font-normal text-neutral hover:text-foreground transition-colors flex items-center gap-0.5"
                         >
-                          · Edit
+                          edit terms
                           {financingExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                         </button>
                       )}
