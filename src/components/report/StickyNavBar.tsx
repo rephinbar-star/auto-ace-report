@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -22,38 +22,27 @@ const sections = [
 ];
 
 export function StickyNavBar({ verdict, vehicleLabel, heroRef, isPaid, onCheatSheetClick }: StickyNavBarProps) {
-  const [visible, setVisible] = useState(false);
-  const [activeSection, setActiveSection] = useState<string>("");
-  const observerRef = useRef<IntersectionObserver | null>(null);
+  const [activeSection, setActiveSection] = useState<string>("section-overview");
 
-  // Show/hide based on hero visibility
+  // Track active section using scroll position (more reliable than IntersectionObserver)
   useEffect(() => {
-    const heroEl = heroRef.current;
-    if (!heroEl) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => setVisible(!entry.isIntersecting),
-      { threshold: 0, rootMargin: "-52px 0px 0px 0px" }
-    );
-    obs.observe(heroEl);
-    return () => obs.disconnect();
-  }, [heroRef]);
-
-  // Track active section
-  useEffect(() => {
-    const els = sections.map(s => document.getElementById(s.id)).filter(Boolean) as HTMLElement[];
-    if (!els.length) return;
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            setActiveSection(entry.target.id);
+    const onScroll = () => {
+      const offset = 150; // header + sticky nav height
+      let current = "section-overview";
+      for (const s of sections) {
+        const el = document.getElementById(s.id);
+        if (el) {
+          const top = el.getBoundingClientRect().top;
+          if (top <= offset) {
+            current = s.id;
           }
         }
-      },
-      { rootMargin: "-60px 0px -60% 0px", threshold: 0.1 }
-    );
-    els.forEach(el => observerRef.current!.observe(el));
-    return () => observerRef.current?.disconnect();
+      }
+      setActiveSection(current);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll(); // initial check
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   const colorToken = getVerdictColorToken(verdict);
@@ -75,10 +64,8 @@ export function StickyNavBar({ verdict, vehicleLabel, heroRef, isPaid, onCheatSh
     }
   };
 
-  if (!visible) return null;
-
   return (
-    <div className="fixed top-16 left-0 right-0 z-40 border-b border-border-card bg-surface h-[52px] flex items-center px-4 animate-fade-in">
+    <div className="sticky top-16 left-0 right-0 z-40 border-b border-border-card bg-surface h-[52px] flex items-center px-4">
       <div className="mx-auto flex w-full max-w-[900px] items-center justify-between gap-3">
         {/* Left: verdict + vehicle */}
         <div className="flex items-center gap-2 min-w-0">
