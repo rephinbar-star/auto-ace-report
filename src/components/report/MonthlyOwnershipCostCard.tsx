@@ -242,17 +242,6 @@ export function MonthlyOwnershipCostCard({
           Repair estimate is probability-weighted. Range reflects expected cost (low) to maximum plausible scenario (high).
         </p>
       </div>
-
-      {/* Links below the card */}
-      <div className="flex items-center gap-4 mt-3">
-        <a
-          href="#section-tco"
-          onClick={handleScrollTo("section-tco")}
-          className="text-[13px] text-neutral hover:text-foreground hover:underline transition-colors"
-        >
-          View 5-year cost breakdown ↓
-        </a>
-      </div>
     </div>
   );
 }
