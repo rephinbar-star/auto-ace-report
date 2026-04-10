@@ -208,7 +208,7 @@ function DashboardContent() {
               {stats.complete >= 2 && (
                 <Button
                   variant={selectionMode ? "secondary" : canCompare ? "default" : "outline"}
-                  className={canCompare && !selectionMode ? "bg-success hover:bg-success/90 text-success-foreground" : ""}
+                  className={canCompare && !selectionMode ? "bg-[hsl(220,70%,50%)] hover:bg-[hsl(220,70%,40%)] text-white" : ""}
                   onClick={() => {
                     if (!canCompare) {
                       // Free user - redirect to pricing
