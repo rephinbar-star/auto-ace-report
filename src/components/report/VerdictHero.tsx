@@ -268,7 +268,7 @@ export const VerdictHero = forwardRef<HTMLDivElement, VerdictHeroProps>(({
             {isPaid && onCheatSheetClick && (
               <Button className="flex-1 min-w-0" style={{ backgroundColor: verdictHsl }}
                 onClick={onCheatSheetClick}>
-                Negotiation Cheat Sheet
+                Negotiation Sheet
               </Button>
             )}
             <Button variant="outline" className="flex-1 min-w-0 border-border-card bg-[hsl(30,100%,95%)] hover:bg-[hsl(30,100%,50%)] hover:text-white transition-colors">
