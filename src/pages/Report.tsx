@@ -1721,6 +1721,33 @@ export default function ReportPage() {
             )}
           </div>
 
+          {/* ===== SECTION 4: MONTHLY OWNERSHIP COST ===== */}
+          <MonthlyOwnershipCostCard
+            monthlyCostRange={monthlyCostRange}
+            breakdown={monthlyOwnership.breakdown}
+            isElectric={monthlyOwnership.isEV}
+            hasFinancing={monthlyOwnership.hasFinancing}
+            verdict={displayVerdict}
+            fuelType={mpgData?.fuelType}
+            mpgCity={mpgData?.mpgCity}
+            mpgCombined={mpgData?.mpgCombined}
+            mpgHighway={mpgData?.mpgHighway}
+            annualFuelCost={(() => {
+              const effectivePrice = financing.negotiatedPrice ?? condition.askingPrice;
+              const tco = calculateTCO(
+                effectivePrice,
+                mpgData?.mpgCombined ?? null,
+                mpgData?.fuelType ?? null,
+                depreciationTable,
+                { annualMiles: userAnnualMiles },
+                { make: vehicle.make, year: vehicle.year, model: vehicle.model }
+              );
+              return tco.annualFuelCost;
+            })()}
+            annualMiles={userAnnualMiles}
+            onAnnualMilesChange={setUserAnnualMiles}
+          />
+
           {/* ===== SECTION 5: FINANCING (moved below pricing) ===== */}
           {financing && !financing.skipped && (
             <FinancingDetailsCard
