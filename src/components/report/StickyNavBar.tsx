@@ -14,7 +14,7 @@ interface StickyNavBarProps {
 
 const sections = [
   { id: "section-overview", label: "Overview" },
-  { id: "section-expert", label: "Expert Opinion" },
+  { id: "section-expert", label: "Expert Analysis" },
   { id: "section-pricing", label: "Pricing" },
   { id: "section-financials", label: "Financials" },
   { id: "section-risk", label: "Risk" },

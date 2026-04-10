@@ -23,6 +23,8 @@ interface VerdictHeroProps {
   riskScore?: number;
   riskLabel?: string;
   aiFindings?: AiFindings;
+  openRecallCount?: number;
+  recallComponents?: string[];
   onReAnalyze: () => void;
   onUploadHistory: () => void;
   onDownloadPDF: () => void;
@@ -65,7 +67,7 @@ function CircularGauge({ score, size = 80 }: { score: number; size?: number }) {
 
 export const VerdictHero = forwardRef<HTMLDivElement, VerdictHeroProps>(({
   vehicle, mileage, askingPrice, images, verdict, riskScore, riskLabel,
-  aiFindings, onReAnalyze, onUploadHistory, onDownloadPDF,
+  aiFindings, openRecallCount, recallComponents, onReAnalyze, onUploadHistory, onDownloadPDF,
   isRefreshing, isDownloading, onCheatSheetClick, isPaid,
 }, ref) => {
   const verdictToken = getVerdictColorToken(verdict);
@@ -74,12 +76,38 @@ export const VerdictHero = forwardRef<HTMLDivElement, VerdictHeroProps>(({
 
   // Get top findings — ONLY from confirmed structured data, never inferred
   const topFindings: string[] = [];
+  const normalizeRecallComponent = (component: string) => {
+    const primary = component.split(":")[0]?.trim().toLowerCase() || component.trim().toLowerCase();
+    return primary.replace(/\s+/g, " ");
+  };
+
+  const recallHighlights = Array.from(
+    new Set(
+      (recallComponents || [])
+        .map(normalizeRecallComponent)
+        .filter((component) => component && !component.startsWith("equipment"))
+    )
+  );
+
+  const recallBullet = openRecallCount && openRecallCount > 0
+    ? `${openRecallCount} open NHTSA safety ${openRecallCount === 1 ? "recall" : "recalls"} unresolved${recallHighlights.length > 0 ? ` — including ${recallHighlights.slice(0, 2).join(" and ")} systems.` : "."}`
+    : null;
+
   // 1. Active service faults (confirmed from service records)
   if (aiFindings?.activeServiceFaults) {
     for (const f of aiFindings.activeServiceFaults) {
       if (topFindings.length >= 3) break;
-      if (f.description) topFindings.push(f.description);
+      if (
+        f.description &&
+        f.system !== "recalls" &&
+        !/generic check required|inferred for .* model year|open safety recall/i.test(f.description)
+      ) {
+        topFindings.push(f.description);
+      }
     }
+  }
+  if (recallBullet && topFindings.length < 3) {
+    topFindings.push(recallBullet);
   }
   // 2. Known failure patterns — only those flagged as already present
   if (aiFindings?.knownFailurePatterns) {

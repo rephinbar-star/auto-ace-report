@@ -12,7 +12,7 @@ export function ExpertAnalysisCard({ sanitizedExpertOpinion }: ExpertAnalysisCar
   return (
     <div className="report-card p-0 overflow-hidden">
       <div className="px-4 md:px-5 pt-5 pb-2">
-        <h3 className="text-lg font-semibold text-foreground">Expert Opinion</h3>
+        <h3 className="text-lg font-semibold text-foreground">Expert Analysis</h3>
       </div>
       {sanitizedExpertOpinion && (
         <div className="px-4 md:px-5 pb-4 md:pb-5">

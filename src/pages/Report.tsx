@@ -92,6 +92,7 @@ import { parseHistoryReport } from "@/lib/api/parse-history";
 import { MobileBottomBar } from "@/components/report/MobileBottomBar";
 import { MonthlyOwnershipCostCard } from "@/components/report/MonthlyOwnershipCostCard";
 import { calculateMonthlyOwnershipBreakdown } from "@/lib/tco-calculations";
+import { getStateFromZip } from "@/lib/sales-tax-data";
 
 // Parse reliability_concerns from DB (jsonb) into typed array
 function parseReliabilityConcerns(raw: unknown): Array<{ concern: string; costLow?: number | null; costHigh?: number | null }> {
@@ -1249,13 +1250,14 @@ export default function ReportPage() {
     const effectivePrice = financing.negotiatedPrice ?? condition.askingPrice;
     const fuelTypeVal = mpgData?.fuelType ?? null;
     const isEV = fuelTypeVal?.toLowerCase().includes("electric") ?? false;
+    const resolvedState = condition.zipCode ? getStateFromZip(condition.zipCode) : null;
     const tco = calculateTCO(
       effectivePrice,
       mpgData?.mpgCombined ?? null,
       fuelTypeVal,
       depreciationTable,
       { annualMiles: userAnnualMiles },
-      { make: vehicle.make, year: vehicle.year, model: vehicle.model }
+      { make: vehicle.make, year: vehicle.year, model: vehicle.model, stateCode: resolvedState }
     );
     const monthlyPmt = liveLoanMetrics.totalCost > 0 && (financing?.loanTerm ?? 0) > 0
       ? liveLoanMetrics.totalCost / (financing?.loanTerm ?? 1)
@@ -1268,6 +1270,7 @@ export default function ReportPage() {
     return { breakdown: bd, range, isEV, hasFinancing };
   })();
   const monthlyCostRange = monthlyOwnership.range;
+  const fmvPriceDifference = condition.askingPrice - priceAssessment.fairMarketPrivate;
 
   // Warranty context string
   const warrantyContext = (() => {
@@ -1315,6 +1318,8 @@ export default function ReportPage() {
             riskScore={uvprsResult?.totalScore}
             riskLabel={uvprsResult?.riskLabel}
             aiFindings={analysis.aiFindings}
+            openRecallCount={recallData?.openCount ?? 0}
+            recallComponents={recallData?.recalls?.map((recall) => recall.component) ?? []}
             onReAnalyze={refreshPricing}
             onUploadHistory={() => headerHistoryInputRef.current?.click()}
             onDownloadPDF={handleDownloadPDF}
@@ -1430,7 +1435,7 @@ export default function ReportPage() {
 
           {/* ===== SECTION 2: METRICS STRIP ===== */}
           <MetricsStrip
-            priceDifference={priceAssessment.priceDifference}
+            priceDifference={fmvPriceDifference}
             fairMarketPrivate={priceAssessment.fairMarketPrivate}
             riskScore={uvprsResult?.totalScore ?? null}
             riskLabel={uvprsResult?.riskLabel || "Calculating..."}
@@ -2196,14 +2201,15 @@ export default function ReportPage() {
                     <p className="text-sm text-neutral">
                       {(() => {
                         let vp = riskAssessment.valueProposition;
-                        // Fix 6: Sanitize positive framing when verdict is Avoid
-                        if (displayVerdict === "Avoid" && vp) {
-                          // Remove contradictory positive language for AVOID verdicts
-                          if (/\b(excellent value|high reward|great deal|strong value)\b/i.test(vp)) {
-                            vp = vp
-                              .replace(/\b[Hh]igh risk\s*\/\s*[Hh]igh reward\.?\s*/g, "")
-                              .replace(/\b(is an excellent value|excellent value|high reward|great deal|strong value)\b/gi, "may represent value only with verified conditions met")
-                              .trim();
+                        if (displayVerdict === "Avoid") {
+                          const batteryConcern = riskAssessment.reliabilityConcerns?.find((item) => /battery/i.test(item.concern));
+                          const batteryLow = batteryConcern?.costLow ?? 3500;
+                          const batteryHigh = batteryConcern?.costHigh ?? 12000;
+                          const dealerRetailGap = priceAssessment.fairMarketDealer
+                            ? priceAssessment.fairMarketDealer - condition.askingPrice
+                            : null;
+                          if (batteryConcern && (recallData?.openCount ?? 0) > 0) {
+                            return `The $${condition.askingPrice.toLocaleString()} asking price creates the appearance of value${dealerRetailGap != null ? ` at $${Math.round(dealerRetailGap).toLocaleString()} below dealer retail` : ""} — but this discount is almost certainly priced to reflect the battery and odometer risks. At ${condition.mileage.toLocaleString()} miles with no State of Health documentation, a $${batteryLow.toLocaleString()}–$${batteryHigh.toLocaleString()} battery replacement risk effectively exceeds the vehicle's market value. This vehicle represents genuine value only if a battery diagnostic confirms SoH above 80% AND the seller resolves all ${recallData!.openCount} open recalls — without both conditions, it is a financial liability at any price.`;
                           }
                         }
                         return vp;
