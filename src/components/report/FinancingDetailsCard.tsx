@@ -307,6 +307,24 @@ export function FinancingDetailsCard({ financing, askingPrice, onChange, embedde
             </p>
           </div>
         )}
+    </div>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2">
+          {typeIcon}
+          Financing Details
+          <Badge variant="secondary" className="ml-auto text-xs font-normal">
+            {typeLabel}
+          </Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {content}
       </CardContent>
     </Card>
   );
