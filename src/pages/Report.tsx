@@ -2532,7 +2532,7 @@ export default function ReportPage() {
                       Analyze a Different Vehicle
                     </Link>
                   </Button>
-                  <Button asChild size="lg" variant="outline" className="flex-1 border-primary text-primary hover:bg-primary hover:text-primary-foreground">
+                  <Button asChild size="lg" className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90">
                     <Link to="/dashboard">
                       Compare to Another Vehicle
                     </Link>
