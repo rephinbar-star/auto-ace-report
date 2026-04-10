@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import { HelpCircle, ChevronDown, ChevronUp, MapPin, Loader2, Zap, Fuel } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
@@ -115,42 +116,54 @@ export function MonthlyOwnershipCostCard({
         {rows.map((row, i) => (
             <div key={row.key}>
               <div
-                className="flex items-center justify-between py-3 text-[14px]"
+                className={cn(
+                  "py-3 text-[14px]",
+                  row.key === "insurance" ? "space-y-1" : "flex items-center justify-between"
+                )}
                 style={i < rows.length - 1 ? { borderBottom: row.key === "energy" && energyExpanded ? undefined : row.key === "loan" && financingExpanded ? undefined : "1px solid hsl(var(--border))" } : undefined}
               >
-                <span className="text-foreground flex items-center gap-1.5">
-                  {row.label}
-                  {row.key === "repairs" && (
-                    <TooltipProvider delayDuration={100}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <HelpCircle className="h-3.5 w-3.5 text-neutral/60 hover:text-primary cursor-help transition-colors" />
-                        </TooltipTrigger>
-                        <TooltipContent
-                          side="top"
-                          className="max-w-[220px] rounded-md bg-foreground text-background text-xs p-3"
-                        >
-                          Probability-weighted based on documented failure rates for this make/model/year. Each identified concern is multiplied by its estimated likelihood of occurring in the 5-year window. Range: expected cost (low) to maximum plausible scenario (high).
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  )}
-                </span>
-                <span className="font-semibold text-foreground flex items-center gap-2">
-                  {row.value}
-                  {row.key === "insurance" && (
-                    <a
-                      href="#"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs font-medium hover:underline transition-colors"
-                      style={{ color: verdictColor }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      Get quotes →
-                    </a>
-                  )}
-                </span>
+                {row.key === "insurance" ? (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="text-foreground">{row.label}</span>
+                      <span className="font-semibold text-foreground">{row.value}</span>
+                    </div>
+                    <div className="flex justify-end">
+                      <a
+                        href="#"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-medium hover:underline transition-colors"
+                        style={{ color: verdictColor }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Get quotes →
+                      </a>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-foreground flex items-center gap-1.5">
+                      {row.label}
+                      {row.key === "repairs" && (
+                        <TooltipProvider delayDuration={100}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <HelpCircle className="h-3.5 w-3.5 text-neutral/60 hover:text-primary cursor-help transition-colors" />
+                            </TooltipTrigger>
+                            <TooltipContent
+                              side="top"
+                              className="max-w-[220px] rounded-md bg-foreground text-background text-xs p-3"
+                            >
+                              Probability-weighted based on documented failure rates for this make/model/year. Each identified concern is multiplied by its estimated likelihood of occurring in the 5-year window. Range: expected cost (low) to maximum plausible scenario (high).
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </span>
+                    <span className="font-semibold text-foreground">{row.value}</span>
+                  </>
+                )}
               </div>
 
               {/* Inline financing details after loan row */}
