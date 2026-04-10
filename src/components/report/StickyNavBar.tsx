@@ -93,22 +93,20 @@ export function StickyNavBar({ verdict, vehicleLabel, heroRef, isPaid, onCheatSh
               {s.label}
             </button>
           ))}
+          {isPaid && (
+            <button
+              onClick={() => scrollTo("section-verdict")}
+              className={cn(
+                "px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
+                activeSection === "section-verdict"
+                  ? "bg-primary/10 text-primary"
+                  : "text-neutral hover:text-foreground"
+              )}
+            >
+              Negotiation Cheat Sheet
+            </button>
+          )}
         </nav>
-
-        {/* Right: cheat sheet */}
-        {isPaid && (
-          <button
-            onClick={() => scrollTo("section-verdict")}
-            className={cn(
-              "px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
-              activeSection === "section-verdict"
-                ? "bg-primary/10 text-primary"
-                : "text-neutral hover:text-foreground"
-            )}
-          >
-            Negotiation Cheat Sheet
-          </button>
-        )}
       </div>
     </div>
   );
