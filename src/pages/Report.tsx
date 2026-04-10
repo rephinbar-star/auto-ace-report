@@ -1451,6 +1451,7 @@ export default function ReportPage() {
             riskScore={uvprsResult?.totalScore}
             reliabilityConcerns={riskAssessment.reliabilityConcerns}
           />
+          </div>
 
           {/* ===== SECTION 4: MONTHLY OWNERSHIP COST ===== */}
           <MonthlyOwnershipCostCard
