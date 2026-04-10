@@ -5,7 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { FinancingDetailsCard } from "./FinancingDetailsCard";
 import type { MonthlyOwnershipBreakdown } from "@/lib/tco-calculations";
+import type { FinancingInfo } from "@/types/vehicle";
 
 interface MonthlyOwnershipCostCardProps {
   monthlyCostRange: string;
@@ -14,7 +16,6 @@ interface MonthlyOwnershipCostCardProps {
   hasFinancing: boolean;
   verdict?: string;
   fuelType?: string | null;
-  // Fuel economy details for expandable electricity row
   mpgCity?: number | null;
   mpgCombined?: number | null;
   mpgHighway?: number | null;
@@ -23,6 +24,11 @@ interface MonthlyOwnershipCostCardProps {
   electricityPrice?: number;
   localGasLocation?: string;
   onAnnualMilesChange?: (miles: number) => void;
+  // Inline financing props
+  financing?: FinancingInfo | null;
+  financingSkipped?: boolean;
+  askingPrice?: number;
+  onFinancingChange?: (updated: FinancingInfo) => void;
 }
 
 export function MonthlyOwnershipCostCard({
@@ -40,8 +46,13 @@ export function MonthlyOwnershipCostCard({
   electricityPrice,
   localGasLocation,
   onAnnualMilesChange,
+  financing,
+  financingSkipped,
+  askingPrice,
+  onFinancingChange,
 }: MonthlyOwnershipCostCardProps) {
   const [energyExpanded, setEnergyExpanded] = useState(false);
+  const [financingExpanded, setFinancingExpanded] = useState(false);
 
   const rows: Array<{ label: string; value: string; key: string }> = [];
 
@@ -81,8 +92,9 @@ export function MonthlyOwnershipCostCard({
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  // Verdict color for insurance CTA
   const verdictColor = verdict === "Avoid" ? "#DC2626" : verdict === "Caution" ? "#D97706" : "#059669";
+
+  const showFinancingInline = financing && !financingSkipped && askingPrice != null && onFinancingChange;
 
   return (
     <div>
@@ -108,7 +120,6 @@ export function MonthlyOwnershipCostCard({
               >
                 <span className="text-foreground flex items-center gap-1.5">
                   {row.label}
-                  {/* Fix 9B: Tooltip on Expected Repairs */}
                   {row.key === "repairs" && (
                     <TooltipProvider delayDuration={100}>
                       <Tooltip>
@@ -127,7 +138,6 @@ export function MonthlyOwnershipCostCard({
                 </span>
                 <span className="font-semibold text-foreground flex items-center gap-2">
                   {row.value}
-                  {/* Fix 9C: "Get quotes →" inline CTA on Insurance row */}
                   {row.key === "insurance" && (
                     <a
                       href="#"
@@ -143,7 +153,7 @@ export function MonthlyOwnershipCostCard({
                 </span>
               </div>
 
-              {/* Fix 7: Expandable energy details */}
+              {/* Expandable energy details */}
               {row.key === "energy" && (
                 <Collapsible open={energyExpanded} onOpenChange={setEnergyExpanded}>
                   <CollapsibleTrigger className="w-full flex items-center justify-center py-1 text-xs text-neutral hover:text-foreground transition-colors"
@@ -151,7 +161,6 @@ export function MonthlyOwnershipCostCard({
                     {energyExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                   </CollapsibleTrigger>
                   <CollapsibleContent className="py-3 space-y-3" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
-                    {/* MPGe display */}
                     {mpgCombined && (
                       <div className="flex items-center gap-3 text-xs text-neutral">
                         {isElectric ? <Zap className="h-3.5 w-3.5 shrink-0" /> : <Fuel className="h-3.5 w-3.5 shrink-0" />}
@@ -170,7 +179,6 @@ export function MonthlyOwnershipCostCard({
                         Annual {energyLabel.toLowerCase()}: ${annualFuelCost.toLocaleString()} (~${Math.round(annualFuelCost / 12)}/mo)
                       </p>
                     )}
-                    {/* Mileage slider */}
                     {onAnnualMilesChange && (
                       <div className="space-y-2 pt-1">
                         <div className="flex items-center justify-between">
@@ -212,6 +220,29 @@ export function MonthlyOwnershipCostCard({
         <p className="text-[11px] text-muted-foreground mt-2">
           Repair estimate is probability-weighted. Range reflects expected cost (low) to maximum plausible scenario (high).
         </p>
+
+        {/* Inline financing details (collapsible) */}
+        {showFinancingInline && (
+          <>
+            <div className="border-t border-border my-4" />
+            <Collapsible open={financingExpanded} onOpenChange={setFinancingExpanded}>
+              <CollapsibleTrigger className="w-full flex items-center justify-between text-[13px] text-neutral hover:text-foreground transition-colors">
+                <span>Edit financing details</span>
+                <span className="flex items-center gap-1">
+                  {financingExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                </span>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-4">
+                <FinancingDetailsCard
+                  financing={financing}
+                  askingPrice={askingPrice}
+                  onChange={onFinancingChange}
+                  embedded
+                />
+              </CollapsibleContent>
+            </Collapsible>
+          </>
+        )}
       </div>
 
       {/* Links below the card */}
@@ -222,13 +253,6 @@ export function MonthlyOwnershipCostCard({
           className="text-[13px] text-neutral hover:text-foreground hover:underline transition-colors"
         >
           View 5-year cost breakdown ↓
-        </a>
-        <a
-          href="#section-financing"
-          onClick={handleScrollTo("section-financing")}
-          className="text-[13px] text-neutral hover:text-foreground hover:underline transition-colors"
-        >
-          Edit financing details ↓
         </a>
       </div>
     </div>
