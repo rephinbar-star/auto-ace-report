@@ -116,30 +116,25 @@ export function MonthlyOwnershipCostCard({
         {rows.map((row, i) => (
             <div key={row.key}>
               <div
-                className={cn(
-                  "py-3 text-[14px]",
-                  row.key === "insurance" ? "space-y-1" : "flex items-center justify-between"
-                )}
+                className="flex items-center justify-between py-3 text-[14px]"
                 style={i < rows.length - 1 ? { borderBottom: row.key === "energy" && energyExpanded ? undefined : "1px solid hsl(var(--border))" } : undefined}
               >
                 {row.key === "insurance" ? (
                   <>
-                    <div className="flex items-center justify-between">
-                      <span className="text-foreground">{row.label}</span>
-                      <span className="font-semibold text-foreground">{row.value}</span>
-                    </div>
-                    <div className="flex justify-end">
+                    <span className="text-foreground flex items-center gap-1.5">
+                      {row.label}
                       <a
                         href="#"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs font-medium hover:underline transition-colors"
+                        className="text-xs font-normal hover:underline transition-colors"
                         style={{ color: verdictColor }}
                         onClick={(e) => e.stopPropagation()}
                       >
                         Get quotes →
                       </a>
-                    </div>
+                    </span>
+                    <span className="font-semibold text-foreground">{row.value}</span>
                   </>
                 ) : (
                   <>
