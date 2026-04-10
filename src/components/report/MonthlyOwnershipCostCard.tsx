@@ -51,8 +51,10 @@ export function MonthlyOwnershipCostCard({
     rows.push({ label: "Loan Payment", value: "—", key: "loan" });
   }
 
+  const energyLabel = isElectric ? "Electricity" : fuelType?.toLowerCase() === "diesel" ? "Diesel" : "Gas";
+
   rows.push({
-    label: isElectric ? "Electricity" : "Fuel",
+    label: energyLabel,
     value: `$${breakdown.fuel.toLocaleString()}`,
     key: "energy",
   });
