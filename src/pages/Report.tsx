@@ -2526,11 +2526,18 @@ export default function ReportPage() {
                 <p className="text-xs text-neutral text-center mt-1">Compare rates from 80+ insurers</p>
               </div>
               <div className="text-center pt-4">
-                <Button asChild size="lg" className="w-full">
-                  <Link to="/analyze">
-                    Analyze or Compare to Another Vehicle
-                  </Link>
-                </Button>
+                <div className="flex flex-col sm:flex-row gap-3 w-full">
+                  <Button asChild size="lg" className="flex-1">
+                    <Link to="/analyze">
+                      Analyze a Different Vehicle
+                    </Link>
+                  </Button>
+                  <Button asChild size="lg" variant="outline" className="flex-1 border-primary text-primary hover:bg-primary hover:text-primary-foreground">
+                    <Link to="/dashboard">
+                      Compare to Another Vehicle
+                    </Link>
+                  </Button>
+                </div>
               </div>
             </div>
           </Card>
