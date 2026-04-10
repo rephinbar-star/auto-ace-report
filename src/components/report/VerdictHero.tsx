@@ -1,13 +1,21 @@
-import { forwardRef } from "react";
+import { forwardRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, Upload, Loader2, Download } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { RefreshCw, Upload, Loader2, Download, Share2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getVerdictColorToken, getRiskColorToken, getRiskHsl, getVerdictHsl } from "@/lib/risk-colors";
+import { toast } from "sonner";
 import type { AiFindings } from "@/types/vehicle";
 
 interface VerdictHeroProps {
-  vehicle: { year: number; make: string; model: string; trim?: string; vin?: string };
+  vehicle: {
+    year: number; make: string; model: string; trim?: string; vin?: string;
+    bodyStyle?: string; drivetrain?: string; fuelType?: string; exteriorColor?: string;
+    installedEquipment?: string[];
+    categorizedEquipment?: Record<string, string[]>;
+    optionPackages?: (string | { name: string })[];
+  };
   mileage: number;
   askingPrice: number;
   images?: string[];
@@ -64,18 +72,23 @@ export const VerdictHero = forwardRef<HTMLDivElement, VerdictHeroProps>(({
   const verdictHsl = getVerdictHsl(verdict);
   const vehicleTitle = `${vehicle.year} ${vehicle.make} ${vehicle.model}${vehicle.trim ? ` ${vehicle.trim}` : ""}`;
 
-  // Get top 3 findings
+  // Get top findings — ONLY from confirmed structured data, never inferred
   const topFindings: string[] = [];
+  // 1. Active service faults (confirmed from service records)
   if (aiFindings?.activeServiceFaults) {
-    for (const f of aiFindings.activeServiceFaults.slice(0, 2)) {
-      topFindings.push(f.description || f.system);
+    for (const f of aiFindings.activeServiceFaults) {
+      if (topFindings.length >= 3) break;
+      if (f.description) topFindings.push(f.description);
     }
   }
+  // 2. Known failure patterns — only those flagged as already present
   if (aiFindings?.knownFailurePatterns) {
-    for (const p of aiFindings.knownFailurePatterns.slice(0, 3 - topFindings.length)) {
-      topFindings.push(p.description || p.issue);
+    for (const p of aiFindings.knownFailurePatterns) {
+      if (topFindings.length >= 3) break;
+      if (p.alreadyPresent && p.description) topFindings.push(p.description);
     }
   }
+  // Never fabricate findings to fill 3 bullets — show only what exists
 
   const badgeClasses: Record<string, string> = {
     "risk-green": "bg-risk-green text-white",
