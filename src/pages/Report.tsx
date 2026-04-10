@@ -1460,6 +1460,7 @@ export default function ReportPage() {
             isElectric={monthlyOwnership.isEV}
             hasFinancing={monthlyOwnership.hasFinancing}
             verdict={displayVerdict}
+            fuelType={report.fuel_type}
             mpgCity={mpgData?.mpgCity}
             mpgCombined={mpgData?.mpgCombined}
             mpgHighway={mpgData?.mpgHighway}
