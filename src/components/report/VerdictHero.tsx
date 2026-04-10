@@ -266,8 +266,16 @@ export const VerdictHero = forwardRef<HTMLDivElement, VerdictHeroProps>(({
           {/* CTA row */}
           <div className="flex flex-wrap gap-2 mt-3">
             {isPaid && onCheatSheetClick && (
-              <Button className="flex-1 min-w-0" style={{ backgroundColor: verdictHsl }}
-                onClick={onCheatSheetClick}>
+              <Button
+                className={cn(
+                  "flex-1 min-w-0 transition-colors",
+                  verdict.toLowerCase() === "avoid"
+                    ? "text-white"
+                    : "bg-[hsl(140,60%,92%)] text-[hsl(140,60%,25%)] hover:bg-[hsl(140,60%,40%)] hover:text-white"
+                )}
+                style={verdict.toLowerCase() === "avoid" ? { backgroundColor: verdictHsl } : undefined}
+                onClick={onCheatSheetClick}
+              >
                 Negotiation Sheet
               </Button>
             )}
