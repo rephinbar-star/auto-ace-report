@@ -2428,7 +2428,7 @@ export default function ReportPage() {
 
 
           {/* ===== VERDICT DECISION GATE ===== */}
-          <Card className="overflow-hidden">
+          <Card id="section-verdict" className="overflow-hidden">
             {/* Top band — verdict repeat */}
             <div className={cn("p-5 border-b-2", {
               "bg-risk-red/10 border-risk-red": displayVerdict === "Avoid",
