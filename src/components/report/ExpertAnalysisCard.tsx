@@ -8,6 +8,7 @@ interface ExpertAnalysisCardProps {
   sanitizedExpertOpinion: string;
   verdict: string;
   riskScore?: number;
+  reliabilityConcerns?: Array<{ concern: string; costLow?: number | null; costHigh?: number | null }>;
 }
 
 interface CombinedFinding {
@@ -18,28 +19,41 @@ interface CombinedFinding {
   costHigh?: number;
 }
 
-function combineFindingsFromAI(aiFindings?: AiFindings): CombinedFinding[] {
+function combineFindingsFromAI(
+  aiFindings?: AiFindings,
+  reliabilityConcerns?: Array<{ concern: string; costLow?: number | null; costHigh?: number | null }>
+): CombinedFinding[] {
   const results: CombinedFinding[] = [];
   if (aiFindings?.activeServiceFaults) {
     for (const f of aiFindings.activeServiceFaults) {
+      // Look up cost from reliabilityConcerns for matching concern
+      const matchingConcern = reliabilityConcerns?.find(rc =>
+        rc.concern.toLowerCase().includes(f.system.toLowerCase()) ||
+        f.description?.toLowerCase().includes(rc.concern.toLowerCase().slice(0, 20))
+      );
       results.push({
         name: f.system,
         detail: f.description || `${f.system} fault detected`,
         severity: f.severityClass ?? 3,
-        costLow: f.estimatedCostPerIncident,
-        costHigh: f.estimatedCostPerIncident ? Math.round(f.estimatedCostPerIncident * 1.5) : undefined,
+        costLow: matchingConcern?.costLow ?? f.estimatedCostPerIncident ?? undefined,
+        costHigh: matchingConcern?.costHigh ?? (f.estimatedCostPerIncident ? Math.round(f.estimatedCostPerIncident * 1.5) : undefined),
       });
     }
   }
   if (aiFindings?.knownFailurePatterns) {
     for (const p of aiFindings.knownFailurePatterns) {
       const sev = p.probabilityTier === "high" ? 4 : p.probabilityTier === "medium" ? 3 : 1;
+      // Look up cost from reliabilityConcerns for matching concern (Fix 4)
+      const matchingConcern = reliabilityConcerns?.find(rc =>
+        rc.concern.toLowerCase().includes(p.issue.toLowerCase().slice(0, 15)) ||
+        p.issue.toLowerCase().includes(rc.concern.toLowerCase().slice(0, 15))
+      );
       results.push({
         name: p.issue,
         detail: p.description || p.issue,
         severity: sev,
-        costLow: p.probabilityPercent > 50 ? 1500 : 800,
-        costHigh: p.probabilityPercent > 50 ? 4000 : 2000,
+        costLow: matchingConcern?.costLow ?? (p.probabilityPercent > 50 ? 1500 : 800),
+        costHigh: matchingConcern?.costHigh ?? (p.probabilityPercent > 50 ? 4000 : 2000),
       });
     }
   }
@@ -58,9 +72,9 @@ function getSeverityIcon(severity: number): string {
   return "🟢";
 }
 
-export function ExpertAnalysisCard({ aiFindings, sanitizedExpertOpinion, verdict, riskScore }: ExpertAnalysisCardProps) {
+export function ExpertAnalysisCard({ aiFindings, sanitizedExpertOpinion, verdict, riskScore, reliabilityConcerns }: ExpertAnalysisCardProps) {
   const verdictHsl = getVerdictHsl(verdict);
-  const findings = combineFindingsFromAI(aiFindings);
+  const findings = combineFindingsFromAI(aiFindings, reliabilityConcerns);
 
   const topFinding = findings[0]?.detail ||
     (aiFindings?.activeServiceFaults?.[0]?.description) ||

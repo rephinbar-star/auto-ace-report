@@ -1,13 +1,21 @@
-import { forwardRef } from "react";
+import { forwardRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, Upload, Loader2, Download } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { RefreshCw, Upload, Loader2, Download, Share2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getVerdictColorToken, getRiskColorToken, getRiskHsl, getVerdictHsl } from "@/lib/risk-colors";
+import { toast } from "sonner";
 import type { AiFindings } from "@/types/vehicle";
 
 interface VerdictHeroProps {
-  vehicle: { year: number; make: string; model: string; trim?: string; vin?: string };
+  vehicle: {
+    year: number; make: string; model: string; trim?: string; vin?: string;
+    bodyStyle?: string; drivetrain?: string; fuelType?: string; exteriorColor?: string;
+    installedEquipment?: string[];
+    categorizedEquipment?: Record<string, string[]>;
+    optionPackages?: (string | { name: string })[];
+  };
   mileage: number;
   askingPrice: number;
   images?: string[];
@@ -64,18 +72,23 @@ export const VerdictHero = forwardRef<HTMLDivElement, VerdictHeroProps>(({
   const verdictHsl = getVerdictHsl(verdict);
   const vehicleTitle = `${vehicle.year} ${vehicle.make} ${vehicle.model}${vehicle.trim ? ` ${vehicle.trim}` : ""}`;
 
-  // Get top 3 findings
+  // Get top findings — ONLY from confirmed structured data, never inferred
   const topFindings: string[] = [];
+  // 1. Active service faults (confirmed from service records)
   if (aiFindings?.activeServiceFaults) {
-    for (const f of aiFindings.activeServiceFaults.slice(0, 2)) {
-      topFindings.push(f.description || f.system);
+    for (const f of aiFindings.activeServiceFaults) {
+      if (topFindings.length >= 3) break;
+      if (f.description) topFindings.push(f.description);
     }
   }
+  // 2. Known failure patterns — only those flagged as already present
   if (aiFindings?.knownFailurePatterns) {
-    for (const p of aiFindings.knownFailurePatterns.slice(0, 3 - topFindings.length)) {
-      topFindings.push(p.description || p.issue);
+    for (const p of aiFindings.knownFailurePatterns) {
+      if (topFindings.length >= 3) break;
+      if (p.alreadyPresent && p.description) topFindings.push(p.description);
     }
   }
+  // Never fabricate findings to fill 3 bullets — show only what exists
 
   const badgeClasses: Record<string, string> = {
     "risk-green": "bg-risk-green text-white",
@@ -108,6 +121,52 @@ export const VerdictHero = forwardRef<HTMLDivElement, VerdictHeroProps>(({
             {mileage.toLocaleString()} miles • ${askingPrice.toLocaleString()}
           </p>
 
+          {/* Compact specs row (Fix 8) */}
+          {(() => {
+            const specs = [
+              vehicle.bodyStyle,
+              vehicle.drivetrain,
+              vehicle.fuelType,
+              vehicle.exteriorColor,
+              vehicle.trim ? `Trim: ${vehicle.trim}` : null,
+            ].filter(Boolean);
+            if (specs.length === 0) return null;
+            return (
+              <div className="mt-1.5">
+                <p className="text-xs text-neutral">{specs.join(" · ")}</p>
+                {vehicle.installedEquipment && vehicle.installedEquipment.length > 0 && (
+                  <Collapsible>
+                    <CollapsibleTrigger className="text-xs text-neutral hover:text-foreground hover:underline transition-colors mt-1 inline-block">
+                      View standard equipment ↓
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-2">
+                      {(vehicle as any).categorizedEquipment && Object.keys((vehicle as any).categorizedEquipment).length > 0 ? (
+                        <div className="space-y-2">
+                          {Object.entries((vehicle as any).categorizedEquipment as Record<string, string[]>).sort(([a], [b]) => a.localeCompare(b)).map(([category, items]) => (
+                            <div key={category}>
+                              <p className="text-[10px] font-semibold text-neutral uppercase tracking-wider mb-1">{category}</p>
+                              <div className="flex flex-wrap gap-1">
+                                {items.map((item: string, i: number) => (
+                                  <Badge key={i} variant="secondary" className="text-[10px] font-normal py-0">{item}</Badge>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          {vehicle.installedEquipment.map((item: string, i: number) => (
+                            <Badge key={i} variant="secondary" className="text-[10px] font-normal py-0">{item}</Badge>
+                          ))}
+                        </div>
+                      )}
+                    </CollapsibleContent>
+                  </Collapsible>
+                )}
+              </div>
+            );
+          })()}
+
           {/* Action row */}
           <div className="flex flex-wrap gap-3 mt-3">
             <Button variant="outline" size="sm" className="h-9 text-[13px] border-border-card"
@@ -124,6 +183,17 @@ export const VerdictHero = forwardRef<HTMLDivElement, VerdictHeroProps>(({
               onClick={onDownloadPDF} disabled={isDownloading}>
               {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
               {isDownloading ? "Generating..." : "Download PDF"}
+            </Button>
+            <Button variant="outline" size="sm" className="h-9 text-[13px] border-border-card"
+              onClick={() => {
+                navigator.clipboard.writeText(window.location.href).then(() => {
+                  toast("Report link copied to clipboard", { duration: 2000 });
+                }).catch(() => {
+                  toast.error("Failed to copy link");
+                });
+              }}>
+              <Share2 className="mr-2 h-4 w-4" />
+              Share Report
             </Button>
           </div>
         </div>

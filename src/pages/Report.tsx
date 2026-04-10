@@ -69,7 +69,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useSubscription } from "@/hooks/useSubscription";
 import { VehicleImageGallery } from "@/components/report/VehicleImageGallery";
 import { DealerReview } from "@/components/report/DealerReview";
-import { FuelEconomyCard } from "@/components/report/FuelEconomyCard";
+// FuelEconomyCard removed — fuel economy details collapsed into MonthlyOwnershipCostCard (Fix 7)
 import { FinancingDetailsCard } from "@/components/report/FinancingDetailsCard";
 import { RiskScoreBreakdown } from "@/components/report/RiskScoreBreakdown";
 import { ServiceHistoryTimeline } from "@/components/report/ServiceHistoryTimeline";
@@ -1448,6 +1448,7 @@ export default function ReportPage() {
             sanitizedExpertOpinion={sanitizedExpertOpinion}
             verdict={displayVerdict}
             riskScore={uvprsResult?.totalScore}
+            reliabilityConcerns={riskAssessment.reliabilityConcerns}
           />
 
           {/* ===== SECTION 4: MONTHLY OWNERSHIP COST ===== */}
@@ -1456,6 +1457,24 @@ export default function ReportPage() {
             breakdown={monthlyOwnership.breakdown}
             isElectric={monthlyOwnership.isEV}
             hasFinancing={monthlyOwnership.hasFinancing}
+            verdict={displayVerdict}
+            mpgCity={mpgData?.mpgCity}
+            mpgCombined={mpgData?.mpgCombined}
+            mpgHighway={mpgData?.mpgHighway}
+            annualFuelCost={(() => {
+              const effectivePrice = financing.negotiatedPrice ?? condition.askingPrice;
+              const tco = calculateTCO(
+                effectivePrice,
+                mpgData?.mpgCombined ?? null,
+                mpgData?.fuelType ?? null,
+                depreciationTable,
+                { annualMiles: userAnnualMiles },
+                { make: vehicle.make, year: vehicle.year, model: vehicle.model }
+              );
+              return tco.annualFuelCost;
+            })()}
+            annualMiles={userAnnualMiles}
+            onAnnualMilesChange={setUserAnnualMiles}
           />
 
           {/* ===== SECTION 5: PRICING ANALYSIS ===== */}
@@ -1466,10 +1485,17 @@ export default function ReportPage() {
               {(() => {
                 const hasMarketData = priceAssessment.fairMarketPrivate > 0 || (priceAssessment.fairMarketDealer ?? 0) > 0;
                 if (!hasMarketData) return <p className="text-sm text-neutral mt-1">Market pricing data is not available for this vehicle.</p>;
-                const below = priceAssessment.priceDifference <= 0;
+                // Fix 2: Use seller-type-appropriate benchmark
+                const isDealer = condition.sellerType === "dealer";
+                const benchmark = isDealer
+                  ? (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate)
+                  : priceAssessment.fairMarketPrivate;
+                const benchmarkLabel = isDealer ? "dealer retail" : "fair market value";
+                const diff = condition.askingPrice - benchmark;
+                const below = diff <= 0;
                 return (
                   <p className={cn("text-sm font-medium mt-1", below ? "text-risk-green" : "text-risk-red")}>
-                    {below ? "Yes" : "No"} — priced ${Math.abs(priceAssessment.priceDifference).toLocaleString()} {below ? "below" : "above"} fair market value
+                    {below ? "Yes" : "No"} — priced ${Math.abs(diff).toLocaleString()} {below ? "below" : "above"} {benchmarkLabel}
                   </p>
                 );
               })()}
@@ -1814,30 +1840,8 @@ export default function ReportPage() {
             </Dialog>
           )}
 
-          {/* ===== SECTION 6: FUEL ECONOMY & TCO (kept as-is) ===== */}
+          {/* ===== SECTION 6: 5-YEAR TCO (Fix 7: Fuel Economy collapsed into Monthly Cost) ===== */}
           <div id="section-tco" className="space-y-6">
-
-            <FuelEconomyCard
-              mpgCity={mpgData?.mpgCity ?? null}
-              mpgHighway={mpgData?.mpgHighway ?? null}
-              mpgCombined={mpgData?.mpgCombined ?? null}
-              fuelType={mpgData?.fuelType ?? null}
-              askingPrice={financing.negotiatedPrice ?? condition.askingPrice}
-              make={vehicle.make}
-              model={vehicle.model}
-              year={vehicle.year}
-              depreciationTable={depreciationTable}
-              evRange={mpgData?.evRange ?? null}
-              onAnnualMilesChange={setUserAnnualMiles}
-              zipCode={condition?.zipCode}
-              financingCost={liveLoanMetrics.interestAmount + liveLoanMetrics.fees}
-              monthlyPayment={liveLoanMetrics.totalCost > 0 && (financing?.loanTerm ?? 0) > 0 ? liveLoanMetrics.totalCost / (financing?.loanTerm ?? 1) : 0}
-              financingType={financingSkipped ? undefined : financing?.type}
-              onZipCodeSave={async (zip) => {
-                if (!isSavedReport || !id) return;
-                await supabase.from("vehicle_reports").update({ zip_code: zip }).eq("id", id);
-              }}
-            />
 
           {/* ===== SECTION 7: DEPRECIATION CHART (kept as-is) ===== */}
           <Card className="overflow-hidden max-w-[calc(100vw-2rem)]">
@@ -2179,7 +2183,22 @@ export default function ReportPage() {
                   </div>
                   <div className="rounded-lg bg-muted p-4">
                     <p className="text-sm font-medium">Value Proposition</p>
-                    <p className="text-sm text-neutral">{riskAssessment.valueProposition}</p>
+                    <p className="text-sm text-neutral">
+                      {(() => {
+                        let vp = riskAssessment.valueProposition;
+                        // Fix 6: Sanitize positive framing when verdict is Avoid
+                        if (displayVerdict === "Avoid" && vp) {
+                          // Remove contradictory positive language for AVOID verdicts
+                          if (/\b(excellent value|high reward|great deal|strong value)\b/i.test(vp)) {
+                            vp = vp
+                              .replace(/\b[Hh]igh risk\s*\/\s*[Hh]igh reward\.?\s*/g, "")
+                              .replace(/\b(is an excellent value|excellent value|high reward|great deal|strong value)\b/gi, "may represent value only with verified conditions met")
+                              .trim();
+                          }
+                        }
+                        return vp;
+                      })()}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -2375,88 +2394,7 @@ export default function ReportPage() {
             </Card>
           </div>
 
-          {/* ===== SECTION 10: VEHICLE SPECIFICATIONS ===== */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5 text-primary" />
-                Vehicle Specifications
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-5 pb-5 pt-0">
-              <div className="flex flex-col gap-4">
-                {vehicle.msrp && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <DollarSign className="h-4 w-4 text-primary" />
-                    <span className="text-neutral">Original MSRP:</span>
-                    <span className="font-semibold">${Number(vehicle.msrp).toLocaleString()}</span>
-                  </div>
-                )}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {(vehicle.engine || vehicle.engineSize) && (
-                    <div className="flex items-center gap-2 text-sm"><Settings className="h-4 w-4 text-neutral" /><span>{vehicle.engine || vehicle.engineSize}</span></div>
-                  )}
-                  {vehicle.engineHp && <div className="text-sm"><span className="text-neutral">HP:</span> <span className="font-medium">{vehicle.engineHp}</span></div>}
-                  {vehicle.engineTorque && <div className="text-sm"><span className="text-neutral">Torque:</span> <span className="font-medium">{vehicle.engineTorque} lb-ft</span></div>}
-                  {vehicle.engineCylinders && <div className="text-sm"><span className="text-neutral">Cylinders:</span> <span className="font-medium">{vehicle.engineCylinders}</span></div>}
-                  {vehicle.transmission && <div className="flex items-center gap-2 text-sm"><Wrench className="h-4 w-4 text-neutral" /><span>{vehicle.transmission}</span></div>}
-                  {vehicle.drivetrain && <div className="flex items-center gap-2 text-sm"><Car className="h-4 w-4 text-neutral" /><span>{vehicle.drivetrain}</span></div>}
-                  {vehicle.fuelType && <div className="flex items-center gap-2 text-sm"><Gauge className="h-4 w-4 text-neutral" /><span>{vehicle.fuelType}</span></div>}
-                  {vehicle.exteriorColor && <div className="text-sm"><span className="text-neutral">Ext:</span> <span>{vehicle.exteriorColor}</span></div>}
-                  {vehicle.interiorColor && <div className="text-sm"><span className="text-neutral">Int:</span> <span>{vehicle.interiorColor}</span></div>}
-                  {vehicle.bodyStyle && <div className="text-sm"><span className="text-neutral">Body:</span> <span>{vehicle.bodyStyle}</span></div>}
-                  {vehicle.trim && <div className="text-sm"><span className="text-neutral">Trim:</span> <span className="font-medium">{vehicle.trim}</span></div>}
-                </div>
-                {vehicle.optionPackages && vehicle.optionPackages.length > 0 && (
-                  <div className="border-t pt-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <BadgeCheck className="h-4 w-4 text-primary" />
-                      <p className="text-sm font-semibold">Non-Standard Options &amp; Packages</p>
-                    </div>
-                    <p className="text-xs text-neutral mb-2">Factory-installed options and premium packages beyond standard equipment</p>
-                    <div className="flex flex-wrap gap-2">
-                      {vehicle.optionPackages.map((pkg: any, i: number) => {
-                        const label = typeof pkg === "string" ? pkg : pkg?.name || String(pkg);
-                        return <Badge key={i} variant="outline" className="text-sm px-3 py-1">{label}</Badge>;
-                      })}
-                    </div>
-                  </div>
-                )}
-                {vehicle.installedEquipment && vehicle.installedEquipment.length > 0 && (
-                  <Collapsible defaultOpen={false}>
-                    <div className="border-t pt-3">
-                      <CollapsibleTrigger className="flex w-full items-center justify-between text-left hover:opacity-80 transition-opacity">
-                        <p className="text-sm font-semibold">Standard Equipment</p>
-                        <svg className="h-5 w-5 shrink-0 text-neutral transition-transform duration-200 [[data-state=open]>&]:rotate-180" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="mt-2">
-                        {(vehicle as any).categorizedEquipment && Object.keys((vehicle as any).categorizedEquipment).length > 0 ? (
-                          <div className="space-y-3">
-                            {Object.entries((vehicle as any).categorizedEquipment as Record<string, string[]>).sort(([a], [b]) => a.localeCompare(b)).map(([category, items]) => (
-                              <div key={category}>
-                                <p className="text-xs font-semibold text-neutral uppercase tracking-wider mb-1.5">{category}</p>
-                                <div className="flex flex-wrap gap-1.5">
-                                  {items.map((item: string, i: number) => (
-                                    <Badge key={i} variant="secondary" className="text-xs font-normal">{item}</Badge>
-                                  ))}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div className="flex flex-wrap gap-1.5">
-                            {vehicle.installedEquipment.map((item: string, i: number) => (
-                              <Badge key={i} variant="secondary" className="text-xs font-normal">{item}</Badge>
-                            ))}
-                          </div>
-                        )}
-                      </CollapsibleContent>
-                    </div>
-                  </Collapsible>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          {/* Vehicle Specs moved to Verdict Hero (Fix 8) — section removed */}
 
           {/* ===== SECTION 11: VEHICLE IMAGES ===== */}
           {condition?.images && condition.images.length > 1 && (
@@ -2504,23 +2442,45 @@ export default function ReportPage() {
               )}
             </div>
 
-            {/* Contingency block */}
+            {/* Contingency block — Fix 5: semantic accuracy */}
             {(displayVerdict === "Avoid" || displayVerdict === "Caution") && (
               <div className="mx-5 mt-4 border-l-4 border-risk-amber bg-risk-amber/5 rounded-r-md p-4">
                 <p className="text-sm font-semibold mb-2">This vehicle may be reconsidered if:</p>
                 <ul className="space-y-1.5">
-                  {riskAssessment.reliabilityConcerns.slice(0, 3).map((item, i) => (
-                    <li key={i} className="text-sm text-neutral flex items-start gap-2">
+                  {/* Battery diagnostic condition for EVs/PHEVs */}
+                  {mpgData?.fuelType?.toLowerCase().includes("electric") && (
+                    <li className="text-sm text-neutral flex items-start gap-2">
                       <span className="text-risk-amber mt-0.5">•</span>
-                      <span>Seller confirms resolution of: {item.concern}</span>
+                      <span>Seller provides LeafSpy Pro battery diagnostic confirming State of Health above 80% (minimum 10 of 12 capacity bars)</span>
                     </li>
-                  ))}
+                  )}
+                  {/* Open recalls */}
                   {recallData && recallData.openCount > 0 && (
                     <li className="text-sm text-neutral flex items-start gap-2">
                       <span className="text-risk-amber mt-0.5">•</span>
-                      <span>All {recallData.openCount} open safety {recallData.openCount === 1 ? "recall" : "recalls"} confirmed resolved</span>
+                      <span>All {recallData.openCount} open NHTSA safety {recallData.openCount === 1 ? "recall" : "recalls"} confirmed resolved in writing prior to purchase</span>
                     </li>
                   )}
+                  {/* Deferred maintenance */}
+                  {vehicleData?.history?.majorServicesDue && vehicleData.history.majorServicesDue.length > 0 && (
+                    <li className="text-sm text-neutral flex items-start gap-2">
+                      <span className="text-risk-amber mt-0.5">•</span>
+                      <span>Seller credits buyer for immediate deferred maintenance ({vehicleData.history.majorServicesDue.join(", ")})</span>
+                    </li>
+                  )}
+                  {/* Odometer discrepancy */}
+                  {(() => {
+                    const odo = (analysis.aiFindings as any)?.odometerIntegrity;
+                    if (odo && odo.status === "discrepancy" && odo.gapMiles) {
+                      return (
+                        <li className="text-sm text-neutral flex items-start gap-2">
+                          <span className="text-risk-amber mt-0.5">•</span>
+                          <span>Seller provides documentation explaining the {Number(odo.gapMiles).toLocaleString()}-mile odometer discrepancy</span>
+                        </li>
+                      );
+                    }
+                    return null;
+                  })()}
                 </ul>
               </div>
             )}
