@@ -124,22 +124,20 @@ export function MonthlyOwnershipCostCard({
               >
                 {row.key === "insurance" ? (
                   <>
-                    <div className="flex items-center justify-between">
-                      <span className="text-foreground">{row.label}</span>
-                      <span className="font-semibold text-foreground">{row.value}</span>
-                    </div>
-                    <div className="flex justify-end">
+                    <span className="text-foreground flex items-center gap-1.5">
+                      {row.label}
                       <a
                         href="#"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs font-medium hover:underline transition-colors"
+                        className="text-xs font-normal hover:underline transition-colors"
                         style={{ color: verdictColor }}
                         onClick={(e) => e.stopPropagation()}
                       >
                         Get quotes →
                       </a>
-                    </div>
+                    </span>
+                    <span className="font-semibold text-foreground">{row.value}</span>
                   </>
                 ) : (
                   <>
