@@ -154,6 +154,15 @@ export function MonthlyOwnershipCostCard({
                           {financingExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                         </button>
                       )}
+                      {row.key === "energy" && (
+                        <button
+                          onClick={() => setEnergyExpanded(!energyExpanded)}
+                          className="text-xs font-normal text-neutral hover:text-foreground transition-colors flex items-center gap-0.5"
+                        >
+                          view details
+                          {energyExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                        </button>
+                      )}
                       {row.key === "repairs" && (
                         <TooltipProvider delayDuration={100}>
                           <Tooltip>
