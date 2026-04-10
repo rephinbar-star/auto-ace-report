@@ -120,7 +120,7 @@ export function MonthlyOwnershipCostCard({
                   "py-3 text-[14px]",
                   row.key === "insurance" ? "space-y-1" : "flex items-center justify-between"
                 )}
-                style={i < rows.length - 1 ? { borderBottom: row.key === "energy" && energyExpanded ? undefined : row.key === "loan" && financingExpanded ? undefined : "1px solid hsl(var(--border))" } : undefined}
+                style={i < rows.length - 1 ? { borderBottom: row.key === "energy" && energyExpanded ? undefined : "1px solid hsl(var(--border))" } : undefined}
               >
                 {row.key === "insurance" ? (
                   <>
@@ -145,6 +145,15 @@ export function MonthlyOwnershipCostCard({
                   <>
                     <span className="text-foreground flex items-center gap-1.5">
                       {row.label}
+                      {row.key === "loan" && showFinancingInline && (
+                        <button
+                          onClick={() => setFinancingExpanded(!financingExpanded)}
+                          className="text-xs font-normal text-neutral hover:text-foreground transition-colors flex items-center gap-0.5"
+                        >
+                          · Edit
+                          {financingExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                        </button>
+                      )}
                       {row.key === "repairs" && (
                         <TooltipProvider delayDuration={100}>
                           <Tooltip>
@@ -167,24 +176,15 @@ export function MonthlyOwnershipCostCard({
               </div>
 
               {/* Inline financing details after loan row */}
-              {row.key === "loan" && showFinancingInline && (
-                <Collapsible open={financingExpanded} onOpenChange={setFinancingExpanded}>
-                  <CollapsibleTrigger className="w-full flex items-center justify-center py-1 text-xs text-neutral hover:text-foreground transition-colors"
-                    style={{ borderBottom: "1px solid hsl(var(--border))" }}>
-                    <span className="flex items-center gap-1">
-                      Edit financing details
-                      {financingExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                    </span>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="py-3" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
-                    <FinancingDetailsCard
-                      financing={financing!}
-                      askingPrice={askingPrice!}
-                      onChange={onFinancingChange!}
-                      embedded
-                    />
-                  </CollapsibleContent>
-                </Collapsible>
+              {row.key === "loan" && showFinancingInline && financingExpanded && (
+                <div className="py-3" style={{ borderBottom: "1px solid hsl(var(--border))" }}>
+                  <FinancingDetailsCard
+                    financing={financing!}
+                    askingPrice={askingPrice!}
+                    onChange={onFinancingChange!}
+                    embedded
+                  />
+                </div>
               )}
 
               {/* Expandable energy details */}
