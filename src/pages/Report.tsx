@@ -1465,266 +1465,6 @@ export default function ReportPage() {
           />
           </div>
 
-          {/* ===== SECTION 5: PRICING ANALYSIS ===== */}
-          <div id="section-pricing" className="report-card">
-            {/* "Is this a good deal?" header */}
-            <div className="mb-4">
-              <h2 className="text-lg font-semibold text-foreground">Asking Price vs. Market Assessment</h2>
-              {(() => {
-                const hasMarketData = priceAssessment.fairMarketPrivate > 0 || (priceAssessment.fairMarketDealer ?? 0) > 0;
-                if (!hasMarketData) return <p className="text-sm text-neutral mt-1">Market pricing data is not available for this vehicle.</p>;
-                // Fix 2: Use seller-type-appropriate benchmark
-                const isDealer = condition.sellerType === "dealer";
-                const benchmark = isDealer
-                  ? (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate)
-                  : priceAssessment.fairMarketPrivate;
-                const benchmarkLabel = isDealer ? "dealer retail" : "fair market value";
-                const diff = condition.askingPrice - benchmark;
-                const below = diff <= 0;
-                return (
-                  <p className={cn("text-sm font-medium mt-1", below ? "text-risk-green" : "text-risk-red")}>
-                    {below ? "Yes" : "No"} — priced ${Math.abs(diff).toLocaleString()} {below ? "below" : "above"} {benchmarkLabel}
-                  </p>
-                );
-              })()}
-            </div>
-
-            {/* Price Assessment header with badges */}
-            <div className="flex flex-wrap items-center gap-2 mb-4">
-              <DollarSign className="h-5 w-5 text-primary" />
-              <span className="font-semibold">Price Assessment</span>
-              {pricingLastUpdated && (
-                <span className="text-xs text-neutral">
-                  (last updated {pricingLastUpdated.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "2-digit" })})
-                </span>
-              )}
-              <div className="ml-auto flex items-center gap-2">
-                {pricingSources.length > 0 ? (
-                  <Badge variant="outline" className="gap-1 border-risk-green/30 bg-risk-green/10 text-risk-green text-xs font-medium">
-                    <BadgeCheck className="h-3 w-3" />
-                    Market Verified
-                  </Badge>
-                ) : (
-                  <Badge variant="outline" className="gap-1 border-neutral/30 bg-muted text-neutral text-xs font-medium">
-                    <Bot className="h-3 w-3" />
-                    AI Estimated
-                  </Badge>
-                )}
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" disabled={isRefreshingPricing} title="Refresh pricing data">
-                      <RefreshCw className={cn("h-3.5 w-3.5", isRefreshingPricing && "animate-spin")} />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Refresh Market Data?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will re-run the full AI analysis with the latest market pricing data. This uses credits and may take 10–20 seconds.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={refreshPricing}>Refresh</AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            </div>
-
-            {/* Existing price bar visualization — kept as-is */}
-            <div className="space-y-4">
-              {(() => {
-                const hasMarketData = (priceAssessment.fairMarketPrivate > 0 || (priceAssessment.fairMarketDealer ?? 0) > 0);
-
-                if (!hasMarketData) {
-                  return (
-                    <div className="relative pt-14 pb-4 mt-2">
-                      <div className="absolute top-0 right-4 flex flex-col items-center">
-                        <p className="text-[10px] text-neutral text-center mb-0.5">Asking Price</p>
-                        <div className="rounded-lg border bg-card px-3 py-1.5 text-sm font-bold shadow-sm whitespace-nowrap">
-                          ${condition.askingPrice.toLocaleString()}
-                        </div>
-                      </div>
-                      <div className="relative h-2.5 w-full">
-                        <div className="absolute inset-0 rounded-full overflow-hidden">
-                          <div className="absolute inset-0 rounded-full bg-muted" />
-                        </div>
-                        <div className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: "85%", top: "50%" }}>
-                          <div className="h-5 w-5 rounded-full border-[3px] border-warning bg-background shadow-md" />
-                        </div>
-                      </div>
-                      <p className="text-xs text-neutral mt-3 text-center">Market comparison unavailable — only asking price is shown.</p>
-                    </div>
-                  );
-                }
-
-                const fairMarketValue = condition.sellerType === "dealer"
-                  ? (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate)
-                  : priceAssessment.fairMarketPrivate;
-                const markers: { label: string; value: number; isAsking?: boolean; isFairMarket?: boolean }[] = [];
-                if (priceAssessment.fairMarketTradeIn > 0) markers.push({ label: "Trade-In", value: priceAssessment.fairMarketTradeIn });
-                if (fairMarketValue > 0) markers.push({ label: "Fair Market Value", value: fairMarketValue, isFairMarket: true });
-                if (priceAssessment.fairMarketDealer && priceAssessment.fairMarketDealer > 0 && condition.sellerType !== "dealer") markers.push({ label: "Dealer Retail", value: priceAssessment.fairMarketDealer });
-                if (condition.sellerType === "dealer" && priceAssessment.fairMarketPrivate > 0) markers.push({ label: "Private Sale", value: priceAssessment.fairMarketPrivate });
-                markers.push({ label: "Asking Price", value: condition.askingPrice, isAsking: true });
-
-                const tradeInVal = priceAssessment.fairMarketTradeIn > 0 ? priceAssessment.fairMarketTradeIn : fairMarketValue * 0.85;
-                const fmvVal = fairMarketValue;
-                const barMin = tradeInVal * 0.90;
-                const barMax = fmvVal * 1.35;
-                const barRange = barMax - barMin || 1;
-                const toPct = (v: number) => Math.max(5, Math.min(92, ((v - barMin) / barRange) * 100));
-                const fmvPct = toPct(fmvVal);
-
-                return (
-                  <div className={cn("relative pb-14 mt-2", financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice ? "pt-24" : "pt-14")}>
-                    {(() => {
-                      const askPct = toPct(condition.askingPrice);
-                      const hasNegotiated = !!(financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice);
-                      const clampStyle = askPct > 80
-                        ? { left: `${askPct}%`, transform: "translateX(-80%)" }
-                        : askPct < 20 ? { left: `${askPct}%`, transform: "translateX(-20%)" }
-                        : { left: `${askPct}%`, transform: "translateX(-50%)" };
-                      const topStyle = hasNegotiated ? { top: "2.5rem" } : { top: 0 };
-                      return (
-                        <div className="absolute flex flex-col items-center" style={{ ...clampStyle, ...topStyle }}>
-                          <p className="text-[10px] text-neutral text-center mb-0.5">Asking Price</p>
-                          <div className="rounded-lg border bg-card px-3 py-1.5 text-sm font-bold shadow-sm whitespace-nowrap">
-                            ${condition.askingPrice.toLocaleString()}
-                          </div>
-                        </div>
-                      );
-                    })()}
-
-                    {financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice && (() => {
-                      const negPct = toPct(financing.negotiatedPrice);
-                      const clampStyle = negPct > 80
-                        ? { left: `${negPct}%`, transform: "translateX(-80%)" }
-                        : negPct < 20 ? { left: `${negPct}%`, transform: "translateX(-20%)" }
-                        : { left: `${negPct}%`, transform: "translateX(-50%)" };
-                      return (
-                        <div className="absolute top-0 flex flex-col items-center" style={{ ...clampStyle, bottom: "3.5rem" }}>
-                          <p className="text-[10px] text-risk-green text-center mb-0.5 font-medium">Negotiated Price</p>
-                          <div className="rounded-lg border border-risk-green/40 bg-risk-green/10 px-3 py-1.5 text-sm font-bold shadow-sm whitespace-nowrap text-risk-green">
-                            ${financing.negotiatedPrice.toLocaleString()}
-                          </div>
-                          <div className="flex-1 mt-1 w-px bg-risk-green/60" />
-                        </div>
-                      );
-                    })()}
-
-                    <div className="relative h-2.5 w-full">
-                      <div className="absolute inset-0 rounded-full overflow-hidden">
-                        <div className="absolute inset-0 rounded-full" style={{
-                          background: `linear-gradient(to right, hsl(145 60% 36%) 0%, hsl(var(--success)) ${fmvPct * 0.5}%, hsl(var(--success)) ${fmvPct}%, hsl(var(--warning)) ${fmvPct + (100 - fmvPct) * 0.6}%, hsl(var(--danger)) 100%)`
-                        }} />
-                      </div>
-                      {(() => {
-                        const askPct = toPct(condition.askingPrice);
-                        return (
-                          <div className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${askPct}%`, top: "50%" }}>
-                            <div className="h-5 w-5 rounded-full border-[3px] border-warning bg-background shadow-md" />
-                          </div>
-                        );
-                      })()}
-                      {financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice && (() => {
-                        const negPct = toPct(financing.negotiatedPrice);
-                        return (
-                          <div className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${negPct}%`, top: "50%" }}>
-                            <div className="h-5 w-5 rounded-full border-[3px] border-risk-green bg-background shadow-md" />
-                          </div>
-                        );
-                      })()}
-                    </div>
-
-                    <div className="relative mt-5">
-                      {markers.filter(m => !m.isAsking).map((m) => {
-                        const mPct = toPct(m.value);
-                        const markerStyle = mPct > 85
-                          ? { left: `${mPct}%`, transform: "translateX(-90%)" }
-                          : mPct < 15 ? { left: `${mPct}%`, transform: "translateX(-10%)" }
-                          : { left: `${mPct}%`, transform: "translateX(-50%)" };
-                        const textAlign = mPct > 85 ? "text-right" : mPct < 15 ? "text-left" : "text-center";
-                        return (
-                          <div key={m.label} className={cn("absolute", textAlign)} style={markerStyle}>
-                            <div className={cn("mb-0.5 h-2.5 w-px", m.isFairMarket ? "bg-primary" : "bg-neutral/40", mPct > 85 ? "ml-auto" : mPct < 15 ? "" : "mx-auto")} />
-                            <p className={cn("text-[10px] leading-tight whitespace-nowrap", m.isFairMarket ? "font-medium text-primary" : "text-neutral")}>{m.label}</p>
-                            <p className={cn("text-xs font-semibold whitespace-nowrap", m.isFairMarket && "text-primary")}>${m.value.toLocaleString()}</p>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-
-            {/* Pricing Sources — collapsible */}
-            {pricingSources.length > 0 && (
-              <Collapsible>
-                <CollapsibleTrigger className="flex items-center gap-1 text-[13px] text-neutral hover:text-foreground mt-4">
-                  View All Pricing Sources
-                  <svg className="h-5 w-5 shrink-0 transition-transform duration-200 [[data-state=open]>&]:rotate-180" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="rounded-lg border border-dashed p-3 space-y-3 mt-2">
-                    {sourceBreakdown.length > 0 && (
-                      <div className="space-y-2">
-                        {sourceBreakdown.map((src) => {
-                          const range = (low?: number | null, high?: number | null, mid?: number | null) => {
-                            if (low && high) return `$${low.toLocaleString()} – $${high.toLocaleString()}`;
-                            if (mid) return `$${mid.toLocaleString()}`;
-                            return null;
-                          };
-                          const privateVal = range(src.privatePartyLow, src.privatePartyHigh, src.privateParty);
-                          const dealerVal = range(src.dealerRetailLow, src.dealerRetailHigh, src.dealerRetail);
-                          const tradeInVal = range(src.tradeInLow, src.tradeInHigh, src.tradeIn);
-                          if (!privateVal && !dealerVal && !tradeInVal) return null;
-                          return (
-                            <div key={src.source} className="rounded-md bg-muted/50 p-2.5">
-                              <p className="text-xs font-semibold text-foreground mb-1.5">{src.source}</p>
-                              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
-                                {tradeInVal && <div><span className="text-neutral">Trade-In</span><p className="font-medium text-foreground">{tradeInVal}</p></div>}
-                                {privateVal && <div><span className="text-neutral">Private Party</span><p className="font-medium text-foreground">{privateVal}</p></div>}
-                                {dealerVal && <div><span className="text-neutral">Dealer Retail</span><p className="font-medium text-foreground">{dealerVal}</p></div>}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                    <div className="flex flex-wrap gap-2">
-                      {(() => {
-                        const knownSources: Record<string, string> = {
-                          kbb: "Kelley Blue Book", repairpal: "RepairPal", edmunds: "Edmunds",
-                          carfax: "CARFAX", autocheck: "AutoCheck", cargurus: "CarGurus",
-                          nada: "NADA Guides", nadaguides: "NADA Guides", truecar: "TrueCar",
-                          marketcheck: "MarketCheck", yourmechanic: "YourMechanic",
-                        };
-                        const seen = new Map<string, { displayName: string; url: string }>();
-                        for (const url of pricingSources) {
-                          try {
-                            const hostname = new URL(url).hostname.replace("www.", "");
-                            const domain = hostname.split(".")[0];
-                            if (!seen.has(domain)) {
-                              seen.set(domain, { displayName: knownSources[domain] || domain.charAt(0).toUpperCase() + domain.slice(1), url });
-                            }
-                          } catch {}
-                        }
-                        return Array.from(seen.values()).map(({ displayName, url }) => (
-                          <a key={displayName} href={url} target="_blank" rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-neutral hover:text-foreground transition-colors">
-                            <ExternalLink className="h-3 w-3" />{displayName}
-                          </a>
-                        ));
-                      })()}
-                    </div>
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-            )}
-          </div>
 
           {/* ===== SECTION 4: MONTHLY OWNERSHIP COST ===== */}
           <MonthlyOwnershipCostCard
@@ -2023,6 +1763,267 @@ export default function ReportPage() {
               )}
             </CardContent>
           </Card>
+          </div>
+
+          {/* ===== SECTION 5: PRICING ANALYSIS ===== */}
+          <div id="section-pricing" className="report-card">
+            {/* "Is this a good deal?" header */}
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-foreground">Asking Price vs. Market Assessment</h2>
+              {(() => {
+                const hasMarketData = priceAssessment.fairMarketPrivate > 0 || (priceAssessment.fairMarketDealer ?? 0) > 0;
+                if (!hasMarketData) return <p className="text-sm text-neutral mt-1">Market pricing data is not available for this vehicle.</p>;
+                // Fix 2: Use seller-type-appropriate benchmark
+                const isDealer = condition.sellerType === "dealer";
+                const benchmark = isDealer
+                  ? (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate)
+                  : priceAssessment.fairMarketPrivate;
+                const benchmarkLabel = isDealer ? "dealer retail" : "fair market value";
+                const diff = condition.askingPrice - benchmark;
+                const below = diff <= 0;
+                return (
+                  <p className={cn("text-sm font-medium mt-1", below ? "text-risk-green" : "text-risk-red")}>
+                    {below ? "Yes" : "No"} — priced ${Math.abs(diff).toLocaleString()} {below ? "below" : "above"} {benchmarkLabel}
+                  </p>
+                );
+              })()}
+            </div>
+
+            {/* Price Assessment header with badges */}
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <DollarSign className="h-5 w-5 text-primary" />
+              <span className="font-semibold">Price Assessment</span>
+              {pricingLastUpdated && (
+                <span className="text-xs text-neutral">
+                  (last updated {pricingLastUpdated.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "2-digit" })})
+                </span>
+              )}
+              <div className="ml-auto flex items-center gap-2">
+                {pricingSources.length > 0 ? (
+                  <Badge variant="outline" className="gap-1 border-risk-green/30 bg-risk-green/10 text-risk-green text-xs font-medium">
+                    <BadgeCheck className="h-3 w-3" />
+                    Market Verified
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="gap-1 border-neutral/30 bg-muted text-neutral text-xs font-medium">
+                    <Bot className="h-3 w-3" />
+                    AI Estimated
+                  </Badge>
+                )}
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-7 w-7" disabled={isRefreshingPricing} title="Refresh pricing data">
+                      <RefreshCw className={cn("h-3.5 w-3.5", isRefreshingPricing && "animate-spin")} />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Refresh Market Data?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will re-run the full AI analysis with the latest market pricing data. This uses credits and may take 10–20 seconds.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={refreshPricing}>Refresh</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+
+            {/* Existing price bar visualization — kept as-is */}
+            <div className="space-y-4">
+              {(() => {
+                const hasMarketData = (priceAssessment.fairMarketPrivate > 0 || (priceAssessment.fairMarketDealer ?? 0) > 0);
+
+                if (!hasMarketData) {
+                  return (
+                    <div className="relative pt-14 pb-4 mt-2">
+                      <div className="absolute top-0 right-4 flex flex-col items-center">
+                        <p className="text-[10px] text-neutral text-center mb-0.5">Asking Price</p>
+                        <div className="rounded-lg border bg-card px-3 py-1.5 text-sm font-bold shadow-sm whitespace-nowrap">
+                          ${condition.askingPrice.toLocaleString()}
+                        </div>
+                      </div>
+                      <div className="relative h-2.5 w-full">
+                        <div className="absolute inset-0 rounded-full overflow-hidden">
+                          <div className="absolute inset-0 rounded-full bg-muted" />
+                        </div>
+                        <div className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: "85%", top: "50%" }}>
+                          <div className="h-5 w-5 rounded-full border-[3px] border-warning bg-background shadow-md" />
+                        </div>
+                      </div>
+                      <p className="text-xs text-neutral mt-3 text-center">Market comparison unavailable — only asking price is shown.</p>
+                    </div>
+                  );
+                }
+
+                const fairMarketValue = condition.sellerType === "dealer"
+                  ? (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate)
+                  : priceAssessment.fairMarketPrivate;
+                const markers: { label: string; value: number; isAsking?: boolean; isFairMarket?: boolean }[] = [];
+                if (priceAssessment.fairMarketTradeIn > 0) markers.push({ label: "Trade-In", value: priceAssessment.fairMarketTradeIn });
+                if (fairMarketValue > 0) markers.push({ label: "Fair Market Value", value: fairMarketValue, isFairMarket: true });
+                if (priceAssessment.fairMarketDealer && priceAssessment.fairMarketDealer > 0 && condition.sellerType !== "dealer") markers.push({ label: "Dealer Retail", value: priceAssessment.fairMarketDealer });
+                if (condition.sellerType === "dealer" && priceAssessment.fairMarketPrivate > 0) markers.push({ label: "Private Sale", value: priceAssessment.fairMarketPrivate });
+                markers.push({ label: "Asking Price", value: condition.askingPrice, isAsking: true });
+
+                const tradeInVal = priceAssessment.fairMarketTradeIn > 0 ? priceAssessment.fairMarketTradeIn : fairMarketValue * 0.85;
+                const fmvVal = fairMarketValue;
+                const barMin = tradeInVal * 0.90;
+                const barMax = fmvVal * 1.35;
+                const barRange = barMax - barMin || 1;
+                const toPct = (v: number) => Math.max(5, Math.min(92, ((v - barMin) / barRange) * 100));
+                const fmvPct = toPct(fmvVal);
+
+                return (
+                  <div className={cn("relative pb-14 mt-2", financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice ? "pt-24" : "pt-14")}>
+                    {(() => {
+                      const askPct = toPct(condition.askingPrice);
+                      const hasNegotiated = !!(financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice);
+                      const clampStyle = askPct > 80
+                        ? { left: `${askPct}%`, transform: "translateX(-80%)" }
+                        : askPct < 20 ? { left: `${askPct}%`, transform: "translateX(-20%)" }
+                        : { left: `${askPct}%`, transform: "translateX(-50%)" };
+                      const topStyle = hasNegotiated ? { top: "2.5rem" } : { top: 0 };
+                      return (
+                        <div className="absolute flex flex-col items-center" style={{ ...clampStyle, ...topStyle }}>
+                          <p className="text-[10px] text-neutral text-center mb-0.5">Asking Price</p>
+                          <div className="rounded-lg border bg-card px-3 py-1.5 text-sm font-bold shadow-sm whitespace-nowrap">
+                            ${condition.askingPrice.toLocaleString()}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice && (() => {
+                      const negPct = toPct(financing.negotiatedPrice);
+                      const clampStyle = negPct > 80
+                        ? { left: `${negPct}%`, transform: "translateX(-80%)" }
+                        : negPct < 20 ? { left: `${negPct}%`, transform: "translateX(-20%)" }
+                        : { left: `${negPct}%`, transform: "translateX(-50%)" };
+                      return (
+                        <div className="absolute top-0 flex flex-col items-center" style={{ ...clampStyle, bottom: "3.5rem" }}>
+                          <p className="text-[10px] text-risk-green text-center mb-0.5 font-medium">Negotiated Price</p>
+                          <div className="rounded-lg border border-risk-green/40 bg-risk-green/10 px-3 py-1.5 text-sm font-bold shadow-sm whitespace-nowrap text-risk-green">
+                            ${financing.negotiatedPrice.toLocaleString()}
+                          </div>
+                          <div className="flex-1 mt-1 w-px bg-risk-green/60" />
+                        </div>
+                      );
+                    })()}
+
+                    <div className="relative h-2.5 w-full">
+                      <div className="absolute inset-0 rounded-full overflow-hidden">
+                        <div className="absolute inset-0 rounded-full" style={{
+                          background: `linear-gradient(to right, hsl(145 60% 36%) 0%, hsl(var(--success)) ${fmvPct * 0.5}%, hsl(var(--success)) ${fmvPct}%, hsl(var(--warning)) ${fmvPct + (100 - fmvPct) * 0.6}%, hsl(var(--danger)) 100%)`
+                        }} />
+                      </div>
+                      {(() => {
+                        const askPct = toPct(condition.askingPrice);
+                        return (
+                          <div className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${askPct}%`, top: "50%" }}>
+                            <div className="h-5 w-5 rounded-full border-[3px] border-warning bg-background shadow-md" />
+                          </div>
+                        );
+                      })()}
+                      {financing?.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice && (() => {
+                        const negPct = toPct(financing.negotiatedPrice);
+                        return (
+                          <div className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${negPct}%`, top: "50%" }}>
+                            <div className="h-5 w-5 rounded-full border-[3px] border-risk-green bg-background shadow-md" />
+                          </div>
+                        );
+                      })()}
+                    </div>
+
+                    <div className="relative mt-5">
+                      {markers.filter(m => !m.isAsking).map((m) => {
+                        const mPct = toPct(m.value);
+                        const markerStyle = mPct > 85
+                          ? { left: `${mPct}%`, transform: "translateX(-90%)" }
+                          : mPct < 15 ? { left: `${mPct}%`, transform: "translateX(-10%)" }
+                          : { left: `${mPct}%`, transform: "translateX(-50%)" };
+                        const textAlign = mPct > 85 ? "text-right" : mPct < 15 ? "text-left" : "text-center";
+                        return (
+                          <div key={m.label} className={cn("absolute", textAlign)} style={markerStyle}>
+                            <div className={cn("mb-0.5 h-2.5 w-px", m.isFairMarket ? "bg-primary" : "bg-neutral/40", mPct > 85 ? "ml-auto" : mPct < 15 ? "" : "mx-auto")} />
+                            <p className={cn("text-[10px] leading-tight whitespace-nowrap", m.isFairMarket ? "font-medium text-primary" : "text-neutral")}>{m.label}</p>
+                            <p className={cn("text-xs font-semibold whitespace-nowrap", m.isFairMarket && "text-primary")}>${m.value.toLocaleString()}</p>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Pricing Sources — collapsible */}
+            {pricingSources.length > 0 && (
+              <Collapsible>
+                <CollapsibleTrigger className="flex items-center gap-1 text-[13px] text-neutral hover:text-foreground mt-4">
+                  View All Pricing Sources
+                  <svg className="h-5 w-5 shrink-0 transition-transform duration-200 [[data-state=open]>&]:rotate-180" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="rounded-lg border border-dashed p-3 space-y-3 mt-2">
+                    {sourceBreakdown.length > 0 && (
+                      <div className="space-y-2">
+                        {sourceBreakdown.map((src) => {
+                          const range = (low?: number | null, high?: number | null, mid?: number | null) => {
+                            if (low && high) return `$${low.toLocaleString()} – $${high.toLocaleString()}`;
+                            if (mid) return `$${mid.toLocaleString()}`;
+                            return null;
+                          };
+                          const privateVal = range(src.privatePartyLow, src.privatePartyHigh, src.privateParty);
+                          const dealerVal = range(src.dealerRetailLow, src.dealerRetailHigh, src.dealerRetail);
+                          const tradeInVal = range(src.tradeInLow, src.tradeInHigh, src.tradeIn);
+                          if (!privateVal && !dealerVal && !tradeInVal) return null;
+                          return (
+                            <div key={src.source} className="rounded-md bg-muted/50 p-2.5">
+                              <p className="text-xs font-semibold text-foreground mb-1.5">{src.source}</p>
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+                                {tradeInVal && <div><span className="text-neutral">Trade-In</span><p className="font-medium text-foreground">{tradeInVal}</p></div>}
+                                {privateVal && <div><span className="text-neutral">Private Party</span><p className="font-medium text-foreground">{privateVal}</p></div>}
+                                {dealerVal && <div><span className="text-neutral">Dealer Retail</span><p className="font-medium text-foreground">{dealerVal}</p></div>}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-2">
+                      {(() => {
+                        const knownSources: Record<string, string> = {
+                          kbb: "Kelley Blue Book", repairpal: "RepairPal", edmunds: "Edmunds",
+                          carfax: "CARFAX", autocheck: "AutoCheck", cargurus: "CarGurus",
+                          nada: "NADA Guides", nadaguides: "NADA Guides", truecar: "TrueCar",
+                          marketcheck: "MarketCheck", yourmechanic: "YourMechanic",
+                        };
+                        const seen = new Map<string, { displayName: string; url: string }>();
+                        for (const url of pricingSources) {
+                          try {
+                            const hostname = new URL(url).hostname.replace("www.", "");
+                            const domain = hostname.split(".")[0];
+                            if (!seen.has(domain)) {
+                              seen.set(domain, { displayName: knownSources[domain] || domain.charAt(0).toUpperCase() + domain.slice(1), url });
+                            }
+                          } catch {}
+                        }
+                        return Array.from(seen.values()).map(({ displayName, url }) => (
+                          <a key={displayName} href={url} target="_blank" rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-neutral hover:text-foreground transition-colors">
+                            <ExternalLink className="h-3 w-3" />{displayName}
+                          </a>
+                        ));
+                      })()}
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
           </div>
 
           {/* ===== SECTION 8: RISK ASSESSMENT — VISUAL BARS ===== */}
