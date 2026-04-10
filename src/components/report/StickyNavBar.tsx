@@ -15,8 +15,8 @@ interface StickyNavBarProps {
 const sections = [
   { id: "section-overview", label: "Overview" },
   { id: "section-expert", label: "Expert Analysis" },
-  { id: "section-pricing", label: "Pricing" },
   { id: "section-financials", label: "Financials" },
+  { id: "section-pricing", label: "Pricing" },
   { id: "section-risk", label: "Risk" },
   { id: "section-history", label: "History" },
 ];
@@ -103,7 +103,7 @@ export function StickyNavBar({ verdict, vehicleLabel, heroRef, isPaid, onCheatSh
                   : "text-neutral hover:text-foreground"
               )}
             >
-              Negotiation Cheat Sheet
+              Negotiation Sheet
             </button>
           )}
         </nav>
