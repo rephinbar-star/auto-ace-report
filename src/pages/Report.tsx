@@ -1444,13 +1444,13 @@ export default function ReportPage() {
           />
 
           {/* ===== SECTION 3: EXPERT ANALYSIS ===== */}
-          <div id="section-expert">
           <ExpertFindingsStrip
             aiFindings={analysis.aiFindings}
             reliabilityConcerns={riskAssessment.reliabilityConcerns}
             verdict={displayVerdict}
             riskScore={uvprsResult?.totalScore}
           />
+          <div id="section-expert">
           <ExpertAnalysisCard
             aiFindings={analysis.aiFindings}
             sanitizedExpertOpinion={sanitizedExpertOpinion}
