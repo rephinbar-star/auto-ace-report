@@ -19,8 +19,9 @@ const sections = [
   { id: "section-financials", label: "Financials" },
   { id: "section-risk", label: "Risk" },
   { id: "section-history", label: "History" },
-  { id: "section-verdict", label: "Negotiation Cheat Sheet" },
 ];
+
+const allTrackedSections = [...sections, { id: "section-verdict" }];
 
 export function StickyNavBar({ verdict, vehicleLabel, heroRef, isPaid, onCheatSheetClick }: StickyNavBarProps) {
   const [activeSection, setActiveSection] = useState<string>("section-overview");
