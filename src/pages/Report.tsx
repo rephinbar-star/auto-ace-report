@@ -2523,10 +2523,12 @@ export default function ReportPage() {
                 </Button>
                 <p className="text-xs text-neutral text-center mt-1">Compare rates from 80+ insurers</p>
               </div>
-              <div className="text-center pt-1">
-                <Link to="/analyze" className="text-[13px] text-neutral hover:text-foreground transition-colors">
-                  Analyze a Different Vehicle
-                </Link>
+              <div className="text-center pt-4">
+                <Button asChild size="lg" className="w-full">
+                  <Link to="/analyze">
+                    Analyze or Compare to Another Vehicle
+                  </Link>
+                </Button>
               </div>
             </div>
           </Card>
