@@ -11,9 +11,10 @@ interface FinancingDetailsCardProps {
   financing: FinancingInfo;
   askingPrice: number;
   onChange: (updated: FinancingInfo) => void;
+  embedded?: boolean;
 }
 
-export function FinancingDetailsCard({ financing, askingPrice, onChange }: FinancingDetailsCardProps) {
+export function FinancingDetailsCard({ financing, askingPrice, onChange, embedded }: FinancingDetailsCardProps) {
   const [local, setLocal] = useState<FinancingInfo>({ ...financing });
 
   // Sync from parent when key financing fields change (e.g. type change, or DB load populating salesTaxRate/fees/downPayment)
@@ -78,18 +79,8 @@ export function FinancingDetailsCard({ financing, askingPrice, onChange }: Finan
 
   const typeLabel = local.type === "loan" ? "Auto Loan" : local.type === "lease" ? "Lease" : "Cash Purchase";
 
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2">
-          {typeIcon}
-          Financing Details
-          <Badge variant="secondary" className="ml-auto text-xs font-normal">
-            {typeLabel}
-          </Badge>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+  const content = (
+    <div className={embedded ? "space-y-4" : undefined}>
         {/* Financing Type Selector */}
         <div className="space-y-1.5">
           <Label className="text-xs text-muted-foreground">Financing Type</Label>
