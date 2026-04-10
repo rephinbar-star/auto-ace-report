@@ -2183,7 +2183,22 @@ export default function ReportPage() {
                   </div>
                   <div className="rounded-lg bg-muted p-4">
                     <p className="text-sm font-medium">Value Proposition</p>
-                    <p className="text-sm text-neutral">{riskAssessment.valueProposition}</p>
+                    <p className="text-sm text-neutral">
+                      {(() => {
+                        let vp = riskAssessment.valueProposition;
+                        // Fix 6: Sanitize positive framing when verdict is Avoid
+                        if (displayVerdict === "Avoid" && vp) {
+                          // Remove contradictory positive language for AVOID verdicts
+                          if (/\b(excellent value|high reward|great deal|strong value)\b/i.test(vp)) {
+                            vp = vp
+                              .replace(/\b[Hh]igh risk\s*\/\s*[Hh]igh reward\.?\s*/g, "")
+                              .replace(/\b(is an excellent value|excellent value|high reward|great deal|strong value)\b/gi, "may represent value only with verified conditions met")
+                              .trim();
+                          }
+                        }
+                        return vp;
+                      })()}
+                    </p>
                   </div>
                 </div>
               </CardContent>
