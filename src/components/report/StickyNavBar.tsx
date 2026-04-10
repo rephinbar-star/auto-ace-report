@@ -21,6 +21,8 @@ const sections = [
   { id: "section-history", label: "History" },
 ];
 
+const allTrackedSections = [...sections, { id: "section-verdict" }];
+
 export function StickyNavBar({ verdict, vehicleLabel, heroRef, isPaid, onCheatSheetClick }: StickyNavBarProps) {
   const [activeSection, setActiveSection] = useState<string>("section-overview");
 
@@ -29,7 +31,7 @@ export function StickyNavBar({ verdict, vehicleLabel, heroRef, isPaid, onCheatSh
     const onScroll = () => {
       const offset = 150; // header + sticky nav height
       let current = "section-overview";
-      for (const s of sections) {
+      for (const s of allTrackedSections) {
         const el = document.getElementById(s.id);
         if (el) {
           const top = el.getBoundingClientRect().top;
@@ -94,10 +96,18 @@ export function StickyNavBar({ verdict, vehicleLabel, heroRef, isPaid, onCheatSh
         </nav>
 
         {/* Right: cheat sheet */}
-        {isPaid && onCheatSheetClick && (
-          <Button size="sm" className="h-8 text-sm shrink-0" onClick={onCheatSheetClick}>
+        {isPaid && (
+          <button
+            onClick={() => scrollTo("section-verdict")}
+            className={cn(
+              "px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
+              activeSection === "section-verdict"
+                ? "bg-primary/10 text-primary"
+                : "text-neutral hover:text-foreground"
+            )}
+          >
             Negotiation Cheat Sheet
-          </Button>
+          </button>
         )}
       </div>
     </div>
