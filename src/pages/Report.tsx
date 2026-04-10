@@ -2559,25 +2559,36 @@ export default function ReportPage() {
 
             {/* Action buttons */}
             <div className="p-5 space-y-3">
-              <div>
-                <Button
-                  className={cn("w-full h-12 text-base font-semibold text-white group relative overflow-hidden", {
-                    "bg-risk-red hover:bg-risk-red/90": displayVerdict === "Avoid",
-                    "bg-risk-amber hover:bg-risk-amber/90": displayVerdict === "Caution",
-                    "bg-risk-green hover:bg-risk-green/90": displayVerdict === "Conditional Buy",
-                  })}
-                  onClick={scrollToCheatSheet}
-                >
-                  Get Negotiation Cheat Sheet
-                  <span className="ml-1 tracking-[-0.2em] font-black text-lg">
-                    <span className="opacity-30">›</span>
-                    <span className="opacity-50">›</span>
-                    <span className="opacity-75">›</span>
-                    <span>›</span>
-                  </span>
-                </Button>
-                <p className="text-xs text-neutral text-center mt-1">Data-backed price argument you can hand to the dealer</p>
-              </div>
+              <NegotiationCheatSheet
+                isPaid={isPaid}
+                year={vehicle.year}
+                make={vehicle.make}
+                model={vehicle.model}
+                trim={vehicle.trim}
+                mileage={condition.mileage}
+                askingPrice={condition.askingPrice}
+                condition={condition.condition}
+                sellerType={condition.sellerType}
+                fairMarketPrivate={priceAssessment.fairMarketPrivate}
+                fairMarketDealer={priceAssessment.fairMarketDealer}
+                fairMarketTradeIn={priceAssessment.fairMarketTradeIn}
+                dealRating={priceAssessment.dealRating}
+                priceDifference={priceAssessment.priceDifference}
+                accidentCount={historyAnalysis?.concerns?.filter(c => c.toLowerCase().includes("accident")).length || 0}
+                ownerCount={vehicleData?.history?.ownerCount || 1}
+                titleStatus={vehicleData?.history?.titleStatus || "clean"}
+                serviceGapMiles={vehicleData?.history?.serviceGapMiles}
+                majorServicesDue={vehicleData?.history?.majorServicesDue}
+                chronicRepairSystems={vehicleData?.history?.chronicRepairSystems}
+                reliabilityConcerns={riskAssessment.reliabilityConcerns}
+                openRecallCount={recallData?.openCount || 0}
+                recallDetails={recallData?.recalls?.slice(0, 3).map(r => r.summary || r.component).join("; ")}
+                verdict={displayVerdict}
+                fairOfferPrice={riskAssessment.fairOfferPrice}
+                activeFaults={analysis.aiFindings?.activeServiceFaults?.map(f => ({ system: f.system, costLow: f.estimatedCostPerIncident || 500 }))}
+                failurePatterns={analysis.aiFindings?.knownFailurePatterns?.map(p => ({ issue: p.issue, probability: p.probabilityTier, costLow: p.probabilityPercent > 50 ? 1500 : 800 }))}
+                financingType={financing?.type}
+              />
               <div>
                 <Button variant="outline" className="w-full h-11 text-base">
                   Get Personalized Insurance Quotes
