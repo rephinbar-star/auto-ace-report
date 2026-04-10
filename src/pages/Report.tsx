@@ -79,6 +79,7 @@ import { StickyNavBar } from "@/components/report/StickyNavBar";
 import { VerdictHero } from "@/components/report/VerdictHero";
 import { MetricsStrip } from "@/components/report/MetricsStrip";
 import { ExpertAnalysisCard } from "@/components/report/ExpertAnalysisCard";
+import { ExpertFindingsStrip } from "@/components/report/ExpertFindingsStrip";
 import { FinancingStep } from "@/components/analysis/FinancingStep";
 import type { FinancingInfo, AiFindings } from "@/types/vehicle";
 import { cacheImages, getCachedUrls } from "@/lib/api/cache-images";
@@ -1440,6 +1441,12 @@ export default function ReportPage() {
             warrantyStatus={analysis.warrantyAnalysis?.warrantyStatus || "unknown"}
             warrantyContext={warrantyContext}
             onHistoryTabChange={setHistoryTab}
+          />
+
+          {/* ===== SECTION 2B: EXPERT FINDINGS STRIP ===== */}
+          <ExpertFindingsStrip
+            aiFindings={analysis.aiFindings}
+            reliabilityConcerns={riskAssessment.reliabilityConcerns}
           />
 
           {/* ===== SECTION 3: EXPERT ANALYSIS ===== */}

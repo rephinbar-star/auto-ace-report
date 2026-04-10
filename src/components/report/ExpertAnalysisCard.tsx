@@ -1,7 +1,6 @@
-import { cn } from "@/lib/utils";
 import { getVerdictHsl } from "@/lib/risk-colors";
 import { AlertTriangle, Info } from "lucide-react";
-import type { AiFindings, ActiveServiceFault, KnownFailurePattern } from "@/types/vehicle";
+import type { AiFindings } from "@/types/vehicle";
 
 interface ExpertAnalysisCardProps {
   aiFindings?: AiFindings;
@@ -11,75 +10,21 @@ interface ExpertAnalysisCardProps {
   reliabilityConcerns?: Array<{ concern: string; costLow?: number | null; costHigh?: number | null }>;
 }
 
-interface CombinedFinding {
-  name: string;
-  detail: string;
-  severity: number;
-  costLow?: number;
-  costHigh?: number;
-}
-
-function combineFindingsFromAI(
+function getTopFinding(
   aiFindings?: AiFindings,
-  reliabilityConcerns?: Array<{ concern: string; costLow?: number | null; costHigh?: number | null }>
-): CombinedFinding[] {
-  const results: CombinedFinding[] = [];
-  if (aiFindings?.activeServiceFaults) {
-    for (const f of aiFindings.activeServiceFaults) {
-      // Look up cost from reliabilityConcerns for matching concern
-      const matchingConcern = reliabilityConcerns?.find(rc =>
-        rc.concern.toLowerCase().includes(f.system.toLowerCase()) ||
-        f.description?.toLowerCase().includes(rc.concern.toLowerCase().slice(0, 20))
-      );
-      results.push({
-        name: f.system,
-        detail: f.description || `${f.system} fault detected`,
-        severity: f.severityClass ?? 3,
-        costLow: matchingConcern?.costLow ?? f.estimatedCostPerIncident ?? undefined,
-        costHigh: matchingConcern?.costHigh ?? (f.estimatedCostPerIncident ? Math.round(f.estimatedCostPerIncident * 1.5) : undefined),
-      });
-    }
+): string {
+  if (aiFindings?.activeServiceFaults?.[0]?.description) {
+    return aiFindings.activeServiceFaults[0].description;
   }
-  if (aiFindings?.knownFailurePatterns) {
-    for (const p of aiFindings.knownFailurePatterns) {
-      const sev = p.probabilityTier === "high" ? 4 : p.probabilityTier === "medium" ? 3 : 1;
-      // Look up cost from reliabilityConcerns for matching concern (Fix 4)
-      const matchingConcern = reliabilityConcerns?.find(rc =>
-        rc.concern.toLowerCase().includes(p.issue.toLowerCase().slice(0, 15)) ||
-        p.issue.toLowerCase().includes(rc.concern.toLowerCase().slice(0, 15))
-      );
-      results.push({
-        name: p.issue,
-        detail: p.description || p.issue,
-        severity: sev,
-        costLow: matchingConcern?.costLow ?? (p.probabilityPercent > 50 ? 1500 : 800),
-        costHigh: matchingConcern?.costHigh ?? (p.probabilityPercent > 50 ? 4000 : 2000),
-      });
-    }
+  if (aiFindings?.knownFailurePatterns?.[0]?.description) {
+    return aiFindings.knownFailurePatterns[0].description;
   }
-  return results.sort((a, b) => b.severity - a.severity).slice(0, 3);
+  return "No critical findings identified";
 }
 
-function getSeverityColor(severity: number): string {
-  if (severity >= 4) return "border-risk-red";
-  if (severity >= 2) return "border-risk-amber";
-  return "border-risk-green";
-}
-
-function getSeverityIcon(severity: number): string {
-  if (severity >= 4) return "🔴";
-  if (severity >= 2) return "🟡";
-  return "🟢";
-}
-
-export function ExpertAnalysisCard({ aiFindings, sanitizedExpertOpinion, verdict, riskScore, reliabilityConcerns }: ExpertAnalysisCardProps) {
+export function ExpertAnalysisCard({ aiFindings, sanitizedExpertOpinion, verdict, riskScore }: ExpertAnalysisCardProps) {
   const verdictHsl = getVerdictHsl(verdict);
-  const findings = combineFindingsFromAI(aiFindings, reliabilityConcerns);
-
-  const topFinding = findings[0]?.detail ||
-    (aiFindings?.activeServiceFaults?.[0]?.description) ||
-    "No critical findings identified";
-
+  const topFinding = getTopFinding(aiFindings);
   const isHighRisk = (riskScore ?? 0) > 50;
 
   return (
@@ -88,7 +33,7 @@ export function ExpertAnalysisCard({ aiFindings, sanitizedExpertOpinion, verdict
       <div className="px-4 md:px-5 pt-5 pb-2">
         <h3 className="text-lg font-semibold text-foreground">Expert Opinion</h3>
       </div>
-      {/* Part A — Primary Finding Banner */}
+      {/* Primary Finding Banner */}
       <div className="px-4 md:px-5 py-4 flex items-start gap-3"
            style={{
              borderLeft: `4px solid ${verdictHsl}`,
@@ -102,27 +47,7 @@ export function ExpertAnalysisCard({ aiFindings, sanitizedExpertOpinion, verdict
         <p className="text-base font-semibold text-foreground leading-snug">{topFinding}</p>
       </div>
 
-      {/* Part B — Key Findings Grid */}
-      {findings.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 md:p-5 pt-3">
-          {findings.map((f, i) => (
-            <div key={i} className={cn("rounded-lg border-l-2 pl-3 pr-2 py-2", getSeverityColor(f.severity))}>
-              <div className="flex items-center gap-1.5">
-                <span className="text-base">{getSeverityIcon(f.severity)}</span>
-                <span className="text-[13px] font-semibold text-foreground truncate">{f.name}</span>
-              </div>
-              <p className="text-xs text-neutral mt-1 line-clamp-2">{f.detail}</p>
-              {(f.costLow || f.costHigh) && (
-                <p className="text-[11px] text-risk-red font-medium mt-1">
-                  ${f.costLow?.toLocaleString()}–${f.costHigh?.toLocaleString()} est.
-                </p>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Part C — Full Expert Opinion (always visible) */}
+      {/* Full Expert Opinion */}
       {sanitizedExpertOpinion && (
         <div className="px-4 md:px-5 pb-4 md:pb-5">
           <p className="whitespace-pre-line text-[14px] text-[#374151] leading-[1.6] mt-4 dark:text-foreground">
