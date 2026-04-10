@@ -264,14 +264,14 @@ export const VerdictHero = forwardRef<HTMLDivElement, VerdictHeroProps>(({
           </div>
 
           {/* CTA row */}
-          <div className="flex gap-2 mt-3">
+          <div className="flex flex-wrap gap-2 mt-3">
             {isPaid && onCheatSheetClick && (
-              <Button className="flex-1" style={{ backgroundColor: verdictHsl }}
+              <Button className="flex-1 min-w-0" style={{ backgroundColor: verdictHsl }}
                 onClick={onCheatSheetClick}>
                 Negotiation Cheat Sheet
               </Button>
             )}
-            <Button variant="outline" className="flex-1 border-border-card">
+            <Button variant="outline" className="flex-1 min-w-0 border-border-card bg-[hsl(30,100%,95%)] hover:bg-[hsl(30,100%,50%)] hover:text-white transition-colors">
               Get Insurance Quote
             </Button>
           </div>
