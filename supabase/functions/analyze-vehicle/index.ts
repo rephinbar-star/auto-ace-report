@@ -444,6 +444,19 @@ FINAL RECOMMENDATION VERDICT: Every analysis MUST conclude with a clear, unambig
 - "Buy" ONLY when NONE of the above conditions apply AND overall risk assessment supports it.
 The justification MUST reference the specific triggering condition(s). The word "high-risk" in expertOpinion is incompatible with a "Buy" verdict.
 
+VERDICT-SCORE CONSISTENCY ENFORCEMENT:
+The finalVerdict.verdict must be consistent with the computed UVPRS risk score:
+
+Score 0-30: "Buy" is permitted (not required).
+Score 31-50: "Negotiate" is the expected verdict. "Buy" requires explicit written justification of why score understates actual risk.
+Score 51-70: "Negotiate" or "Walk Away" only. "Buy" is prohibited.
+Score 71-100: "Walk Away" is strongly indicated. "Negotiate" permitted only when score reflects a single fixable issue (open recall, price). "Buy" is absolutely prohibited.
+
+If floorOverrides.triggered is true:
+  finalVerdict.verdict MUST be "Negotiate" or "Walk Away" regardless of weighted score. "Buy" is prohibited when any floor override is active.
+
+IMPORTANT: These rules apply to the verdict field in the tool call output. The expertOpinion prose must be consistent with this verdict — not tell a different story.
+
 CONSISTENCY RULES (MANDATORY):
 - If finalVerdict.verdict is "Walk Away", expertOpinion MUST NOT contain "buy", "negotiate", "good deal", "excellent deal", or equivalent purchase-positive phrasing. Paragraph 4 must explicitly tell the user to avoid or walk away.
 - If percentDifference is above 0, the vehicle is priced above the relevant market benchmark. In that case, expertOpinion MUST NOT call the pricing or deal rating "excellent" or "good". Use the actual computed dealRating and exact dollar difference provided.
