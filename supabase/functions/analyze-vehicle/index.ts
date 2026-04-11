@@ -320,6 +320,24 @@ Classify the largest mileage gap between documented services:
 CRITICAL: Partial-mileage records (e.g., only oil changes documented but no other services) count as a gap for the undocumented portion. No records at all = automatic serviceHistory risk score of 55.
 When inferring overdue maintenance items from a service gap, only list items appropriate for the vehicle's actual powertrain type. Do not list oil changes for BEVs. Do not list reduction gear fluid for ICE vehicles. Apply the terminology rules defined in the Powertrain-Aware Analysis section above.
 
+SERVICE HISTORY PATTERN ANALYSIS:
+Beyond gap classification, analyze the documented service pattern for behavioral signals:
+
+DEFERRED MAINTENANCE SIGNAL:
+If documented services are exclusively oil changes (no fluid flushes, no filter replacements, no inspections beyond oil) for any 24+ month period:
+  Flag as "selective maintenance pattern" — owner performed minimum required services only. Infer all non-oil maintenance items as likely missed regardless of mileage gap size.
+
+ANOMALOUS REPAIR TIMING:
+If any repair was performed at a mileage significantly earlier than expected for that component:
+  Cross-reference against accident history. Early component replacement (e.g., CV axle at 25k, radiator at 40k, suspension components at 30k) that is not explained by documented accidents may indicate an unreported collision. Set isAnomalous: true and note the discrepancy in activeServiceFaults.
+
+PRE-SALE SERVICE SPIKE:
+If service records show a cluster of repairs or inspections within the 90 days immediately before listing/sale:
+  Flag as potential pre-sale preparation to address known issues. Note which repairs occurred in this window and whether they address the vehicle's known failure patterns.
+
+GEOGRAPHIC SERVICE PATTERN:
+If service was performed at a consistent location then abruptly changed (different dealer group, different region), note this as a potential ownership change signal inconsistent with reported owner count.
+
 ${hasPricing ? "\nCRITICAL PRICING RULE: You have been provided with REAL-TIME MARKET PRICING DATA from KBB, Edmunds, NADA, and/or MarketCheck. You MUST copy these exact dollar values for fairMarketPrivate, fairMarketDealer, and fairMarketTradeIn. Do NOT adjust, round, or deviate from the sourced values by more than 2%. If multiple sources disagree, use the KBB value as primary. If KBB data is not available, fall back on MarketCheck. The sourced data is ground truth — your role is to USE it, not re-estimate it." : ""}
 ${hasMaintenance ? "\nIMPORTANT: You have been provided with REAL-TIME REPAIR AND MAINTENANCE COST DATA from authoritative sources (RepairPal, CarEdge, TrueDelta, Edmunds, owner reports). You MUST use these values as your primary reference for:\n- reliabilityConcerns: costLow and costHigh values\n- depreciationTable: repairCosts and maintenanceCosts columns\nDo not deviate significantly from the sourced cost data. Distribute repair costs across the 5-year period based on when issues typically occur at the vehicle's mileage progression." : ""}
 
