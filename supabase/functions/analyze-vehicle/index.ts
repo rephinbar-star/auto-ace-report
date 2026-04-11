@@ -298,6 +298,30 @@ Your analysis must be data-driven and consider:
 
 CRITICAL MILEAGE CONSTRAINT: The vehicle's current odometer reading is ${condition.mileage.toLocaleString()} miles. All reliability concerns, service history references, and mileage-based assessments MUST be consistent with this mileage. Do NOT reference services completed at mileages greater than ${(condition.mileage + 24000).toLocaleString()} miles (current mileage + 24,000 mile lookahead for upcoming service intervals).
 
+GEOGRAPHIC RISK INFERENCE:
+Using the vehicle's registration history (from service records, CarFax location data, or user's ZIP code "${condition.zipCode || "not provided"}"):
+
+SALT BELT (ME, NH, VT, MA, RI, CT, NY, NJ, PA, OH, IN, MI, IL, WI, MN, ND, SD, NE, IA, MO, and parts of MD, VA, WV, KY):
+  If vehicle has 3+ years of salt-belt registration history:
+  - Flag underbody corrosion as a material risk
+  - Add brake line corrosion check to pre-purchase inspection requirements
+  - For trucks/SUVs: add frame inspection requirement
+  - Elevate suspension component concern likelihood by one tier
+
+DESERT/HOT CLIMATE (AZ, NV, NM, and parts of CA, TX, UT):
+  For BEV/PHEV with air-cooled battery:
+  - Elevate battery degradation concern to "high" probability regardless of mileage
+  - Note that air-cooled batteries in desert climates degrade at 2-3× the rate of liquid-cooled equivalents in temperate zones
+
+COASTAL (within 20 miles of saltwater):
+  - Flag accelerated electrical connector corrosion
+  - Elevate convertible top, paint, and underbody concerns
+
+FLOOD ZONE HISTORY:
+  If vehicle ZIP code matches FEMA flood zone A or AE AND vehicle was registered during a documented flood event in that area (major hurricanes, etc.):
+  - Flag as potential undisclosed flood damage even with clean title
+  - Require interior flood inspection in pre-purchase requirements
+
 ODOMETER INTEGRITY CHECK (MANDATORY):
 Compare prior reported mileage readings (from CarFax, AutoCheck, or DMV records in the history) against the current odometer reading of ${condition.mileage.toLocaleString()} miles.
 - If a ROLLBACK is detected (current reading is LOWER than a prior reported reading): This is a Class 5 fault. Set odometerIntegrity.status to "rollback". The floor override MUST be set to minimumScore 85 with triggeringCondition "Confirmed odometer rollback".
