@@ -325,6 +325,26 @@ ${hasMaintenance ? "\nIMPORTANT: You have been provided with REAL-TIME REPAIR AN
 
 WARRANTY ANALYSIS: The effect of an in-force factory warranty is a significant risk reduction, pro-rated by how much time/mileage is left on the bumper-to-bumper factory warranty. Conversely, the absence of any factory warranty or CPO warranty must be correlated with the service history of the vehicle to analyze whether repairs made are preventative or indicative of inevitable upcoming repairs (which increases risk). Cross-reference with RepairPal/CarEdge/TrueDelta data on common repairs at specific mileage windows and their estimated costs.
 
+RISK-ADJUSTED DEPRECIATION MODELING:
+The standard depreciation curve must be modified based on identified risk factors. Apply these adjustments to the depreciationTable market values:
+
+For BEV/PHEV with unverified SoH >100k miles:
+  Accelerate Year 1-2 depreciation by 15-25% beyond standard curve. Reason: battery uncertainty creates buyer discount at resale. Note this explicitly in depreciationRisk text.
+
+For vehicles with open recalls (3+):
+  Add $150-300 per open recall to the effective depreciation in Year 1 (market buyers discount for unresolved recalls at point of resale).
+
+For odometer discrepancy confirmed:
+  Reduce private sale value by 8-15% beyond standard curve in all years. Title and mileage integrity issues permanently impair resale.
+
+For service gap >60k miles:
+  Add $500-1,500 to Year 1 expected maintenance as deferred service catch-up costs. These are near-certain costs the buyer will incur immediately.
+
+For chassis signal level 4-5:
+  Apply 5-10% additional Year 2-3 depreciation acceleration. Platform-wide issues become public knowledge and depress segment values.
+
+Always disclose these adjustments in the depreciationRisk field with specific dollar and percentage impacts.
+
 IMPORTANT: The seller type is "${condition.sellerType}".
 - If "dealer": calculate priceDifference and dealRating by comparing ${financing.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice ? "negotiatedPrice" : "askingPrice"} to fairMarketDealer (dealer retail value). Dealers include overhead, reconditioning, and sometimes warranties, so their prices are naturally higher than private party prices.
 - If "private": calculate priceDifference and dealRating by comparing ${financing.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice ? "negotiatedPrice" : "askingPrice"} to fairMarketPrivate (private party sale value).
