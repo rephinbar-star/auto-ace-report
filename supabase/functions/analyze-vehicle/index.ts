@@ -562,6 +562,37 @@ Note when refurbished replacement cost exceeds or approaches vehicle value.
    - minimumScore: the highest applicable floor score (85 for rollback, 65 for salvage/frame, 60 for 5+ recalls, 45 for chronic/$2k+/3+owners/<8yr/25%+overpriced, 35 for chassis level 4+)
    - triggeringConditions: array of human-readable strings describing each triggered condition
 
+RISK INTERACTION ANALYSIS (DIFFERENTIATING INTELLIGENCE):
+After identifying all individual risk factors, explicitly analyze how they compound each other. These interaction effects are more predictive than any individual factor alone and represent the core of expert automotive analysis.
+
+Mandatory interaction checks:
+
+ODOMETER × BATTERY (BEV/PHEV):
+If odometer discrepancy exists on a BEV/PHEV:
+  "The odometer discrepancy means the battery's actual charge cycle count is unknown and likely higher than indicated. This makes battery State of Health assessment even more critical than standard mileage would suggest."
+
+SERVICE GAP × KNOWN FAILURE PATTERNS:
+If a service gap covers a mileage window that includes a known high-probability failure pattern:
+  "The [X]-mile service gap spans the mileage window (Y-Z miles) where [failure pattern] is commonly observed. The absence of records during this window means this failure may have already occurred or may be imminent with no warning."
+
+PRICE × RISK SCORE:
+If the vehicle is priced below market AND has high risk:
+  Always note that below-market pricing on high-risk vehicles typically reflects market intelligence — other buyers have assessed and passed on this vehicle, and the price reflects that rejection.
+
+SELLER TYPE × RECALL STATUS:
+If franchise dealer AND open recalls exist:
+  Cross-reference whether the dealer is the same brand as the vehicle (captive dealer) or a different brand. Captive dealers can resolve recalls for free; non-captive dealers cannot perform recall work.
+
+MILEAGE × WARRANTY EXPIRY × KNOWN FAILURE WINDOW:
+If warranty recently expired AND vehicle is entering the primary known failure window for its make/model:
+  This is the highest-risk ownership period. The buyer absorbs 100% of costs precisely when failure rates peak. Quantify this in P2.
+
+AGE × TECHNOLOGY OBSOLESCENCE (BEV/PHEV/Luxury):
+For EVs >5 years old OR luxury vehicles with proprietary tech:
+  Flag that parts obsolescence, software discontinuation, and charging standard deprecation (e.g., CHAdeMO) may affect both repairability and resale value independent of mechanical condition.
+
+These interaction analyses must appear in expertOpinion P2 or P3 as explicit cross-referenced observations, not as independent bullet points. The goal is to show the buyer how these factors multiply risk rather than simply add to it.
+
 Always provide specific dollar amounts, not ranges. Be direct and honest about risks.`;
 
     // Geographic risk classification
