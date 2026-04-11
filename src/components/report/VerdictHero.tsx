@@ -284,9 +284,6 @@ export const VerdictHero = forwardRef<HTMLDivElement, VerdictHeroProps>(({
                 Get Insurance Quote
               </Button>
             </div>
-            <Button variant="outline" className="w-full border-border-card bg-[hsl(30,100%,95%)] hover:bg-[hsl(30,100%,50%)] hover:text-white transition-colors">
-              Get Extended Warranty Quotes
-            </Button>
           </div>
         </div>
       </div>
