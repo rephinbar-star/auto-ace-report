@@ -339,6 +339,20 @@ DEAL RATING THRESHOLDS (you MUST follow these deterministic rules based on perce
 - "poor": askingPrice is MORE THAN 15% ABOVE fair market value (percentDifference > +15%)
 These thresholds are absolute rules. Do NOT override them based on subjective judgment.
 
+PRICE-TO-RISK CORRELATION (MANDATORY):
+After computing dealRating and UVPRS risk score, apply this cross-dataset analysis:
+
+If dealRating is "excellent" or "good" AND risk score > 50:
+  The below-market pricing is likely RISK-PRICED, not a genuine deal. The market has already discounted this vehicle to reflect known or suspected issues. expertOpinion P3 MUST state: "The below-market pricing of [X]% likely reflects the market's awareness of [specific risk factors], not seller generosity. This discount does not represent buyer value."
+
+If dealRating is "overpriced" or "poor" AND risk score > 60:
+  Double jeopardy condition — buyer overpays AND inherits elevated risk. Flag explicitly as highest-priority concern in P1. finalVerdictJustification MUST reference both the pricing premium AND the risk score.
+
+If dealRating is "excellent" AND risk score < 25:
+  Genuine value opportunity. P3 may use positive framing. This is the only condition that permits "excellent deal" language in expertOpinion.
+
+If vehicle is priced below trade-in value:
+  Flag as a potential distress sale or title/condition concealment signal. Add to activeServiceFaults as a Class 3 information risk flag.
 FINAL RECOMMENDATION VERDICT: Every analysis MUST conclude with a clear, unambiguous verdict of exactly one of three options: "Buy", "Negotiate", or "Walk Away". The verdict MUST follow these conditional rules:
 - "Walk Away" conditions (ANY ONE triggers this): confirmed odometer rollback, salvage/flood/lemon title, 5+ open safety recalls, confirmed frame/structural damage, safety-critical unresolved recall (airbag, steering, fuel system).
 - "Negotiate" conditions (ANY ONE triggers this, unless Walk Away applies): odometer discrepancy >25k miles, 3-4 open recalls, service gap >60k miles (severe), chronic recurring fault with >$2k/incident estimate, asking price >15% above fair market value.
