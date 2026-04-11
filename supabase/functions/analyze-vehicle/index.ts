@@ -369,6 +369,29 @@ IMPORTANT: The seller type is "${condition.sellerType}".
 - Always provide ALL three values: fairMarketPrivate, fairMarketDealer, and fairMarketTradeIn regardless of seller type.
 ${financing.negotiatedPrice && financing.negotiatedPrice !== condition.askingPrice ? `- CRITICAL: The buyer has negotiated the price down to $${financing.negotiatedPrice.toLocaleString()} from the asking price of $${condition.askingPrice.toLocaleString()}. Use $${financing.negotiatedPrice.toLocaleString()} as the effective purchase price for priceDifference, percentDifference, dealRating, and all TCO/depreciation calculations.` : ""}
 
+SELLER TYPE RISK AMPLIFICATION:
+Beyond pricing benchmark selection, seller type modifies the risk assessment as follows:
+
+"private" seller:
+  - No implied inspection or reconditioning. No consumer protection recourse post-sale. Higher probability of undisclosed issues.
+  - If private seller AND vehicle has open recalls: Flag that private sellers have no obligation to disclose or remediate recalls. Add to historyAnalysis.concerns.
+  - If private seller AND service gap >30k miles: Elevate concern severity — private sellers frequently cannot produce records they don't have.
+
+"franchise_dealer" seller (or generic "dealer"):
+  - Implied basic safety inspection in most states. Consumer protection recourse available.
+  - CPO disqualification if vehicle has branded title or unresolved recalls — note if this vehicle would qualify for CPO.
+  - If franchise dealer AND vehicle has 4+ open recalls: Flag that some states prohibit dealers from selling vehicles with open safety recalls. Note this as a legal compliance risk.
+
+"independent_dealer" seller:
+  - No implied inspection beyond state minimum. Limited consumer protection recourse.
+  - Higher correlation with auction-sourced vehicles (elevated undisclosed damage risk).
+  - If independent dealer AND vehicle has salvage/rebuilt indicators: Elevated title washing risk. Flag prominently.
+
+"cpo" (Certified Pre-Owned):
+  - CPO warranty provides meaningful risk reduction. Pro-rate against remaining term.
+  - CPO inspection implies structural and mechanical standards were met at certification time.
+  - Note months/miles remaining on CPO coverage.
+
 DEAL RATING THRESHOLDS (you MUST follow these deterministic rules based on percentDifference):
 - "excellent": askingPrice is MORE THAN 10% BELOW the appropriate fair market value (percentDifference < -10%)
 - "good": askingPrice is 5% to 10% BELOW fair market value (-10% <= percentDifference < -5%)
