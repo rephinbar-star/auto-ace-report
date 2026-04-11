@@ -551,6 +551,18 @@ Note when refurbished replacement cost exceeds or approaches vehicle value.
 
 Always provide specific dollar amounts, not ranges. Be direct and honest about risks.`;
 
+    // Geographic risk classification
+    const saltBeltStates = ["ME", "NH", "VT", "MA", "RI", "CT", "NY", "NJ", "PA", "OH", "IN", "MI", "IL", "WI", "MN", "ND", "SD", "NE", "IA", "MO", "MD", "VA", "WV", "KY"];
+    const desertStates = ["AZ", "NV", "NM"];
+    const hotStates = [...desertStates, "TX", "UT"];
+    const coastalStates = ["FL", "HI", "SC", "GA", "AL", "MS", "LA"];
+
+    // Derive registration state from ZIP or history if available
+    const vehicleRegistrationState = (vehicleData as any).condition?.state || null;
+
+    // Extract open recalls if provided
+    const openRecalls: Array<{ component: string; description: string; id: string }> = (vehicleData as any).openRecalls || [];
+
     // Build vehicle specs section if enriched data is available
     const vehicleSpecsLines: string[] = [];
     if ((vehicleData as any).vehicle?.engine) vehicleSpecsLines.push(`- Engine: ${(vehicleData as any).vehicle.engine}`);
@@ -566,6 +578,28 @@ Always provide specific dollar amounts, not ranges. Be direct and honest about r
       vehicleSpecsLines.push(`- Option Packages: ${(vehicleData as any).vehicle.optionPackages.join(", ")}`);
     }
     const vehicleSpecsBlock = vehicleSpecsLines.length > 0 ? `\nVEHICLE SPECIFICATIONS:\n${vehicleSpecsLines.join("\n")}` : "";
+
+    // Build geographic risk block
+    const geoRiskBlock = (() => {
+      const state = vehicleRegistrationState;
+      if (!state && !condition.zipCode) return "";
+      let classification = "TEMPERATE — standard corrosion/thermal risk";
+      if (state && saltBeltStates.includes(state)) {
+        classification = "SALT BELT — elevated corrosion risk";
+      } else if (state && hotStates.includes(state)) {
+        classification = "HOT/ARID CLIMATE — elevated thermal/battery risk";
+      } else if (state && coastalStates.includes(state)) {
+        classification = "COASTAL — elevated salt-air corrosion risk";
+      }
+      return `\nVEHICLE REGISTRATION HISTORY:
+- State of registration: ${state || "Unknown (ZIP: " + condition.zipCode + ")"}
+- Geographic risk classification: ${classification}`;
+    })();
+
+    // Build open recalls block
+    const recallsBlock = openRecalls.length > 0
+      ? `\nCONFIRMED OPEN NHTSA RECALLS (${openRecalls.length} total):\n${openRecalls.map(r => `- ${r.component}: ${r.description} (Recall #${r.id})`).join("\n")}\nCRITICAL: Use ONLY these confirmed recall names in hero bullets and recall references. Do NOT infer or add recalls not listed above.`
+      : "\nNo open NHTSA recalls confirmed for this VIN.";
 
     const userPrompt = `Analyze this vehicle purchase:
 
