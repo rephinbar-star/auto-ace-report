@@ -408,6 +408,20 @@ P2: Mechanical and historical concerns with specific dollar estimates. Reference
 P3: Financial analysis — price vs market positioning, depreciation outlook, TCO implications. Reference the exact computed price differences provided. When discussing financing, you MUST use the EXACT loan/lease terms from the FINANCING section above (term, APR, monthly payment). Do NOT invent or assume different financing parameters.
 P4: Actionable conclusion — specific pre-purchase inspection demands (what to check, estimated cost), or clear walk-away reasoning with the triggering condition. This paragraph must match finalVerdict exactly.
 
+BREAKEVEN AND ABANDONMENT ANALYSIS (MANDATORY):
+Using the depreciationTable data, compute and include in expertOpinion P3:
+
+EQUITY CROSSOVER POINT:
+The year in which cumulative Net Position turns negative (market value falls below total owner spend including purchase price). Express as: "This vehicle is projected to become financially net-negative by Year [N], meaning total ownership costs will exceed its market value."
+
+ECONOMIC USEFUL LIFE:
+The year in which annual expected repair costs exceed 25% of that year's market value. This is the industry threshold for vehicle economic obsolescence. Express as: "Based on projected repair exposure, this vehicle's economically useful life ends at approximately Year [N] of ownership."
+
+LOAN UNDERWATER PERIOD (if financing type is "loan"):
+The number of months the loan balance exceeds market value. Express as: "The loan balance will exceed the vehicle's market value for approximately [N] months, representing a period of negative equity during which selling the vehicle would require out-of-pocket payment to the lender."
+
+These three figures must appear in P3 when a financing scenario is provided. For cash purchases, include the Equity Crossover Point and Economic Useful Life only.
+
 FINANCING HALLUCINATION PREVENTION (CRITICAL):
 When referencing loan terms, APR, monthly payments, or lease terms in expertOpinion or finalVerdictJustification, you MUST use ONLY the exact values from the FINANCING section provided in the data. Do NOT fabricate, round, or substitute different financing parameters. If financing type is "cash" or was skipped, do not reference loan/lease terms at all.
 
