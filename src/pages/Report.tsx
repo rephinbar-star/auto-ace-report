@@ -2535,6 +2535,11 @@ export default function ReportPage() {
                 </Button>
                 <p className="text-xs text-neutral text-center mt-1">Compare rates from 80+ insurers</p>
               </div>
+              <div>
+                <Button variant="outline" className="w-full h-11 text-base bg-orange-100 border-orange-200 text-orange-700 hover:bg-orange-300 hover:border-orange-300 hover:text-orange-900">
+                  Get Extended Warranty Quotes
+                </Button>
+                <p className="text-xs text-neutral text-center mt-1">Compare coverage from top providers</p>
               <div className="text-center pt-4">
                 <div className="flex flex-col sm:flex-row gap-3 w-full">
                   <Button asChild size="lg" className="flex-1">
