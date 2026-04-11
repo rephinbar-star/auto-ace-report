@@ -2530,13 +2530,13 @@ export default function ReportPage() {
                 financingType={financing?.type}
               />
               <div>
-                <Button variant="outline" className="w-full h-11 text-base bg-orange-100 border-orange-200 text-orange-700 hover:bg-orange-300 hover:border-orange-300 hover:text-orange-900">
+                <Button variant="outline" className="w-full h-11 text-base bg-yellow-300 border-yellow-400 text-black hover:bg-yellow-400 hover:border-yellow-500">
                   Get Personalized Insurance Quotes
                 </Button>
                 <p className="text-xs text-neutral text-center mt-1">Compare rates from 80+ insurers</p>
               </div>
               <div>
-                <Button variant="outline" className="w-full h-11 text-base bg-orange-100 border-orange-200 text-orange-700 hover:bg-orange-300 hover:border-orange-300 hover:text-orange-900">
+                <Button variant="outline" className="w-full h-11 text-base bg-yellow-300 border-yellow-400 text-black hover:bg-yellow-400 hover:border-yellow-500">
                   Get Extended Warranty Quotes
                 </Button>
                 <p className="text-xs text-neutral text-center mt-1">Compare coverage from top providers</p>
