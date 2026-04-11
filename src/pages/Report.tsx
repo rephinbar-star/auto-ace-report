@@ -2540,6 +2540,7 @@ export default function ReportPage() {
                   Get Extended Warranty Quotes
                 </Button>
                 <p className="text-xs text-neutral text-center mt-1">Compare coverage from top providers</p>
+              </div>
               <div className="text-center pt-4">
                 <div className="flex flex-col sm:flex-row gap-3 w-full">
                   <Button asChild size="lg" className="flex-1">
