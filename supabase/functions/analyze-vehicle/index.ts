@@ -627,6 +627,13 @@ ${history ? `VEHICLE HISTORY:
 - Previous Owners: ${history.ownerCount || "Unknown"}
 - Title Status: ${history.titleStatus || "Unknown"}
 ${history.issues?.length ? `- Known Issues: ${history.issues.join(", ")}` : ""}` : "No vehicle history report provided."}
+${geoRiskBlock}
+${recallsBlock}
+
+GENERATION CONTEXT:
+- This vehicle is a ${vehicle.year} ${vehicle.make} ${vehicle.model}${vehicle.trim ? ` ${vehicle.trim}` : ""}
+- Known generation-specific failure patterns should be assessed against THIS generation specifically, not the nameplate generally.
+- If this is a first model year of a new generation or a significant redesign year: Flag first-year reliability risk explicitly.
 
 ${hasPricing ? `REAL-TIME MARKET PRICING DATA (use these as your primary pricing reference):
 ${pricingData.pricingContext}` : ""}
