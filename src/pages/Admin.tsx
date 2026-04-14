@@ -62,6 +62,20 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 
+interface VehicleReport {
+  id: string;
+  year: number;
+  make: string;
+  model: string;
+  trim: string | null;
+  vin: string | null;
+  status: string;
+  createdAt: string;
+  askingPrice: number;
+  dealRating: string | null;
+  riskLevel: string | null;
+}
+
 interface Subscriber {
   userId: string;
   email: string;
@@ -74,6 +88,7 @@ interface Subscriber {
   customerId: string | null;
   subscriptionId: string | null;
   isBlocked: boolean;
+  reports: VehicleReport[];
 }
 
 type AuthStep = "password" | "otp" | "authenticated";
