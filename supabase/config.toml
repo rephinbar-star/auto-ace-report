@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.generate-cheat-sheet]
 verify_jwt = false
+
+[functions.cleanup-incomplete-signups]
+verify_jwt = false
