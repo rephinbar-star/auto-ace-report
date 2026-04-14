@@ -100,6 +100,8 @@ const sampleAnalysis = {
         probabilityTier: "low" as const,
         probabilityPercent: 15,
         alreadyPresent: false,
+        costTier: "low" as const,
+        yearsToFailureWindow: 5,
       },
     ],
     odometerIntegrity: { status: "verified" as const, gapMiles: null },
