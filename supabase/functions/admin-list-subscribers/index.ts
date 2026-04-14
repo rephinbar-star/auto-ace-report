@@ -141,6 +141,19 @@ serve(async (req) => {
           displayName: profile.display_name,
           joinDate: profile.created_at,
           isBlocked: blockedUserIds.has(profile.user_id),
+          reports: (reportsByUser.get(profile.user_id) || []).map(r => ({
+            id: r.id,
+            year: r.year,
+            make: r.make,
+            model: r.model,
+            trim: r.trim,
+            vin: r.vin,
+            status: r.status,
+            createdAt: r.created_at,
+            askingPrice: r.asking_price,
+            dealRating: r.deal_rating,
+            riskLevel: r.risk_level,
+          })),
           ...stripeData,
         };
       })
