@@ -114,7 +114,6 @@ export default function AdminPage() {
   const [newPlan, setNewPlan] = useState<string>("");
   const [isUpdating, setIsUpdating] = useState(false);
   const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
-  const [isUpdating, setIsUpdating] = useState(false);
 
   // Check session on mount
   useEffect(() => {
