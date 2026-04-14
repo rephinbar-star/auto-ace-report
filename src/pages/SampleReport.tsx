@@ -1,104 +1,42 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend, 
-  ResponsiveContainer 
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
-import { 
-  DollarSign, 
-  TrendingDown, 
-  AlertTriangle, 
-  CheckCircle, 
-  XCircle,
-  Car,
-  Gauge,
-  Wrench,
-  FileText,
-  Share2,
-  Download,
-  ArrowRight,
-  Sparkles,
-  Loader2,
-  Building2,
-  ShieldCheck,
-  ShieldAlert,
-  Star,
-  Scale,
-  ThumbsUp,
-  ThumbsDown,
-  HandCoins,
-  ExternalLink,
+import {
+  DollarSign, TrendingDown, CheckCircle, XCircle, Car, ArrowRight,
+  Loader2, ShieldCheck, ShieldAlert, ExternalLink, Scale, AlertTriangle,
+  Download, BadgeCheck, Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SEO } from "@/components/seo/SEO";
 import { generateReportPDF } from "@/lib/generatePDF";
-import { calculateTCO } from "@/lib/tco-calculations";
-import { convertLegacyTable, type ComputedDepreciationRow } from "@/lib/depreciation-engine";
+import { calculateTCO, calculateMonthlyOwnershipBreakdown } from "@/lib/tco-calculations";
+import { convertLegacyTable } from "@/lib/depreciation-engine";
 import { toast } from "sonner";
 import { SampleComparisonReport } from "@/components/sample/SampleComparisonReport";
-import { RiskScoreBreakdown } from "@/components/report/RiskScoreBreakdown";
 import { ServiceHistoryTimeline } from "@/components/report/ServiceHistoryTimeline";
 import { calculateUVPRS } from "@/lib/uvprs-scoring";
-import type { Variants } from "framer-motion";
+import { VerdictHero } from "@/components/report/VerdictHero";
+import { MetricsStrip } from "@/components/report/MetricsStrip";
+import { ExpertAnalysisCard } from "@/components/report/ExpertAnalysisCard";
+import { ExpertFindingsStrip } from "@/components/report/ExpertFindingsStrip";
+import { MonthlyOwnershipCostCard } from "@/components/report/MonthlyOwnershipCostCard";
+import type { AiFindings } from "@/types/vehicle";
 
-// Animation variants
-const containerVariants: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-};
+// ─── Sample data ───
 
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.5,
-    },
-  },
-};
-
-const statCardVariants: Variants = {
-  hidden: { opacity: 0, scale: 0.9 },
-  visible: {
-    opacity: 1,
-    scale: 1,
-    transition: {
-      duration: 0.4,
-    },
-  },
-};
-
-// Sample data for demonstration
 const sampleVehicle = {
   year: 2024,
   make: "Toyota",
@@ -109,6 +47,10 @@ const sampleVehicle = {
   condition: "excellent",
   dealerName: "Bay Area Toyota",
   sellerType: "dealer",
+  bodyStyle: "SUV",
+  drivetrain: "AWD",
+  fuelType: "Gasoline",
+  exteriorColor: "Midnight Black",
 };
 
 const sampleAnalysis = {
@@ -118,7 +60,6 @@ const sampleAnalysis = {
     fairMarketTradeIn: 30800,
     dealRating: "good" as const,
     priceDifference: -700,
-    percentDifference: -2.0,
   },
   depreciationTable: [
     { year: 1, privateValue: 31500, tradeInValue: 29200, loanBalance: 28000, repairCosts: 0, maintenanceCosts: 180, netEquityPrivate: 3320, netEquityTradeIn: 1020 },
@@ -129,15 +70,14 @@ const sampleAnalysis = {
   ],
   riskAssessment: {
     level: "low" as const,
-    depreciationRisk: "The Toyota RAV4 is one of the strongest value holders in the compact SUV segment, with an average depreciation of 10-13% annually. The XLE Premium trim with AWD retains value particularly well due to strong year-round demand.",
+    depreciationRisk: "The Toyota RAV4 is one of the strongest value holders in the compact SUV segment, with an average depreciation of 10-13% annually.",
     reliabilityConcerns: [
       { concern: "Infotainment system may need software updates periodically", costLow: 0, costHigh: 150 },
       { concern: "AWD system fluid change recommended at 30k miles", costLow: 120, costHigh: 200 },
     ],
-    valueProposition: "This RAV4 XLE Premium represents excellent value with its combination of Toyota reliability, low mileage, and comprehensive safety features. The asking price is slightly above market, but the near-new condition and low mileage justify the premium.",
+    valueProposition: "This RAV4 XLE Premium represents excellent value with its combination of Toyota reliability, low mileage, and comprehensive safety features.",
     fairOfferPrice: 33500,
-    expertOpinion: "This 2024 Toyota RAV4 XLE Premium AWD is an outstanding choice for buyers seeking a reliable, practical, and well-equipped compact SUV. With only 18,200 miles, this vehicle is barely broken in.\n\nThe 2.5-liter Dynamic Force engine delivers a smooth 203 hp while achieving impressive fuel economy for an AWD SUV. Toyota's Safety Sense 3.0 suite provides comprehensive driver assistance features that are standard on this trim.\n\nThe XLE Premium adds SofTex heated seats, an 8-inch touchscreen with wireless Apple CarPlay/Android Auto, a power liftgate, and dual-zone climate control — features that significantly enhance daily usability.\n\nAt $34,500, the asking price is approximately $1,300 above fair market value. Given the low mileage and excellent condition, I recommend negotiating toward $33,500 for a fair deal.\n\nOverall verdict: A top-tier choice with minimal ownership risk and strong long-term value retention.",
-    repairAnalysis: "**Anticipated Repairs Based on Mileage & History**\n\nBased on the vehicle's current 18,200 miles and service records showing regular maintenance at Toyota dealerships, here's what to expect:\n\n**Completed Maintenance (Per Service Records):**\n• Regular oil changes every 5,000 miles ✓\n• Tire rotation every 5,000 miles ✓\n• Multi-point inspection at 15,000 miles ✓\n\n**Upcoming Service (20k-30k miles):**\n• Cabin air filter replacement (~$40-60)\n• Engine air filter replacement (~$30-50)\n• Brake inspection (~$0-50)\n\n**Mid-Term Repairs (30k-60k miles):**\n• AWD fluid change (~$120-200)\n• Brake pad replacement (~$250-400)\n• Battery replacement (~$150-200) - Typically lasts 4-5 years\n• Spark plug replacement (~$120-180)\n\n**Long-Term Considerations (60k-100k miles):**\n• Transmission fluid change (~$150-250)\n• Coolant flush (~$100-150)\n• Suspension component inspection (~$200-400)\n• Drive belt replacement (~$120-200)\n\n**Total Estimated 5-Year Repair Costs: $1,500-$2,200**\n\nThis is well below average for vehicles in this class, reflecting Toyota's exceptional reliability. The low mileage starting point means most major services are still far out.",
+    expertOpinion: "This 2024 Toyota RAV4 XLE Premium AWD is an outstanding choice for buyers seeking a reliable, practical, and well-equipped compact SUV. With only 18,200 miles, this vehicle is barely broken in.\n\nThe 2.5-liter Dynamic Force engine delivers a smooth 203 hp while achieving impressive fuel economy for an AWD SUV. Toyota's Safety Sense 3.0 suite provides comprehensive driver assistance features.\n\nThe XLE Premium adds SofTex heated seats, an 8-inch touchscreen with wireless Apple CarPlay/Android Auto, a power liftgate, and dual-zone climate control.\n\nAt $34,500, the asking price is approximately $1,300 above fair market value. Given the low mileage and excellent condition, I recommend negotiating toward $33,500 for a fair deal.\n\nOverall verdict: A top-tier choice with minimal ownership risk and strong long-term value retention.",
   },
   historyAnalysis: {
     healthScore: 94,
@@ -149,74 +89,59 @@ const sampleAnalysis = {
       "All scheduled services completed on time",
       "Still under factory warranty",
     ],
-    concerns: [
-      "Minor paint chip on front bumper noted",
-    ],
+    concerns: ["Minor paint chip on front bumper noted"],
   },
-  dealerReview: {
-    dealerName: "Bay Area Toyota",
-    trustScore: 88,
-    trustLevel: "high" as const,
-    summary: "Bay Area Toyota has earned a strong reputation for transparent pricing and exceptional customer service. Consistently rated among the top Toyota dealers in the region.",
-    positives: [
-      "Transparent pricing — no hidden dealer fees",
-      "Excellent certified pre-owned program",
-      "Responsive and knowledgeable sales team",
-      "Comprehensive vehicle inspection reports provided",
+  aiFindings: {
+    activeServiceFaults: [],
+    knownFailurePatterns: [
+      {
+        issue: "Infotainment",
+        description: "Infotainment system may need periodic software updates",
+        probabilityTier: "low" as const,
+        probabilityPercent: 15,
+        alreadyPresent: false,
+        costTier: "minor" as const,
+        yearsToFailureWindow: 5,
+      },
     ],
-    redFlags: [
-      "Weekend wait times can be lengthy for service",
-    ],
-    sources: ["Google Reviews", "DealerRater", "Cars.com"],
+    odometerIntegrity: { status: "verified" as const, gapMiles: null },
+    chassisSignal: { level: 1 as const, isProblemGeneration: false, isWorstGeneration: false, withinFailureWindow: false, description: "No known chassis issues" },
+  } as AiFindings,
+  warrantyAnalysis: {
+    warrantyStatus: "active" as const,
+    warrantyMonthsRemaining: 24,
+    riskReductionFactor: 70,
+    warrantyNotes: "Factory bumper-to-bumper warranty still active with 24 months remaining.",
+  },
+  finalVerdict: {
+    verdict: "Conditional Buy",
+    justification: "Excellent deal on a low-mileage, well-maintained vehicle with active warranty. Negotiate toward $33,500.",
   },
 };
 
-const dealRatingColors = {
-  excellent: "bg-green-500 text-white",
-  good: "bg-emerald-500 text-white",
-  fair: "bg-yellow-500 text-white",
-  overpriced: "bg-orange-500 text-white",
-  poor: "bg-red-500 text-white",
+const sampleServiceHistory = {
+  serviceGapMiles: 7500,
+  majorServicesDone: [
+    "Oil changes every 5,000 mi",
+    "Brake fluid flush at 30,000 mi",
+    "Cabin & engine air filters at 35,000 mi",
+  ],
+  majorServicesDue: ["Transmission fluid change (due at 60k)"],
+  chronicRepairSystems: [] as string[],
 };
 
-const riskLevelColors = {
-  low: "bg-green-500 text-white",
-  medium: "bg-yellow-500 text-white",
-  high: "bg-red-500 text-white",
-};
+// ─── Component ───
 
 export default function SampleReportPage() {
-  const { priceAssessment, depreciationTable, riskAssessment, historyAnalysis, dealerReview } = sampleAnalysis;
-  const [includeRepairs, setIncludeRepairs] = useState(true);
+  const { priceAssessment, depreciationTable, riskAssessment, historyAnalysis } = sampleAnalysis;
   const [isDownloading, setIsDownloading] = useState(false);
   const [activeTab, setActiveTab] = useState("comparison");
+  const [historyTab, setHistoryTab] = useState("overview");
+  const heroRef = useRef<HTMLDivElement>(null);
 
-  // Sample granular service data
-  const sampleServiceHistory = {
-    serviceGapMiles: 7500,
-    majorServicesDone: [
-      "Oil changes every 5,000 mi",
-      "Brake fluid flush at 30,000 mi",
-      "Cabin & engine air filters at 35,000 mi",
-    ],
-    majorServicesDue: [
-      "Transmission fluid change (due at 60k)",
-    ],
-    chronicRepairSystems: [] as string[],
-  };
-
-  // Compute depreciation table using the deterministic engine
   const startingFMV = priceAssessment.fairMarketPrivate;
-  const computedDepTable = convertLegacyTable(
-    depreciationTable,
-    startingFMV,
-    28000, // sample loan amount
-    4.5,   // sample APR
-    60,    // sample 60 month term
-    false
-  );
+  const computedDepTable = convertLegacyTable(depreciationTable, startingFMV, 28000, 4.5, 60, false);
 
-  // Compute UVPRS from sample data
   const sampleUVPRS = calculateUVPRS({
     year: sampleVehicle.year,
     make: sampleVehicle.make,
@@ -235,10 +160,27 @@ export default function SampleReportPage() {
     majorServicesDone: sampleServiceHistory.majorServicesDone,
     chronicRepairSystems: sampleServiceHistory.chronicRepairSystems,
     fairMarketPrivate: priceAssessment.fairMarketPrivate,
-    fairMarketDealer: undefined,
+    fairMarketDealer: priceAssessment.fairMarketDealer,
     openRecallCount: 0,
     sellerType: "dealer",
   });
+
+  const tco = calculateTCO(
+    sampleVehicle.askingPrice,
+    30,
+    "gasoline",
+    depreciationTable,
+    { annualMiles: 12000 },
+    { make: sampleVehicle.make, year: sampleVehicle.year, model: sampleVehicle.model }
+  );
+
+  const monthlyBreakdown = calculateMonthlyOwnershipBreakdown(tco, 598);
+  const monthlyCostRange =
+    monthlyBreakdown.totalHigh > 0 && monthlyBreakdown.totalHigh !== monthlyBreakdown.totalLow
+      ? `$${monthlyBreakdown.totalLow.toLocaleString()}–$${monthlyBreakdown.totalHigh.toLocaleString()}`
+      : `$${monthlyBreakdown.totalLow.toLocaleString()}`;
+
+  const fmvPriceDifference = sampleVehicle.askingPrice - (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate);
 
   const chartData = [
     {
@@ -256,8 +198,6 @@ export default function SampleReportPage() {
       "Loan Balance": row.loanBalance,
     })),
   ];
-
-  // No longer needed - equity computed by engine
 
   const handleDownloadPDF = async () => {
     setIsDownloading(true);
@@ -281,18 +221,7 @@ export default function SampleReportPage() {
         depreciationTable,
         serviceHistory: sampleServiceHistory,
         uvprsResult: sampleUVPRS,
-        tcoData: (() => {
-          const annualMiles = 12000;
-          const tco = calculateTCO(
-            sampleVehicle.askingPrice,
-            30, // Toyota RAV4 combined MPG
-            "gasoline",
-            depreciationTable,
-            { annualMiles },
-            { make: sampleVehicle.make, year: sampleVehicle.year }
-          );
-          return { tco, annualMiles };
-        })(),
+        tcoData: { tco, annualMiles: 12000 },
         recallData: { count: 0, openCount: 0, recalls: [] },
       });
       toast.success("PDF downloaded successfully!");
@@ -304,29 +233,30 @@ export default function SampleReportPage() {
     }
   };
 
+  const displayVerdict = "Conditional Buy";
+
   return (
     <div className="flex min-h-screen flex-col overflow-x-hidden">
       <SEO
-        title="Sample Comparison Report - CarWise"
-        description="See an example of how CarWise compares multiple vehicles side-by-side to find the best deal."
+        title="Sample Report - CarWise"
+        description="See an example of how CarWise analyzes and compares vehicles to find the best deal."
       />
       <Header />
-      
+
       <main className="flex-1 bg-gradient-to-b from-primary/5 to-background py-8">
         <div className="container mx-auto max-w-6xl px-4 overflow-x-hidden">
-          {/* Tabs + CTA on same row */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-6">
             <div className="flex items-center justify-between gap-4">
-            <TabsList className="grid grid-cols-2 max-w-lg h-14 bg-transparent gap-3 p-0">
-              <TabsTrigger value="vehicle" className="gap-2 text-base font-bold text-blue-600 bg-white border shadow-md rounded-lg transition-all duration-200 hover:scale-105 hover:bg-blue-600 hover:text-white data-[state=active]:bg-blue-600 data-[state=active]:text-white">
-                <Car className="h-5 w-5" />
-                Vehicle Report
-              </TabsTrigger>
-              <TabsTrigger value="comparison" className="gap-2 text-base font-bold text-blue-600 bg-white border shadow-md rounded-lg transition-all duration-200 hover:scale-105 hover:bg-blue-600 hover:text-white data-[state=active]:bg-blue-600 data-[state=active]:text-white">
-                <Scale className="h-5 w-5" />
-                Comparison Report
-              </TabsTrigger>
-            </TabsList>
+              <TabsList className="grid grid-cols-2 max-w-lg h-14 bg-transparent gap-3 p-0">
+                <TabsTrigger value="vehicle" className="gap-2 text-base font-bold text-blue-600 bg-white border shadow-md rounded-lg transition-all duration-200 hover:scale-105 hover:bg-blue-600 hover:text-white data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+                  <Car className="h-5 w-5" />
+                  Vehicle Report
+                </TabsTrigger>
+                <TabsTrigger value="comparison" className="gap-2 text-base font-bold text-blue-600 bg-white border shadow-md rounded-lg transition-all duration-200 hover:scale-105 hover:bg-blue-600 hover:text-white data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+                  <Scale className="h-5 w-5" />
+                  Comparison Report
+                </TabsTrigger>
+              </TabsList>
               <Button asChild className="shadow-md transition-all duration-200 hover:scale-110 hover:shadow-xl">
                 <Link to="/analyze">
                   Analyze Your Vehicle
@@ -335,859 +265,480 @@ export default function SampleReportPage() {
               </Button>
             </div>
 
-            {/* Vehicle Report Tab */}
-            <TabsContent value="vehicle" className="mt-6">
-              {/* Report Header */}
-              <motion.div 
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.5, delay: 0.1 }}
-                className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
-              >
-            <div>
-              <h1 className="text-3xl font-bold">
-                {sampleVehicle.year} {sampleVehicle.make} {sampleVehicle.model}
-              </h1>
-              <p className="text-muted-foreground">
-                {sampleVehicle.mileage.toLocaleString()} miles • Asking ${sampleVehicle.askingPrice.toLocaleString()}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled>
-                <Share2 className="mr-2 h-4 w-4" />
-                Share
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleDownloadPDF}
-                disabled={isDownloading}
-              >
-                {isDownloading ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Download className="mr-2 h-4 w-4" />
-                )}
-                {isDownloading ? "Generating..." : "Download PDF"}
-              </Button>
-            </div>
-          </motion.div>
+            {/* ===== VEHICLE REPORT TAB ===== */}
+            <TabsContent value="vehicle" className="mt-6 space-y-4">
 
-          {/* Quick Stats */}
-          <div className="mb-8 grid gap-4 md:grid-cols-4">
-            {[
-              {
-                icon: DollarSign,
-                label: "Fair Market Price",
-                value: `$${priceAssessment.fairMarketPrivate.toLocaleString()}`,
-                iconClass: "bg-primary/10",
-                iconColor: "text-primary",
-              },
-              {
-                icon: Gauge,
-                label: "Deal Rating",
-                value: priceAssessment.dealRating,
-                iconClass: dealRatingColors[priceAssessment.dealRating],
-                capitalize: true,
-              },
-              {
-                icon: ShieldAlert,
-                label: "Risk Score",
-                value: `${sampleUVPRS.totalScore} / 100`,
-                iconClass: sampleUVPRS.totalScore <= 20 ? "bg-green-500 text-white"
-                  : sampleUVPRS.totalScore <= 40 ? "bg-yellow-500 text-white"
-                  : "bg-red-500 text-white",
-              },
-              {
-                icon: TrendingDown,
-                label: "Fair Offer",
-                value: `$${riskAssessment.fairOfferPrice.toLocaleString()}`,
-                iconClass: "bg-green-500/10",
-                iconColor: "text-green-600",
-              },
-            ].map((stat, i) => (
-              <motion.div
-                key={stat.label}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: i * 0.1, duration: 0.4 }}
-                whileHover={{ scale: 1.05, y: -5 }}
-              >
-                <Card className="h-full transition-shadow hover:shadow-lg">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      <motion.div 
-                        className={cn("flex h-10 w-10 items-center justify-center rounded-full", stat.iconClass)}
-                        whileHover={{ rotate: 10 }}
-                      >
-                        <stat.icon className={cn("h-5 w-5", stat.iconColor)} />
-                      </motion.div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">{stat.label}</p>
-                        <p className={cn("text-xl font-bold", stat.capitalize && "capitalize")}>{stat.value}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
+              {/* SECTION 1: Verdict Hero */}
+              <VerdictHero
+                ref={heroRef}
+                vehicle={sampleVehicle}
+                mileage={sampleVehicle.mileage}
+                askingPrice={sampleVehicle.askingPrice}
+                verdict={displayVerdict}
+                riskScore={sampleUVPRS.totalScore}
+                riskLabel={sampleUVPRS.riskLabel}
+                aiFindings={sampleAnalysis.aiFindings}
+                openRecallCount={0}
+                recallComponents={[]}
+                onReAnalyze={() => toast.info("This is a sample report")}
+                onUploadHistory={() => toast.info("This is a sample report")}
+                onDownloadPDF={handleDownloadPDF}
+                isRefreshing={false}
+                isDownloading={isDownloading}
+                isPaid={true}
+              />
 
-          <div className="grid gap-8 lg:grid-cols-3 min-w-0">
-            {/* Left Column - Main Content */}
-            <motion.div 
-              className="space-y-8 lg:col-span-2 min-w-0"
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-            >
-              {/* Price Assessment */}
-              <motion.div variants={itemVariants}>
-                <Card className="overflow-hidden">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <DollarSign className="h-5 w-5 text-primary" />
-                      Price Assessment
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-6">
-                      {/* Deal rating headline */}
+              {/* SECTION 2: Metrics Strip */}
+              <MetricsStrip
+                priceDifference={fmvPriceDifference}
+                fairMarketPrivate={priceAssessment.fairMarketPrivate}
+                riskScore={sampleUVPRS.totalScore}
+                riskLabel={sampleUVPRS.riskLabel}
+                healthScore={historyAnalysis.healthScore}
+                monthlyCostRange={monthlyCostRange}
+                openRecalls={0}
+                resolvedRecalls={0}
+                warrantyStatus="active"
+                warrantyContext="24 months remaining"
+                onHistoryTabChange={setHistoryTab}
+              />
+
+              {/* SECTION 3: Expert Findings + Analysis */}
+              <ExpertFindingsStrip
+                aiFindings={sampleAnalysis.aiFindings}
+                reliabilityConcerns={riskAssessment.reliabilityConcerns}
+                verdict={displayVerdict}
+                riskScore={sampleUVPRS.totalScore}
+              />
+              <div id="section-expert">
+                <ExpertAnalysisCard
+                  aiFindings={sampleAnalysis.aiFindings}
+                  sanitizedExpertOpinion={riskAssessment.expertOpinion}
+                  verdict={displayVerdict}
+                  riskScore={sampleUVPRS.totalScore}
+                  reliabilityConcerns={riskAssessment.reliabilityConcerns}
+                />
+              </div>
+
+              {/* SECTION 4: Monthly Ownership Cost */}
+              <MonthlyOwnershipCostCard
+                monthlyCostRange={monthlyCostRange}
+                breakdown={monthlyBreakdown}
+                isElectric={false}
+                hasFinancing={true}
+                verdict={displayVerdict}
+                fuelType="gasoline"
+                mpgCity={27}
+                mpgCombined={30}
+                mpgHighway={35}
+                annualFuelCost={tco.annualFuelCost}
+                annualMiles={12000}
+              />
+
+              {/* SECTION 5: Pricing Analysis */}
+              <div id="section-pricing" className="report-card">
+                <div className="mb-4">
+                  <h2 className="text-lg font-semibold text-foreground">Asking Price vs. Market Assessment</h2>
+                  {(() => {
+                    const benchmark = priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate;
+                    const diff = sampleVehicle.askingPrice - benchmark;
+                    const below = diff <= 0;
+                    return (
+                      <p className={cn("text-sm font-medium mt-1", below ? "text-risk-green" : "text-risk-red")}>
+                        {below ? "Yes" : "No"} — priced ${Math.abs(diff).toLocaleString()} {below ? "below" : "above"} dealer retail
+                      </p>
+                    );
+                  })()}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 mb-4">
+                  <DollarSign className="h-5 w-5 text-primary" />
+                  <span className="font-semibold">Price Assessment</span>
+                  <Badge variant="outline" className="ml-auto gap-1 border-neutral/30 bg-muted text-neutral text-xs font-medium">
+                    <Bot className="h-3 w-3" />
+                    Sample Data
+                  </Badge>
+                </div>
+
+                {/* Price bar */}
+                {(() => {
+                  const fairMarketValue = priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate;
+                  const markers: { label: string; value: number; isAsking?: boolean; isFairMarket?: boolean }[] = [
+                    { label: "Trade-In", value: priceAssessment.fairMarketTradeIn },
+                    { label: "Private Sale", value: priceAssessment.fairMarketPrivate },
+                    { label: "Fair Market Value", value: fairMarketValue, isFairMarket: true },
+                    { label: "Asking Price", value: sampleVehicle.askingPrice, isAsking: true },
+                  ];
+                  const barMin = priceAssessment.fairMarketTradeIn * 0.90;
+                  const barMax = fairMarketValue * 1.35;
+                  const barRange = barMax - barMin || 1;
+                  const toPct = (v: number) => Math.max(5, Math.min(92, ((v - barMin) / barRange) * 100));
+                  const fmvPct = toPct(fairMarketValue);
+
+                  return (
+                    <div className="relative pt-14 pb-14 mt-2">
                       {(() => {
-                        const dealRatingConfig: Record<string, { label: string; color: string }> = {
-                          excellent: { label: "great deal", color: "text-success" },
-                          good: { label: "good deal", color: "text-success" },
-                          fair: { label: "fair deal", color: "text-warning" },
-                          poor: { label: "poor deal", color: "text-warning" },
-                          overpriced: { label: "overpriced", color: "text-danger" },
-                        };
-                        const cfg = dealRatingConfig[priceAssessment.dealRating] || dealRatingConfig.fair;
-                        const sellerType = sampleVehicle.sellerType;
-                        const referenceValue = sellerType === "dealer"
-                          ? (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate)
-                          : priceAssessment.fairMarketPrivate;
-                        const isBelow = sampleVehicle.askingPrice <= referenceValue;
-                        const contextMsg = isBelow
-                          ? "This vehicle is priced below the current market average."
-                          : (priceAssessment.dealRating as string) === "fair"
-                            ? "This vehicle is within the current average market range."
-                            : "This vehicle is priced above the current market average.";
-
-                        // Build markers for the price bar
-                        const fairMarketValue = sellerType === "dealer"
-                          ? (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate)
-                          : priceAssessment.fairMarketPrivate;
-                        const markers: { label: string; value: number; isAsking?: boolean; isFairMarket?: boolean }[] = [];
-                        markers.push({ label: "Trade-In", value: priceAssessment.fairMarketTradeIn });
-                        markers.push({ label: "Fair Market Value", value: fairMarketValue, isFairMarket: true });
-                        if (priceAssessment.fairMarketDealer && sellerType !== "dealer") {
-                          markers.push({ label: "Dealer Retail", value: priceAssessment.fairMarketDealer });
-                        }
-                        if (sellerType === "dealer") {
-                          markers.push({ label: "Private Sale", value: priceAssessment.fairMarketPrivate });
-                        }
-                        markers.push({ label: "Asking Price", value: sampleVehicle.askingPrice, isAsking: true });
-
-                        // Bar calculations
-                        const tradeInVal = priceAssessment.fairMarketTradeIn;
-                        const fmvVal = fairMarketValue;
-                        const barMin = tradeInVal * 0.90;
-                        const barMax = fmvVal * 1.35;
-                        const barRange = barMax - barMin || 1;
-                        const toPct = (v: number) => Math.max(5, Math.min(92, ((v - barMin) / barRange) * 100));
-                        const fmvPct = toPct(fmvVal);
-
+                        const askPct = toPct(sampleVehicle.askingPrice);
+                        const clampStyle = askPct > 80
+                          ? { left: `${askPct}%`, transform: "translateX(-80%)" }
+                          : { left: `${askPct}%`, transform: "translateX(-50%)" };
                         return (
-                          <div className="space-y-4">
-                            <div>
-                              <h3 className="text-2xl font-bold">
-                                This vehicle is a{" "}
-                                <span className={cfg.color}>{cfg.label}</span>
-                              </h3>
-                              <p className="mt-1 text-sm text-muted-foreground">
-                                {contextMsg} Asking price is{" "}
-                                <span className={cn("font-semibold", priceAssessment.priceDifference > 0 ? "text-danger" : "text-success")}>
-                                  {priceAssessment.priceDifference > 0 ? "higher" : "lower"} by ${Math.abs(priceAssessment.priceDifference).toLocaleString()}
-                                </span>
-                                {" "}from fair market value.
-                              </p>
+                          <div className="absolute top-0 flex flex-col items-center" style={clampStyle}>
+                            <p className="text-[10px] text-neutral text-center mb-0.5">Asking Price</p>
+                            <div className="rounded-lg border bg-card px-3 py-1.5 text-sm font-bold shadow-sm whitespace-nowrap">
+                              ${sampleVehicle.askingPrice.toLocaleString()}
                             </div>
-
-                            {/* Desktop: horizontal gradient bar */}
-                            <div className="relative pt-14 pb-14 mt-2 overflow-hidden hidden md:block">
-                              {/* Asking price floating label */}
-                              {(() => {
-                                const askPct = toPct(sampleVehicle.askingPrice);
-                                const clampStyle = askPct > 80
-                                  ? { left: `${askPct}%`, transform: "translateX(-80%)" }
-                                  : askPct < 20
-                                    ? { left: `${askPct}%`, transform: "translateX(-20%)" }
-                                    : { left: `${askPct}%`, transform: "translateX(-50%)" };
-                                return (
-                                  <div className="absolute top-0" style={clampStyle}>
-                                    <p className="text-[10px] text-muted-foreground text-center mb-0.5">Asking Price</p>
-                                    <div className="rounded-lg border bg-card px-3 py-1.5 text-sm font-bold shadow-sm whitespace-nowrap">
-                                      ${sampleVehicle.askingPrice.toLocaleString()}
-                                    </div>
-                                    <div className="mx-auto mt-1 h-3 w-px bg-border" />
-                                  </div>
-                                );
-                              })()}
-
-                              {/* Gradient bar */}
-                              <div className="relative h-2.5 w-full rounded-full overflow-hidden">
-                                <div className="absolute inset-0 rounded-full" style={{
-                                  background: `linear-gradient(to right, hsl(145 60% 36%) 0%, hsl(var(--success)) ${fmvPct * 0.5}%, hsl(var(--success)) ${fmvPct}%, hsl(var(--warning)) ${fmvPct + (100 - fmvPct) * 0.6}%, hsl(var(--danger)) 100%)`
-                                }} />
-                              </div>
-
-                              {/* Dot indicator */}
-                              {(() => {
-                                const askPct = toPct(sampleVehicle.askingPrice);
-                                return (
-                                  <div
-                                    className="absolute -translate-x-1/2"
-                                    style={{ left: `${askPct}%`, top: "3.85rem" }}
-                                  >
-                                    <div className="h-5 w-5 rounded-full border-[3px] border-primary bg-background shadow-md" />
-                                  </div>
-                                );
-                              })()}
-
-                              {/* Desktop markers */}
-                              <div className="relative mt-5">
-                                {markers.filter(m => !m.isAsking).map((m) => {
-                                  const mPct = toPct(m.value);
-                                  const markerStyle = mPct > 85
-                                    ? { left: `${mPct}%`, transform: "translateX(-90%)" }
-                                    : mPct < 15
-                                      ? { left: `${mPct}%`, transform: "translateX(-10%)" }
-                                      : { left: `${mPct}%`, transform: "translateX(-50%)" };
-                                  const textAlign = mPct > 85 ? "text-right" : mPct < 15 ? "text-left" : "text-center";
-                                  return (
-                                    <div
-                                      key={m.label}
-                                      className={cn("absolute", textAlign)}
-                                      style={markerStyle}
-                                    >
-                                      <div className={cn("mb-0.5 h-2.5 w-px", m.isFairMarket ? "bg-primary" : "bg-muted-foreground/40", mPct > 85 ? "ml-auto" : mPct < 15 ? "" : "mx-auto")} />
-                                      <p className={cn("text-[10px] leading-tight whitespace-nowrap", m.isFairMarket ? "font-medium text-primary" : "text-muted-foreground")}>{m.label}</p>
-                                      <p className={cn("text-xs font-semibold whitespace-nowrap", m.isFairMarket && "text-primary")}>${m.value.toLocaleString()}</p>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-
-                            {/* Mobile: vertical bar chart */}
-                            <div className="mt-4 space-y-2.5 md:hidden">
-                              {(() => {
-                                const allMarkers = [...markers].sort((a, b) => a.value - b.value);
-                                const maxVal = Math.max(...allMarkers.map(m => m.value));
-                                const barColor = (m: typeof allMarkers[0]) => {
-                                  if (m.isAsking) return "bg-primary";
-                                  if (m.isFairMarket) return "bg-success";
-                                  return "bg-muted-foreground/30";
-                                };
-                                return allMarkers.map((m) => {
-                                  const widthPct = Math.max(8, (m.value / maxVal) * 100);
-                                  return (
-                                    <div key={m.label}>
-                                      <div className="flex items-center justify-between mb-0.5">
-                                        <span className={cn(
-                                          "text-xs font-medium",
-                                          m.isAsking ? "text-foreground" : m.isFairMarket ? "text-primary" : "text-muted-foreground"
-                                        )}>
-                                          {m.label}
-                                        </span>
-                                        <span className={cn(
-                                          "text-xs font-semibold",
-                                          m.isAsking ? "text-foreground" : m.isFairMarket ? "text-primary" : "text-muted-foreground"
-                                        )}>
-                                          ${Math.round(m.value).toLocaleString()}
-                                        </span>
-                                      </div>
-                                      <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                                        <div
-                                          className={cn("h-full rounded-full transition-all", barColor(m))}
-                                          style={{ width: `${widthPct}%` }}
-                                        />
-                                      </div>
-                                    </div>
-                                  );
-                                });
-                              })()}
-                            </div>
-
-                            {/* Negotiation Target */}
-                            {(() => {
-                              const rating = priceAssessment.dealRating;
-                              if ((rating as string) === "excellent") return null;
-                              const fmv = sampleVehicle.sellerType === "dealer"
-                                ? (priceAssessment.fairMarketDealer || priceAssessment.fairMarketPrivate)
-                                : priceAssessment.fairMarketPrivate;
-                              const targets = [
-                                { label: "Fair Deal Target", desc: "Within 5% of market value", price: fmv, rating: "fair" as const },
-                                { label: "Good Deal Target", desc: "5–10% below market value", price: Math.round(fmv * 0.95), rating: "good" as const },
-                                { label: "Excellent Deal Target", desc: "10%+ below market value", price: Math.round(fmv * 0.90), rating: "excellent" as const },
-                              ];
-                              const ratingOrder = ["poor", "overpriced", "fair", "good", "excellent"];
-                              const currentIdx = ratingOrder.indexOf(rating);
-                              const relevantTargets = targets.filter(t => ratingOrder.indexOf(t.rating) > currentIdx);
-                              if (relevantTargets.length === 0) return null;
-                              const primaryTarget = relevantTargets[0];
-                              const savings = sampleVehicle.askingPrice - primaryTarget.price;
-
-                              return (
-                                <div className="rounded-lg border border-success/30 bg-success/5 p-4 mt-4">
-                                  <div className="flex items-center gap-2 mb-3">
-                                    <DollarSign className="h-4 w-4 text-success" />
-                                    <h4 className="text-sm font-semibold">Negotiation Targets</h4>
-                                  </div>
-                                  <div className="grid gap-3 sm:grid-cols-3">
-                                    {relevantTargets.map((t) => (
-                                      <div key={t.label} className="rounded-md bg-background border p-3">
-                                        <p className="text-xs text-muted-foreground">{t.label}</p>
-                                        <p className="text-lg font-bold text-success">${t.price.toLocaleString()}</p>
-                                        <p className="text-[11px] text-muted-foreground">{t.desc}</p>
-                                      </div>
-                                    ))}
-                                  </div>
-                                  {savings > 0 && (
-                                    <p className="mt-3 text-xs text-muted-foreground break-words">
-                                      Negotiating to the <span className="font-medium text-foreground">{primaryTarget.label.replace(" Target", "")}</span> price would save you <span className="font-semibold text-success">${savings.toLocaleString()}</span> from the current asking price.
-                                    </p>
-                                  )}
-                                </div>
-                              );
-                            })()}
                           </div>
                         );
                       })()}
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
 
-              {/* Depreciation Chart */}
-              <motion.div variants={itemVariants}>
-                <Card className="overflow-hidden">
+                      <div className="relative h-2.5 w-full">
+                        <div className="absolute inset-0 rounded-full overflow-hidden">
+                          <div className="absolute inset-0 rounded-full" style={{
+                            background: `linear-gradient(to right, hsl(145 60% 36%) 0%, hsl(var(--success)) ${fmvPct * 0.5}%, hsl(var(--success)) ${fmvPct}%, hsl(var(--warning)) ${fmvPct + (100 - fmvPct) * 0.6}%, hsl(var(--danger)) 100%)`
+                          }} />
+                        </div>
+                        {(() => {
+                          const askPct = toPct(sampleVehicle.askingPrice);
+                          return (
+                            <div className="absolute -translate-x-1/2 -translate-y-1/2" style={{ left: `${askPct}%`, top: "50%" }}>
+                              <div className="h-5 w-5 rounded-full border-[3px] border-warning bg-background shadow-md" />
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      <div className="relative mt-5">
+                        {markers.filter(m => !m.isAsking).map((m) => {
+                          const mPct = toPct(m.value);
+                          const markerStyle = mPct > 85
+                            ? { left: `${mPct}%`, transform: "translateX(-90%)" }
+                            : mPct < 15 ? { left: `${mPct}%`, transform: "translateX(-10%)" }
+                            : { left: `${mPct}%`, transform: "translateX(-50%)" };
+                          const textAlign = mPct > 85 ? "text-right" : mPct < 15 ? "text-left" : "text-center";
+                          return (
+                            <div key={m.label} className={cn("absolute", textAlign)} style={markerStyle}>
+                              <div className={cn("mb-0.5 h-2.5 w-px", m.isFairMarket ? "bg-primary" : "bg-neutral/40", mPct > 85 ? "ml-auto" : mPct < 15 ? "" : "mx-auto")} />
+                              <p className={cn("text-[10px] leading-tight whitespace-nowrap", m.isFairMarket ? "font-medium text-primary" : "text-neutral")}>{m.label}</p>
+                              <p className={cn("text-xs font-semibold whitespace-nowrap", m.isFairMarket && "text-primary")}>${m.value.toLocaleString()}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* SECTION 6: Depreciation */}
+              <div id="section-tco">
+                <Card className="overflow-hidden max-w-[calc(100vw-2rem)]">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <TrendingDown className="h-5 w-5 text-primary" />
-                      5-Year Depreciation & Equity
+                    <CardTitle className="flex items-center gap-2 flex-wrap">
+                      <TrendingDown className="h-5 w-5 text-primary shrink-0" />
+                      <span>5-Year Depreciation & Equity</span>
+                      <Badge variant="outline" className="ml-auto gap-1 border-neutral/30 bg-muted text-neutral text-xs font-medium">
+                        <Bot className="h-3 w-3" />
+                        Sample Data
+                      </Badge>
                     </CardTitle>
                   </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-end space-x-2">
-                    <Switch
-                      id="include-repairs"
-                      checked={includeRepairs}
-                      onCheckedChange={setIncludeRepairs}
-                    />
-                    <Label htmlFor="include-repairs" className="text-sm cursor-pointer">
-                      Include repair costs in calculations
-                    </Label>
-                  </div>
-                  <div className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                        <XAxis dataKey="name" className="text-xs" />
-                        <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} className="text-xs" />
-                        <Tooltip 
-                          formatter={(value: number) => `$${value.toLocaleString()}`}
-                          contentStyle={{ 
-                            backgroundColor: "hsl(var(--card))", 
-                            border: "1px solid hsl(var(--border))",
-                            borderRadius: "8px"
-                          }}
-                        />
-                        <Legend />
-                        <Line 
-                          type="monotone" 
-                          dataKey="Market Value" 
-                          stroke="hsl(142, 76%, 36%)" 
-                          strokeWidth={2}
-                        />
-                        <Line 
-                          type="monotone" 
-                          dataKey="Trade-In Value" 
-                          stroke="hsl(45, 93%, 47%)" 
-                          strokeWidth={2}
-                        />
-                        <Line 
-                          type="monotone" 
-                          dataKey="Loan Balance" 
-                          stroke="hsl(var(--primary))" 
-                          strokeWidth={2}
-                          strokeDasharray="5 5"
-                        />
-                        <Line 
-                          type="monotone" 
-                          dataKey="Asking Price" 
-                          stroke="hsl(0, 84%, 60%)" 
-                          strokeWidth={2}
-                          strokeDasharray="6 3"
-                          dot={false}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
+                  <CardContent className="p-3 md:p-6">
+                    <div className="h-[300px] w-full min-w-0 overflow-hidden">
+                      <ResponsiveContainer width="100%" height={300}>
+                        <LineChart data={chartData}>
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                          <XAxis dataKey="name" className="text-xs" />
+                          <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} className="text-xs" />
+                          <Tooltip
+                            formatter={(value: number) => `$${value.toLocaleString()}`}
+                            contentStyle={{
+                              backgroundColor: "hsl(var(--card))",
+                              border: "1px solid hsl(var(--border))",
+                              borderRadius: "8px",
+                            }}
+                          />
+                          <Legend />
+                          <Line type="monotone" dataKey="Market Value" stroke="hsl(var(--success))" strokeWidth={2} />
+                          <Line type="monotone" dataKey="Trade-In Value" stroke="hsl(var(--warning))" strokeWidth={2} />
+                          <Line type="monotone" dataKey="Loan Balance" stroke="#3b82f6" strokeWidth={2} strokeDasharray="5 5" />
+                          <Line type="monotone" dataKey="Asking Price" stroke="hsl(var(--danger))" strokeWidth={2} strokeDasharray="6 3" dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
 
-                  {/* Depreciation Table */}
-                  <div className="mt-6 overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                         <TableRow>
-                          <TableHead>Year</TableHead>
-                          <TableHead className="text-right">Market Value</TableHead>
-                          <TableHead className="text-right">Trade-In</TableHead>
-                          <TableHead className="text-right">Loan Balance</TableHead>
-                          <TableHead className="text-right">Repairs</TableHead>
-                          <TableHead className="text-right">Maint.</TableHead>
-                          <TableHead className="text-right">Depreciation</TableHead>
-                          <TableHead className="text-right">Equity</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {computedDepTable.map((row) => (
-                          <TableRow key={row.year}>
-                            <TableCell className="font-medium">Year {row.year}</TableCell>
-                            <TableCell className="text-right">${row.marketValue.toLocaleString()}</TableCell>
-                            <TableCell className="text-right">${row.tradeInValue.toLocaleString()}</TableCell>
-                            <TableCell className="text-right">${row.loanBalance.toLocaleString()}</TableCell>
-                            <TableCell className="text-right text-destructive">
-                              ${row.repairCosts.toLocaleString()}
-                            </TableCell>
-                            <TableCell className="text-right text-muted-foreground">
-                              ${row.maintenanceCosts.toLocaleString()}
-                            </TableCell>
-                            <TableCell className="text-right font-bold text-destructive">
-                              -${row.depreciation.toLocaleString()}
-                            </TableCell>
-                            <TableCell className={cn(
-                              "text-right font-semibold",
-                              row.equity >= 0 ? "text-green-600" : "text-red-600"
-                            )}>
-                              {row.equity >= 0 ? "+" : ""}
-                              ${row.equity.toLocaleString()}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </CardContent>
+                    {/* Collapsible table */}
+                    <Collapsible className="mt-6">
+                      <CollapsibleTrigger className="flex items-center gap-1 text-[13px] text-neutral hover:text-foreground">
+                        Detailed Year-by-Year Breakdown
+                        <svg className="h-5 w-5 shrink-0 transition-transform duration-200 [[data-state=open]>&]:rotate-180" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <div className="overflow-x-auto mt-3">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="text-xs px-2">Year</TableHead>
+                                <TableHead className="text-right text-xs px-2">Market Value</TableHead>
+                                <TableHead className="text-right text-xs px-2">Trade-In</TableHead>
+                                <TableHead className="text-right text-xs px-2">Loan Balance</TableHead>
+                                <TableHead className="text-right text-xs px-2">Equity</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {computedDepTable.map((row) => (
+                                <TableRow key={row.year}>
+                                  <TableCell className="text-xs px-2">Yr {row.year}</TableCell>
+                                  <TableCell className="text-right text-xs px-2">${row.marketValue.toLocaleString()}</TableCell>
+                                  <TableCell className="text-right text-xs px-2">${row.tradeInValue.toLocaleString()}</TableCell>
+                                  <TableCell className="text-right text-xs px-2">${row.loanBalance.toLocaleString()}</TableCell>
+                                  <TableCell className={cn("text-right text-xs px-2 font-bold", row.equity >= 0 ? "text-risk-green" : "text-destructive")}>
+                                    {row.equity < 0 ? "-" : ""}${Math.abs(row.equity).toLocaleString()}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </CardContent>
                 </Card>
-              </motion.div>
+              </div>
 
-              {/* Expert Opinion */}
-              <motion.div variants={itemVariants}>
-                <Card className="overflow-hidden">
+              {/* SECTION 7: Risk Profile */}
+              <div id="section-risk">
+                <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <FileText className="h-5 w-5 text-primary" />
-                      Expert Opinion
+                      <ShieldAlert className="h-5 w-5 text-primary" />
+                      Purchase Risk Profile
+                      <Badge className={cn("ml-auto text-xs", {
+                        "bg-risk-green text-white": sampleUVPRS.totalScore <= 30,
+                        "bg-risk-amber text-white": sampleUVPRS.totalScore > 30 && sampleUVPRS.totalScore <= 55,
+                        "bg-risk-red text-white": sampleUVPRS.totalScore > 55,
+                      })}>
+                        {sampleUVPRS.totalScore} / 100 — {sampleUVPRS.riskLabel}
+                      </Badge>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    <motion.div 
-                      className="prose prose-sm max-w-none dark:prose-invert"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.4 }}
-                    >
-                      <p className="whitespace-pre-line text-muted-foreground leading-relaxed">
-                        {riskAssessment.expertOpinion}
-                      </p>
-                    </motion.div>
-                    
-                    {/* Repair Analysis Section */}
-                    <motion.div 
-                      className="border-t pt-6"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.5 }}
-                    >
-                      <h4 className="flex items-center gap-2 font-semibold mb-4">
-                        <motion.div
-                          animate={{ rotate: [0, 10, -10, 0] }}
-                          transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 5 }}
-                        >
-                          <Wrench className="h-4 w-4 text-primary" />
-                        </motion.div>
-                        Anticipated Repairs & Maintenance
-                      </h4>
-                      <div className="prose prose-sm max-w-none dark:prose-invert">
-                        <div className="whitespace-pre-line text-muted-foreground leading-relaxed text-sm">
-                          {riskAssessment.repairAnalysis.split('\n').map((line, i) => {
-                            if (line.startsWith('**') && line.endsWith('**')) {
-                              return <p key={i} className="font-semibold text-foreground mt-4 mb-2">{line.replace(/\*\*/g, '')}</p>;
-                            }
-                            if (line.startsWith('•')) {
-                              return <p key={i} className="ml-2">{line}</p>;
-                            }
-                            return <p key={i}>{line}</p>;
-                          })}
-                        </div>
-                      </div>
-                    </motion.div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </motion.div>
-
-            {/* Right Column - Sidebar */}
-            <motion.div 
-              className="space-y-6"
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-            >
-              {/* Vehicle Health Score */}
-              <motion.div variants={itemVariants} whileHover={{ y: -5 }} transition={{ duration: 0.2 }}>
-                <Card className="overflow-hidden transition-shadow hover:shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Car className="h-5 w-5 text-primary" />
-                      Vehicle Health
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {(() => {
-                      const score = historyAnalysis.healthScore;
-                      const scoreColor = score <= 33 ? 'text-red-500' : score <= 66 ? 'text-orange-500' : 'text-emerald-500';
-                      const barColor = score <= 33 ? '[&>div]:bg-red-500' : score <= 66 ? '[&>div]:bg-orange-500' : '[&>div]:bg-emerald-500';
-                      return (
-                        <>
-                          <motion.div 
-                            className="mb-4 text-center"
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{ type: "spring", stiffness: 200, delay: 0.3 }}
-                          >
-                            <div className={`text-4xl font-bold ${scoreColor}`}>{score}</div>
-                            <p className="text-sm text-muted-foreground">out of 100</p>
-                          </motion.div>
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: "100%" }}
-                            transition={{ delay: 0.5, duration: 0.8 }}
-                          >
-                            <Progress value={score} className={`h-3 ${barColor}`} />
-                          </motion.div>
-                        </>
-                      );
-                    })()}
-
-                    <div className="mt-6 space-y-4">
-                      <div>
-                        <h4 className="mb-2 flex items-center gap-2 text-sm font-medium text-green-600">
-                          <CheckCircle className="h-4 w-4" />
-                          Positives
-                        </h4>
-                        <ul className="space-y-1 text-sm">
-                          {historyAnalysis.positives.map((item, i) => (
-                            <motion.li 
-                              key={i} 
-                              className="text-muted-foreground"
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: 0.6 + i * 0.1 }}
-                            >
-                              • {item}
-                            </motion.li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      <div>
-                        <h4 className="mb-2 flex items-center gap-2 text-sm font-medium text-red-600">
-                          <XCircle className="h-4 w-4" />
-                          Concerns
-                        </h4>
-                        <ul className="space-y-1 text-sm">
-                          {historyAnalysis.concerns.map((item, i) => (
-                            <motion.li 
-                              key={i} 
-                              className="text-muted-foreground"
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: 1.1 + i * 0.1 }}
-                            >
-                              • {item}
-                            </motion.li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-
-              {/* UVPRS Risk Score Breakdown */}
-              <motion.div variants={itemVariants} whileHover={{ y: -5 }} transition={{ duration: 0.2 }}>
-                <RiskScoreBreakdown result={sampleUVPRS} />
-              </motion.div>
-
-              {/* NHTSA Safety Recalls */}
-              <motion.div variants={itemVariants} whileHover={{ y: -5 }} transition={{ duration: 0.2 }}>
-                <Card className="border-2 border-success bg-success/5">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-base">
-                      <ShieldCheck className="h-5 w-5 text-success" />
-                      Safety Recalls
-                      <Badge className="ml-auto text-xs bg-success text-success-foreground">
-                        None on Record
-                      </Badge>
-                    </CardTitle>
-                    <p className="text-xs text-muted-foreground">
-                      Via NHTSA · {sampleVehicle.year} {sampleVehicle.make} {sampleVehicle.model}
-                    </p>
-                  </CardHeader>
-                  <CardContent className="space-y-3 pt-0">
-                    <div className="flex items-center gap-2 rounded-md border border-success/30 bg-success/10 px-3 py-2">
-                      <CheckCircle className="h-4 w-4 shrink-0 text-success" />
-                      <p className="text-xs text-success font-medium">No recalls on record for this year/make/model.</p>
-                    </div>
-                    <div className="pt-1">
-                      <a
-                        href={`https://www.nhtsa.gov/vehicle-safety/recalls#recall--Toyota`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                        Search Recalls on NHTSA
-                      </a>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-
-              {/* Service History Timeline */}
-              <motion.div variants={itemVariants} whileHover={{ y: -5 }} transition={{ duration: 0.2 }}>
-                <ServiceHistoryTimeline
-                  serviceGapMiles={sampleServiceHistory.serviceGapMiles}
-                  majorServicesDue={sampleServiceHistory.majorServicesDue}
-                  majorServicesDone={sampleServiceHistory.majorServicesDone}
-                  chronicRepairSystems={sampleServiceHistory.chronicRepairSystems}
-                  hasServiceRecords={true}
-                  mileage={sampleVehicle.mileage}
-                />
-              </motion.div>
-
-              {/* Risk Assessment */}
-              <motion.div variants={itemVariants} whileHover={{ y: -5 }} transition={{ duration: 0.2 }}>
-                <Card className="overflow-hidden transition-shadow hover:shadow-lg">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <AlertTriangle className="h-5 w-5 text-primary" />
-                      Risk Assessment
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <h4 className="mb-2 text-sm font-medium">Depreciation Risk</h4>
-                      <p className="text-sm text-muted-foreground">{riskAssessment.depreciationRisk}</p>
+                    <div className="space-y-2.5">
+                      {[...sampleUVPRS.factors]
+                        .sort((a, b) => (b.weight * b.score) - (a.weight * a.score))
+                        .map((factor) => {
+                          const barColor = !factor.known ? "bg-muted-foreground/30"
+                            : factor.score <= 30 ? "bg-risk-green"
+                            : factor.score <= 65 ? "bg-risk-amber"
+                            : "bg-risk-red";
+                          const textColor = !factor.known ? "text-neutral"
+                            : factor.score <= 30 ? "text-risk-green"
+                            : factor.score <= 65 ? "text-risk-amber"
+                            : "text-risk-red";
+                          return (
+                            <div key={factor.key} className="flex items-center gap-1">
+                              <span className="min-w-[120px] md:min-w-[180px] text-[13px] text-foreground">
+                                {factor.label} <span className="text-neutral">({Math.round(factor.weight * 100)}%)</span>
+                              </span>
+                              <div className="flex-1 mx-3 h-2 bg-muted rounded">
+                                <div className={cn("h-2 rounded transition-all", barColor)} style={{ width: `${factor.known ? factor.score : 50}%` }} />
+                              </div>
+                              <span className={cn("w-12 text-right text-[13px] font-semibold", textColor)}>
+                                {factor.known ? Math.round(factor.score) : "N/A"}
+                              </span>
+                            </div>
+                          );
+                        })}
                     </div>
 
-                    <div>
-                      <h4 className="mb-2 text-sm font-medium">Reliability Concerns</h4>
-                      <ul className="space-y-1">
+                    {riskAssessment.reliabilityConcerns.length > 0 && (
+                      <div className="border-t pt-4 space-y-2">
+                        <p className="text-sm font-semibold">Reliability Concerns</p>
                         {riskAssessment.reliabilityConcerns.map((item, i) => (
-                          <motion.li 
-                            key={i} 
-                            className="flex items-start gap-2 text-sm text-muted-foreground"
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.3 + i * 0.1 }}
-                          >
-                            <Wrench className="mt-0.5 h-3 w-3 flex-shrink-0" />
-                            <span>
-                              {item.concern}
-                              {(item.costLow || item.costHigh) && (
-                                <span className="ml-1 font-medium text-destructive">
-                                  — Est. {item.costLow && item.costHigh
-                                    ? `$${item.costLow.toLocaleString()}–$${item.costHigh.toLocaleString()}`
-                                    : item.costLow ? `$${item.costLow.toLocaleString()}+`
-                                    : `Up to $${item.costHigh!.toLocaleString()}`}
-                                </span>
-                              )}
-                            </span>
-                          </motion.li>
+                          <div key={i} className="flex items-center gap-2 text-[13px]">
+                            <span className="flex-1 text-foreground">{item.concern}</span>
+                            {(item.costLow || item.costHigh) && (
+                              <span className="text-xs text-risk-red font-medium shrink-0">
+                                ${item.costLow?.toLocaleString()}–${item.costHigh?.toLocaleString()}
+                              </span>
+                            )}
+                          </div>
                         ))}
-                      </ul>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-
-              {/* Dealer Trust Analysis */}
-              <motion.div variants={itemVariants} whileHover={{ y: -5 }} transition={{ duration: 0.2 }}>
-                <Card className="overflow-hidden transition-shadow hover:shadow-lg">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-5 w-5 text-primary" />
-                        <CardTitle className="text-lg">Dealer Trust Analysis</CardTitle>
-                      </div>
-                      <Badge variant="secondary" className="text-xs">
-                        PRO
-                      </Badge>
-                    </div>
-                    <CardDescription className="line-clamp-1">
-                      {dealerReview.dealerName}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* Trust Score */}
-                    <div className="flex items-center gap-4">
-                      <motion.div 
-                        className="flex h-14 w-14 items-center justify-center rounded-full bg-green-500/10"
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ type: "spring", stiffness: 200, delay: 0.3 }}
-                      >
-                        <ShieldCheck className="h-7 w-7 text-green-600" />
-                      </motion.div>
-                      <div className="flex-1">
-                        <div className="mb-1 flex items-center justify-between">
-                          <Badge className="bg-green-500 text-white">Highly Trusted</Badge>
-                          <span className="text-lg font-bold">{dealerReview.trustScore}/100</span>
-                        </div>
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: "100%" }}
-                          transition={{ delay: 0.5, duration: 0.8 }}
-                        >
-                          <Progress value={dealerReview.trustScore} className="h-2" />
-                        </motion.div>
-                      </div>
-                    </div>
-
-                    {/* Summary */}
-                    <p className="text-sm text-muted-foreground">{dealerReview.summary}</p>
-
-                    {/* Positives */}
-                    <div>
-                      <h4 className="mb-2 flex items-center gap-1 text-sm font-medium text-green-600">
-                        <CheckCircle className="h-4 w-4" />
-                        Positives
-                      </h4>
-                      <ul className="space-y-1">
-                        {dealerReview.positives.slice(0, 3).map((item, i) => (
-                          <motion.li 
-                            key={i} 
-                            className="text-xs text-muted-foreground"
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.6 + i * 0.1 }}
-                          >
-                            • {item}
-                          </motion.li>
-                        ))}
-                      </ul>
-                    </div>
-
-                    {/* Red Flags */}
-                    {dealerReview.redFlags.length > 0 && (
-                      <div>
-                        <h4 className="mb-2 flex items-center gap-1 text-sm font-medium text-red-600">
-                          <AlertTriangle className="h-4 w-4" />
-                          Watch Out
-                        </h4>
-                        <ul className="space-y-1">
-                          {dealerReview.redFlags.map((item, i) => (
-                            <motion.li 
-                              key={i} 
-                              className="text-xs text-muted-foreground"
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: 0.9 + i * 0.1 }}
-                            >
-                              • {item}
-                            </motion.li>
-                          ))}
-                        </ul>
                       </div>
                     )}
 
-                    {/* Sources */}
-                    <div className="flex flex-wrap gap-2 border-t pt-3">
-                      <span className="text-xs text-muted-foreground">Sources:</span>
-                      {dealerReview.sources.map((source) => (
-                        <Badge key={source} variant="outline" className="text-xs">
-                          <Star className="mr-1 h-3 w-3" />
-                          {source}
-                        </Badge>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-
-              {/* Verdict Card */}
-              <motion.div variants={itemVariants} whileHover={{ y: -5 }} transition={{ duration: 0.2 }}>
-                <Card className="border-2 border-warning bg-warning/5">
-                  <CardContent className="p-6">
-                    <div className="flex flex-col sm:flex-row items-center gap-6">
-                      <div className="flex flex-col items-center gap-2 shrink-0">
-                        <HandCoins className="h-10 w-10 text-warning" />
-                        <Badge className="text-lg px-4 py-1 bg-warning text-warning-foreground">
-                          NEGOTIATE
-                        </Badge>
+                    <div className="border-t pt-4 space-y-3">
+                      <div>
+                        <p className="text-sm font-medium">Depreciation Risk</p>
+                        <p className="text-sm text-neutral">{riskAssessment.depreciationRisk}</p>
                       </div>
-                      <div className="flex-1 text-center sm:text-left">
-                        <p className="text-sm text-muted-foreground">
-                          The asking price is approximately $1,000 above fair market value. Low risk and strong reliability support a purchase, but negotiate toward the fair offer price for the best deal.
-                        </p>
-                      </div>
-                      <div className="shrink-0 text-center sm:border-l sm:pl-6">
-                        <p className="mb-1 text-sm font-semibold">Fair Offer Price</p>
-                        <p className="text-3xl font-bold">${riskAssessment.fairOfferPrice.toLocaleString()}</p>
+                      <div className="rounded-lg bg-muted p-4">
+                        <p className="text-sm font-medium">Value Proposition</p>
+                        <p className="text-sm text-neutral">{riskAssessment.valueProposition}</p>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
-              </motion.div>
+              </div>
 
-              {/* CTA Card */}
-              <motion.div 
-                variants={itemVariants}
-                whileHover={{ scale: 1.03, y: -5 }}
-                transition={{ type: "spring", stiffness: 300 }}
-              >
-                <Card className="border-primary/20 bg-primary/5 overflow-hidden">
-                  <CardContent className="p-6 text-center">
-                    <motion.h3 
-                      className="font-semibold mb-2"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.5 }}
-                    >
-                      Ready to analyze your vehicle?
-                    </motion.h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Get the same detailed insights for any car you're considering.
-                    </p>
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <Button asChild className="w-full">
+              {/* SECTION 8: Vehicle History */}
+              <div id="section-history">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Car className="h-5 w-5 text-primary" />
+                      Vehicle History
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Tabs value={historyTab} onValueChange={setHistoryTab} className="w-full">
+                      <TabsList className="w-full mb-4 overflow-x-auto">
+                        <TabsTrigger value="overview" className="flex-1">Overview</TabsTrigger>
+                        <TabsTrigger value="service" className="flex-1">Service Records</TabsTrigger>
+                        <TabsTrigger value="recalls" className="flex-1">Safety Recalls</TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="overview">
+                        {(() => {
+                          const score = historyAnalysis.healthScore;
+                          const scoreColor = score <= 33 ? "text-risk-red" : score <= 66 ? "text-risk-amber" : "text-risk-green";
+                          const barColor = score <= 33 ? "[&>div]:bg-risk-red" : score <= 66 ? "[&>div]:bg-risk-amber" : "[&>div]:bg-risk-green";
+                          return (
+                            <>
+                              <div className="mb-4 text-center">
+                                <div className={`text-4xl font-bold ${scoreColor}`}>{score}</div>
+                                <p className="text-sm text-neutral">out of 100</p>
+                              </div>
+                              <Progress value={score} className={`h-3 ${barColor}`} />
+                            </>
+                          );
+                        })()}
+                        <div className="mt-6 space-y-4">
+                          <div>
+                            <h4 className="mb-2 flex items-center gap-2 text-sm font-medium text-risk-green">
+                              <CheckCircle className="h-4 w-4" />
+                              Positives
+                            </h4>
+                            <ul className="space-y-1 text-sm">
+                              {historyAnalysis.positives.map((item, i) => (
+                                <li key={i} className="text-neutral">• {item}</li>
+                              ))}
+                            </ul>
+                          </div>
+                          <div>
+                            <h4 className="mb-2 flex items-center gap-2 text-sm font-medium text-risk-red">
+                              <XCircle className="h-4 w-4" />
+                              Concerns
+                            </h4>
+                            <ul className="space-y-1 text-sm">
+                              {historyAnalysis.concerns.map((item, i) => (
+                                <li key={i} className="text-neutral">• {item}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="service">
+                        <ServiceHistoryTimeline
+                          serviceGapMiles={sampleServiceHistory.serviceGapMiles}
+                          majorServicesDue={sampleServiceHistory.majorServicesDue}
+                          majorServicesDone={sampleServiceHistory.majorServicesDone}
+                          chronicRepairSystems={sampleServiceHistory.chronicRepairSystems}
+                          hasServiceRecords={true}
+                          mileage={sampleVehicle.mileage}
+                        />
+                      </TabsContent>
+
+                      <TabsContent value="recalls" className="space-y-4">
+                        <div className="rounded-lg border-2 border-risk-green bg-risk-green/5 p-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <ShieldCheck className="h-5 w-5 text-risk-green" />
+                            <span className="text-sm font-semibold">Safety Recalls</span>
+                            <Badge className="ml-auto text-xs bg-risk-green text-white">None on Record</Badge>
+                          </div>
+                          <p className="text-xs text-neutral mb-3">Via NHTSA · {sampleVehicle.year} {sampleVehicle.make} {sampleVehicle.model}</p>
+                          <div className="flex items-center gap-2 rounded-md border border-risk-green/30 bg-risk-green/10 px-3 py-2">
+                            <CheckCircle className="h-4 w-4 shrink-0 text-risk-green" />
+                            <p className="text-xs text-risk-green font-medium">No recalls on record for this year/make/model.</p>
+                          </div>
+                        </div>
+
+                        {/* Warranty */}
+                        <div className="rounded-lg border-2 border-risk-green bg-risk-green/5 p-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <ShieldCheck className="h-5 w-5" />
+                            <span className="text-sm font-semibold">Warranty Analysis</span>
+                          </div>
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-neutral">Status</span>
+                              <Badge>Active</Badge>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-neutral">Months Remaining</span>
+                              <span className="font-semibold">24</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-neutral">Risk Reduction</span>
+                              <span className="font-semibold">70%</span>
+                            </div>
+                            <Progress value={70} className="h-2" />
+                            <p className="text-sm text-neutral">{sampleAnalysis.warrantyAnalysis.warrantyNotes}</p>
+                          </div>
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* SECTION 9: Verdict + Footer CTAs */}
+              <Card id="section-verdict" className="overflow-hidden">
+                <div className="p-5 border-b-2 bg-risk-green/10 border-risk-green">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <Badge className="text-base px-4 py-1 bg-risk-green text-white">
+                      {displayVerdict}
+                    </Badge>
+                    <span className="text-sm text-neutral">Risk Score: <span className="font-bold text-foreground">{sampleUVPRS.totalScore}/100</span></span>
+                  </div>
+                  <p className="text-sm text-neutral mt-2 leading-relaxed">
+                    {sampleAnalysis.finalVerdict.justification}
+                  </p>
+                </div>
+
+                <div className="p-5 space-y-3">
+                  <div>
+                    <Button variant="outline" className="w-full h-11 text-base bg-yellow-300 border-yellow-400 text-black hover:bg-yellow-400 hover:border-yellow-500">
+                      Get Personalized Insurance Quotes
+                    </Button>
+                    <p className="text-xs text-neutral text-center mt-1">Compare rates from 80+ insurers</p>
+                  </div>
+                  <div>
+                    <Button variant="outline" className="w-full h-11 text-base bg-yellow-300 border-yellow-400 text-black hover:bg-yellow-400 hover:border-yellow-500">
+                      Get Extended Warranty Quotes
+                    </Button>
+                    <p className="text-xs text-neutral text-center mt-1">Compare coverage from top providers</p>
+                  </div>
+                  <div className="text-center pt-4">
+                    <div className="flex flex-col sm:flex-row gap-3 w-full">
+                      <Button asChild size="lg" className="flex-1">
                         <Link to="/analyze">
-                          Start Your Analysis
-                          <ArrowRight className="ml-2 h-4 w-4" />
+                          Analyze a Different Vehicle
                         </Link>
                       </Button>
-                    </motion.div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </motion.div>
-          </div>
+                      <Button asChild size="lg" className="flex-1 bg-[hsl(220,70%,50%)] text-white hover:bg-[hsl(220,70%,40%)]">
+                        <Link to="/dashboard">
+                          Compare to Another Vehicle
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </Card>
             </TabsContent>
 
-            {/* Comparison Report Tab */}
+            {/* ===== COMPARISON TAB ===== */}
             <TabsContent value="comparison" className="mt-6">
               <SampleComparisonReport />
             </TabsContent>
