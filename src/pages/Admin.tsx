@@ -113,6 +113,8 @@ export default function AdminPage() {
   const [dialogType, setDialogType] = useState<"plan" | "block" | "delete" | null>(null);
   const [newPlan, setNewPlan] = useState<string>("");
   const [isUpdating, setIsUpdating] = useState(false);
+  const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // Check session on mount
   useEffect(() => {
