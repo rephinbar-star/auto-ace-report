@@ -76,6 +76,19 @@ serve(async (req) => {
 
     const blockedUserIds = new Set(blockedUsers?.map(b => b.user_id) || []);
 
+    // Get all vehicle reports
+    const { data: allReports } = await supabaseClient
+      .from("vehicle_reports")
+      .select("user_id, id, year, make, model, trim, vin, status, created_at, asking_price, deal_rating, risk_level")
+      .order("created_at", { ascending: false });
+
+    const reportsByUser = new Map<string, typeof allReports>();
+    for (const report of allReports || []) {
+      const existing = reportsByUser.get(report.user_id) || [];
+      existing.push(report);
+      reportsByUser.set(report.user_id, existing);
+    }
+
     // Fetch Stripe subscription data for each user
     const subscribers = await Promise.all(
       (profiles || []).map(async (profile) => {
