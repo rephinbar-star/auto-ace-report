@@ -103,6 +103,7 @@ const sampleAnalysis = {
       },
     ],
     odometerIntegrity: { status: "verified" as const, gapMiles: null },
+    chassisSignal: { level: 1 as const, isProblemGeneration: false },
   } as AiFindings,
   warrantyAnalysis: {
     warrantyStatus: "active" as const,
