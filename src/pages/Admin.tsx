@@ -51,8 +51,30 @@ import {
   Lock,
   ArrowRight,
   AlertTriangle,
-  Trash2
+  Trash2,
+  ChevronDown,
+  ChevronRight,
+  Car
 } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+
+interface VehicleReport {
+  id: string;
+  year: number;
+  make: string;
+  model: string;
+  trim: string | null;
+  vin: string | null;
+  status: string;
+  createdAt: string;
+  askingPrice: number;
+  dealRating: string | null;
+  riskLevel: string | null;
+}
 
 interface Subscriber {
   userId: string;
@@ -66,6 +88,7 @@ interface Subscriber {
   customerId: string | null;
   subscriptionId: string | null;
   isBlocked: boolean;
+  reports: VehicleReport[];
 }
 
 type AuthStep = "password" | "otp" | "authenticated";
@@ -90,6 +113,7 @@ export default function AdminPage() {
   const [dialogType, setDialogType] = useState<"plan" | "block" | "delete" | null>(null);
   const [newPlan, setNewPlan] = useState<string>("");
   const [isUpdating, setIsUpdating] = useState(false);
+  const [expandedUsers, setExpandedUsers] = useState<Set<string>>(new Set());
 
   // Check session on mount
   useEffect(() => {
@@ -528,96 +552,194 @@ export default function AdminPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {subscribers.map((sub) => (
-                        <TableRow key={sub.userId} className={sub.isBlocked ? "bg-destructive/5" : ""}>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{sub.displayName || "No name"}</p>
-                              <p className="text-sm text-muted-foreground">{sub.email}</p>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            {format(new Date(sub.joinDate), "MMM d, yyyy")}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={
-                              sub.plan === "Pro" ? "default" : 
-                              sub.plan === "Standard" ? "secondary" : 
-                              "outline"
-                            }>
-                              {sub.plan}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {sub.isBlocked ? (
-                              <Badge variant="destructive">Blocked</Badge>
-                            ) : sub.status === "active" ? (
-                              <Badge variant="outline" className="text-success border-success">
-                                <CheckCircle className="mr-1 h-3 w-3" />
-                                Active
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline">{sub.status || "N/A"}</Badge>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {sub.lastBillDate 
-                              ? format(new Date(sub.lastBillDate), "MMM d, yyyy")
-                              : "—"}
-                          </TableCell>
-                          <TableCell>
-                            {sub.nextBillDate 
-                              ? format(new Date(sub.nextBillDate), "MMM d, yyyy")
-                              : "—"}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setSelectedUser(sub);
-                                  setNewPlan(sub.plan);
-                                  setDialogType("plan");
-                                }}
-                              >
-                                Change Plan
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant={sub.isBlocked ? "outline" : "destructive"}
-                                onClick={() => {
-                                  setSelectedUser(sub);
-                                  setDialogType("block");
-                                }}
-                              >
+                      {subscribers.map((sub) => {
+                        const isExpanded = expandedUsers.has(sub.userId);
+                        const toggleExpand = () => {
+                          setExpandedUsers(prev => {
+                            const next = new Set(prev);
+                            if (next.has(sub.userId)) next.delete(sub.userId);
+                            else next.add(sub.userId);
+                            return next;
+                          });
+                        };
+
+                        return (
+                          <>
+                            <TableRow key={sub.userId} className={sub.isBlocked ? "bg-destructive/5" : ""}>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={toggleExpand}
+                                    className="p-0.5 rounded hover:bg-muted transition-colors"
+                                    title={`${sub.reports?.length || 0} reports`}
+                                  >
+                                    {isExpanded ? (
+                                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                    ) : (
+                                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                    )}
+                                  </button>
+                                  <div>
+                                    <p className="font-medium">{sub.displayName || "No name"}</p>
+                                    <p className="text-sm text-muted-foreground">{sub.email}</p>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {format(new Date(sub.joinDate), "MMM d, yyyy")}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={
+                                  sub.plan === "Pro" ? "default" : 
+                                  sub.plan === "Standard" ? "secondary" : 
+                                  "outline"
+                                }>
+                                  {sub.plan}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
                                 {sub.isBlocked ? (
-                                  <>
+                                  <Badge variant="destructive">Blocked</Badge>
+                                ) : sub.status === "active" ? (
+                                  <Badge variant="outline" className="text-success border-success">
                                     <CheckCircle className="mr-1 h-3 w-3" />
-                                    Unblock
-                                  </>
+                                    Active
+                                  </Badge>
                                 ) : (
-                                  <>
-                                    <Ban className="mr-1 h-3 w-3" />
-                                    Block
-                                  </>
+                                  <Badge variant="outline">{sub.status || "N/A"}</Badge>
                                 )}
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => {
-                                  setSelectedUser(sub);
-                                  setDialogType("delete");
-                                }}
-                              >
-                                <Trash2 className="mr-1 h-3 w-3" />
-                                Delete
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                              </TableCell>
+                              <TableCell>
+                                {sub.lastBillDate 
+                                  ? format(new Date(sub.lastBillDate), "MMM d, yyyy")
+                                  : "—"}
+                              </TableCell>
+                              <TableCell>
+                                {sub.nextBillDate 
+                                  ? format(new Date(sub.nextBillDate), "MMM d, yyyy")
+                                  : "—"}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setSelectedUser(sub);
+                                      setNewPlan(sub.plan);
+                                      setDialogType("plan");
+                                    }}
+                                  >
+                                    Change Plan
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant={sub.isBlocked ? "outline" : "destructive"}
+                                    onClick={() => {
+                                      setSelectedUser(sub);
+                                      setDialogType("block");
+                                    }}
+                                  >
+                                    {sub.isBlocked ? (
+                                      <>
+                                        <CheckCircle className="mr-1 h-3 w-3" />
+                                        Unblock
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Ban className="mr-1 h-3 w-3" />
+                                        Block
+                                      </>
+                                    )}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => {
+                                      setSelectedUser(sub);
+                                      setDialogType("delete");
+                                    }}
+                                  >
+                                    <Trash2 className="mr-1 h-3 w-3" />
+                                    Delete
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                            {isExpanded && (
+                              <TableRow key={`${sub.userId}-reports`}>
+                                <TableCell colSpan={7} className="bg-muted/30 p-0">
+                                  <div className="px-8 py-3">
+                                    {sub.reports && sub.reports.length > 0 ? (
+                                      <div className="space-y-1">
+                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
+                                          <Car className="h-3 w-3" />
+                                          Vehicle Reports ({sub.reports.length})
+                                        </p>
+                                        <div className="grid gap-1.5">
+                                          {sub.reports.map((report) => (
+                                            <div
+                                              key={report.id}
+                                              className="flex items-center justify-between rounded-md border bg-background px-3 py-2 text-sm"
+                                            >
+                                              <div className="flex items-center gap-3">
+                                                <span className="font-medium">
+                                                  {report.year} {report.make} {report.model}
+                                                  {report.trim ? ` ${report.trim}` : ""}
+                                                </span>
+                                                {report.vin && (
+                                                  <span className="text-xs text-muted-foreground font-mono">
+                                                    {report.vin}
+                                                  </span>
+                                                )}
+                                              </div>
+                                              <div className="flex items-center gap-2">
+                                                <span className="text-xs text-muted-foreground">
+                                                  ${Number(report.askingPrice).toLocaleString()}
+                                                </span>
+                                                {report.dealRating && (
+                                                  <Badge variant="outline" className="text-xs capitalize">
+                                                    {report.dealRating}
+                                                  </Badge>
+                                                )}
+                                                {report.riskLevel && (
+                                                  <Badge
+                                                    variant={
+                                                      report.riskLevel === "high" ? "destructive" :
+                                                      report.riskLevel === "medium" ? "secondary" :
+                                                      "outline"
+                                                    }
+                                                    className="text-xs capitalize"
+                                                  >
+                                                    {report.riskLevel} risk
+                                                  </Badge>
+                                                )}
+                                                <Badge
+                                                  variant={report.status === "complete" ? "outline" : "secondary"}
+                                                  className="text-xs capitalize"
+                                                >
+                                                  {report.status}
+                                                </Badge>
+                                                <span className="text-xs text-muted-foreground">
+                                                  {format(new Date(report.createdAt), "MMM d, yyyy")}
+                                                </span>
+                                              </div>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <p className="text-sm text-muted-foreground italic">
+                                        No vehicle reports yet
+                                      </p>
+                                    )}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>

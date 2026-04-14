@@ -76,6 +76,19 @@ serve(async (req) => {
 
     const blockedUserIds = new Set(blockedUsers?.map(b => b.user_id) || []);
 
+    // Get all vehicle reports
+    const { data: allReports } = await supabaseClient
+      .from("vehicle_reports")
+      .select("user_id, id, year, make, model, trim, vin, status, created_at, asking_price, deal_rating, risk_level")
+      .order("created_at", { ascending: false });
+
+    const reportsByUser = new Map<string, typeof allReports>();
+    for (const report of allReports || []) {
+      const existing = reportsByUser.get(report.user_id) || [];
+      existing.push(report);
+      reportsByUser.set(report.user_id, existing);
+    }
+
     // Fetch Stripe subscription data for each user
     const subscribers = await Promise.all(
       (profiles || []).map(async (profile) => {
@@ -128,6 +141,19 @@ serve(async (req) => {
           displayName: profile.display_name,
           joinDate: profile.created_at,
           isBlocked: blockedUserIds.has(profile.user_id),
+          reports: (reportsByUser.get(profile.user_id) || []).map(r => ({
+            id: r.id,
+            year: r.year,
+            make: r.make,
+            model: r.model,
+            trim: r.trim,
+            vin: r.vin,
+            status: r.status,
+            createdAt: r.created_at,
+            askingPrice: r.asking_price,
+            dealRating: r.deal_rating,
+            riskLevel: r.risk_level,
+          })),
           ...stripeData,
         };
       })
