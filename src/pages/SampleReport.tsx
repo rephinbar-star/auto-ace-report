@@ -100,7 +100,7 @@ const sampleAnalysis = {
         probabilityTier: "low" as const,
         probabilityPercent: 15,
         alreadyPresent: false,
-        costTier: "low" as const,
+        costTier: "minor" as const,
         yearsToFailureWindow: 5,
       },
     ],
