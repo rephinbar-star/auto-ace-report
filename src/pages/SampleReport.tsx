@@ -105,7 +105,7 @@ const sampleAnalysis = {
       },
     ],
     odometerIntegrity: { status: "verified" as const, gapMiles: null },
-    chassisSignal: { level: 1 as const, isProblemGeneration: false },
+    chassisSignal: { level: 1 as const, isProblemGeneration: false, isWorstGeneration: false, withinFailureWindow: false, description: "No known chassis issues" },
   } as AiFindings,
   warrantyAnalysis: {
     warrantyStatus: "active" as const,
