@@ -51,8 +51,16 @@ import {
   Lock,
   ArrowRight,
   AlertTriangle,
-  Trash2
+  Trash2,
+  ChevronDown,
+  ChevronRight,
+  Car
 } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 interface Subscriber {
   userId: string;
