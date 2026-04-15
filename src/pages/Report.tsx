@@ -856,7 +856,7 @@ export default function ReportPage() {
       setUvprsResult(result);
     };
     computeUVPRS();
-  }, [analysis, vehicleData]);
+  }, [analysis, vehicleData, pricingDataUnavailable]);
 
   const refreshPricing = async () => {
     if (!vehicleData || isRefreshingPricing) return;
