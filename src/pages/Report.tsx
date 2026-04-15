@@ -739,6 +739,10 @@ export default function ReportPage() {
               condition: { ...prev.condition, sellerType: result.detectedSellerType }
             } : prev);
           }
+          // Store pricing availability flags
+          if (result.pricingDataUnavailable != null) setPricingDataUnavailable(result.pricingDataUnavailable);
+          if (result.pricingSource) setPricingSource(result.pricingSource);
+          if (result.contributingSources?.length) setContributingSources(result.contributingSources);
         } else {
           throw new Error(result?.error || "Analysis returned no data");
         }
@@ -1217,7 +1221,8 @@ export default function ReportPage() {
   const displayVerdict = getFinalVerdict(
     analysis.finalVerdict?.verdict,
     uvprsResult?.totalScore,
-    floorTriggered
+    floorTriggered,
+    pricingDataUnavailable
   );
   const sanitizedExpertOpinion = sanitizeExpertOpinion({
     expertOpinion: riskAssessment.expertOpinion,
