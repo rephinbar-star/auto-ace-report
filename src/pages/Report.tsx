@@ -130,7 +130,7 @@ function sanitizeExpertOpinion({
   fairMarketDealer,
 }: {
   expertOpinion: string;
-  displayVerdict: "Conditional Buy" | "Caution" | "Avoid";
+  displayVerdict: "Conditional Buy" | "Caution" | "Avoid" | "Insufficient Data";
   dealRating: string;
   sellerType: "dealer" | "private";
   effectivePrice: number;
