@@ -70,6 +70,9 @@ interface PricingData {
   };
   sourceBreakdown?: SourceValuation[];
   detectedDealerType?: string | null;
+  pricingDataUnavailable?: boolean;
+  pricingSource?: "market" | "estimated";
+  contributingSources?: string[];
 }
 
 interface MaintenanceData {
@@ -129,7 +132,7 @@ async function lookupPricing(year: number, make: string, model: string, trim: st
         "Content-Type": "application/json",
         "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
       },
-      body: JSON.stringify({ year, make, model, trim, mileage, condition, zipCode, vin, sellerType }),
+      body: JSON.stringify({ year, make, model, trim, mileage, condition, zipCode, vin, sellerType, askingPrice: undefined }),
     });
 
     if (response.ok) {
