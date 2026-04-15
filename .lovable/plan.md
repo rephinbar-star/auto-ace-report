@@ -1,75 +1,106 @@
 
 
-# Implementation Plan: Expert Analysis + Monthly Ownership Cost Changes
+# Implementation Plan: 3-Source Pricing Chain + UVPRS/Verdict Updates
 
-## Summary
-Two targeted changes: (1) Remove collapse from Expert Analysis, making all content permanently visible. (2) Create a new standalone Monthly Ownership Cost section positioned between Expert Analysis and Pricing.
-
----
-
-## Change 1: Expert Analysis — Remove Collapse
-
-**File: `src/components/report/ExpertAnalysisCard.tsx`**
-
-- Remove `useState` import and `expanded` state (line 63)
-- Remove `ChevronDown` from imports (line 4)
-- Remove the toggle button and collapse wrapper (lines 113-128)
-- Replace with plain visible text: `<p>` with classes `whitespace-pre-line text-[14px] text-[#374151] leading-[1.6]` and `mt-4`
-- Keep Part A (banner) and Part B (findings grid) untouched
-
-**File: `src/pages/Report.tsx`** (section header)
-- Find where the Expert Analysis section header says "Expert Opinion" or similar, rename to "Expert Analysis" if needed. Currently it's rendered via `ExpertAnalysisCard` with no external header — no change needed in Report.tsx for this.
+## Overview
+Replace Perplexity pricing with auto.dev + VehicleDatabases APIs alongside existing MarketCheck. Add asking-price fallback, validation gate, UVPRS price-factor exclusion, and UI warnings.
 
 ---
 
-## Change 2: Monthly Ownership Cost — New Standalone Section
+## Step 1: Add Secrets
+Request `AUTO_DEV_API_KEY` and `VEHICLEDATABASES_API_KEY` via `add_secret` tool.
 
-**New file: `src/components/report/MonthlyOwnershipCostCard.tsx`**
+## Step 2: Rewrite `supabase/functions/lookup-pricing/index.ts`
 
-A self-contained card component that receives:
-- `monthlyCostRange: string` (already computed in Report.tsx)
-- `monthlyBreakdown` data (monthlyPayment, fuel, repairs, maintenance, insuranceLow, insuranceHigh, totalLow, totalHigh)
-- `isElectric: boolean`
-- `hasFinancing: boolean`
+**Remove**: Entire `tryPerplexity()` function (lines 357–541), KBB/Edmunds/NADA from `SOURCE_RELIABILITY`, Perplexity promise from `serve()`.
 
-Renders:
-- Card container (white bg, border, rounded-xl, p-6)
-- Headline: uppercase label, 32px bold value, subtext
-- Row list with border-bottom dividers for each cost component
-- Total row with divider
-- Footnote text
-- Two text links below card: "View 5-year cost breakdown" (scrolls to depreciation) and "Edit financing details" (scrolls to financing)
+**Add `tryAutoDev()` function**:
+- `GET https://api.auto.dev/listings/{vin}` with `Authorization: Bearer {key}`
+- Compute median of listing prices → `fairMarketDealer`
+- Derive: private = dealer × 0.91, tradeIn = dealer × 0.83
+- Return as `SourceValuation` with source `"auto.dev"`
 
-**File: `src/pages/Report.tsx`**
+**Add `tryVehicleDatabases()` function**:
+- `GET https://api.vehicledatabases.com/market-value/v2/{vin}?mileage={mileage}` with `x-authkey: {key}`
+- Parse "Clean" condition row; values are dollar strings (`"$6,483"`) → `parseInt(str.replace(/[$,]/g, ""))`
+- Map: Retail → dealer, Private Party → private, Trade-In → tradeIn
+- Return as `SourceValuation` with source `"VehicleDatabases"`
 
-- Compute `monthlyBreakdown` at the Report level using `calculateMonthlyOwnershipBreakdown` (same calculation FuelEconomyCard does internally) — requires computing TCO first, which is already done for `monthlyCostRange`
-- Insert `<MonthlyOwnershipCostCard>` between Expert Analysis (line ~1438) and Pricing (line ~1440), with `id="section-financials"`
-- Move `id="section-financials"` from the current TCO section (line 1797) to this new section
-- Remove the "Monthly Cost Hero" block (lines 1799-1803) from the TCO section to avoid duplication
-- Remove the "Monthly Ownership Cost" breakdown block from FuelEconomyCard (lines 733-819) or keep it but hidden — cleaner to remove it since the data now lives in the dedicated section
-- Give the TCO/Depreciation section a new id (e.g., `id="section-tco"`)
+**Update `SOURCE_RELIABILITY` weights**:
+- auto.dev: 0.40 across all types
+- VehicleDatabases: 0.35 across all types
+- MarketCheck: 0.25 across all types
 
-**File: `src/components/report/StickyNavBar.tsx`**
+**Update `serve()` handler**:
+- Accept `askingPrice` in request body
+- Run MarketCheck + auto.dev + VehicleDatabases + dealer detection in parallel
+- Merge all source breakdowns into existing weighted aggregation
 
-- Update sections array to reflect new order — no change needed since "Financials" anchor just moves up in page position; the id stays `section-financials`
+**Add asking-price fallback** (when all sources return zero):
+- dealer = askingPrice × 1.0, private = askingPrice × 0.84, tradeIn = askingPrice × 0.76
+- Set `pricingDataUnavailable: true`, `pricingSource: "estimated"` in response
+- Add `outlierNotes`: "Prices estimated from asking price"
 
-**File: `src/components/report/FuelEconomyCard.tsx`**
+**Add `contributingSources` array** and `pricingDataUnavailable`/`pricingSource` to response.
 
-- Remove the "Monthly Ownership Cost" block (lines 733-819) to avoid duplication
-- Keep the "Total 5-Year Cost" and "Cost Per Mile" displays
+**Update `PricingResult` interface** to include new fields.
 
----
+## Step 3: Update `supabase/functions/analyze-vehicle/index.ts`
 
-## Section Order After Changes
-1. Verdict Hero
-2. Metrics Strip
-3. Expert Analysis (fully visible)
-4. **Monthly Ownership Cost** (`id="section-financials"`) — NEW
-5. Pricing Analysis (`id="section-pricing"`)
-6. TCO + Depreciation (no longer has `section-financials` id)
-7. Risk Profile
-8. Vehicle History
-9. Verdict + Actions
+- Pass `askingPrice: condition.askingPrice` in the `lookupPricing` call body
+- After pricing override block (~line 1088), add validation gate:
+  - If `fairMarketPrivate <= 0` or `pricingData.pricingDataUnavailable === true`:
+    - Set `analysis.pricingDataUnavailable = true`
+    - Set `analysis.pricingSource = pricingData?.pricingSource || "unavailable"`
+    - Do NOT override `dealRating` — leave AI value but it will be suppressed by frontend
+- Pass `pricingDataUnavailable`, `pricingSource`, and `contributingSources` through in the response JSON
+
+## Step 4: Update `src/lib/uvprs-scoring.ts`
+
+**Add `pricingDataUnavailable` to `UVPRSInput` interface**.
+
+**In `calculateUVPRS()`**: When `input.pricingDataUnavailable === true`:
+- Skip the "price" factor entirely — do not push it to `factorResults`
+- The existing renormalization logic already handles redistributing weights across known factors, so removing the factor from the array is sufficient
+
+**Update `UVPRSResult` interface**: Add optional `pricingDataUnavailable?: boolean` field, passed through.
+
+## Step 5: Update `src/pages/Report.tsx`
+
+**In `getFinalVerdict()`**: Add early return:
+```typescript
+function getFinalVerdict(
+  aiVerdict: string | undefined,
+  uvprsScore: number | undefined,
+  floorTriggered: boolean,
+  pricingDataUnavailable?: boolean
+): "Conditional Buy" | "Caution" | "Avoid" | "Insufficient Data" {
+  if (pricingDataUnavailable) return "Insufficient Data";
+  // ... existing logic
+}
+```
+
+**Read new fields** from analysis response: `pricingDataUnavailable`, `pricingSource`, `contributingSources`.
+
+**When `pricingDataUnavailable: true`**:
+- Suppress deal rating badge entirely
+- Show amber warning banner: "Market pricing data unavailable for this vehicle. Price comparisons may be inaccurate."
+
+**When `pricingSource === "estimated"`**:
+- Show badge with grey "~" prefix (e.g., "~Fair Deal")
+- Add tooltip: "Price estimated from asking price — no market data available."
+
+**Add source attribution** below pricing strip showing contributing sources (e.g., "Pricing via auto.dev · VehicleDatabases").
+
+## Step 6: Pass `pricingDataUnavailable` to UVPRS
+
+In Report.tsx where `calculateUVPRS()` is called, pass the new flag:
+```typescript
+const uvprsInput = {
+  // ... existing fields
+  pricingDataUnavailable: analysis.pricingDataUnavailable === true,
+};
+```
 
 ---
 
@@ -77,8 +108,21 @@ Renders:
 
 | File | Change |
 |------|--------|
-| `src/components/report/ExpertAnalysisCard.tsx` | Remove collapse state, button, animation; show text permanently |
-| `src/components/report/MonthlyOwnershipCostCard.tsx` | **New** — standalone monthly cost section |
-| `src/pages/Report.tsx` | Compute monthlyBreakdown, insert new section, remove duplicate monthly hero, move `section-financials` id |
-| `src/components/report/FuelEconomyCard.tsx` | Remove monthly ownership breakdown block (lines 733-819) |
+| `supabase/functions/lookup-pricing/index.ts` | Remove Perplexity, add `tryAutoDev()` + `tryVehicleDatabases()`, update weights, add asking-price fallback, add new response fields |
+| `supabase/functions/analyze-vehicle/index.ts` | Pass `askingPrice` to pricing call, add validation gate, pass new fields through response |
+| `src/lib/uvprs-scoring.ts` | Add `pricingDataUnavailable` to input, skip price factor when true |
+| `src/pages/Report.tsx` | Early return "Insufficient Data" in `getFinalVerdict()`, amber banner, estimated badge prefix, source attribution |
+
+---
+
+## Technical Details
+
+**Asking-price fallback multipliers** (per user specification):
+- Dealer retail: 1.0 × askingPrice
+- Private party: 0.84 × askingPrice
+- Trade-in: 0.76 × askingPrice
+
+**UVPRS price factor exclusion**: When `pricingDataUnavailable` is true, the price factor (7% weight) is simply not added to the factors array. The existing renormalization code (`knownWeightSum` / `unknownWeightSum` redistribution) automatically adjusts the remaining 9 factors to sum to 100%.
+
+**Verdict override**: `getFinalVerdict()` returns `"Insufficient Data"` immediately when `pricingDataUnavailable` is true, bypassing the `Math.max(aiLevel, scoreLevel, floorLevel)` reconciliation entirely.
 
