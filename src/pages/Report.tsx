@@ -185,8 +185,10 @@ function sanitizeExpertOpinion({
 function getFinalVerdict(
   aiVerdict: string | undefined,
   uvprsScore: number | undefined,
-  floorTriggered: boolean
-): "Conditional Buy" | "Caution" | "Avoid" {
+  floorTriggered: boolean,
+  pricingDataUnavailable?: boolean
+): "Conditional Buy" | "Caution" | "Avoid" | "Insufficient Data" {
+  if (pricingDataUnavailable) return "Insufficient Data";
   const riskLevels: Record<string, number> = { "Walk Away": 3, "Negotiate": 2, "Buy": 1 };
   const aiLevel = riskLevels[aiVerdict || "Buy"] ?? 1;
   const scoreLevel = uvprsScore == null ? 1 : uvprsScore > 70 ? 3 : uvprsScore > 50 ? 2 : 1;
