@@ -850,6 +850,7 @@ export default function ReportPage() {
         sellerType,
         isBrandNew: condition?.isBrandNew ?? null,
         aiFindings: analysis.aiFindings ?? null,
+        pricingDataUnavailable: pricingDataUnavailable,
       });
       console.log("[UVPRS-DEBUG] result:", result.totalScore, result.factors.map(f => `${f.key}=${f.score}(known=${f.known})`));
       setUvprsResult(result);
