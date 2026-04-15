@@ -1090,6 +1090,15 @@ Provide your expert analysis.`;
       console.log(`Deterministic pricing override: private=$${cv.fairMarketPrivate}, dealer=$${cv.fairMarketDealer}, tradeIn=$${cv.fairMarketTradeIn}, diff=$${analysis.priceAssessment.priceDifference}`);
     }
 
+    // Pricing validation gate — flag when no real market data exists
+    const pricingUnavailable = pricingData?.pricingDataUnavailable === true
+      || !pricingData?.computedValues
+      || (pricingData.computedValues.fairMarketPrivate <= 0 && pricingData.computedValues.fairMarketDealer <= 0);
+
+    if (pricingUnavailable) {
+      console.log("Pricing data unavailable — flagging report");
+    }
+
     // Wait for MPG data
     const mpgData = await mpgPromise;
     console.log("MPG data retrieved:", mpgData);
@@ -1109,6 +1118,9 @@ Provide your expert analysis.`;
         maintenanceSources: hasMaintenance ? maintenanceData.citations : [],
         sourceBreakdown: pricingData?.sourceBreakdown || [],
         detectedSellerType: condition.sellerType,
+        pricingDataUnavailable: pricingUnavailable,
+        pricingSource: pricingData?.pricingSource || (pricingUnavailable ? "estimated" : "market"),
+        contributingSources: pricingData?.contributingSources || [],
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
