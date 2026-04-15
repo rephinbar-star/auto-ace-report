@@ -341,6 +341,9 @@ export default function ReportPage() {
   }>>([]);
   const [pricingLastUpdated, setPricingLastUpdated] = useState<Date | null>(null);
   const [isRefreshingPricing, setIsRefreshingPricing] = useState(false);
+  const [pricingDataUnavailable, setPricingDataUnavailable] = useState(false);
+  const [pricingSource, setPricingSource] = useState<"market" | "estimated">("market");
+  const [contributingSources, setContributingSources] = useState<string[]>([]);
   const [uvprsResult, setUvprsResult] = useState<UVPRSResult | null>(null);
   const [isUploadingHistory, setIsUploadingHistory] = useState(false);
   const [recallData, setRecallData] = useState<{
