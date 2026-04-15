@@ -56,6 +56,9 @@ export interface UVPRSInput {
   fairMarketPrivate?: number | null;
   fairMarketDealer?: number | null;
 
+  // Pricing availability flag — when true, price factor is excluded from scoring
+  pricingDataUnavailable?: boolean;
+
   // Recalls (fetched async)
   openRecallCount?: number | null;
   nhtsaTotalRecalls?: number | null;
@@ -90,6 +93,7 @@ export interface UVPRSResult {
   verdict: "Buy" | "Conditional Buy" | "Caution" | "Avoid";
   factors: UVPRSFactorResult[];
   knownFactorCount: number;
+  pricingDataUnavailable?: boolean;
 }
 
 // ============================================================================
@@ -618,16 +622,18 @@ export function calculateUVPRS(input: UVPRSInput): UVPRSResult {
         : "Unknown — neutral score applied"),
   });
 
-  // 6. Price vs Market (asymmetric)
-  const price = scorePriceVsMarket(input.askingPrice, input.fairMarketPrivate, input.fairMarketDealer);
-  factorResults.push({
-    key: "price", label: "Price vs Market",
-    score: Math.round(price.score), weight: WEIGHTS.price, weighted: 0,
-    known: price.known,
-    description: price.known
-      ? `$${input.askingPrice.toLocaleString()} vs $${((input.fairMarketDealer || input.fairMarketPrivate) ?? 0).toLocaleString()} ${input.fairMarketDealer ? "dealer retail" : "fair market value"}`
-      : "Unknown — neutral score applied",
-  });
+  // 6. Price vs Market (asymmetric) — skip entirely when pricing data unavailable
+  if (!input.pricingDataUnavailable) {
+    const price = scorePriceVsMarket(input.askingPrice, input.fairMarketPrivate, input.fairMarketDealer);
+    factorResults.push({
+      key: "price", label: "Price vs Market",
+      score: Math.round(price.score), weight: WEIGHTS.price, weighted: 0,
+      known: price.known,
+      description: price.known
+        ? `$${input.askingPrice.toLocaleString()} vs $${((input.fairMarketDealer || input.fairMarketPrivate) ?? 0).toLocaleString()} ${input.fairMarketDealer ? "dealer retail" : "fair market value"}`
+        : "Unknown — neutral score applied",
+    });
+  }
 
   // 7. Open Recalls
   const recall = scoreRecalls(input.openRecallCount);
@@ -767,5 +773,6 @@ export function calculateUVPRS(input: UVPRSInput): UVPRSResult {
     verdict,
     factors: factorResults,
     knownFactorCount: factorResults.filter(f => f.known).length,
+    pricingDataUnavailable: input.pricingDataUnavailable,
   };
 }
