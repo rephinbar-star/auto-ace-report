@@ -70,6 +70,9 @@ interface PricingData {
   };
   sourceBreakdown?: SourceValuation[];
   detectedDealerType?: string | null;
+  pricingDataUnavailable?: boolean;
+  pricingSource?: "market" | "estimated";
+  contributingSources?: string[];
 }
 
 interface MaintenanceData {
@@ -114,7 +117,7 @@ async function lookupMPG(year: number, make: string, model: string, trim?: strin
   };
 }
 
-async function lookupPricing(year: number, make: string, model: string, trim: string | undefined, mileage: number, condition: string, zipCode?: string, vin?: string, sellerType?: string): Promise<PricingData | null> {
+async function lookupPricing(year: number, make: string, model: string, trim: string | undefined, mileage: number, condition: string, zipCode?: string, vin?: string, sellerType?: string, askingPrice?: number): Promise<PricingData | null> {
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
@@ -129,7 +132,7 @@ async function lookupPricing(year: number, make: string, model: string, trim: st
         "Content-Type": "application/json",
         "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
       },
-      body: JSON.stringify({ year, make, model, trim, mileage, condition, zipCode, vin, sellerType }),
+      body: JSON.stringify({ year, make, model, trim, mileage, condition, zipCode, vin, sellerType, askingPrice }),
     });
 
     if (response.ok) {
@@ -219,7 +222,7 @@ serve(async (req) => {
 
     // Fetch MPG, pricing, and maintenance data in parallel
     const mpgPromise = lookupMPG(vehicle.year, vehicle.make, vehicle.model, vehicle.trim);
-    const pricingPromise = lookupPricing(vehicle.year, vehicle.make, vehicle.model, vehicle.trim, condition.mileage, condition.condition, condition.zipCode, vehicle.vin, condition.sellerType);
+    const pricingPromise = lookupPricing(vehicle.year, vehicle.make, vehicle.model, vehicle.trim, condition.mileage, condition.condition, condition.zipCode, vehicle.vin, condition.sellerType, condition.askingPrice);
     const maintenancePromise = lookupMaintenance(vehicle.year, vehicle.make, vehicle.model, vehicle.trim, condition.mileage);
     console.log(`Looking up MPG, pricing, and maintenance for ${vehicle.year} ${vehicle.make} ${vehicle.model}`);
 
@@ -1087,6 +1090,15 @@ Provide your expert analysis.`;
       console.log(`Deterministic pricing override: private=$${cv.fairMarketPrivate}, dealer=$${cv.fairMarketDealer}, tradeIn=$${cv.fairMarketTradeIn}, diff=$${analysis.priceAssessment.priceDifference}`);
     }
 
+    // Pricing validation gate — flag when no real market data exists
+    const pricingUnavailable = pricingData?.pricingDataUnavailable === true
+      || !pricingData?.computedValues
+      || (pricingData.computedValues.fairMarketPrivate <= 0 && pricingData.computedValues.fairMarketDealer <= 0);
+
+    if (pricingUnavailable) {
+      console.log("Pricing data unavailable — flagging report");
+    }
+
     // Wait for MPG data
     const mpgData = await mpgPromise;
     console.log("MPG data retrieved:", mpgData);
@@ -1106,6 +1118,9 @@ Provide your expert analysis.`;
         maintenanceSources: hasMaintenance ? maintenanceData.citations : [],
         sourceBreakdown: pricingData?.sourceBreakdown || [],
         detectedSellerType: condition.sellerType,
+        pricingDataUnavailable: pricingUnavailable,
+        pricingSource: pricingData?.pricingSource || (pricingUnavailable ? "estimated" : "market"),
+        contributingSources: pricingData?.contributingSources || [],
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

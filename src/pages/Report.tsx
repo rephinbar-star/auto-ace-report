@@ -130,7 +130,7 @@ function sanitizeExpertOpinion({
   fairMarketDealer,
 }: {
   expertOpinion: string;
-  displayVerdict: "Conditional Buy" | "Caution" | "Avoid";
+  displayVerdict: "Conditional Buy" | "Caution" | "Avoid" | "Insufficient Data";
   dealRating: string;
   sellerType: "dealer" | "private";
   effectivePrice: number;
@@ -185,8 +185,10 @@ function sanitizeExpertOpinion({
 function getFinalVerdict(
   aiVerdict: string | undefined,
   uvprsScore: number | undefined,
-  floorTriggered: boolean
-): "Conditional Buy" | "Caution" | "Avoid" {
+  floorTriggered: boolean,
+  pricingDataUnavailable?: boolean
+): "Conditional Buy" | "Caution" | "Avoid" | "Insufficient Data" {
+  if (pricingDataUnavailable) return "Insufficient Data";
   const riskLevels: Record<string, number> = { "Walk Away": 3, "Negotiate": 2, "Buy": 1 };
   const aiLevel = riskLevels[aiVerdict || "Buy"] ?? 1;
   const scoreLevel = uvprsScore == null ? 1 : uvprsScore > 70 ? 3 : uvprsScore > 50 ? 2 : 1;
@@ -339,6 +341,9 @@ export default function ReportPage() {
   }>>([]);
   const [pricingLastUpdated, setPricingLastUpdated] = useState<Date | null>(null);
   const [isRefreshingPricing, setIsRefreshingPricing] = useState(false);
+  const [pricingDataUnavailable, setPricingDataUnavailable] = useState(false);
+  const [pricingSource, setPricingSource] = useState<"market" | "estimated">("market");
+  const [contributingSources, setContributingSources] = useState<string[]>([]);
   const [uvprsResult, setUvprsResult] = useState<UVPRSResult | null>(null);
   const [isUploadingHistory, setIsUploadingHistory] = useState(false);
   const [recallData, setRecallData] = useState<{
@@ -734,6 +739,10 @@ export default function ReportPage() {
               condition: { ...prev.condition, sellerType: result.detectedSellerType }
             } : prev);
           }
+          // Store pricing availability flags
+          if (result.pricingDataUnavailable != null) setPricingDataUnavailable(result.pricingDataUnavailable);
+          if (result.pricingSource) setPricingSource(result.pricingSource);
+          if (result.contributingSources?.length) setContributingSources(result.contributingSources);
         } else {
           throw new Error(result?.error || "Analysis returned no data");
         }
@@ -841,12 +850,13 @@ export default function ReportPage() {
         sellerType,
         isBrandNew: condition?.isBrandNew ?? null,
         aiFindings: analysis.aiFindings ?? null,
+        pricingDataUnavailable: pricingDataUnavailable,
       });
       console.log("[UVPRS-DEBUG] result:", result.totalScore, result.factors.map(f => `${f.key}=${f.score}(known=${f.known})`));
       setUvprsResult(result);
     };
     computeUVPRS();
-  }, [analysis, vehicleData]);
+  }, [analysis, vehicleData, pricingDataUnavailable]);
 
   const refreshPricing = async () => {
     if (!vehicleData || isRefreshingPricing) return;
@@ -1212,7 +1222,8 @@ export default function ReportPage() {
   const displayVerdict = getFinalVerdict(
     analysis.finalVerdict?.verdict,
     uvprsResult?.totalScore,
-    floorTriggered
+    floorTriggered,
+    pricingDataUnavailable
   );
   const sanitizedExpertOpinion = sanitizeExpertOpinion({
     expertOpinion: riskAssessment.expertOpinion,
@@ -1447,6 +1458,31 @@ export default function ReportPage() {
             warrantyContext={warrantyContext}
             onHistoryTabChange={setHistoryTab}
           />
+
+          {/* Pricing data warning banners */}
+          {pricingDataUnavailable && pricingSource !== "estimated" && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-amber-800">Market pricing data unavailable for this vehicle</p>
+                <p className="text-sm text-amber-700 mt-1">Price comparisons may be inaccurate. Deal rating and verdict are withheld until pricing can be verified.</p>
+              </div>
+            </div>
+          )}
+          {pricingSource === "estimated" && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-amber-800">Pricing estimated from asking price</p>
+                <p className="text-sm text-amber-700 mt-1">No independent market data was available. Fair market values are estimated — verify with local dealers.</p>
+              </div>
+            </div>
+          )}
+          {contributingSources.length > 0 && (
+            <p className="text-xs text-muted-foreground text-center -mt-2">
+              Pricing via {contributingSources.join(" · ")}
+            </p>
+          )}
 
           {/* ===== SECTION 3: EXPERT ANALYSIS ===== */}
           <ExpertFindingsStrip

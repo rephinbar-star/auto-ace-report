@@ -15,6 +15,7 @@ interface PricingRequest {
   zipCode?: string;
   vin?: string;
   sellerType?: string;
+  askingPrice?: number;
 }
 
 interface SourceValuation {
@@ -41,14 +42,16 @@ interface PricingResult {
   sourceBreakdown?: SourceValuation[];
   detectedDealerType?: string | null;
   outlierNotes?: string[];
+  pricingDataUnavailable?: boolean;
+  pricingSource?: "market" | "estimated";
+  contributingSources?: string[];
 }
 
-// Source reliability weights by transaction type (higher = more reliable for that type)
+// Source reliability weights — listing-based sources weighted higher than ML predictions
 const SOURCE_RELIABILITY: Record<string, { tradeIn: number; privateParty: number; dealerRetail: number }> = {
-  "MarketCheck":     { tradeIn: 1.0, privateParty: 0.8, dealerRetail: 1.0 },
-  "Kelley Blue Book": { tradeIn: 0.6, privateParty: 1.0, dealerRetail: 0.6 },
-  "Edmunds":         { tradeIn: 0.6, privateParty: 1.0, dealerRetail: 0.6 },
-  "NADA Guides":     { tradeIn: 1.0, privateParty: 0.5, dealerRetail: 1.0 },
+  "MarketCheck":       { tradeIn: 0.25, privateParty: 0.25, dealerRetail: 0.25 },
+  "auto.dev":          { tradeIn: 0.40, privateParty: 0.40, dealerRetail: 0.40 },
+  "VehicleDatabases":  { tradeIn: 0.35, privateParty: 0.35, dealerRetail: 0.35 },
 };
 
 const DEFAULT_RANGE_WIDTH = 500;
@@ -57,7 +60,7 @@ interface WeightedEntry {
   source: string;
   value: number;
   reliabilityWeight: number;
-  confidenceWeight: number; // 1 / rangeWidth
+  confidenceWeight: number;
 }
 
 function computeWeightedValue(
@@ -66,7 +69,6 @@ function computeWeightedValue(
   if (entries.length === 0) return { value: 0, outlierNotes: [] };
   if (entries.length === 1) return { value: Math.round(entries[0].value), outlierNotes: [] };
 
-  // Step 3: Outlier detection — flag sources >15% from median
   const values = entries.map(e => e.value).sort((a, b) => a - b);
   const median = values.length % 2 === 1
     ? values[Math.floor(values.length / 2)]
@@ -77,7 +79,7 @@ function computeWeightedValue(
     const deviation = Math.abs(e.value - median) / median;
     let reliabilityMult = e.reliabilityWeight;
     if (deviation > 0.15) {
-      reliabilityMult *= 0.5; // down-weight outlier by 50%
+      reliabilityMult *= 0.5;
       const dir = e.value < median ? "lower" : "higher";
       outlierNotes.push(
         `${e.source} data is ${Math.round(deviation * 100)}% ${dir} than other sources ($${e.value.toLocaleString()} vs median $${Math.round(median).toLocaleString()}).`
@@ -86,7 +88,6 @@ function computeWeightedValue(
     return { ...e, reliabilityWeight: reliabilityMult };
   });
 
-  // Combined weight = reliability × confidence
   const totalWeight = adjusted.reduce((s, e) => s + e.reliabilityWeight * e.confidenceWeight, 0);
   if (totalWeight === 0) return { value: Math.round(median), outlierNotes };
 
@@ -140,8 +141,8 @@ function buildEntries(
 }
 
 /**
- * Calls MarketCheck AND Perplexity in parallel, merges results.
- * MarketCheck provides ML-based prediction; Perplexity provides KBB/Edmunds/NADA book values.
+ * 3-source pricing chain: MarketCheck + auto.dev + VehicleDatabases
+ * Falls back to asking-price estimation when all sources return zero.
  */
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -149,40 +150,52 @@ serve(async (req) => {
   }
 
   try {
-    const { year, make, model, trim, mileage, condition, zipCode, vin, sellerType }: PricingRequest = await req.json();
+    const { year, make, model, trim, mileage, condition, zipCode, vin, sellerType, askingPrice }: PricingRequest = await req.json();
     const vehicleDesc = `${year} ${make} ${model}${trim ? ` ${trim}` : ""}`;
 
-    // Launch pricing sources and dealer type detection in parallel
+    // Launch all pricing sources and dealer type detection in parallel
     const mcPromise = (vin && vin.length === 17)
       ? tryMarketCheck(vin, mileage, sellerType, zipCode, vehicleDesc)
       : Promise.resolve(null);
-    const ppPromise = tryPerplexity(year, make, model, trim, mileage, condition, zipCode, vehicleDesc).catch(err => {
-      console.error("Perplexity failed:", err);
-      return null;
-    });
+    const autoDevPromise = (vin && vin.length === 17)
+      ? tryAutoDev(vin).catch(err => { console.error("auto.dev failed:", err); return null; })
+      : Promise.resolve(null);
+    const vdbPromise = (vin && vin.length === 17)
+      ? tryVehicleDatabases(vin, mileage).catch(err => { console.error("VehicleDatabases failed:", err); return null; })
+      : Promise.resolve(null);
     const dealerTypePromise = (vin && vin.length === 17 && sellerType !== "private")
       ? detectDealerType(vin).catch(() => null)
       : Promise.resolve(null);
 
-    const [mcResult, ppResult, detectedDealerType] = await Promise.all([mcPromise, ppPromise, dealerTypePromise]);
+    const [mcResult, autoDevResult, vdbResult, detectedDealerType] = await Promise.all([
+      mcPromise, autoDevPromise, vdbPromise, dealerTypePromise,
+    ]);
 
-    // Merge results: combine source breakdowns and compute final values
+    // Merge results
     const allSources: SourceValuation[] = [
       ...(mcResult?.sourceBreakdown || []),
-      ...(ppResult?.sourceBreakdown || []),
+      ...(autoDevResult?.sourceBreakdown || []),
+      ...(vdbResult?.sourceBreakdown || []),
     ];
 
     const allCitations: string[] = [
       ...(mcResult?.citations || []),
-      ...(ppResult?.citations || []),
+      ...(autoDevResult?.citations || []),
+      ...(vdbResult?.citations || []),
     ];
     const uniqueCitations = [...new Set(allCitations)];
 
-    // Build merged pricing context
     const contextParts: string[] = [];
     if (mcResult?.pricingContext) contextParts.push(mcResult.pricingContext);
-    if (ppResult?.pricingContext) contextParts.push(ppResult.pricingContext);
+    if (autoDevResult?.pricingContext) contextParts.push(autoDevResult.pricingContext);
+    if (vdbResult?.pricingContext) contextParts.push(vdbResult.pricingContext);
     const mergedContext = contextParts.join("\n\n");
+
+    // Track which sources contributed
+    const contributingSources: string[] = [];
+    if (mcResult?.sourceBreakdown?.length) contributingSources.push("MarketCheck");
+    if (autoDevResult?.sourceBreakdown?.length) contributingSources.push("auto.dev");
+    if (vdbResult?.sourceBreakdown?.length) contributingSources.push("VehicleDatabases");
 
     // Weighted Confidence Aggregation across all sources
     const tradeInEntries = buildEntries(allSources, "tradeIn");
@@ -199,37 +212,59 @@ serve(async (req) => {
       ...dealerResult.outlierNotes,
     ];
 
-    // FMV = weighted private party value (what a buyer would pay in a consumer transaction)
-    // Trade-in is a separate wholesale benchmark, not averaged into FMV
     const fairMarketValue = privateResult.value > 0 ? privateResult.value : Math.round((tradeInResult.value + privateResult.value) / 2);
 
-    const computedValues = (privateResult.value > 0 || dealerResult.value > 0 || tradeInResult.value > 0)
+    let computedValues = (privateResult.value > 0 || dealerResult.value > 0 || tradeInResult.value > 0)
       ? {
-          fairMarketPrivate: fairMarketValue, // FMV = weighted private party value
+          fairMarketPrivate: fairMarketValue,
           fairMarketDealer: dealerResult.value,
           fairMarketTradeIn: tradeInResult.value,
         }
-      : mcResult?.computedValues || ppResult?.computedValues;
+      : mcResult?.computedValues || autoDevResult?.computedValues || vdbResult?.computedValues;
 
-    if (!mergedContext) {
-      throw new Error("No pricing data available from any source");
+    // Asking-price fallback when all sources return zero
+    let pricingDataUnavailable = false;
+    let pricingSource: "market" | "estimated" = "market";
+
+    if (!computedValues || (computedValues.fairMarketPrivate <= 0 && computedValues.fairMarketDealer <= 0 && computedValues.fairMarketTradeIn <= 0)) {
+      if (askingPrice && askingPrice > 0) {
+        computedValues = {
+          fairMarketDealer: Math.round(askingPrice * 1.0),
+          fairMarketPrivate: Math.round(askingPrice * 0.84),
+          fairMarketTradeIn: Math.round(askingPrice * 0.76),
+        };
+        pricingDataUnavailable = true;
+        pricingSource = "estimated";
+        outlierNotes.push("Prices estimated from asking price — no market data available");
+        console.log(`Asking-price fallback: dealer=$${computedValues.fairMarketDealer}, private=$${computedValues.fairMarketPrivate}, tradeIn=$${computedValues.fairMarketTradeIn}`);
+      } else {
+        pricingDataUnavailable = true;
+        pricingSource = "estimated";
+      }
     }
+
+    const finalContext = mergedContext || (pricingDataUnavailable
+      ? `No market pricing data available for ${vehicleDesc}. Values estimated from asking price.`
+      : "No pricing data available from any source");
 
     if (outlierNotes.length > 0) {
       console.log(`Pricing outliers detected: ${outlierNotes.join(" | ")}`);
     }
 
-    console.log(`Pricing complete: ${allSources.length} source(s), ${uniqueCitations.length} citation(s), dealerType=${detectedDealerType || "unknown"}`);
+    console.log(`Pricing complete: ${allSources.length} source(s) [${contributingSources.join(", ")}], ${uniqueCitations.length} citation(s), dealerType=${detectedDealerType || "unknown"}, unavailable=${pricingDataUnavailable}`);
 
     return new Response(JSON.stringify({
       success: true,
       data: {
-        pricingContext: mergedContext,
+        pricingContext: finalContext,
         citations: uniqueCitations,
         computedValues,
         sourceBreakdown: allSources,
         detectedDealerType,
         outlierNotes: outlierNotes.length > 0 ? outlierNotes : undefined,
+        pricingDataUnavailable,
+        pricingSource,
+        contributingSources,
       } as PricingResult,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -246,6 +281,10 @@ serve(async (req) => {
   }
 });
 
+// ============================================================================
+// Source 1: MarketCheck (VIN-based ML prediction)
+// ============================================================================
+
 async function tryMarketCheck(
   vin: string,
   miles: number,
@@ -260,11 +299,10 @@ async function tryMarketCheck(
   }
 
   try {
-    // Use the actual seller type if already refined (franchise/independent), otherwise map
     const dealerType = sellerType === "private" ? "independent" 
       : sellerType === "independent" ? "independent"
       : "franchise";
-    const zip = zipCode || "90210"; // Default ZIP required by MarketCheck
+    const zip = zipCode || "90210";
     const params = new URLSearchParams({
       api_key: MARKETCHECK_API_KEY,
       vin,
@@ -294,8 +332,6 @@ async function tryMarketCheck(
       return null;
     }
 
-    // MarketCheck gives a single predicted price. We derive ranges from it.
-    // Trade-in is typically ~85% of market, private party ~95%, dealer retail ~105%
     const tradeInLow = Math.round(mcPrice * 0.80);
     const tradeInHigh = Math.round(mcPrice * 0.90);
     const privateLow = Math.round(mcPrice * 0.93);
@@ -309,16 +345,9 @@ async function tryMarketCheck(
       `MarketCheck Predicted Market Price: $${mcPrice.toLocaleString()}`,
       msrp ? `Original MSRP: $${msrp.toLocaleString()}` : "",
       "",
-      `KBB-equivalent Private Party Value: $${privateLow.toLocaleString()} - $${privateHigh.toLocaleString()}`,
-      `KBB-equivalent Dealer Retail / Fair Purchase Price: $${dealerLow.toLocaleString()} - $${dealerHigh.toLocaleString()}`,
-      `KBB-equivalent Trade-In Value: $${tradeInLow.toLocaleString()} - $${tradeInHigh.toLocaleString()}`,
-      "",
-      "MIDPOINT VALUES (use these for fairMarket fields):",
-      `fairMarketPrivate = $${Math.round((privateLow + privateHigh) / 2).toLocaleString()}`,
-      `fairMarketDealer = $${Math.round((dealerLow + dealerHigh) / 2).toLocaleString()}`,
-      `fairMarketTradeIn = $${Math.round((tradeInLow + tradeInHigh) / 2).toLocaleString()}`,
-      "",
-      `Notes: MarketCheck Price is an ML-based prediction using data from 84,000+ sources. Values derived from predicted market price of $${mcPrice.toLocaleString()}.`,
+      `Private Party Value: $${privateLow.toLocaleString()} - $${privateHigh.toLocaleString()}`,
+      `Dealer Retail: $${dealerLow.toLocaleString()} - $${dealerHigh.toLocaleString()}`,
+      `Trade-In Value: $${tradeInLow.toLocaleString()} - $${tradeInHigh.toLocaleString()}`,
     ].filter(Boolean);
 
     const computedPrivate = Math.round((privateLow + privateHigh) / 2);
@@ -354,202 +383,223 @@ async function tryMarketCheck(
   }
 }
 
-async function tryPerplexity(
-  year: number,
-  make: string,
-  model: string,
-  trim: string | undefined,
-  mileage: number,
-  condition: string,
-  zipCode: string | undefined,
-  vehicleDesc: string,
-): Promise<PricingResult> {
-  const PERPLEXITY_API_KEY = Deno.env.get("PERPLEXITY_API_KEY");
-  if (!PERPLEXITY_API_KEY) {
-    throw new Error("PERPLEXITY_API_KEY is not configured");
+// ============================================================================
+// Source 2: auto.dev (active dealer listings)
+// ============================================================================
+
+async function tryAutoDev(vin: string): Promise<PricingResult | null> {
+  const AUTO_DEV_API_KEY = Deno.env.get("AUTO_DEV_API_KEY");
+  if (!AUTO_DEV_API_KEY) {
+    console.log("AUTO_DEV_API_KEY not configured, skipping auto.dev");
+    return null;
   }
 
-  const locationClause = zipCode ? ` in ZIP code ${zipCode}` : "";
-  const query = `What are the current Kelley Blue Book (KBB), Edmunds True Market Value (TMV), and NADA guide valuations for a ${vehicleDesc} with ${mileage.toLocaleString()} miles in ${condition} condition${locationClause}? I need separate values from each source: KBB Private Party, KBB Fair Purchase Price, KBB Trade-In, Edmunds TMV, and NADA Clean Retail value.`;
-
-  console.log(`Perplexity fallback for: ${vehicleDesc}, ${mileage} miles, ${condition} condition`);
-
-  const response = await fetch("https://api.perplexity.ai/chat/completions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${PERPLEXITY_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "sonar-pro",
-      messages: [
-        {
-          role: "system",
-          content: "You are a vehicle valuation lookup assistant. Your ONLY job is to find VALUATION/BOOK VALUES from KBB, Edmunds, and NADA — NOT listing prices or asking prices from dealers or private sellers. Book values represent what a vehicle IS WORTH according to pricing guides, not what sellers are ASKING for it. These are different numbers. Focus on finding the KBB valuation tool results, Edmunds True Market Value, and NADA guide values. Do NOT confuse dealer listing prices or marketplace asking prices with book values. Return values from EACH source separately.",
-        },
-        { role: "user", content: query },
-      ],
-      search_domain_filter: ["kbb.com", "edmunds.com", "nadaguides.com"],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "vehicle_pricing",
-          schema: {
-            type: "object",
-            properties: {
-              kbb_private_party_low: { type: "number", description: "KBB Private Party Value low end in dollars" },
-              kbb_private_party_high: { type: "number", description: "KBB Private Party Value high end in dollars" },
-              kbb_dealer_retail_low: { type: "number", description: "KBB Fair Purchase Price / Dealer Retail low end in dollars" },
-              kbb_dealer_retail_high: { type: "number", description: "KBB Fair Purchase Price / Dealer Retail high end in dollars" },
-              kbb_trade_in_low: { type: "number", description: "KBB Trade-In Value low end in dollars" },
-              kbb_trade_in_high: { type: "number", description: "KBB Trade-In Value high end in dollars" },
-              edmunds_private_party: { type: "number", description: "Edmunds TMV Private Party value in dollars, or 0 if not found" },
-              edmunds_dealer_retail: { type: "number", description: "Edmunds TMV Dealer Retail value in dollars, or 0 if not found" },
-              edmunds_trade_in: { type: "number", description: "Edmunds TMV Trade-In value in dollars, or 0 if not found" },
-              nada_clean_retail: { type: "number", description: "NADA Clean Retail value in dollars, or 0 if not found" },
-              nada_clean_trade_in: { type: "number", description: "NADA Clean Trade-In value in dollars, or 0 if not found" },
-              nada_rough_trade_in: { type: "number", description: "NADA Rough Trade-In value in dollars, or 0 if not found" },
-              notes: { type: "string", description: "Any caveats about the data" },
-            },
-            required: ["kbb_private_party_low", "kbb_private_party_high", "kbb_dealer_retail_low", "kbb_dealer_retail_high", "kbb_trade_in_low", "kbb_trade_in_high", "edmunds_private_party", "edmunds_dealer_retail", "edmunds_trade_in", "nada_clean_retail", "nada_clean_trade_in", "nada_rough_trade_in", "notes"],
-          },
-        },
-      },
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Perplexity API error:", response.status, errorText);
-    throw new Error(`Perplexity API failed: ${response.status}`);
-  }
-
-  const data = await response.json();
-  const rawContent = data.choices?.[0]?.message?.content || "";
-  // Ensure KBB, Edmunds, and NADA always appear as sources
-  const baseCitations: string[] = data.citations || [];
-  const ensuredCitations = [...baseCitations];
-  const hasKbb = baseCitations.some((c: string) => c.includes("kbb.com"));
-  const hasEdmunds = baseCitations.some((c: string) => c.includes("edmunds.com"));
-  const hasNada = baseCitations.some((c: string) => c.includes("nadaguides.com"));
-  if (!hasKbb) ensuredCitations.push("https://www.kbb.com");
-  if (!hasEdmunds) ensuredCitations.push("https://www.edmunds.com");
-  if (!hasNada) ensuredCitations.push("https://www.nadaguides.com");
-
-  let pricingContext = rawContent;
   try {
-    const p = JSON.parse(rawContent);
-    const lines: string[] = [
-      "VEHICLE VALUATION DATA (Book Values from Multiple Sources):",
+    const url = `https://auto.dev/api/listings?vin=${encodeURIComponent(vin)}&apikey=${AUTO_DEV_API_KEY}`;
+    console.log(`auto.dev request for VIN ${vin}`);
+
+    const response = await fetch(url, {
+      headers: { "Accept": "application/json" },
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error(`auto.dev API error ${response.status}: ${errText}`);
+      return null;
+    }
+
+    const data = await response.json();
+    
+    // auto.dev returns { records: [...] } with listing objects
+    const records = data?.records || data?.listings || (Array.isArray(data) ? data : []);
+    if (!records || records.length === 0) {
+      console.log("auto.dev: no listings found for VIN");
+      return null;
+    }
+
+    // Extract prices from listings
+    const prices: number[] = [];
+    for (const listing of records) {
+      const price = listing.price || listing.askingPrice || listing.msrp;
+      if (price && typeof price === "number" && price > 0) {
+        prices.push(price);
+      } else if (typeof price === "string") {
+        const parsed = parseInt(price.replace(/[$,]/g, ""), 10);
+        if (parsed > 0) prices.push(parsed);
+      }
+    }
+
+    if (prices.length === 0) {
+      console.log("auto.dev: listings found but no valid prices");
+      return null;
+    }
+
+    // Compute median
+    prices.sort((a, b) => a - b);
+    const median = prices.length % 2 === 1
+      ? prices[Math.floor(prices.length / 2)]
+      : Math.round((prices[prices.length / 2 - 1] + prices[prices.length / 2]) / 2);
+
+    // Dealer retail = median listing price; derive private and trade-in
+    const fairMarketDealer = median;
+    const fairMarketPrivate = Math.round(median * 0.91);
+    const fairMarketTradeIn = Math.round(median * 0.83);
+
+    const lines = [
+      `VEHICLE VALUATION DATA (auto.dev — ${prices.length} active listing(s)):`,
       "",
-      "=== KELLEY BLUE BOOK (KBB) ===",
-      `KBB Private Party Value: $${p.kbb_private_party_low?.toLocaleString()} - $${p.kbb_private_party_high?.toLocaleString()}`,
-      `KBB Fair Purchase Price (Dealer Retail): $${p.kbb_dealer_retail_low?.toLocaleString()} - $${p.kbb_dealer_retail_high?.toLocaleString()}`,
-      `KBB Trade-In Value: $${p.kbb_trade_in_low?.toLocaleString()} - $${p.kbb_trade_in_high?.toLocaleString()}`,
-    ];
+      `Median Listing Price: $${fairMarketDealer.toLocaleString()}`,
+      `Derived Private Party: $${fairMarketPrivate.toLocaleString()}`,
+      `Derived Trade-In: $${fairMarketTradeIn.toLocaleString()}`,
+      prices.length > 1 ? `Price Range: $${prices[0].toLocaleString()} - $${prices[prices.length - 1].toLocaleString()}` : "",
+    ].filter(Boolean);
 
-    const hasEdmundsData = (p.edmunds_private_party > 0 || p.edmunds_dealer_retail > 0 || p.edmunds_trade_in > 0);
-    if (hasEdmundsData) {
-      lines.push("", "=== EDMUNDS TRUE MARKET VALUE (TMV) ===");
-      if (p.edmunds_private_party > 0) lines.push(`Edmunds TMV Private Party: $${p.edmunds_private_party.toLocaleString()}`);
-      if (p.edmunds_dealer_retail > 0) lines.push(`Edmunds TMV Dealer Retail: $${p.edmunds_dealer_retail.toLocaleString()}`);
-      if (p.edmunds_trade_in > 0) lines.push(`Edmunds TMV Trade-In: $${p.edmunds_trade_in.toLocaleString()}`);
-    }
-
-    const hasNadaData = (p.nada_clean_retail > 0 || p.nada_clean_trade_in > 0 || p.nada_rough_trade_in > 0);
-    if (hasNadaData) {
-      lines.push("", "=== NADA GUIDES ===");
-      if (p.nada_clean_retail > 0) lines.push(`NADA Clean Retail: $${p.nada_clean_retail.toLocaleString()}`);
-      if (p.nada_clean_trade_in > 0) lines.push(`NADA Clean Trade-In: $${p.nada_clean_trade_in.toLocaleString()}`);
-      if (p.nada_rough_trade_in > 0) lines.push(`NADA Rough Trade-In: $${p.nada_rough_trade_in.toLocaleString()}`);
-    }
-
-    if (p.notes) {
-      lines.push("", `Notes: ${p.notes}`);
-    }
-
-    // Compute midpoints using KBB as primary, supplemented by Edmunds/NADA
-    const kbbPrivateMid = Math.round((p.kbb_private_party_low + p.kbb_private_party_high) / 2);
-    const kbbDealerMid = Math.round((p.kbb_dealer_retail_low + p.kbb_dealer_retail_high) / 2);
-    const kbbTradeInMid = Math.round((p.kbb_trade_in_low + p.kbb_trade_in_high) / 2);
-
-    // Cross-reference: average across available sources for final fair market values
-    const privateValues = [kbbPrivateMid, ...(p.edmunds_private_party > 0 ? [p.edmunds_private_party] : [])];
-    const dealerValues = [kbbDealerMid, ...(p.edmunds_dealer_retail > 0 ? [p.edmunds_dealer_retail] : []), ...(p.nada_clean_retail > 0 ? [p.nada_clean_retail] : [])];
-    const tradeInValues = [kbbTradeInMid, ...(p.edmunds_trade_in > 0 ? [p.edmunds_trade_in] : []), ...(p.nada_clean_trade_in > 0 ? [p.nada_clean_trade_in] : [])];
-
-    const avg = (arr: number[]) => Math.round(arr.reduce((a, b) => a + b, 0) / arr.length);
-
-    lines.push(
-      "",
-      "MIDPOINT VALUES (cross-referenced across available sources — use these for fairMarket fields):",
-      `fairMarketPrivate = $${avg(privateValues).toLocaleString()} (based on ${privateValues.length} source${privateValues.length > 1 ? "s" : ""})`,
-      `fairMarketDealer = $${avg(dealerValues).toLocaleString()} (based on ${dealerValues.length} source${dealerValues.length > 1 ? "s" : ""})`,
-      `fairMarketTradeIn = $${avg(tradeInValues).toLocaleString()} (based on ${tradeInValues.length} source${tradeInValues.length > 1 ? "s" : ""})`,
-    );
-
-    pricingContext = lines.join("\n");
-
-    // Build per-source breakdown
-    const sourceBreakdown: SourceValuation[] = [
-      {
-        source: "Kelley Blue Book",
-        privateParty: kbbPrivateMid,
-        privatePartyLow: p.kbb_private_party_low,
-        privatePartyHigh: p.kbb_private_party_high,
-        dealerRetail: kbbDealerMid,
-        dealerRetailLow: p.kbb_dealer_retail_low,
-        dealerRetailHigh: p.kbb_dealer_retail_high,
-        tradeIn: kbbTradeInMid,
-        tradeInLow: p.kbb_trade_in_low,
-        tradeInHigh: p.kbb_trade_in_high,
-      },
-    ];
-
-    if (hasEdmundsData) {
-      sourceBreakdown.push({
-        source: "Edmunds",
-        privateParty: p.edmunds_private_party > 0 ? p.edmunds_private_party : null,
-        dealerRetail: p.edmunds_dealer_retail > 0 ? p.edmunds_dealer_retail : null,
-        tradeIn: p.edmunds_trade_in > 0 ? p.edmunds_trade_in : null,
-      });
-    }
-
-    if (hasNadaData) {
-      sourceBreakdown.push({
-        source: "NADA Guides",
-        dealerRetail: p.nada_clean_retail > 0 ? p.nada_clean_retail : null,
-        tradeIn: p.nada_clean_trade_in > 0 ? p.nada_clean_trade_in : null,
-      });
-    }
+    console.log(`auto.dev: ${prices.length} listing(s), median=$${fairMarketDealer}`);
 
     return {
-      pricingContext,
-      citations: ensuredCitations,
+      pricingContext: lines.join("\n"),
+      citations: ["https://auto.dev"],
       computedValues: {
-        fairMarketPrivate: avg(privateValues),
-        fairMarketDealer: avg(dealerValues),
-        fairMarketTradeIn: avg(tradeInValues),
+        fairMarketPrivate,
+        fairMarketDealer,
+        fairMarketTradeIn,
       },
-      sourceBreakdown,
+      sourceBreakdown: [
+        {
+          source: "auto.dev",
+          dealerRetail: fairMarketDealer,
+          privateParty: fairMarketPrivate,
+          tradeIn: fairMarketTradeIn,
+        },
+      ],
     };
-  } catch {
-    console.log("Could not parse structured response, using raw content");
+  } catch (err) {
+    console.error("auto.dev lookup error:", err);
+    return null;
   }
-
-  return { pricingContext, citations: ensuredCitations };
 }
 
-/**
- * Detects dealer type (franchise/independent) by looking up listings
- * for this VIN on MarketCheck — tries active first, then all listings.
- */
+// ============================================================================
+// Source 3: VehicleDatabases.com (book values)
+// ============================================================================
+
+async function tryVehicleDatabases(vin: string, mileage: number): Promise<PricingResult | null> {
+  const VEHICLEDATABASES_API_KEY = Deno.env.get("VEHICLEDATABASES_API_KEY");
+  if (!VEHICLEDATABASES_API_KEY) {
+    console.log("VEHICLEDATABASES_API_KEY not configured, skipping VehicleDatabases");
+    return null;
+  }
+
+  try {
+    const url = `https://api.vehicledatabases.com/market-value/${encodeURIComponent(vin)}`;
+    console.log(`VehicleDatabases request for VIN ${vin}, mileage ${mileage}`);
+
+    const response = await fetch(url, {
+      headers: {
+        "x-AuthKey": VEHICLEDATABASES_API_KEY,
+        "Accept": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error(`VehicleDatabases API error ${response.status}: ${errText}`);
+      return null;
+    }
+
+    const data = await response.json();
+    console.log("VehicleDatabases raw response:", JSON.stringify(data).slice(0, 500));
+
+    // Navigate nested response: data.market_value.market_value_data[].market value[]
+    const marketValueData = data?.data?.market_value?.market_value_data
+      || data?.market_value?.market_value_data
+      || data?.market_value_data;
+
+    if (!marketValueData || !Array.isArray(marketValueData) || marketValueData.length === 0) {
+      console.log("VehicleDatabases: no market value data found");
+      return null;
+    }
+
+    // Find the "Clean" condition row (or fall back to first available)
+    let cleanRow: any = null;
+    for (const trimEntry of marketValueData) {
+      const values = trimEntry["market value"] || trimEntry.market_value || trimEntry.values;
+      if (!Array.isArray(values)) continue;
+      for (const row of values) {
+        const cond = (row.Condition || row.condition || "").toLowerCase();
+        if (cond === "clean") {
+          cleanRow = row;
+          break;
+        }
+      }
+      if (cleanRow) break;
+      // Fall back to first row
+      if (values.length > 0 && !cleanRow) cleanRow = values[0];
+    }
+
+    if (!cleanRow) {
+      console.log("VehicleDatabases: no condition rows found");
+      return null;
+    }
+
+    // Parse dollar string values like "$6,483"
+    const parseDollar = (val: any): number => {
+      if (typeof val === "number") return val;
+      if (typeof val === "string") return parseInt(val.replace(/[$,\s]/g, ""), 10) || 0;
+      return 0;
+    };
+
+    const retail = parseDollar(cleanRow["Retail"] || cleanRow.retail || cleanRow.dealer_retail);
+    const privateParty = parseDollar(cleanRow["Private Party"] || cleanRow.private_party);
+    const tradeIn = parseDollar(cleanRow["Trade-In"] || cleanRow.trade_in);
+
+    if (retail <= 0 && privateParty <= 0 && tradeIn <= 0) {
+      console.log("VehicleDatabases: all values are zero");
+      return null;
+    }
+
+    const lines = [
+      "VEHICLE VALUATION DATA (VehicleDatabases — Clean condition):",
+      "",
+      retail > 0 ? `Retail Value: $${retail.toLocaleString()}` : "",
+      privateParty > 0 ? `Private Party Value: $${privateParty.toLocaleString()}` : "",
+      tradeIn > 0 ? `Trade-In Value: $${tradeIn.toLocaleString()}` : "",
+    ].filter(Boolean);
+
+    console.log(`VehicleDatabases: retail=$${retail}, private=$${privateParty}, tradeIn=$${tradeIn}`);
+
+    return {
+      pricingContext: lines.join("\n"),
+      citations: ["https://www.vehicledatabases.com"],
+      computedValues: {
+        fairMarketDealer: retail,
+        fairMarketPrivate: privateParty,
+        fairMarketTradeIn: tradeIn,
+      },
+      sourceBreakdown: [
+        {
+          source: "VehicleDatabases",
+          dealerRetail: retail > 0 ? retail : null,
+          privateParty: privateParty > 0 ? privateParty : null,
+          tradeIn: tradeIn > 0 ? tradeIn : null,
+        },
+      ],
+    };
+  } catch (err) {
+    console.error("VehicleDatabases lookup error:", err);
+    return null;
+  }
+}
+
+// ============================================================================
+// Dealer Type Detection (MarketCheck)
+// ============================================================================
+
 async function detectDealerType(vin: string): Promise<string | null> {
   const MARKETCHECK_API_KEY = Deno.env.get("MARKETCHECK_API_KEY");
   if (!MARKETCHECK_API_KEY) return null;
 
   try {
-    // Only check active listings — historical listings may show a different dealer
     const params = new URLSearchParams({
       api_key: MARKETCHECK_API_KEY,
       vins: vin,
@@ -572,11 +622,9 @@ async function detectDealerType(vin: string): Promise<string | null> {
     const dealerType = listing?.dealer?.dealer_type;
     if (dealerType) {
       console.log(`Dealer type detected via MarketCheck /active: ${dealerType}`);
-      return dealerType; // "franchise" or "independent"
+      return dealerType;
     }
     console.log(`MarketCheck /active: listing found but no dealer_type field`);
-
-    console.log(`Dealer type detection: no dealer_type found for VIN ${vin}`);
     return null;
   } catch (err) {
     console.error("Dealer type detection error:", err);
