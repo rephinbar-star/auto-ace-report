@@ -117,7 +117,7 @@ async function lookupMPG(year: number, make: string, model: string, trim?: strin
   };
 }
 
-async function lookupPricing(year: number, make: string, model: string, trim: string | undefined, mileage: number, condition: string, zipCode?: string, vin?: string, sellerType?: string): Promise<PricingData | null> {
+async function lookupPricing(year: number, make: string, model: string, trim: string | undefined, mileage: number, condition: string, zipCode?: string, vin?: string, sellerType?: string, askingPrice?: number): Promise<PricingData | null> {
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
@@ -132,7 +132,7 @@ async function lookupPricing(year: number, make: string, model: string, trim: st
         "Content-Type": "application/json",
         "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
       },
-      body: JSON.stringify({ year, make, model, trim, mileage, condition, zipCode, vin, sellerType, askingPrice: undefined }),
+      body: JSON.stringify({ year, make, model, trim, mileage, condition, zipCode, vin, sellerType, askingPrice }),
     });
 
     if (response.ok) {
@@ -222,7 +222,7 @@ serve(async (req) => {
 
     // Fetch MPG, pricing, and maintenance data in parallel
     const mpgPromise = lookupMPG(vehicle.year, vehicle.make, vehicle.model, vehicle.trim);
-    const pricingPromise = lookupPricing(vehicle.year, vehicle.make, vehicle.model, vehicle.trim, condition.mileage, condition.condition, condition.zipCode, vehicle.vin, condition.sellerType);
+    const pricingPromise = lookupPricing(vehicle.year, vehicle.make, vehicle.model, vehicle.trim, condition.mileage, condition.condition, condition.zipCode, vehicle.vin, condition.sellerType, condition.askingPrice);
     const maintenancePromise = lookupMaintenance(vehicle.year, vehicle.make, vehicle.model, vehicle.trim, condition.mileage);
     console.log(`Looking up MPG, pricing, and maintenance for ${vehicle.year} ${vehicle.make} ${vehicle.model}`);
 
