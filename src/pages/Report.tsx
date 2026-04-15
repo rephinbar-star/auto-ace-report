@@ -1459,6 +1459,31 @@ export default function ReportPage() {
             onHistoryTabChange={setHistoryTab}
           />
 
+          {/* Pricing data warning banners */}
+          {pricingDataUnavailable && pricingSource !== "estimated" && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-amber-800">Market pricing data unavailable for this vehicle</p>
+                <p className="text-sm text-amber-700 mt-1">Price comparisons may be inaccurate. Deal rating and verdict are withheld until pricing can be verified.</p>
+              </div>
+            </div>
+          )}
+          {pricingSource === "estimated" && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-amber-800">Pricing estimated from asking price</p>
+                <p className="text-sm text-amber-700 mt-1">No independent market data was available. Fair market values are estimated — verify with local dealers.</p>
+              </div>
+            </div>
+          )}
+          {contributingSources.length > 0 && (
+            <p className="text-xs text-muted-foreground text-center -mt-2">
+              Pricing via {contributingSources.join(" · ")}
+            </p>
+          )}
+
           {/* ===== SECTION 3: EXPERT ANALYSIS ===== */}
           <ExpertFindingsStrip
             aiFindings={analysis.aiFindings}
