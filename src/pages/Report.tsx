@@ -2189,9 +2189,17 @@ export default function ReportPage() {
                               {factor.known ? Math.round(factor.score) : "N/A"}
                             </span>
                             {factor.description && (
-                              <p className="col-start-2 col-span-2 text-xs text-neutral">
-                                {factor.key === "aiFindings" ? "Read below" : factor.description}
-                              </p>
+                              factor.key === "aiFindings" ? (
+                                <button
+                                  type="button"
+                                  className="col-start-2 col-span-2 text-xs text-primary hover:underline text-left cursor-pointer"
+                                  onClick={() => document.getElementById("section-expert")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                                >
+                                  Read Expert Analysis above
+                                </button>
+                              ) : (
+                                <p className="col-start-2 col-span-2 text-xs text-neutral">{factor.description}</p>
+                              )
                             )}
                           </div>
                         );
