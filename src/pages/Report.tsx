@@ -1485,6 +1485,27 @@ export default function ReportPage() {
             </p>
           )}
 
+          {/* Persistent CTA: Upload history report */}
+          {!vehicleData?.condition?.isBrandNew && !vehicleData?.history?.serviceRecords && (
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex items-start gap-3">
+              <FileText className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground">Upload a CarFax or AutoCheck report to complete your vehicle analysis</p>
+                <p className="text-sm text-muted-foreground mt-1">Get a more accurate and comprehensive risk assessment, service history verification, and refined scoring.</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0 border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                onClick={() => headerHistoryInputRef.current?.click()}
+                disabled={isUploadingHistory}
+              >
+                {isUploadingHistory ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Upload className="mr-1.5 h-3.5 w-3.5" />}
+                {isUploadingHistory ? "Processing..." : "Upload Report"}
+              </Button>
+            </div>
+          )}
+
           {/* ===== SECTION 3: EXPERT ANALYSIS ===== */}
           <ExpertFindingsStrip
             aiFindings={analysis.aiFindings}
