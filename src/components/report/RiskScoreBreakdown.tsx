@@ -104,7 +104,7 @@ export function RiskScoreBreakdown({ result, missingHistoryReport, onUploadHisto
           Purchase Risk Score
         </CardTitle>
         {missingHistoryReport && (
-          <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-destructive">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-sm font-medium text-destructive">
             <span>⚠ Risk Score adversely affected because no available CarFax/AutoCheck was provided by user</span>
             <input
               ref={fileInputRef}
