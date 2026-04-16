@@ -1074,6 +1074,58 @@ Provide your expert analysis.`;
     };
     applyFloorOverrides(analysis);
 
+    // §11: Deterministic healthScore floor enforcement based on service gap severity
+    const enforceHealthScoreFloors = (analysis: any) => {
+      const hist = analysis.historyAnalysis;
+      if (!hist) return;
+
+      const gapSeverity = hist.serviceGap?.gapSeverity;
+      const originalScore = hist.healthScore;
+
+      // No service records at all → cap at 35
+      if (gapSeverity === "severe" && hist.serviceGap?.largestGapMiles != null && 
+          hist.serviceGap.largestGapMiles >= (condition.mileage * 0.9)) {
+        hist.healthScore = Math.min(hist.healthScore, 35);
+      }
+      // Severe gap (>60k miles) → cap at 45
+      else if (gapSeverity === "severe") {
+        hist.healthScore = Math.min(hist.healthScore, 45);
+      }
+      // Significant gap (30-60k miles) → cap at 55
+      else if (gapSeverity === "significant") {
+        hist.healthScore = Math.min(hist.healthScore, 55);
+      }
+
+      if (hist.healthScore !== originalScore) {
+        console.log(`HealthScore capped: ${originalScore} → ${hist.healthScore} (gap severity: ${gapSeverity})`);
+      }
+    };
+    enforceHealthScoreFloors(analysis);
+
+    // §12: Seller type consistency enforcement in AI-generated text
+    const enforceSellerTypeConsistency = (analysis: any, actualSellerType: string) => {
+      const opinion = analysis.riskAssessment?.expertOpinion;
+      if (!opinion || !actualSellerType) return;
+
+      const isDealer = actualSellerType === "dealer" || actualSellerType === "franchise" || actualSellerType === "independent";
+      const isPrivate = actualSellerType === "private";
+
+      if (isDealer && /\bprivate\s+seller/gi.test(opinion)) {
+        const sellerLabel = actualSellerType === "franchise" ? "Franchise dealer" :
+                            actualSellerType === "independent" ? "Independent dealer" : "Dealer";
+        analysis.riskAssessment.expertOpinion = opinion.replace(/\b[Pp]rivate\s+seller/g, sellerLabel);
+        console.log(`Seller type corrected in expertOpinion: "private seller" → "${sellerLabel}"`);
+      } else if (isPrivate && /\b(?:franchise|independent)?\s*dealer/gi.test(opinion)) {
+        // Only correct if it refers to the seller, not dealer retail pricing benchmarks
+        const corrected = opinion.replace(/\b(the|this)\s+(?:franchise\s+|independent\s+)?dealer\b/gi, "$1 private seller");
+        if (corrected !== opinion) {
+          analysis.riskAssessment.expertOpinion = corrected;
+          console.log("Seller type corrected in expertOpinion: dealer references → 'private seller'");
+        }
+      }
+    };
+    enforceSellerTypeConsistency(analysis, condition.sellerType);
+
     // Override AI pricing with deterministic computed values
     if (pricingData?.computedValues) {
       const cv = pricingData.computedValues;
