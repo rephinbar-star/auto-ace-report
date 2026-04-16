@@ -344,7 +344,25 @@ Classify the largest mileage gap between documented services:
 - Moderate (15,001-30,000 miles): gapSeverity = "moderate"
 - Significant (30,001-60,000 miles): gapSeverity = "significant"
 - Severe (>60,000 miles): gapSeverity = "severe", verdict must be "Negotiate" or worse
-CRITICAL: Partial-mileage records (e.g., only oil changes documented but no other services) count as a gap for the undocumented portion. No records at all = automatic serviceHistory risk score of 55.
+- Unknown: gapSeverity = "unknown" — when NO history report was uploaded (not the same as confirmed gap)
+
+CRITICAL DISTINCTION — UNVERIFIED vs CONFIRMED SERVICE GAP:
+When NO CarFax or AutoCheck report was provided (historyReportProvided = false):
+- Service history status is UNKNOWN/UNVERIFIED, NOT "confirmed severe gap"
+- Do NOT use language like "severe service documentation gap", "zero service history", or "verified documentation gap"
+- Instead use: "service history could not be verified — no CarFax or AutoCheck report was uploaded"
+- In valueProposition: use "unverified service history" instead of "zero service history"
+- In contingency conditions: use "uploading a CarFax or AutoCheck report is strongly recommended to complete this analysis" instead of "provide proof of service records"
+- Set gapSeverity to "unknown", NOT "severe"
+- The service history risk score should be moderate (40-50), not maximum penalty
+
+When a CarFax/AutoCheck WAS provided and shows no/minimal records:
+- This IS a confirmed gap — strong language is appropriate
+- Use "Confirmed service gap: history report shows no recorded maintenance"
+- gapSeverity can be "severe" if warranted
+- Full risk penalty applies
+
+CRITICAL: Partial-mileage records (e.g., only oil changes documented but no other services) count as a gap for the undocumented portion. No records at all AND a history report was uploaded = automatic serviceHistory risk score of 55.
 When inferring overdue maintenance items from a service gap, only list items appropriate for the vehicle's actual powertrain type. Do not list oil changes for BEVs. Do not list reduction gear fluid for ICE vehicles. Apply the terminology rules defined in the Powertrain-Aware Analysis section above.
 
 SERVICE HISTORY PATTERN ANALYSIS:
@@ -669,11 +687,11 @@ ${financing.type === "lease" ? `- Monthly Payment: $${financing.monthlyPayment}
 - Lease Term: ${financing.leaseTermMonths} months
 - Residual: $${financing.residualValue?.toLocaleString()}` : ""}
 
-${history ? `VEHICLE HISTORY:
+${history ? `VEHICLE HISTORY (historyReportProvided = true):
 - Accidents: ${history.accidentCount || 0}
 - Previous Owners: ${history.ownerCount || "Unknown"}
 - Title Status: ${history.titleStatus || "Unknown"}
-${history.issues?.length ? `- Known Issues: ${history.issues.join(", ")}` : ""}` : "No vehicle history report provided."}
+${history.issues?.length ? `- Known Issues: ${history.issues.join(", ")}` : ""}` : "No vehicle history report provided (historyReportProvided = false). Service history is UNVERIFIED — do NOT treat this as a confirmed service gap. Use moderate/unknown language for service-related assessments."}
 ${geoRiskBlock}
 ${recallsBlock}
 
