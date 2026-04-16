@@ -427,8 +427,20 @@ export function scoreServiceHistory(
   serviceGapMiles?: number | null,
   majorServicesDue?: string[] | null,
   majorServicesDone?: string[] | null,
-  chronicRepairSystems?: string[] | null
+  chronicRepairSystems?: string[] | null,
+  historyReportProvided?: boolean | null
 ): { score: number; known: boolean } {
+  // State A: No history report uploaded — service history is UNVERIFIED (unknown)
+  // Use a moderate baseline of 40 instead of penalizing as if confirmed gap
+  if (!historyReportProvided && hasServiceRecords == null && healthScore == null) {
+    return { score: 40, known: false };
+  }
+  if (!historyReportProvided && hasServiceRecords === false && !serviceGapMiles && !majorServicesDue?.length && !majorServicesDone?.length && !chronicRepairSystems?.length) {
+    // No report uploaded AND no granular data — this is unverified, not confirmed neglect
+    return { score: 40, known: false };
+  }
+
+  // State B: History report provided — full scoring applies
   if (hasServiceRecords == null && healthScore == null) {
     return { score: 50, known: false };
   }
