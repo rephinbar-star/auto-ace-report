@@ -838,6 +838,7 @@ export default function ReportPage() {
         healthScore: historyAnalysis?.healthScore ?? null,
         historyIssues: historyAnalysis?.concerns ?? history?.issues ?? null,
         historyPositives: historyAnalysis?.positives ?? null,
+        historyReportProvided: history?.serviceRecords === true || !!(history?.serviceGapMiles != null || history?.majorServicesDone?.length || history?.majorServicesDue?.length || history?.chronicRepairSystems?.length),
         serviceGapMiles: history?.serviceGapMiles ?? null,
         majorServicesDue: history?.majorServicesDue ?? null,
         majorServicesDone: history?.majorServicesDone ?? null,
