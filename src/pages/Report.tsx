@@ -2516,7 +2516,21 @@ export default function ReportPage() {
                       <span>Seller credits buyer for immediate deferred maintenance ({vehicleData.history.majorServicesDue.join(", ")})</span>
                     </li>
                   )}
-                  {/* Odometer discrepancy */}
+                  {/* Severe service gap / no service records */}
+                  {(() => {
+                    const gap = (analysis.historyAnalysis as any)?.serviceGap;
+                    const hasNoRecords = vehicleData?.history?.serviceRecords === false;
+                    const isSevereGap = gap?.gapSeverity === "severe" || gap?.gapSeverity === "significant";
+                    if (hasNoRecords || isSevereGap) {
+                      return (
+                        <li className="text-sm text-neutral flex items-start gap-2">
+                          <span className="text-risk-amber mt-0.5">•</span>
+                          <span>Seller provides complete documented service history covering the vehicle's full ownership period</span>
+                        </li>
+                      );
+                    }
+                    return null;
+                  })()}
                   {(() => {
                     const odo = (analysis.aiFindings as any)?.odometerIntegrity;
                     if (odo && odo.status === "discrepancy" && odo.gapMiles) {
