@@ -2175,19 +2175,24 @@ export default function ReportPage() {
                           : factor.score <= 65 ? "text-risk-amber"
                           : "text-risk-red";
                         return (
-                          <div key={factor.key} className="flex items-center gap-1">
-                            <span className="min-w-[120px] md:min-w-[180px] text-[13px] text-foreground">
-                              {factor.label} <span className="text-neutral">({Math.round(factor.weight * 100)}%)</span>
-                            </span>
-                            <div className="flex-1 mx-3 h-2 bg-muted rounded">
-                              <div
-                                className={cn("h-2 rounded transition-all", barColor)}
-                                style={{ width: `${factor.known ? factor.score : 50}%` }}
-                              />
+                          <div key={factor.key} className="space-y-0.5">
+                            <div className="flex items-center gap-1">
+                              <span className="min-w-[120px] md:min-w-[180px] text-[13px] text-foreground">
+                                {factor.label} <span className="text-neutral">({Math.round(factor.weight * 100)}%)</span>
+                              </span>
+                              <div className="flex-1 mx-3 h-2 bg-muted rounded">
+                                <div
+                                  className={cn("h-2 rounded transition-all", barColor)}
+                                  style={{ width: `${factor.known ? factor.score : 50}%` }}
+                                />
+                              </div>
+                              <span className={cn("w-12 text-right text-[13px] font-semibold", textColor)}>
+                                {factor.known ? Math.round(factor.score) : "N/A"}
+                              </span>
                             </div>
-                            <span className={cn("w-12 text-right text-[13px] font-semibold", textColor)}>
-                              {factor.known ? Math.round(factor.score) : "N/A"}
-                            </span>
+                            {factor.description && (
+                              <p className="text-xs text-neutral ml-0 md:ml-[180px] pl-0 md:pl-3">{factor.description}</p>
+                            )}
                           </div>
                         );
                       })}
