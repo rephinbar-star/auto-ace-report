@@ -104,8 +104,8 @@ export function RiskScoreBreakdown({ result, missingHistoryReport, onUploadHisto
           Purchase Risk Score
         </CardTitle>
         {missingHistoryReport && (
-          <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 text-sm font-medium text-destructive">
-            <span className="min-w-0">⚠ Risk Score adversely affected — no CarFax/AutoCheck provided</span>
+          <div className="flex w-full self-stretch items-center gap-3 text-sm font-medium text-destructive">
+            <span className="min-w-0 flex-1">⚠ Risk Score adversely affected — no CarFax/AutoCheck provided</span>
             <input
               ref={fileInputRef}
               type="file"
@@ -116,7 +116,7 @@ export function RiskScoreBreakdown({ result, missingHistoryReport, onUploadHisto
             <Button
               variant="outline"
               size="sm"
-              className="shrink-0 border-success bg-success text-success-foreground hover:bg-success/90"
+              className="ml-auto shrink-0 border-success bg-success text-success-foreground hover:bg-success/90"
               onClick={() => fileInputRef.current?.click()}
               disabled={isUploadingHistory}
             >
