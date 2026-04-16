@@ -47,11 +47,11 @@ interface PricingResult {
   contributingSources?: string[];
 }
 
-// Source reliability weights — listing-based sources weighted higher than ML predictions
+// Source reliability weights — auto.dev (listings) + VehicleDatabases (book values)
+// MarketCheck removed from pricing to conserve quota (used only for dealer-type detection)
 const SOURCE_RELIABILITY: Record<string, { tradeIn: number; privateParty: number; dealerRetail: number }> = {
-  "MarketCheck":       { tradeIn: 0.25, privateParty: 0.25, dealerRetail: 0.25 },
-  "auto.dev":          { tradeIn: 0.40, privateParty: 0.40, dealerRetail: 0.40 },
-  "VehicleDatabases":  { tradeIn: 0.35, privateParty: 0.35, dealerRetail: 0.35 },
+  "auto.dev":          { tradeIn: 0.55, privateParty: 0.55, dealerRetail: 0.55 },
+  "VehicleDatabases":  { tradeIn: 0.45, privateParty: 0.45, dealerRetail: 0.45 },
 };
 
 const DEFAULT_RANGE_WIDTH = 500;
@@ -141,7 +141,8 @@ function buildEntries(
 }
 
 /**
- * 3-source pricing chain: MarketCheck + auto.dev + VehicleDatabases
+ * 2-source pricing chain: auto.dev + VehicleDatabases
+ * MarketCheck used only for dealer-type detection (1 call/report).
  * Falls back to asking-price estimation when all sources return zero.
  */
 serve(async (req) => {
@@ -153,10 +154,7 @@ serve(async (req) => {
     const { year, make, model, trim, mileage, condition, zipCode, vin, sellerType, askingPrice }: PricingRequest = await req.json();
     const vehicleDesc = `${year} ${make} ${model}${trim ? ` ${trim}` : ""}`;
 
-    // Launch all pricing sources and dealer type detection in parallel
-    const mcPromise = (vin && vin.length === 17)
-      ? tryMarketCheck(vin, mileage, sellerType, zipCode, vehicleDesc)
-      : Promise.resolve(null);
+    // Launch pricing sources and dealer type detection in parallel
     const autoDevPromise = (vin && vin.length === 17)
       ? tryAutoDev(vin).catch(err => { console.error("auto.dev failed:", err); return null; })
       : Promise.resolve(null);
@@ -167,33 +165,29 @@ serve(async (req) => {
       ? detectDealerType(vin).catch(() => null)
       : Promise.resolve(null);
 
-    const [mcResult, autoDevResult, vdbResult, detectedDealerType] = await Promise.all([
-      mcPromise, autoDevPromise, vdbPromise, dealerTypePromise,
+    const [autoDevResult, vdbResult, detectedDealerType] = await Promise.all([
+      autoDevPromise, vdbPromise, dealerTypePromise,
     ]);
 
     // Merge results
     const allSources: SourceValuation[] = [
-      ...(mcResult?.sourceBreakdown || []),
       ...(autoDevResult?.sourceBreakdown || []),
       ...(vdbResult?.sourceBreakdown || []),
     ];
 
     const allCitations: string[] = [
-      ...(mcResult?.citations || []),
       ...(autoDevResult?.citations || []),
       ...(vdbResult?.citations || []),
     ];
     const uniqueCitations = [...new Set(allCitations)];
 
     const contextParts: string[] = [];
-    if (mcResult?.pricingContext) contextParts.push(mcResult.pricingContext);
     if (autoDevResult?.pricingContext) contextParts.push(autoDevResult.pricingContext);
     if (vdbResult?.pricingContext) contextParts.push(vdbResult.pricingContext);
     const mergedContext = contextParts.join("\n\n");
 
     // Track which sources contributed
     const contributingSources: string[] = [];
-    if (mcResult?.sourceBreakdown?.length) contributingSources.push("MarketCheck");
     if (autoDevResult?.sourceBreakdown?.length) contributingSources.push("auto.dev");
     if (vdbResult?.sourceBreakdown?.length) contributingSources.push("VehicleDatabases");
 
@@ -220,7 +214,7 @@ serve(async (req) => {
           fairMarketDealer: dealerResult.value,
           fairMarketTradeIn: tradeInResult.value,
         }
-      : mcResult?.computedValues || autoDevResult?.computedValues || vdbResult?.computedValues;
+      : autoDevResult?.computedValues || vdbResult?.computedValues;
 
     // Asking-price fallback when all sources return zero
     let pricingDataUnavailable = false;
@@ -281,110 +275,10 @@ serve(async (req) => {
   }
 });
 
-// ============================================================================
-// Source 1: MarketCheck (VIN-based ML prediction)
-// ============================================================================
-
-async function tryMarketCheck(
-  vin: string,
-  miles: number,
-  sellerType?: string,
-  zipCode?: string,
-  vehicleDesc?: string,
-): Promise<PricingResult | null> {
-  const MARKETCHECK_API_KEY = Deno.env.get("MARKETCHECK_API_KEY");
-  if (!MARKETCHECK_API_KEY) {
-    console.error("MARKETCHECK_API_KEY not configured");
-    return null;
-  }
-
-  try {
-    const dealerType = sellerType === "private" ? "independent" 
-      : sellerType === "independent" ? "independent"
-      : "franchise";
-    const zip = zipCode || "90210";
-    const params = new URLSearchParams({
-      api_key: MARKETCHECK_API_KEY,
-      vin,
-      miles: String(miles),
-      dealer_type: dealerType,
-      zip,
-    });
-
-    const url = `https://api.marketcheck.com/v2/predict/car/us/marketcheck_price?${params}`;
-    console.log(`MarketCheck request for VIN ${vin}, ${miles} miles, dealer_type=${dealerType}`);
-
-    const response = await fetch(url);
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error(`MarketCheck API error ${response.status}: ${errText}`);
-      return null;
-    }
-
-    const data = await response.json();
-    console.log("MarketCheck raw response:", JSON.stringify(data));
-
-    const mcPrice = data.marketcheck_price;
-    const msrp = data.msrp;
-
-    if (!mcPrice || mcPrice <= 0) {
-      console.error("MarketCheck returned no valid price");
-      return null;
-    }
-
-    const tradeInLow = Math.round(mcPrice * 0.80);
-    const tradeInHigh = Math.round(mcPrice * 0.90);
-    const privateLow = Math.round(mcPrice * 0.93);
-    const privateHigh = Math.round(mcPrice * 1.02);
-    const dealerLow = Math.round(mcPrice * 1.00);
-    const dealerHigh = Math.round(mcPrice * 1.10);
-
-    const lines: string[] = [
-      "VEHICLE VALUATION DATA (MarketCheck ML-based prediction):",
-      "",
-      `MarketCheck Predicted Market Price: $${mcPrice.toLocaleString()}`,
-      msrp ? `Original MSRP: $${msrp.toLocaleString()}` : "",
-      "",
-      `Private Party Value: $${privateLow.toLocaleString()} - $${privateHigh.toLocaleString()}`,
-      `Dealer Retail: $${dealerLow.toLocaleString()} - $${dealerHigh.toLocaleString()}`,
-      `Trade-In Value: $${tradeInLow.toLocaleString()} - $${tradeInHigh.toLocaleString()}`,
-    ].filter(Boolean);
-
-    const computedPrivate = Math.round((privateLow + privateHigh) / 2);
-    const computedDealer = Math.round((dealerLow + dealerHigh) / 2);
-    const computedTradeIn = Math.round((tradeInLow + tradeInHigh) / 2);
-
-    return {
-      pricingContext: lines.join("\n"),
-      citations: ["https://www.marketcheck.com"],
-      computedValues: {
-        fairMarketPrivate: computedPrivate,
-        fairMarketDealer: computedDealer,
-        fairMarketTradeIn: computedTradeIn,
-      },
-      sourceBreakdown: [
-        {
-          source: "MarketCheck",
-          privateParty: computedPrivate,
-          privatePartyLow: privateLow,
-          privatePartyHigh: privateHigh,
-          dealerRetail: computedDealer,
-          dealerRetailLow: dealerLow,
-          dealerRetailHigh: dealerHigh,
-          tradeIn: computedTradeIn,
-          tradeInLow: tradeInLow,
-          tradeInHigh: tradeInHigh,
-        },
-      ],
-    };
-  } catch (err) {
-    console.error("MarketCheck lookup error:", err);
-    return null;
-  }
-}
+// (MarketCheck pricing removed — quota reserved for dealer-type detection only)
 
 // ============================================================================
-// Source 2: auto.dev (active dealer listings)
+// Source 1: auto.dev (active dealer listings)
 // ============================================================================
 
 async function tryAutoDev(vin: string): Promise<PricingResult | null> {
