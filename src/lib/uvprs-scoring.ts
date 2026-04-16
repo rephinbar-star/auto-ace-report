@@ -46,6 +46,10 @@ export interface UVPRSInput {
   historyIssues?: string[] | null;
   historyPositives?: string[] | null;
 
+  // Whether a CarFax/AutoCheck history report was uploaded
+  // false/null = unverified (unknown), true = report was provided
+  historyReportProvided?: boolean | null;
+
   // Granular service data (from enhanced parser)
   serviceGapMiles?: number | null;
   majorServicesDue?: string[] | null;
