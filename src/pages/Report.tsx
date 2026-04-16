@@ -1819,7 +1819,7 @@ export default function ReportPage() {
                 const below = diff <= 0;
                 return (
                   <p className={cn("text-sm font-medium mt-1", below ? "text-risk-green" : "text-risk-red")}>
-                    {below ? "Yes" : "No"} — priced ${Math.abs(diff).toLocaleString()} {below ? "below" : "above"} {benchmarkLabel}
+                    {below ? "Yes — " : ""}Priced ${Math.abs(diff).toLocaleString()} {below ? "below" : "above"} {benchmarkLabel}
                   </p>
                 );
               })()}
