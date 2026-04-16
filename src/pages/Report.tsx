@@ -2193,7 +2193,14 @@ export default function ReportPage() {
                                 <button
                                   type="button"
                                   className="col-start-2 col-span-2 text-xs text-primary hover:underline text-left cursor-pointer"
-                                  onClick={() => document.getElementById("section-expert")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                                  onClick={() => {
+                                    const el = document.getElementById("section-expert");
+                                    if (el) {
+                                      const offset = 120;
+                                      const top = el.getBoundingClientRect().top + window.pageYOffset - offset;
+                                      window.scrollTo({ top, behavior: "smooth" });
+                                    }
+                                  }}
                                 >
                                   Read Expert Analysis above
                                 </button>
