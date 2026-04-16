@@ -838,6 +838,7 @@ export default function ReportPage() {
         healthScore: historyAnalysis?.healthScore ?? null,
         historyIssues: historyAnalysis?.concerns ?? history?.issues ?? null,
         historyPositives: historyAnalysis?.positives ?? null,
+        historyReportProvided: history?.serviceRecords === true || !!(history?.serviceGapMiles != null || history?.majorServicesDone?.length || history?.majorServicesDue?.length || history?.chronicRepairSystems?.length),
         serviceGapMiles: history?.serviceGapMiles ?? null,
         majorServicesDue: history?.majorServicesDue ?? null,
         majorServicesDone: history?.majorServicesDone ?? null,
@@ -1484,6 +1485,27 @@ export default function ReportPage() {
             </p>
           )}
 
+          {/* Persistent CTA: Upload history report */}
+          {!vehicleData?.condition?.isBrandNew && !vehicleData?.history?.serviceRecords && (
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex items-start gap-3">
+              <FileText className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground">Upload a CarFax or AutoCheck report to complete your vehicle analysis</p>
+                <p className="text-sm text-muted-foreground mt-1">Get a more accurate and comprehensive risk assessment, service history verification, and refined scoring.</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0 border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                onClick={() => headerHistoryInputRef.current?.click()}
+                disabled={isUploadingHistory}
+              >
+                {isUploadingHistory ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Upload className="mr-1.5 h-3.5 w-3.5" />}
+                {isUploadingHistory ? "Processing..." : "Upload Report"}
+              </Button>
+            </div>
+          )}
+
           {/* ===== SECTION 3: EXPERT ANALYSIS ===== */}
           <ExpertFindingsStrip
             aiFindings={analysis.aiFindings}
@@ -2083,8 +2105,8 @@ export default function ReportPage() {
               <CardContent className="space-y-6">
                 {/* Upload CarFax banner */}
                 {!vehicleData?.condition?.isBrandNew && !vehicleData?.history?.serviceRecords && (
-                  <div className="flex w-full items-center gap-3 text-sm font-medium text-destructive">
-                    <span className="min-w-0 flex-1">⚠ Risk Score adversely affected — no CarFax/AutoCheck provided</span>
+                  <div className="flex w-full items-center gap-3 text-sm font-medium text-primary">
+                    <span className="min-w-0 flex-1">📋 Service history not verified — upload a CarFax/AutoCheck for a more accurate analysis</span>
                     <input
                       ref={headerHistoryInputRef}
                       type="file"
@@ -2152,7 +2174,7 @@ export default function ReportPage() {
                         finally { setIsUploadingHistory(false); }
                       }}
                     />
-                    <Button variant="outline" size="sm" className="ml-auto shrink-0 border-risk-green bg-risk-green text-white hover:bg-risk-green/90"
+                    <Button variant="outline" size="sm" className="ml-auto shrink-0 border-primary bg-primary text-primary-foreground hover:bg-primary/90"
                       onClick={() => headerHistoryInputRef.current?.click()} disabled={isUploadingHistory}>
                       {isUploadingHistory ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Upload className="mr-1.5 h-3.5 w-3.5" />}
                       {isUploadingHistory ? "Processing..." : "Upload CarFax/AutoCheck"}

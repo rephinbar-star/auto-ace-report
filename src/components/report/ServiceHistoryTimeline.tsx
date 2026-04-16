@@ -34,7 +34,8 @@ export function ServiceHistoryTimeline({
     doneItems.length > 0 ||
     dueItems.length > 0 ||
     chronicItems.length > 0 ||
-    (serviceGapMiles !== null && serviceGapMiles !== undefined);
+    (serviceGapMiles !== null && serviceGapMiles !== undefined) ||
+    hasServiceRecords === false;
 
   if (!hasGranularData) return null;
 
@@ -51,7 +52,7 @@ export function ServiceHistoryTimeline({
 
   const gapSeverity =
     serviceGapMiles == null
-      ? null
+      ? (hasServiceRecords === false ? "unknown" : null)
       : serviceGapMiles <= 10000
         ? "low"
         : serviceGapMiles <= 20000
@@ -82,6 +83,17 @@ export function ServiceHistoryTimeline({
       </CardHeader>
       <CardContent className="space-y-5">
         {/* Service gap callout */}
+        {gapSeverity === "unknown" && (
+          <div className="flex items-center gap-3 rounded-lg border p-3 border-primary/30 bg-primary/5">
+            <Clock className="h-5 w-5 shrink-0 text-primary" />
+            <div>
+              <p className="text-sm font-medium">Service history not verified</p>
+              <p className="text-xs text-muted-foreground">
+                No CarFax or AutoCheck report was uploaded. Upload a history report for verified service records.
+              </p>
+            </div>
+          </div>
+        )}
         {serviceGapMiles != null && (
           <div
             className={cn(

@@ -46,6 +46,10 @@ export interface UVPRSInput {
   historyIssues?: string[] | null;
   historyPositives?: string[] | null;
 
+  // Whether a CarFax/AutoCheck history report was uploaded
+  // false/null = unverified (unknown), true = report was provided
+  historyReportProvided?: boolean | null;
+
   // Granular service data (from enhanced parser)
   serviceGapMiles?: number | null;
   majorServicesDue?: string[] | null;
@@ -423,8 +427,20 @@ export function scoreServiceHistory(
   serviceGapMiles?: number | null,
   majorServicesDue?: string[] | null,
   majorServicesDone?: string[] | null,
-  chronicRepairSystems?: string[] | null
+  chronicRepairSystems?: string[] | null,
+  historyReportProvided?: boolean | null
 ): { score: number; known: boolean } {
+  // State A: No history report uploaded — service history is UNVERIFIED (unknown)
+  // Use a moderate baseline of 40 instead of penalizing as if confirmed gap
+  if (!historyReportProvided && hasServiceRecords == null && healthScore == null) {
+    return { score: 40, known: false };
+  }
+  if (!historyReportProvided && hasServiceRecords === false && !serviceGapMiles && !majorServicesDue?.length && !majorServicesDone?.length && !chronicRepairSystems?.length) {
+    // No report uploaded AND no granular data — this is unverified, not confirmed neglect
+    return { score: 40, known: false };
+  }
+
+  // State B: History report provided — full scoring applies
   if (hasServiceRecords == null && healthScore == null) {
     return { score: 50, known: false };
   }
@@ -604,22 +620,28 @@ export function calculateUVPRS(input: UVPRSInput): UVPRSResult {
   // 5. Service History
   const svc = input.isBrandNew
     ? { score: 0, known: true }
-    : scoreServiceHistory(input.hasServiceRecords, input.healthScore, input.historyIssues, input.historyPositives, input.serviceGapMiles, input.majorServicesDue, input.majorServicesDone, input.chronicRepairSystems);
+    : scoreServiceHistory(input.hasServiceRecords, input.healthScore, input.historyIssues, input.historyPositives, input.serviceGapMiles, input.majorServicesDue, input.majorServicesDone, input.chronicRepairSystems, input.historyReportProvided);
+  
+  const historyReportWasProvided = !!input.historyReportProvided;
   factorResults.push({
     key: "service", label: "Service History",
     score: svc.score, weight: WEIGHTS.service, weighted: 0,
     known: svc.known,
     description: input.isBrandNew
       ? "Brand new — no service history needed"
-      : (svc.known
-        ? (input.hasServiceRecords
-          ? (input.serviceGapMiles != null && input.serviceGapMiles > 60000
-            ? `Incomplete — ${input.serviceGapMiles.toLocaleString()}-mile gap`
-            : input.serviceGapMiles != null && input.serviceGapMiles > 20000
-              ? `Partial records — ${input.serviceGapMiles.toLocaleString()}-mile gap`
-              : "Service records available")
-          : "No service records")
-        : "Unknown — neutral score applied"),
+      : (!historyReportWasProvided && !svc.known)
+        ? "Service history not verified — no CarFax/AutoCheck uploaded"
+        : (svc.known
+          ? (input.hasServiceRecords
+            ? (input.serviceGapMiles != null && input.serviceGapMiles > 60000
+              ? `Confirmed gap — ${input.serviceGapMiles.toLocaleString()}-mile documentation gap`
+              : input.serviceGapMiles != null && input.serviceGapMiles > 20000
+                ? `Partial records — ${input.serviceGapMiles.toLocaleString()}-mile gap`
+                : "Service records available")
+            : (historyReportWasProvided
+              ? "Confirmed: history report shows no recorded maintenance"
+              : "No service records"))
+          : "Unknown — neutral score applied"),
   });
 
   // 6. Price vs Market (asymmetric) — skip entirely when pricing data unavailable
