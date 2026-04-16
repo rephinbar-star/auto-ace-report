@@ -47,11 +47,11 @@ interface PricingResult {
   contributingSources?: string[];
 }
 
-// Source reliability weights — listing-based sources weighted higher than ML predictions
+// Source reliability weights — auto.dev (listings) + VehicleDatabases (book values)
+// MarketCheck removed from pricing to conserve quota (used only for dealer-type detection)
 const SOURCE_RELIABILITY: Record<string, { tradeIn: number; privateParty: number; dealerRetail: number }> = {
-  "MarketCheck":       { tradeIn: 0.25, privateParty: 0.25, dealerRetail: 0.25 },
-  "auto.dev":          { tradeIn: 0.40, privateParty: 0.40, dealerRetail: 0.40 },
-  "VehicleDatabases":  { tradeIn: 0.35, privateParty: 0.35, dealerRetail: 0.35 },
+  "auto.dev":          { tradeIn: 0.55, privateParty: 0.55, dealerRetail: 0.55 },
+  "VehicleDatabases":  { tradeIn: 0.45, privateParty: 0.45, dealerRetail: 0.45 },
 };
 
 const DEFAULT_RANGE_WIDTH = 500;
@@ -141,7 +141,8 @@ function buildEntries(
 }
 
 /**
- * 3-source pricing chain: MarketCheck + auto.dev + VehicleDatabases
+ * 2-source pricing chain: auto.dev + VehicleDatabases
+ * MarketCheck used only for dealer-type detection (1 call/report).
  * Falls back to asking-price estimation when all sources return zero.
  */
 serve(async (req) => {
@@ -153,10 +154,7 @@ serve(async (req) => {
     const { year, make, model, trim, mileage, condition, zipCode, vin, sellerType, askingPrice }: PricingRequest = await req.json();
     const vehicleDesc = `${year} ${make} ${model}${trim ? ` ${trim}` : ""}`;
 
-    // Launch all pricing sources and dealer type detection in parallel
-    const mcPromise = (vin && vin.length === 17)
-      ? tryMarketCheck(vin, mileage, sellerType, zipCode, vehicleDesc)
-      : Promise.resolve(null);
+    // Launch pricing sources and dealer type detection in parallel
     const autoDevPromise = (vin && vin.length === 17)
       ? tryAutoDev(vin).catch(err => { console.error("auto.dev failed:", err); return null; })
       : Promise.resolve(null);
@@ -167,33 +165,29 @@ serve(async (req) => {
       ? detectDealerType(vin).catch(() => null)
       : Promise.resolve(null);
 
-    const [mcResult, autoDevResult, vdbResult, detectedDealerType] = await Promise.all([
-      mcPromise, autoDevPromise, vdbPromise, dealerTypePromise,
+    const [autoDevResult, vdbResult, detectedDealerType] = await Promise.all([
+      autoDevPromise, vdbPromise, dealerTypePromise,
     ]);
 
     // Merge results
     const allSources: SourceValuation[] = [
-      ...(mcResult?.sourceBreakdown || []),
       ...(autoDevResult?.sourceBreakdown || []),
       ...(vdbResult?.sourceBreakdown || []),
     ];
 
     const allCitations: string[] = [
-      ...(mcResult?.citations || []),
       ...(autoDevResult?.citations || []),
       ...(vdbResult?.citations || []),
     ];
     const uniqueCitations = [...new Set(allCitations)];
 
     const contextParts: string[] = [];
-    if (mcResult?.pricingContext) contextParts.push(mcResult.pricingContext);
     if (autoDevResult?.pricingContext) contextParts.push(autoDevResult.pricingContext);
     if (vdbResult?.pricingContext) contextParts.push(vdbResult.pricingContext);
     const mergedContext = contextParts.join("\n\n");
 
     // Track which sources contributed
     const contributingSources: string[] = [];
-    if (mcResult?.sourceBreakdown?.length) contributingSources.push("MarketCheck");
     if (autoDevResult?.sourceBreakdown?.length) contributingSources.push("auto.dev");
     if (vdbResult?.sourceBreakdown?.length) contributingSources.push("VehicleDatabases");
 
