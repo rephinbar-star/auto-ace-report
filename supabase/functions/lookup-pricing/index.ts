@@ -278,7 +278,7 @@ serve(async (req) => {
 // (MarketCheck pricing removed — quota reserved for dealer-type detection only)
 
 // ============================================================================
-// Source 2: auto.dev (active dealer listings)
+// Source 1: auto.dev (active dealer listings)
 // ============================================================================
 
 async function tryAutoDev(vin: string): Promise<PricingResult | null> {
