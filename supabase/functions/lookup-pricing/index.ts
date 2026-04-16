@@ -549,7 +549,7 @@ async function tryVehicleDatabases(vin: string, mileage: number): Promise<Pricin
       return 0;
     };
 
-    const retail = parseDollar(cleanRow["Retail"] || cleanRow.retail || cleanRow.dealer_retail);
+    const retail = parseDollar(cleanRow["Dealer Retail"] || cleanRow["Retail"] || cleanRow.retail || cleanRow.dealer_retail);
     const privateParty = parseDollar(cleanRow["Private Party"] || cleanRow.private_party);
     const tradeIn = parseDollar(cleanRow["Trade-In"] || cleanRow.trade_in);
 
