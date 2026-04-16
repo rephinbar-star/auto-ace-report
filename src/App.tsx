@@ -8,6 +8,7 @@ import { HelmetProvider } from "react-helmet-async";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import { ThemeProvider } from "next-themes";
 import { FeedbackWidget } from "@/components/feedback/FeedbackWidget";
+import { PendingReportGuard } from "@/components/auth/PendingReportGuard";
 
 // Critical path - load immediately (non-lazy)
 import Index from "./pages/Index";
@@ -53,6 +54,7 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <ScrollToTop />
+            <PendingReportGuard />
             <Suspense fallback={<PageLoader />}>
               <Routes>
                 <Route path="/" element={<Index />} />

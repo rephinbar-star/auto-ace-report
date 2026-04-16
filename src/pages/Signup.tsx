@@ -71,7 +71,7 @@ export default function SignupPage() {
     setIsGoogleLoading(true);
     try {
       const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
+        redirect_uri: window.location.origin + "/signup",
       });
 
       // If not redirected (popup flow completed), check result
