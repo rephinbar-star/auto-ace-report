@@ -19,6 +19,24 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
+    // Authenticate caller via shared secret or service-role JWT
+    const authHeader = req.headers.get("Authorization");
+    const cleanupSecret = Deno.env.get("CLEANUP_SECRET");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    const token = authHeader?.replace("Bearer ", "") ?? "";
+    const isAuthorized = 
+      (cleanupSecret && token === cleanupSecret) ||
+      (serviceRoleKey && token === serviceRoleKey);
+
+    if (!isAuthorized) {
+      logStep("Unauthorized caller");
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
+
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
@@ -28,7 +46,6 @@ serve(async (req) => {
     const cutoffTime = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
     logStep("Cutoff time", { cutoffTime });
 
-    // List users, paginate through all
     let deletedCount = 0;
     let page = 1;
     const perPage = 100;
@@ -47,14 +64,12 @@ serve(async (req) => {
       if (!users || users.length === 0) break;
 
       for (const user of users) {
-        // Check if email is not confirmed and created more than 48h ago
         const isIncomplete = !user.email_confirmed_at && !user.phone_confirmed_at;
         const isOldEnough = user.created_at < cutoffTime;
 
         if (isIncomplete && isOldEnough) {
-          logStep("Deleting incomplete user", { userId: user.id, email: user.email, createdAt: user.created_at });
+          logStep("Deleting incomplete user", { userId: user.id, createdAt: user.created_at });
 
-          // Clean up related data first
           await supabaseAdmin.from("vehicle_reports").delete().eq("user_id", user.id);
           await supabaseAdmin.from("subscriptions").delete().eq("user_id", user.id);
           await supabaseAdmin.from("user_blocks").delete().eq("user_id", user.id);
