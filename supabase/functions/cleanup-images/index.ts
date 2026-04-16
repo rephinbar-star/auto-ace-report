@@ -12,6 +12,24 @@ serve(async (req) => {
   }
 
   try {
+    // Authenticate caller via shared secret or service-role JWT
+    const authHeader = req.headers.get("Authorization");
+    const cleanupSecret = Deno.env.get("CLEANUP_SECRET");
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    const token = authHeader?.replace("Bearer ", "") ?? "";
+    const isAuthorized = 
+      (cleanupSecret && token === cleanupSecret) ||
+      (serviceRoleKey && token === serviceRoleKey);
+
+    if (!isAuthorized) {
+      console.log("[CLEANUP-IMAGES] Unauthorized caller");
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 401,
+      });
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -23,7 +41,6 @@ serve(async (req) => {
 
     console.log(`Cleaning up images older than ${cutoffDate.toISOString()}`);
 
-    // List all folders (batch IDs) in the bucket
     const { data: folders, error: listError } = await supabase.storage
       .from(BUCKET_NAME)
       .list("", { limit: 1000 });
@@ -42,11 +59,9 @@ serve(async (req) => {
     let totalDeleted = 0;
     const errors: string[] = [];
 
-    // Process each folder
     for (const folder of folders) {
       if (!folder.name) continue;
 
-      // List files in the folder
       const { data: files, error: filesError } = await supabase.storage
         .from(BUCKET_NAME)
         .list(folder.name, { limit: 100 });
@@ -58,7 +73,6 @@ serve(async (req) => {
 
       if (!files || files.length === 0) continue;
 
-      // Check if all files in folder are old enough to delete
       const oldFiles = files.filter((file) => {
         if (!file.created_at) return false;
         const fileDate = new Date(file.created_at);
@@ -67,7 +81,6 @@ serve(async (req) => {
 
       if (oldFiles.length === 0) continue;
 
-      // Delete old files
       const filePaths = oldFiles.map((f) => `${folder.name}/${f.name}`);
       
       const { error: deleteError } = await supabase.storage
