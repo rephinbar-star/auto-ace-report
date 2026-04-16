@@ -34,7 +34,8 @@ export function ServiceHistoryTimeline({
     doneItems.length > 0 ||
     dueItems.length > 0 ||
     chronicItems.length > 0 ||
-    (serviceGapMiles !== null && serviceGapMiles !== undefined);
+    (serviceGapMiles !== null && serviceGapMiles !== undefined) ||
+    hasServiceRecords === false;
 
   if (!hasGranularData) return null;
 
