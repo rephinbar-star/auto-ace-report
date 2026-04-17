@@ -1165,18 +1165,38 @@ Provide your expert analysis.`;
       || !pricingData?.computedValues
       || (pricingData.computedValues.fairMarketPrivate <= 0 && pricingData.computedValues.fairMarketDealer <= 0);
 
+    // Brand-new vehicle heuristic: a current/next-MY vehicle with very low mileage
+    // legitimately has no FMV in used-car pricing APIs — that's not a market risk.
+    const currentYear = new Date().getFullYear();
+    const isBrandNew = vehicle.year >= currentYear && condition.mileage <= 1500;
+    (condition as any).isBrandNew = isBrandNew;
+
     if (pricingUnavailable) {
-      console.log("Pricing data unavailable — flagging report and nulling dealRating/priceDifference");
+      console.log(`Pricing data unavailable — isBrandNew=${isBrandNew}`);
       // Hard-null the deal rating so no UI surface can render a misleading badge
       if (analysis?.priceAssessment) {
         (analysis.priceAssessment as any).dealRating = null;
         (analysis.priceAssessment as any).priceDifference = 0;
         (analysis.priceAssessment as any).percentDifference = 0;
       }
-      // Force the AI verdict to a safe value so any consumer that ignores the flag
-      // still won't render "Buy" without market data.
-      if (analysis?.finalVerdict) {
+      // Force "Negotiate" only for USED vehicles missing market data.
+      // Brand-new vehicles: allow AI verdict + UVPRS to stand.
+      if (!isBrandNew && analysis?.finalVerdict) {
         (analysis.finalVerdict as any).verdict = "Negotiate";
+      }
+    }
+
+    // High-mileage + unverified/severe service gap → minimum verdict "Negotiate"
+    // A price discount does not justify "Buy" on a high-mileage vehicle without history.
+    const gapSev = analysis?.historyAnalysis?.serviceGap?.gapSeverity;
+    const highMileageRisk = condition.mileage > 80000 && (gapSev === "severe" || gapSev === "unverified" || gapSev === "unknown");
+    if (highMileageRisk && analysis?.finalVerdict) {
+      const currentVerdict = String((analysis.finalVerdict as any).verdict || "").toLowerCase();
+      if (currentVerdict === "buy") {
+        console.log(`High-mileage minimum verdict rule fired: mileage=${condition.mileage}, gapSeverity=${gapSev} — downgrading Buy → Negotiate`);
+        (analysis.finalVerdict as any).verdict = "Negotiate";
+        const existingJustification = (analysis.finalVerdict as any).justification || "";
+        (analysis.finalVerdict as any).justification = `High mileage (${condition.mileage.toLocaleString()} mi) combined with ${gapSev === "unverified" || gapSev === "unknown" ? "unverified" : "severe gaps in"} service history requires negotiation regardless of price position. ${existingJustification}`.trim();
       }
     }
 
