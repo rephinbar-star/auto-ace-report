@@ -1226,7 +1226,14 @@ export default function ReportPage() {
     floorTriggered,
     pricingDataUnavailable
   );
-  const sanitizedExpertOpinion = sanitizeExpertOpinion({
+  const overpaymentAmount = condition.askingPrice - priceAssessment.fairMarketPrivate;
+  const overpaymentSignificant = priceAssessment.fairMarketPrivate > 0
+    && !pricingDataUnavailable
+    && overpaymentAmount > priceAssessment.fairMarketPrivate * 0.05;
+  const overpaymentPrefix = overpaymentSignificant
+    ? `At purchase, you are paying $${Math.round(overpaymentAmount).toLocaleString()} above private party market value. This represents an immediate unrealized loss before any depreciation occurs.\n\n`
+    : "";
+  const sanitizedExpertOpinion = overpaymentPrefix + sanitizeExpertOpinion({
     expertOpinion: riskAssessment.expertOpinion,
     displayVerdict,
     dealRating: priceAssessment.dealRating,
@@ -1704,6 +1711,16 @@ export default function ReportPage() {
                   <svg className="h-5 w-5 shrink-0 transition-transform duration-200 [[data-state=open]>&]:rotate-180" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
+                  {overpaymentSignificant && (
+                    <div className="mt-3 rounded-lg border border-risk-red/30 bg-risk-red/5 p-3">
+                      <p className="text-xs font-semibold text-risk-red">
+                        Instant equity position at purchase: −${Math.round(overpaymentAmount).toLocaleString()}
+                      </p>
+                      <p className="text-[11px] text-neutral mt-0.5">
+                        You are paying ${condition.askingPrice.toLocaleString()} for a vehicle with a private-party fair market value of ${priceAssessment.fairMarketPrivate.toLocaleString()}. The Year-by-Year market values below start from FMV — the gap is your immediate unrealized loss.
+                      </p>
+                    </div>
+                  )}
                   <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0 mt-3" style={{ maxWidth: 'calc(100vw - 2rem)' }}>
                     <Table>
                       <TableHeader>
@@ -1724,6 +1741,16 @@ export default function ReportPage() {
                               </RadixTooltipTrigger>
                               <RadixTooltipContent side="top" className="max-w-xs p-2">
                                 <p className="text-xs">Total financial gain/loss vs. all costs including purchase price</p>
+                              </RadixTooltipContent>
+                            </RadixTooltip>
+                          </TooltipProvider>
+                          <TooltipProvider>
+                            <RadixTooltip>
+                              <RadixTooltipTrigger asChild>
+                                <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight cursor-help">Value vs.<br/>What You Paid <span className="text-[10px]">ⓘ</span></TableHead>
+                              </RadixTooltipTrigger>
+                              <RadixTooltipContent side="top" className="max-w-xs p-2">
+                                <p className="text-xs">Market value minus your purchase price. Negative means the vehicle is worth less than you paid (unrealized loss).</p>
                               </RadixTooltipContent>
                             </RadixTooltip>
                           </TooltipProvider>
@@ -1753,6 +1780,14 @@ export default function ReportPage() {
                               <TableCell className={cn("text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold", yr0NetPosition >= 0 ? "text-risk-green" : "text-destructive")}>
                                 {yr0NetPosition < 0 ? "-" : ""}${Math.abs(yr0NetPosition).toLocaleString()}
                               </TableCell>
+                              {(() => {
+                                const yr0VsPaid = startingFMV - purchasePrice;
+                                return (
+                                  <TableCell className={cn("text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold", yr0VsPaid >= 0 ? "text-risk-green" : "text-destructive")}>
+                                    {yr0VsPaid < 0 ? "-" : ""}${Math.abs(yr0VsPaid).toLocaleString()}
+                                  </TableCell>
+                                );
+                              })()}
                             </TableRow>
                           );
                         })()}
@@ -1782,6 +1817,14 @@ export default function ReportPage() {
                               <TableCell className={cn("text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold", netPosition >= 0 ? "text-risk-green" : "text-destructive")}>
                                 {netPosition < 0 ? "-" : ""}${Math.abs(netPosition).toLocaleString()}
                               </TableCell>
+                              {(() => {
+                                const vsPaid = row.marketValue - purchasePrice;
+                                return (
+                                  <TableCell className={cn("text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold", vsPaid >= 0 ? "text-risk-green" : "text-destructive")}>
+                                    {vsPaid < 0 ? "-" : ""}${Math.abs(vsPaid).toLocaleString()}
+                                  </TableCell>
+                                );
+                              })()}
                             </TableRow>
                           );
                         })}
