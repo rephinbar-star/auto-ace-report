@@ -22,6 +22,7 @@ interface MetricsStripProps {
   resolvedRecalls: number;
   warrantyStatus: string;
   warrantyContext: string;
+  pricingDataUnavailable?: boolean;
   onHistoryTabChange?: (tab: string) => void;
 }
 
@@ -35,10 +36,10 @@ const colorClasses: Record<string, string> = {
 export function MetricsStrip({
   priceDifference, fairMarketPrivate, riskScore, riskLabel,
   healthScore, monthlyCostRange, openRecalls, resolvedRecalls,
-  warrantyStatus, warrantyContext, onHistoryTabChange,
+  warrantyStatus, warrantyContext, pricingDataUnavailable, onHistoryTabChange,
 }: MetricsStripProps) {
   const priceBelow = priceDifference <= 0;
-  const priceToken = priceBelow ? "risk-green" : "risk-red";
+  const priceToken = pricingDataUnavailable ? "neutral" : (priceBelow ? "risk-green" : "risk-red");
   const riskToken = riskScore != null ? getRiskColorToken(riskScore) : "neutral";
   const healthToken = getRiskColorToken(100 - healthScore);
   const recallToken = openRecalls > 0 ? "risk-red" : "risk-green";
@@ -47,8 +48,8 @@ export function MetricsStrip({
   const cards: MetricCard[] = [
     {
       label: "PRICE VS MARKET",
-      value: `$${Math.abs(priceDifference).toLocaleString()} ${priceBelow ? "below" : "above"} FMV`,
-      context: `vs $${fairMarketPrivate.toLocaleString()} fair market value`,
+      value: pricingDataUnavailable ? "Unavailable" : `$${Math.abs(priceDifference).toLocaleString()} ${priceBelow ? "below" : "above"} FMV`,
+      context: pricingDataUnavailable ? "Market pricing data not available" : `vs $${fairMarketPrivate.toLocaleString()} fair market value`,
       colorToken: priceToken,
       scrollTarget: "section-pricing",
     },
