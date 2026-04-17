@@ -1744,6 +1744,16 @@ export default function ReportPage() {
                               </RadixTooltipContent>
                             </RadixTooltip>
                           </TooltipProvider>
+                          <TooltipProvider>
+                            <RadixTooltip>
+                              <RadixTooltipTrigger asChild>
+                                <TableHead className="text-right text-xs px-1.5 md:px-4 leading-tight cursor-help">Value vs.<br/>What You Paid <span className="text-[10px]">ⓘ</span></TableHead>
+                              </RadixTooltipTrigger>
+                              <RadixTooltipContent side="top" className="max-w-xs p-2">
+                                <p className="text-xs">Market value minus your purchase price. Negative means the vehicle is worth less than you paid (unrealized loss).</p>
+                              </RadixTooltipContent>
+                            </RadixTooltip>
+                          </TooltipProvider>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
