@@ -80,13 +80,20 @@ export function computeDepreciationTable(
   const rows: ComputedDepreciationRow[] = [];
   let prevValue = startingFMV;
 
+  // Baseline annual mileage assumption already baked into annualDepreciationRates by the AI.
+  // mileageDepreciationRatePerMile is only applied to EXCESS miles beyond this baseline so
+  // that Year N value === prevValue × (1 − annualDepreciationRates[N]) at default usage.
+  const BASELINE_ANNUAL_MILES = 12000;
+  const excessMiles = Math.max(0, annualMiles - BASELINE_ANNUAL_MILES);
+
   for (let yr = 0; yr < 5; yr++) {
     const depRate = annualDepreciationRates[yr] ?? annualDepreciationRates[annualDepreciationRates.length - 1] ?? 0.08;
-    const mileageLoss = mileageDepreciationRatePerMile * annualMiles;
+    const excessMileageLoss = mileageDepreciationRatePerMile * excessMiles;
     const batteryPenalty = (batteryDecayCurve?.[yr] ?? 0) * prevValue;
 
-    // Compute raw value after depreciation
-    let rawValue = prevValue * (1 - depRate) - mileageLoss - batteryPenalty;
+    // R2/R4: annualDepreciationRates is the all-in annual % drop (already accounts for
+    // baseline mileage). Only excess-mile wear and EV battery decay are added on top.
+    let rawValue = prevValue * (1 - depRate) - excessMileageLoss - batteryPenalty;
 
     // R1: Market value never increases (monotonic decrease)
     rawValue = Math.min(rawValue, prevValue - 1); // At least $1 decrease
