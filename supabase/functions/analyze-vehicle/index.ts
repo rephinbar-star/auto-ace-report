@@ -1249,6 +1249,11 @@ Provide your expert analysis.`;
       totalHigh: baseCost + insuranceHigh,
     };
 
+    // Embed inside analysis as requested
+    if (analysis && typeof analysis === "object") {
+      (analysis as any).monthlyOwnership = monthlyOwnership;
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -1260,7 +1265,7 @@ Provide your expert analysis.`;
           fuelType: mpgData.fuelType,
           isEstimate: mpgData.isEstimate,
         },
-        monthlyOwnership,
+        monthlyOwnership, // also at top-level for convenience
         pricingSources: hasPricing ? pricingData.citations : [],
         maintenanceSources: hasMaintenance ? maintenanceData.citations : [],
         sourceBreakdown: pricingData?.sourceBreakdown || [],
