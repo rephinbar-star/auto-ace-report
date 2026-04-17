@@ -1711,6 +1711,16 @@ export default function ReportPage() {
                   <svg className="h-5 w-5 shrink-0 transition-transform duration-200 [[data-state=open]>&]:rotate-180" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
+                  {overpaymentSignificant && (
+                    <div className="mt-3 rounded-lg border border-risk-red/30 bg-risk-red/5 p-3">
+                      <p className="text-xs font-semibold text-risk-red">
+                        Instant equity position at purchase: −${Math.round(overpaymentAmount).toLocaleString()}
+                      </p>
+                      <p className="text-[11px] text-neutral mt-0.5">
+                        You are paying ${condition.askingPrice.toLocaleString()} for a vehicle with a private-party fair market value of ${priceAssessment.fairMarketPrivate.toLocaleString()}. The Year-by-Year market values below start from FMV — the gap is your immediate unrealized loss.
+                      </p>
+                    </div>
+                  )}
                   <div className="overflow-x-auto -mx-3 px-3 md:mx-0 md:px-0 mt-3" style={{ maxWidth: 'calc(100vw - 2rem)' }}>
                     <Table>
                       <TableHeader>
