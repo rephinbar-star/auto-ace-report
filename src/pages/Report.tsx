@@ -1226,7 +1226,14 @@ export default function ReportPage() {
     floorTriggered,
     pricingDataUnavailable
   );
-  const sanitizedExpertOpinion = sanitizeExpertOpinion({
+  const overpaymentAmount = condition.askingPrice - priceAssessment.fairMarketPrivate;
+  const overpaymentSignificant = priceAssessment.fairMarketPrivate > 0
+    && !pricingDataUnavailable
+    && overpaymentAmount > priceAssessment.fairMarketPrivate * 0.05;
+  const overpaymentPrefix = overpaymentSignificant
+    ? `At purchase, you are paying $${Math.round(overpaymentAmount).toLocaleString()} above private party market value. This represents an immediate unrealized loss before any depreciation occurs.\n\n`
+    : "";
+  const sanitizedExpertOpinion = overpaymentPrefix + sanitizeExpertOpinion({
     expertOpinion: riskAssessment.expertOpinion,
     displayVerdict,
     dealRating: priceAssessment.dealRating,
