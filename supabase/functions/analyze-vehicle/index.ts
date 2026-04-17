@@ -1166,7 +1166,18 @@ Provide your expert analysis.`;
       || (pricingData.computedValues.fairMarketPrivate <= 0 && pricingData.computedValues.fairMarketDealer <= 0);
 
     if (pricingUnavailable) {
-      console.log("Pricing data unavailable — flagging report");
+      console.log("Pricing data unavailable — flagging report and nulling dealRating/priceDifference");
+      // Hard-null the deal rating so no UI surface can render a misleading badge
+      if (analysis?.priceAssessment) {
+        (analysis.priceAssessment as any).dealRating = null;
+        (analysis.priceAssessment as any).priceDifference = 0;
+        (analysis.priceAssessment as any).percentDifference = 0;
+      }
+      // Force the AI verdict to a safe value so any consumer that ignores the flag
+      // still won't render "Buy" without market data.
+      if (analysis?.finalVerdict) {
+        (analysis.finalVerdict as any).verdict = "Negotiate";
+      }
     }
 
     // Wait for MPG data
