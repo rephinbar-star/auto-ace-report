@@ -1204,9 +1204,54 @@ Provide your expert analysis.`;
     const mpgData = await mpgPromise;
     console.log("MPG data retrieved:", mpgData);
 
+    // ===== Build monthlyOwnership block =====
+    // Field names mirror MonthlyOwnershipBreakdown in src/lib/tco-calculations.ts
+    const ANNUAL_MILES = 12000;
+    const GAS_PRICE = 3.50;
+    const DIESEL_PRICE = 4.00;
+    const ELEC_PRICE = 0.15;
+    const NATIONAL_AVG_INSURANCE = 1281; // NAIC 2023 national average annual full-coverage premium
+
+    const fuelTypeNorm = (mpgData.fuelType || "gasoline").toLowerCase();
+    const isElectric = fuelTypeNorm.includes("electric");
+    const isDiesel = fuelTypeNorm.includes("diesel");
+    const effectiveMPG = mpgData.mpgCombined || 27;
+    let annualFuelCost = 0;
+    if (isElectric) {
+      const kwhPer100 = 3370 / effectiveMPG;
+      annualFuelCost = (ANNUAL_MILES / 100) * kwhPer100 * ELEC_PRICE;
+    } else if (isDiesel) {
+      annualFuelCost = (ANNUAL_MILES / effectiveMPG) * DIESEL_PRICE;
+    } else {
+      annualFuelCost = (ANNUAL_MILES / effectiveMPG) * GAS_PRICE;
+    }
+
+    const year1 = (analysis as any)?.depreciationTable?.[0] || {};
+    const annualRepairs = Number(year1.repairCosts) || 0;
+    const annualMaintenance = Number(year1.maintenanceCosts) || 0;
+
+    const monthlyPayment = (financing.type === "cash" ? 0 : Number(financing.monthlyPayment) || 0);
+    const fuelMonthly = Math.round(annualFuelCost / 12);
+    const repairsMonthly = Math.round(annualRepairs / 12);
+    const maintenanceMonthly = Math.round(annualMaintenance / 12);
+    const insuranceLow = Math.round(NATIONAL_AVG_INSURANCE * 0.85 / 12);
+    const insuranceHigh = Math.round(NATIONAL_AVG_INSURANCE * 1.15 / 12);
+
+    const baseCost = Math.round(monthlyPayment) + fuelMonthly + repairsMonthly + maintenanceMonthly;
+    const monthlyOwnership = {
+      monthlyPayment: Math.round(monthlyPayment),
+      fuel: fuelMonthly,
+      maintenance: maintenanceMonthly,
+      repairs: repairsMonthly,
+      insuranceLow,
+      insuranceHigh,
+      totalLow: baseCost + insuranceLow,
+      totalHigh: baseCost + insuranceHigh,
+    };
+
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         analysis,
         mpgData: {
           mpgCity: mpgData.mpgCity,
@@ -1215,6 +1260,7 @@ Provide your expert analysis.`;
           fuelType: mpgData.fuelType,
           isEstimate: mpgData.isEstimate,
         },
+        monthlyOwnership,
         pricingSources: hasPricing ? pricingData.citations : [],
         maintenanceSources: hasMaintenance ? maintenanceData.citations : [],
         sourceBreakdown: pricingData?.sourceBreakdown || [],
