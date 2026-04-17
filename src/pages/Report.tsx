@@ -1780,6 +1780,14 @@ export default function ReportPage() {
                               <TableCell className={cn("text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold", yr0NetPosition >= 0 ? "text-risk-green" : "text-destructive")}>
                                 {yr0NetPosition < 0 ? "-" : ""}${Math.abs(yr0NetPosition).toLocaleString()}
                               </TableCell>
+                              {(() => {
+                                const yr0VsPaid = startingFMV - purchasePrice;
+                                return (
+                                  <TableCell className={cn("text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold", yr0VsPaid >= 0 ? "text-risk-green" : "text-destructive")}>
+                                    {yr0VsPaid < 0 ? "-" : ""}${Math.abs(yr0VsPaid).toLocaleString()}
+                                  </TableCell>
+                                );
+                              })()}
                             </TableRow>
                           );
                         })()}
@@ -1809,6 +1817,14 @@ export default function ReportPage() {
                               <TableCell className={cn("text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold", netPosition >= 0 ? "text-risk-green" : "text-destructive")}>
                                 {netPosition < 0 ? "-" : ""}${Math.abs(netPosition).toLocaleString()}
                               </TableCell>
+                              {(() => {
+                                const vsPaid = row.marketValue - purchasePrice;
+                                return (
+                                  <TableCell className={cn("text-right text-xs whitespace-nowrap px-1.5 md:px-4 font-bold", vsPaid >= 0 ? "text-risk-green" : "text-destructive")}>
+                                    {vsPaid < 0 ? "-" : ""}${Math.abs(vsPaid).toLocaleString()}
+                                  </TableCell>
+                                );
+                              })()}
                             </TableRow>
                           );
                         })}
