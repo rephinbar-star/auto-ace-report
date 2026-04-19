@@ -149,8 +149,9 @@ function sanitizeExpertOpinion({
   sanitized = sanitized.replace(/\bthe price is aggressive\b/gi, "the price is positioned below dealer retail benchmarks");
   sanitized = sanitized.replace(/\baggressive pricing\b/gi, "pricing below dealer retail");
 
-  if (dealRating.toLowerCase() !== "excellent") {
-    sanitized = sanitized.replace(/['"]?excellent['"]?\s+deal rating/gi, `${dealRating.toLowerCase()} pricing position`);
+  const dealRatingSafe = (dealRating || "").toLowerCase();
+  if (dealRatingSafe && dealRatingSafe !== "excellent") {
+    sanitized = sanitized.replace(/['"]?excellent['"]?\s+deal rating/gi, `${dealRatingSafe} pricing position`);
   }
 
   if (displayVerdict !== "Avoid") {
