@@ -159,7 +159,7 @@ serve(async (req) => {
       ? tryAutoDev(vin).catch(err => { console.error("auto.dev failed:", err); return null; })
       : Promise.resolve(null);
     const vdbPromise = (vin && vin.length === 17)
-      ? tryVehicleDatabases(vin, mileage).catch(err => { console.error("VehicleDatabases failed:", err); return null; })
+      ? tryVehicleDatabases(vin, mileage, trim).catch(err => { console.error("VehicleDatabases failed:", err); return null; })
       : Promise.resolve(null);
     const dealerTypePromise = (vin && vin.length === 17 && sellerType !== "private")
       ? detectDealerType(vin).catch(() => null)
@@ -219,6 +219,22 @@ serve(async (req) => {
     // Asking-price fallback when all sources return zero
     let pricingDataUnavailable = false;
     let pricingSource: "market" | "estimated" = "market";
+
+    // FMV sanity gate: reject implausibly low values relative to asking price.
+    // A dealer FMV less than 35% of asking price almost always indicates a data error
+    // (wrong trim matched, e.g. CTS-V valued as base CTS). Treat as unavailable and
+    // fall through to asking-price estimation rather than corrupting the report.
+    const FMV_SANITY_RATIO = 0.35;
+    if (computedValues && askingPrice && askingPrice > 0) {
+      const dealerFMV = computedValues.fairMarketDealer || 0;
+      if (dealerFMV > 0 && dealerFMV < askingPrice * FMV_SANITY_RATIO) {
+        const ratio = (dealerFMV / askingPrice * 100).toFixed(1);
+        const note = `FMV sanity check failed: dealer value $${dealerFMV.toLocaleString()} is only ${ratio}% of asking price $${askingPrice.toLocaleString()} — likely wrong trim matched in pricing source. Discarding and falling back to asking-price estimation.`;
+        console.warn(note);
+        outlierNotes.push(note);
+        computedValues = undefined;
+      }
+    }
 
     if (!computedValues || (computedValues.fairMarketPrivate <= 0 && computedValues.fairMarketDealer <= 0 && computedValues.fairMarketTradeIn <= 0)) {
       if (askingPrice && askingPrice > 0) {
@@ -377,16 +393,25 @@ async function tryAutoDev(vin: string): Promise<PricingResult | null> {
 // Source 3: VehicleDatabases.com (book values)
 // ============================================================================
 
-async function tryVehicleDatabases(vin: string, mileage: number): Promise<PricingResult | null> {
+async function tryVehicleDatabases(vin: string, mileage: number, requestedTrim?: string): Promise<PricingResult | null> {
   const VEHICLEDATABASES_API_KEY = Deno.env.get("VEHICLEDATABASES_API_KEY");
   if (!VEHICLEDATABASES_API_KEY) {
     console.log("VEHICLEDATABASES_API_KEY not configured, skipping VehicleDatabases");
     return null;
   }
 
+  // Performance/specialty trim tokens — if requested, we MUST find a matching trim row.
+  // Refusing to fall back to base-trim values prevents catastrophic undervaluation
+  // (e.g. CTS-V priced as base CTS, M3 priced as 328i).
+  const PERFORMANCE_TOKENS = ["V", "SS", "SRT", "SRT8", "SRT-8", "AMG", "M", "M2", "M3", "M4", "M5", "M6", "RS", "GT", "GT3", "GT4", "Type R", "Type-R", "STI", "WRX", "Trackhawk", "Hellcat", "Demon", "Raptor", "TRX", "Z06", "ZR1", "ZL1", "Shelby", "GT500", "GT350", "Black Series", "Quadrifoglio", "N", "Performance", "Sport-L", "Si"];
+  const trimNorm = (requestedTrim || "").trim();
+  const isPerformanceTrim = trimNorm.length > 0 && PERFORMANCE_TOKENS.some(
+    tok => trimNorm.toUpperCase() === tok.toUpperCase() || trimNorm.toUpperCase().includes(` ${tok.toUpperCase()}`) || trimNorm.toUpperCase().endsWith(`-${tok.toUpperCase()}`)
+  );
+
   try {
     const url = `https://api.vehicledatabases.com/market-value/${encodeURIComponent(vin)}`;
-    console.log(`VehicleDatabases request for VIN ${vin}, mileage ${mileage}`);
+    console.log(`VehicleDatabases request for VIN ${vin}, mileage ${mileage}, trim="${trimNorm}", performance=${isPerformanceTrim}`);
 
     const response = await fetch(url, {
       headers: {
@@ -404,7 +429,6 @@ async function tryVehicleDatabases(vin: string, mileage: number): Promise<Pricin
     const data = await response.json();
     console.log("VehicleDatabases raw response:", JSON.stringify(data).slice(0, 500));
 
-    // Navigate nested response: data.market_value.market_value_data[].market value[]
     const marketValueData = data?.data?.market_value?.market_value_data
       || data?.market_value?.market_value_data
       || data?.market_value_data;
@@ -414,21 +438,44 @@ async function tryVehicleDatabases(vin: string, mileage: number): Promise<Pricin
       return null;
     }
 
+    // Trim-aware matching: prefer trim entry whose name contains the requested trim token.
+    const trimMatches = (entryTrim: string): boolean => {
+      if (!trimNorm) return false;
+      const e = entryTrim.toUpperCase();
+      const t = trimNorm.toUpperCase();
+      // Match whole-word trim token (e.g. " V " or end-of-string " V")
+      return new RegExp(`(^|[\\s:\\-])${t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([\\s:\\-]|$)`).test(e);
+    };
+
+    let chosenTrimEntry: any = null;
+    for (const entry of marketValueData) {
+      const entryTrim = String(entry.trim || entry.Trim || "");
+      if (trimMatches(entryTrim)) {
+        chosenTrimEntry = entry;
+        console.log(`VehicleDatabases: matched performance/requested trim "${entryTrim}"`);
+        break;
+      }
+    }
+
+    // For performance trims, refuse to fall back to base-trim data.
+    if (!chosenTrimEntry && isPerformanceTrim) {
+      const availableTrims = marketValueData.map((e: any) => e.trim || e.Trim).join(" | ");
+      console.warn(`VehicleDatabases: performance trim "${trimNorm}" requested but only base trims available [${availableTrims}]. Refusing to use base-trim values to avoid catastrophic undervaluation.`);
+      return null;
+    }
+
+    // For non-performance trims, fall back to first entry (existing behavior).
+    if (!chosenTrimEntry) chosenTrimEntry = marketValueData[0];
+
     // Find the "Clean" condition row (or fall back to first available)
     let cleanRow: any = null;
-    for (const trimEntry of marketValueData) {
-      const values = trimEntry["market value"] || trimEntry.market_value || trimEntry.values;
-      if (!Array.isArray(values)) continue;
+    const values = chosenTrimEntry["market value"] || chosenTrimEntry.market_value || chosenTrimEntry.values;
+    if (Array.isArray(values)) {
       for (const row of values) {
         const cond = (row.Condition || row.condition || "").toLowerCase();
-        if (cond === "clean") {
-          cleanRow = row;
-          break;
-        }
+        if (cond === "clean") { cleanRow = row; break; }
       }
-      if (cleanRow) break;
-      // Fall back to first row
-      if (values.length > 0 && !cleanRow) cleanRow = values[0];
+      if (!cleanRow && values.length > 0) cleanRow = values[0];
     }
 
     if (!cleanRow) {
