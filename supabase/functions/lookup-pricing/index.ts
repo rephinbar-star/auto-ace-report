@@ -159,7 +159,7 @@ serve(async (req) => {
       ? tryAutoDev(vin).catch(err => { console.error("auto.dev failed:", err); return null; })
       : Promise.resolve(null);
     const vdbPromise = (vin && vin.length === 17)
-      ? tryVehicleDatabases(vin, mileage).catch(err => { console.error("VehicleDatabases failed:", err); return null; })
+      ? tryVehicleDatabases(vin, mileage, trim).catch(err => { console.error("VehicleDatabases failed:", err); return null; })
       : Promise.resolve(null);
     const dealerTypePromise = (vin && vin.length === 17 && sellerType !== "private")
       ? detectDealerType(vin).catch(() => null)
