@@ -220,6 +220,22 @@ serve(async (req) => {
     let pricingDataUnavailable = false;
     let pricingSource: "market" | "estimated" = "market";
 
+    // FMV sanity gate: reject implausibly low values relative to asking price.
+    // A dealer FMV less than 35% of asking price almost always indicates a data error
+    // (wrong trim matched, e.g. CTS-V valued as base CTS). Treat as unavailable and
+    // fall through to asking-price estimation rather than corrupting the report.
+    const FMV_SANITY_RATIO = 0.35;
+    if (computedValues && askingPrice && askingPrice > 0) {
+      const dealerFMV = computedValues.fairMarketDealer || 0;
+      if (dealerFMV > 0 && dealerFMV < askingPrice * FMV_SANITY_RATIO) {
+        const ratio = (dealerFMV / askingPrice * 100).toFixed(1);
+        const note = `FMV sanity check failed: dealer value $${dealerFMV.toLocaleString()} is only ${ratio}% of asking price $${askingPrice.toLocaleString()} — likely wrong trim matched in pricing source. Discarding and falling back to asking-price estimation.`;
+        console.warn(note);
+        outlierNotes.push(note);
+        computedValues = undefined;
+      }
+    }
+
     if (!computedValues || (computedValues.fairMarketPrivate <= 0 && computedValues.fairMarketDealer <= 0 && computedValues.fairMarketTradeIn <= 0)) {
       if (askingPrice && askingPrice > 0) {
         computedValues = {
