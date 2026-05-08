@@ -56,8 +56,8 @@ serve(async (req) => {
       );
     }
 
-    if (!lovableKey) {
-      logStep("Lovable API key not configured");
+    if (!openRouterKey) {
+      logStep("OpenRouter API key not configured");
       return new Response(
         JSON.stringify({ success: false, error: "AI service not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -169,14 +169,11 @@ serve(async (req) => {
     // Use AI to analyze and summarize reviews
     logStep("Analyzing reviews with AI");
     
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResponse = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${lovableKey}`,
-        "Content-Type": "application/json",
-      },
+      headers: openRouterHeaders(),
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "anthropic/claude-haiku-4.5",
         messages: [
           {
             role: "system",

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { checkRateLimit, getClientIp, RATE_LIMITS } from "../_shared/rate-limiter.ts";
+import { OPENROUTER_BASE_URL, openRouterHeaders } from "../_shared/openrouter.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -42,21 +43,18 @@ serve(async (req) => {
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
+    if (!OPENROUTER_API_KEY) {
+      throw new Error("OPENROUTER_API_KEY is not configured");
     }
 
     console.log("Extracting vehicle details from screenshot");
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+      headers: openRouterHeaders(),
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           {
             role: "user",

@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { validateUrl } from "../_shared/url-validator.ts";
 import { checkRateLimit, getClientIp, RATE_LIMITS } from "../_shared/rate-limiter.ts";
+import { OPENROUTER_BASE_URL, openRouterHeaders } from "../_shared/openrouter.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -479,8 +480,8 @@ serve(async (req) => {
     }
 
     // Use AI to analyze the vehicle history
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
+    const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
+    if (!OPENROUTER_API_KEY) {
       return new Response(
         JSON.stringify({ success: false, error: "AI service not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -494,14 +495,11 @@ ${textContent.slice(0, 15000)}
 
 Extract structured information about accidents, ownership, title status, and service history.`;
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResponse = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+      headers: openRouterHeaders(),
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "anthropic/claude-haiku-4.5",
         messages: [
           {
             role: "system",
