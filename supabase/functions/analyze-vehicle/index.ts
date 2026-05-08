@@ -1324,36 +1324,27 @@ Provide your expert analysis.`;
       (analysis as any).monthlyOwnership = monthlyOwnership;
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        analysis,
-        mpgData: {
-          mpgCity: mpgData.mpgCity,
-          mpgHighway: mpgData.mpgHighway,
-          mpgCombined: mpgData.mpgCombined,
-          fuelType: mpgData.fuelType,
-          isEstimate: mpgData.isEstimate,
-        },
-        monthlyOwnership, // also at top-level for convenience
-        pricingSources: hasPricing ? pricingData.citations : [],
-        maintenanceSources: hasMaintenance ? maintenanceData.citations : [],
-        sourceBreakdown: pricingData?.sourceBreakdown || [],
-        detectedSellerType: condition.sellerType,
-        pricingDataUnavailable: pricingUnavailable,
-        pricingSource: pricingData?.pricingSource || (pricingUnavailable ? "estimated" : "market"),
-        contributingSources: pricingData?.contributingSources || [],
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return {
+      success: true,
+      analysis,
+      mpgData: {
+        mpgCity: mpgData.mpgCity,
+        mpgHighway: mpgData.mpgHighway,
+        mpgCombined: mpgData.mpgCombined,
+        fuelType: mpgData.fuelType,
+        isEstimate: mpgData.isEstimate,
+      },
+      monthlyOwnership,
+      pricingSources: hasPricing ? pricingData.citations : [],
+      maintenanceSources: hasMaintenance ? maintenanceData.citations : [],
+      sourceBreakdown: pricingData?.sourceBreakdown || [],
+      detectedSellerType: condition.sellerType,
+      pricingDataUnavailable: pricingUnavailable,
+      pricingSource: pricingData?.pricingSource || (pricingUnavailable ? "estimated" : "market"),
+      contributingSources: pricingData?.contributingSources || [],
+    };
   } catch (error) {
     console.error("Analysis error:", error);
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error instanceof Error ? error.message : "Analysis failed" 
-      }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    throw error instanceof Error ? error : new Error("Analysis failed");
   }
-});
+}
