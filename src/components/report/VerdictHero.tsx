@@ -196,13 +196,13 @@ export const VerdictHero = forwardRef<HTMLDivElement, VerdictHeroProps>(({
           })()}
 
           {/* Action row */}
-          <div className="flex flex-wrap gap-3 mt-3">
-            <Button variant="outline" size="sm" className="h-9 text-[13px] border-border-card"
+          <div className="flex flex-nowrap gap-2 mt-3 overflow-x-auto">
+            <Button variant="outline" size="sm" className="h-9 text-[12px] px-3 border-border-card whitespace-nowrap shrink-0"
               onClick={onDownloadPDF} disabled={isDownloading}>
-              {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+              {isDownloading ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Download className="mr-1.5 h-4 w-4" />}
               {isDownloading ? "Generating..." : "Download PDF"}
             </Button>
-            <Button variant="outline" size="sm" className="h-9 text-[13px] border-border-card"
+            <Button variant="outline" size="sm" className="h-9 text-[12px] px-3 border-border-card whitespace-nowrap shrink-0"
               onClick={() => {
                 navigator.clipboard.writeText(window.location.href).then(() => {
                   toast("Report link copied to clipboard", { duration: 2000 });
@@ -210,18 +210,18 @@ export const VerdictHero = forwardRef<HTMLDivElement, VerdictHeroProps>(({
                   toast.error("Failed to copy link");
                 });
               }}>
-              <Share2 className="mr-2 h-4 w-4" />
+              <Share2 className="mr-1.5 h-4 w-4" />
               Share Report
             </Button>
-            <Button variant="outline" size="sm" className="h-9 text-[13px] border-border-card"
+            <Button variant="outline" size="sm" className="h-9 text-[12px] px-3 border-border-card whitespace-nowrap shrink-0"
               onClick={onReAnalyze} disabled={isRefreshing}>
-              {isRefreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+              {isRefreshing ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-1.5 h-4 w-4" />}
               {isRefreshing ? "Re-Analyzing..." : "Re-Analyze"}
             </Button>
-            <Button variant="outline" size="sm" className="h-9 text-[13px] border-border-card"
+            <Button variant="outline" size="sm" className="h-9 text-[12px] px-3 border-border-card whitespace-nowrap shrink-0"
               onClick={onUploadHistory} disabled={isRefreshing}>
-              <Upload className="mr-2 h-4 w-4" />
-              Upload CarFax/AutoCheck
+              <Upload className="mr-1.5 h-4 w-4" />
+              Upload CarFax
             </Button>
           </div>
         </div>
