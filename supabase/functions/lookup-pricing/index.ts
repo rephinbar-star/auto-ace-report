@@ -47,11 +47,14 @@ interface PricingResult {
   contributingSources?: string[];
 }
 
-// Source reliability weights — auto.dev (listings) + VehicleDatabases (book values)
-// MarketCheck removed from pricing to conserve quota (used only for dealer-type detection)
+// Source reliability weights — 4-source weighted aggregation
+// MarketCheck (live market) + VinAudit (book/comps) as primaries
+// auto.dev (listings) as corroborator; VehicleDatabases demoted to tiebreaker
 const SOURCE_RELIABILITY: Record<string, { tradeIn: number; privateParty: number; dealerRetail: number }> = {
-  "auto.dev":          { tradeIn: 0.55, privateParty: 0.55, dealerRetail: 0.55 },
-  "VehicleDatabases":  { tradeIn: 0.45, privateParty: 0.45, dealerRetail: 0.45 },
+  "MarketCheck":      { tradeIn: 0.65, privateParty: 0.65, dealerRetail: 0.65 },
+  "VinAudit":         { tradeIn: 0.60, privateParty: 0.60, dealerRetail: 0.60 },
+  "auto.dev":         { tradeIn: 0.45, privateParty: 0.45, dealerRetail: 0.45 },
+  "VehicleDatabases": { tradeIn: 0.20, privateParty: 0.20, dealerRetail: 0.20 },
 };
 
 const DEFAULT_RANGE_WIDTH = 500;
