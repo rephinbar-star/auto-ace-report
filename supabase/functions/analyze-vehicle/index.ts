@@ -1,6 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { checkRateLimit, getClientIp, RATE_LIMITS } from "../_shared/rate-limiter.ts";
 import { OPENROUTER_BASE_URL, openRouterHeaders } from "../_shared/openrouter.ts";
+
+// EdgeRuntime is provided by Supabase Edge runtime
+declare const EdgeRuntime: { waitUntil: (p: Promise<unknown>) => void };
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
