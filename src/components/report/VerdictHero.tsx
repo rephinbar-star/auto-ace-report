@@ -196,13 +196,13 @@ export const VerdictHero = forwardRef<HTMLDivElement, VerdictHeroProps>(({
           })()}
 
           {/* Action row */}
-          <div className="flex flex-nowrap items-center gap-1.5 mt-3 w-full">
-            <Button variant="outline" size="sm" className="h-8 text-[11px] px-2 border-border-card whitespace-nowrap min-w-0 flex-1"
+          <div className="flex flex-nowrap items-center gap-2 mt-6 w-full">
+            <Button variant="outline" size="sm" className="h-9 text-[12px] px-2.5 border-border-card whitespace-nowrap min-w-0 flex-1 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md hover:bg-accent"
               onClick={onDownloadPDF} disabled={isDownloading}>
-              {isDownloading ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin shrink-0" /> : <Download className="mr-1 h-3.5 w-3.5 shrink-0" />}
-              <span className="truncate">{isDownloading ? "Generating..." : "Download PDF"}</span>
+              {isDownloading ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin shrink-0" /> : <Download className="mr-1.5 h-4 w-4 shrink-0" />}
+              {isDownloading ? "Generating..." : "Download PDF"}
             </Button>
-            <Button variant="outline" size="sm" className="h-8 text-[11px] px-2 border-border-card whitespace-nowrap min-w-0 flex-1"
+            <Button variant="outline" size="sm" className="h-9 text-[12px] px-2.5 border-border-card whitespace-nowrap min-w-0 flex-1 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md hover:bg-accent"
               onClick={() => {
                 navigator.clipboard.writeText(window.location.href).then(() => {
                   toast("Report link copied to clipboard", { duration: 2000 });
@@ -210,18 +210,18 @@ export const VerdictHero = forwardRef<HTMLDivElement, VerdictHeroProps>(({
                   toast.error("Failed to copy link");
                 });
               }}>
-              <Share2 className="mr-1 h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">Share Report</span>
+              <Share2 className="mr-1.5 h-4 w-4 shrink-0" />
+              Share Report
             </Button>
-            <Button variant="outline" size="sm" className="h-8 text-[11px] px-2 border-border-card whitespace-nowrap min-w-0 flex-1"
+            <Button variant="outline" size="sm" className="h-9 text-[12px] px-2.5 border-border-card whitespace-nowrap min-w-0 flex-1 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md hover:bg-accent"
               onClick={onReAnalyze} disabled={isRefreshing}>
-              {isRefreshing ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin shrink-0" /> : <RefreshCw className="mr-1 h-3.5 w-3.5 shrink-0" />}
-              <span className="truncate">{isRefreshing ? "Re-Analyzing..." : "Re-Analyze"}</span>
+              {isRefreshing ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin shrink-0" /> : <RefreshCw className="mr-1.5 h-4 w-4 shrink-0" />}
+              {isRefreshing ? "Re-Analyzing..." : "Re-Analyze"}
             </Button>
-            <Button variant="outline" size="sm" className="h-8 text-[11px] px-2 border-border-card whitespace-nowrap min-w-0 flex-1"
+            <Button variant="outline" size="sm" className="h-9 text-[12px] px-2.5 border-border-card whitespace-nowrap min-w-0 flex-1 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md hover:bg-accent"
               onClick={onUploadHistory} disabled={isRefreshing}>
-              <Upload className="mr-1 h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">Upload CarFax</span>
+              <Upload className="mr-1.5 h-4 w-4 shrink-0" />
+              Upload CarFax
             </Button>
           </div>
         </div>
