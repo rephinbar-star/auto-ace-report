@@ -308,10 +308,191 @@ serve(async (req) => {
   }
 });
 
-// (MarketCheck pricing removed — quota reserved for dealer-type detection only)
+// ============================================================================
+// Source 1: MarketCheck (active + sold listings)
+// ============================================================================
+
+async function tryMarketCheck(vin: string): Promise<PricingResult | null> {
+  const MARKETCHECK_API_KEY = Deno.env.get("MARKETCHECK_API_KEY");
+  if (!MARKETCHECK_API_KEY) {
+    console.log("MARKETCHECK_API_KEY not configured, skipping MarketCheck pricing");
+    return null;
+  }
+
+  try {
+    // Call active and sold searches in parallel
+    const activeParams = new URLSearchParams({ api_key: MARKETCHECK_API_KEY, vins: vin, rows: "50" });
+    const soldParams = new URLSearchParams({ api_key: MARKETCHECK_API_KEY, vins: vin, rows: "50", period: "90" });
+
+    const [activeRes, soldRes] = await Promise.all([
+      fetch(`https://api.marketcheck.com/v2/search/car/active?${activeParams}`),
+      fetch(`https://api.marketcheck.com/v2/search/car/sold?${soldParams}`),
+    ]);
+
+    let activePrices: number[] = [];
+    let soldPrices: number[] = [];
+    let daysOnMarket: number | null = null;
+
+    if (activeRes.ok) {
+      const activeData = await activeRes.json();
+      const listings = activeData?.listings || [];
+      for (const listing of listings) {
+        const price = listing?.price || listing?.asking_price;
+        if (price && typeof price === "number" && price > 0) activePrices.push(price);
+      }
+      if (listings[0]?.dom) daysOnMarket = listings[0].dom;
+      console.log(`MarketCheck /active: ${activePrices.length} listing(s) for ${vin}`);
+    } else {
+      console.warn(`MarketCheck /active failed: ${activeRes.status}`);
+    }
+
+    if (soldRes.ok) {
+      const soldData = await soldRes.json();
+      const listings = soldData?.listings || [];
+      for (const listing of listings) {
+        const price = listing?.price || listing?.sold_price;
+        if (price && typeof price === "number" && price > 0) soldPrices.push(price);
+      }
+      console.log(`MarketCheck /sold: ${soldPrices.length} comp(s) for ${vin}`);
+    } else {
+      console.warn(`MarketCheck /sold failed: ${soldRes.status}`);
+    }
+
+    if (activePrices.length === 0 && soldPrices.length === 0) {
+      console.log("MarketCheck: no active or sold listings found");
+      return null;
+    }
+
+    const median = (arr: number[]): number => {
+      const s = [...arr].sort((a, b) => a - b);
+      const mid = Math.floor(s.length / 2);
+      return s.length % 2 === 1 ? s[mid] : Math.round((s[mid - 1] + s[mid]) / 2);
+    };
+
+    const activeMedian = activePrices.length > 0 ? median(activePrices) : null;
+    const soldMedian = soldPrices.length > 0 ? median(soldPrices) : null;
+
+    // Dealer retail = active median; private/trade-in derived from sold median if available, else active
+    const fairMarketDealer = activeMedian || soldMedian || 0;
+    const fairMarketPrivate = soldMedian ? Math.round(soldMedian * 0.91) : (activeMedian ? Math.round(activeMedian * 0.91) : 0);
+    const fairMarketTradeIn = soldMedian ? Math.round(soldMedian * 0.83) : (activeMedian ? Math.round(activeMedian * 0.83) : 0);
+
+    if (fairMarketDealer <= 0 && fairMarketPrivate <= 0 && fairMarketTradeIn <= 0) {
+      console.log("MarketCheck: all computed values are zero");
+      return null;
+    }
+
+    const lines = [
+      `VEHICLE VALUATION DATA (MarketCheck — ${activePrices.length} active, ${soldPrices.length} sold):`,
+      "",
+      activeMedian ? `Median Active Listing: $${activeMedian.toLocaleString()}` : "",
+      soldMedian ? `Median Sold (90d): $${soldMedian.toLocaleString()}` : "",
+      daysOnMarket ? `Days on Market: ${daysOnMarket}` : "",
+    ].filter(Boolean);
+
+    console.log(`MarketCheck: dealer=$${fairMarketDealer}, private=$${fairMarketPrivate}, tradeIn=$${fairMarketTradeIn}`);
+
+    return {
+      pricingContext: lines.join("\n"),
+      citations: ["https://www.marketcheck.com"],
+      computedValues: {
+        fairMarketPrivate,
+        fairMarketDealer,
+        fairMarketTradeIn,
+      },
+      sourceBreakdown: [
+        {
+          source: "MarketCheck",
+          dealerRetail: fairMarketDealer > 0 ? fairMarketDealer : null,
+          privateParty: fairMarketPrivate > 0 ? fairMarketPrivate : null,
+          tradeIn: fairMarketTradeIn > 0 ? fairMarketTradeIn : null,
+        },
+      ],
+    };
+  } catch (err) {
+    console.error("MarketCheck pricing error:", err);
+    return null;
+  }
+}
 
 // ============================================================================
-// Source 1: auto.dev (active dealer listings)
+// Source 2: VinAudit (market value + comparable sales)
+// ============================================================================
+
+async function tryVinAudit(vin: string, mileage: number): Promise<PricingResult | null> {
+  const VINAUDIT_API_KEY = Deno.env.get("VINAUDIT_API_KEY");
+  if (!VINAUDIT_API_KEY) {
+    console.log("VINAUDIT_API_KEY not configured, skipping VinAudit");
+    return null;
+  }
+
+  try {
+    const url = `https://marketvalue.vinaudit.com/getmarketvalue.php?key=${encodeURIComponent(VINAUDIT_API_KEY)}&vin=${encodeURIComponent(vin)}&mileage=${mileage}&format=json&period=90`;
+    console.log(`VinAudit request for VIN ${vin}, mileage ${mileage}`);
+
+    const response = await fetch(url, { headers: { "Accept": "application/json" } });
+    if (!response.ok) {
+      console.error(`VinAudit API error ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+    console.log("VinAudit raw response:", JSON.stringify(data).slice(0, 500));
+
+    const prices = data?.prices;
+    const count = data?.count || 0;
+    if (!prices || typeof prices.mean !== "number") {
+      console.log("VinAudit: no market value data found");
+      return null;
+    }
+
+    const mean = prices.mean;
+    const below = prices.below || mean * 0.85;
+    const above = prices.above || mean * 1.15;
+
+    // Map: privateParty = mean; tradeIn = mean * 0.85; dealerRetail = mean * 1.10
+    const fairMarketPrivate = Math.round(mean);
+    const fairMarketTradeIn = Math.round(mean * 0.85);
+    const fairMarketDealer = Math.round(mean * 1.10);
+
+    const lines = [
+      `VEHICLE VALUATION DATA (VinAudit — ${count} comparable sale${count === 1 ? "" : "s"}):`,
+      "",
+      `Mean Price: $${fairMarketPrivate.toLocaleString()}`,
+      `Low: $${Math.round(below).toLocaleString()}`,
+      `High: $${Math.round(above).toLocaleString()}`,
+      `Std Dev: $${Math.round(prices.stdev || 0).toLocaleString()}`,
+    ];
+
+    console.log(`VinAudit: mean=$${mean}, private=$${fairMarketPrivate}, tradeIn=$${fairMarketTradeIn}, dealer=$${fairMarketDealer}, count=${count}`);
+
+    return {
+      pricingContext: lines.join("\n"),
+      citations: ["https://www.vinaudit.com"],
+      computedValues: {
+        fairMarketPrivate,
+        fairMarketDealer,
+        fairMarketTradeIn,
+      },
+      sourceBreakdown: [
+        {
+          source: "VinAudit",
+          dealerRetail: fairMarketDealer,
+          privateParty: fairMarketPrivate,
+          tradeIn: fairMarketTradeIn,
+          privatePartyLow: Math.round(below),
+          privatePartyHigh: Math.round(above),
+        },
+      ],
+    };
+  } catch (err) {
+    console.error("VinAudit lookup error:", err);
+    return null;
+  }
+}
+
+// ============================================================================
+// Source 3: auto.dev (active dealer listings)
 // ============================================================================
 
 async function tryAutoDev(vin: string): Promise<PricingResult | null> {
