@@ -157,19 +157,25 @@ serve(async (req) => {
     const { year, make, model, trim, mileage, condition, zipCode, vin, sellerType, askingPrice }: PricingRequest = await req.json();
     const vehicleDesc = `${year} ${make} ${model}${trim ? ` ${trim}` : ""}`;
 
-    // Launch pricing sources and dealer type detection in parallel
+    // Launch all four pricing sources and dealer type detection in parallel
     const autoDevPromise = (vin && vin.length === 17)
       ? tryAutoDev(vin).catch(err => { console.error("auto.dev failed:", err); return null; })
       : Promise.resolve(null);
     const vdbPromise = (vin && vin.length === 17)
       ? tryVehicleDatabases(vin, mileage, trim).catch(err => { console.error("VehicleDatabases failed:", err); return null; })
       : Promise.resolve(null);
+    const marketCheckPromise = (vin && vin.length === 17)
+      ? tryMarketCheck(vin).catch(err => { console.error("MarketCheck pricing failed:", err); return null; })
+      : Promise.resolve(null);
+    const vinAuditPromise = (vin && vin.length === 17)
+      ? tryVinAudit(vin, mileage).catch(err => { console.error("VinAudit failed:", err); return null; })
+      : Promise.resolve(null);
     const dealerTypePromise = (vin && vin.length === 17 && sellerType !== "private")
       ? detectDealerType(vin).catch(() => null)
       : Promise.resolve(null);
 
-    const [autoDevResult, vdbResult, detectedDealerType] = await Promise.all([
-      autoDevPromise, vdbPromise, dealerTypePromise,
+    const [autoDevResult, vdbResult, marketCheckResult, vinAuditResult, detectedDealerType] = await Promise.all([
+      autoDevPromise, vdbPromise, marketCheckPromise, vinAuditPromise, dealerTypePromise,
     ]);
 
     // Merge results
