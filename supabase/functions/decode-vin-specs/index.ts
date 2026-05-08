@@ -120,7 +120,7 @@ serve(async (req) => {
       }
     }
 
-    // If MarketCheck failed but we have NHTSA data, build a response from NHTSA alone
+    // If MarketCheck failed, try NHTSA + VinAudit fallback
     if (!specs && !optionsPackages) {
       const getVal = (variable: string): string | null => {
         const r = nhtsaResults.find((x: any) => x.Variable === variable);
@@ -130,15 +130,19 @@ serve(async (req) => {
       const nhtsaMake = getVal("Make");
       const nhtsaModel = getVal("Model");
 
-      if (!nhtsaYear || !nhtsaMake || !nhtsaModel) {
-        console.warn(`NHTSA fallback also insufficient for ${vin} — returning graceful fallback`);
+      const fallbackYear = nhtsaYear || vinAudit.year;
+      const fallbackMake = nhtsaMake || vinAudit.make;
+      const fallbackModel = nhtsaModel || vinAudit.model;
+
+      if (!fallbackYear || !fallbackMake || !fallbackModel) {
+        console.warn(`All VIN decode sources insufficient for ${vin} — returning graceful fallback`);
         return new Response(
           JSON.stringify({ success: false, error: "VIN decode temporarily unavailable", fallback: true }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      console.log(`MarketCheck unavailable, using NHTSA-only fallback for ${vin}`);
+      console.log(`MarketCheck unavailable, using NHTSA/VinAudit fallback for ${vin}`);
 
       const nhtsaDisplacement = nhtsa.displacement ? parseFloat(nhtsa.displacement) : null;
       const nhtsaCylinders = nhtsa.cylinders ? parseInt(nhtsa.cylinders) : null;
