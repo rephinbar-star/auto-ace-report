@@ -1,81 +1,73 @@
-# Promote MarketCheck + VinAudit to primary pricing sources
 
 ## Goal
+Switch all production LLM calls from the Lovable AI Gateway to OpenRouter (OpenAI-compatible). Perplexity sonar lookups stay direct.
 
-Replace the current 2-source pricing chain (auto.dev + VehicleDatabases) with a stronger 4-source weighted aggregation that leads with **MarketCheck** and **VinAudit**, keeps **auto.dev** as a corroborator, and demotes **VehicleDatabases** to a low-weight tiebreaker (or removes it entirely after observation).
+## Step 1 — Add secret
+Request `OPENROUTER_API_KEY` (user pastes `sk-or-v1-...`).
 
-The same upgrade extends to non-pricing vehicle data: VinAudit provides VIN specs, history flags, and market value in one call; MarketCheck provides listing context, dealer info, and market days-on-lot.
+## Step 2 — Shared helper
+Create `supabase/functions/_shared/openrouter.ts`:
 
-## Sources & roles after the change
+```ts
+export const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 
-| Source | Role | Reliability weight | Data provided |
+export function openRouterHeaders() {
+  return {
+    "Authorization": `Bearer ${Deno.env.get("OPENROUTER_API_KEY")}`,
+    "Content-Type": "application/json",
+    "HTTP-Referer": "https://carwise.expert",
+    "X-Title": "CarWise",
+  };
+}
+```
+
+## Step 3 — Model migration map
+
+| Edge function | Old (Lovable Gateway) | New (OpenRouter) | Reason |
 |---|---|---|---|
-| **MarketCheck** | Primary — live market | 0.65 | Active + sold listings, median price, days-on-market, dealer type |
-| **VinAudit** | Primary — book + comparable sales | 0.60 | Market value (low/avg/high), VIN specs, title flags, ownership history hints |
-| **auto.dev** | Corroborator — active listings | 0.45 | Active dealer listing prices |
-| **VehicleDatabases** | Tiebreaker only | 0.20 | Book values (kept temporarily; will remove after 2-week observation if outlier rate stays high) |
+| `analyze-vehicle` | `google/gemini-3-flash-preview` | `anthropic/claude-sonnet-4.6` | Heaviest reasoning |
+| `generate-cheat-sheet` | `google/gemini-3-flash-preview` | `anthropic/claude-haiku-4.5` | Light text gen |
+| `analyze-dealer` | `google/gemini-3-flash-preview` | `anthropic/claude-haiku-4.5` | Light JSON gen |
+| `scrape-listing` | `google/gemini-3-flash-preview` | `anthropic/claude-haiku-4.5` | Text extraction, no vision |
+| `extract-from-screenshot` | `google/gemini-3-flash-preview` | `google/gemini-2.5-flash` | Vision task |
+| `parse-history-report` (3-flash structured call, line 504) | `google/gemini-3-flash-preview` | `anthropic/claude-haiku-4.5` | Structured extraction |
+| `parse-history-report` (2.5-flash vision OCR, lines 149/264/376) | `google/gemini-2.5-flash` | **unchanged — stays on Lovable Gateway** | Vision OCR |
 
-Outputs unchanged: `fairMarketPrivate`, `fairMarketDealer`, `fairMarketTradeIn` — but derived from a stronger weighted aggregation.
+## Step 4 — Per-function fetch refactor
+For each migrated call:
+- Import: `import { OPENROUTER_BASE_URL, openRouterHeaders } from "../_shared/openrouter.ts";`
+- Replace key check: drop `LOVABLE_API_KEY` requirement (or keep only where Lovable Gateway is still used — i.e. `parse-history-report`).
+- Replace `fetch("https://ai.gateway.lovable.dev/v1/chat/completions", { headers: { Authorization: Bearer ${LOVABLE_API_KEY}, ... } })` with:
 
-## Required user action
-
-VinAudit is not currently integrated. The user needs to:
-1. Sign up at vinaudit.com (self-serve, instant)
-2. Provide the API key — I'll request it via the secrets tool (`VINAUDIT_API_KEY`)
-
-MarketCheck is already configured (`MARKETCHECK_API_KEY`); no new signup needed.
-
-## Implementation steps
-
-### 1. Add VinAudit secret
-Request `VINAUDIT_API_KEY` via the secrets tool. Halt until provided.
-
-### 2. New source modules in `lookup-pricing/index.ts`
-
-**`tryMarketCheck(vin, mileage)`** — Re-enable pricing path:
-- Call `/v2/search/car/active?vins={vin}` for active listings → median price, count, dealer type
-- Call `/v2/search/car/sold?vins={vin}` for sold comps (last 90 days) → median sold price
-- Derive: dealerRetail = active median; privateParty = sold median × 0.91; tradeIn = sold median × 0.83
-- Keep the existing dealer-type detection inline (one combined call instead of two)
-
-**`tryVinAudit(vin, mileage)`** — New module:
-- Endpoint: `https://marketvalue.vinaudit.com/getmarketvalue.php?vin={vin}&mileage={mileage}&format=json&period=90`
-- Returns `prices.mean`, `prices.below` (low), `prices.above` (high), `prices.stdev`, `count`
-- Map: privateParty = mean; tradeIn = mean × 0.85; dealerRetail = mean × 1.10
-- Return `count` as confidence signal (more comps = higher confidence weight)
-
-### 3. Update aggregation weights
-
-In `SOURCE_RELIABILITY`:
-```
-"MarketCheck":      { tradeIn: 0.65, privateParty: 0.65, dealerRetail: 0.65 }
-"VinAudit":         { tradeIn: 0.60, privateParty: 0.60, dealerRetail: 0.60 }
-"auto.dev":         { tradeIn: 0.45, privateParty: 0.45, dealerRetail: 0.45 }
-"VehicleDatabases": { tradeIn: 0.20, privateParty: 0.20, dealerRetail: 0.20 }
+```ts
+const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+  method: "POST",
+  headers: openRouterHeaders(),
+  body: JSON.stringify({
+    model: "anthropic/claude-sonnet-4.6", // varies per function
+    messages: [...],                      // unchanged
+    // existing tools / tool_choice / response_format / temperature preserved
+  }),
+});
 ```
 
-The lower VehicleDatabases weight ensures it can't drag FMV down when other sources disagree (the CTS-V failure mode). Outlier detection (>15% from median) already halves contribution further.
+- Response parsing (`response.choices[0].message.content` and tool_calls path) is unchanged — OpenRouter is OpenAI-compatible.
+- Preserve all existing error handling for 429 / 402 (OpenRouter returns the same status codes for rate limit / insufficient credits).
 
-### 4. Sanity gate stays
-The 35% asking-price floor stays as a final safety net.
+## Step 5 — Perplexity functions
+- `lookup-mpg`: unchanged (`sonar`).
+- `lookup-gas-price`: unchanged (`sonar`).
+- `lookup-maintenance`: upgrade `sonar` → `sonar-pro` (single string change at line 54).
 
-### 5. Trim guard expansion
-Performance-trim refusal (currently only on VehicleDatabases) extends to VinAudit if the response includes a trim field that mismatches.
+## Step 6 — Pre-deploy preview
+Before deploying, surface for review:
+1. Updated `analyze-vehicle/index.ts` lines around 733–740 (new `OPENROUTER_BASE_URL`, `openRouterHeaders()`, and `model: "anthropic/claude-sonnet-4.6"`).
+2. The shared `_shared/openrouter.ts` file contents.
+3. Confirmation that `parse-history-report` vision OCR calls (lines 142, 257, 369) remain on the Lovable Gateway with `gemini-2.5-flash`, and only the line-497 structured call moved.
 
-### 6. Logging & observability
-Add per-source log lines: which sources returned, their values, the final weighted result, and outlier flags. This will let us decide in 2 weeks whether to drop VehicleDatabases entirely.
+After approval, deploy: `analyze-vehicle`, `generate-cheat-sheet`, `analyze-dealer`, `scrape-listing`, `extract-from-screenshot`, `parse-history-report`, `lookup-maintenance`.
 
-### 7. VIN spec enrichment (separate but related)
-In `decode-vin-specs/index.ts`, add VinAudit as a fallback after NHTSA VPIC — VinAudit returns trim, engine, transmission, and drivetrain that NHTSA often misses. Respect the existing make-mismatch guard.
-
-## Out of scope (this plan)
-
-- Removing VehicleDatabases entirely — deferred until we have 2 weeks of comparison data
-- UI changes — the report already renders whatever `sourceBreakdown` contains, so new sources appear automatically
-- MarketCheck quota management — needs monitoring after pricing is re-enabled (roughly 2× current call volume per report)
-
-## Risk & cost notes
-
-- **MarketCheck quota**: pricing path adds ~1 extra call per report on top of dealer detection. If your plan caps at 10K/month, monitor usage.
-- **VinAudit cost**: ~$0.05–$0.10 per VIN lookup (pay-as-you-go). For 1,000 reports/month → ~$50–$100/month.
-- **Latency**: All four sources fire in parallel via `Promise.all`, so total wall-clock time stays roughly the same as today.
+## Out of scope
+- No client-side changes.
+- No DB / config.toml changes.
+- No changes to non-LLM helpers (MarketCheck, VinAudit, auto.dev, NHTSA, Firecrawl).
