@@ -278,7 +278,7 @@ serve(async (req) => {
       console.log(`Pricing outliers detected: ${outlierNotes.join(" | ")}`);
     }
 
-    console.log(`Pricing complete: ${allSources.length} source(s) [${contributingSources.join(", ")}], ${uniqueCitations.length} citation(s), dealerType=${detectedDealerType || "unknown"}, unavailable=${pricingDataUnavailable}`);
+    console.log(`Pricing complete: ${allSources.length} source valuation(s) from [${contributingSources.join(", ") || "none"}], ${uniqueCitations.length} citation(s), dealerType=${detectedDealerType || "unknown"}, unavailable=${pricingDataUnavailable}`);
 
     return new Response(JSON.stringify({
       success: true,
