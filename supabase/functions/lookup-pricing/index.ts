@@ -47,14 +47,13 @@ interface PricingResult {
   contributingSources?: string[];
 }
 
-// Source reliability weights — 4-source weighted aggregation
+// Source reliability weights — 3-source weighted aggregation
 // MarketCheck (live market) + VinAudit (book/comps) as primaries
-// auto.dev (listings) as corroborator; VehicleDatabases demoted to tiebreaker
+// auto.dev (listings) as corroborator; VehicleDatabases excluded from calculations
 const SOURCE_RELIABILITY: Record<string, { tradeIn: number; privateParty: number; dealerRetail: number }> = {
-  "MarketCheck":      { tradeIn: 0.65, privateParty: 0.65, dealerRetail: 0.65 },
-  "VinAudit":         { tradeIn: 0.60, privateParty: 0.60, dealerRetail: 0.60 },
-  "auto.dev":         { tradeIn: 0.45, privateParty: 0.45, dealerRetail: 0.45 },
-  "VehicleDatabases": { tradeIn: 0.20, privateParty: 0.20, dealerRetail: 0.20 },
+  "MarketCheck": { tradeIn: 0.65, privateParty: 0.65, dealerRetail: 0.65 },
+  "VinAudit":    { tradeIn: 0.60, privateParty: 0.60, dealerRetail: 0.60 },
+  "auto.dev":    { tradeIn: 0.45, privateParty: 0.45, dealerRetail: 0.45 },
 };
 
 const DEFAULT_RANGE_WIDTH = 500;
@@ -157,12 +156,9 @@ serve(async (req) => {
     const { year, make, model, trim, mileage, condition, zipCode, vin, sellerType, askingPrice }: PricingRequest = await req.json();
     const vehicleDesc = `${year} ${make} ${model}${trim ? ` ${trim}` : ""}`;
 
-    // Launch all four pricing sources and dealer type detection in parallel
+    // Launch all three pricing sources and dealer type detection in parallel
     const autoDevPromise = (vin && vin.length === 17)
       ? tryAutoDev(vin).catch(err => { console.error("auto.dev failed:", err); return null; })
-      : Promise.resolve(null);
-    const vdbPromise = (vin && vin.length === 17)
-      ? tryVehicleDatabases(vin, mileage, trim).catch(err => { console.error("VehicleDatabases failed:", err); return null; })
       : Promise.resolve(null);
     const marketCheckPromise = (vin && vin.length === 17)
       ? tryMarketCheck(vin).catch(err => { console.error("MarketCheck pricing failed:", err); return null; })
@@ -174,8 +170,8 @@ serve(async (req) => {
       ? detectDealerType(vin).catch(() => null)
       : Promise.resolve(null);
 
-    const [autoDevResult, vdbResult, marketCheckResult, vinAuditResult, detectedDealerType] = await Promise.all([
-      autoDevPromise, vdbPromise, marketCheckPromise, vinAuditPromise, dealerTypePromise,
+    const [autoDevResult, marketCheckResult, vinAuditResult, detectedDealerType] = await Promise.all([
+      autoDevPromise, marketCheckPromise, vinAuditPromise, dealerTypePromise,
     ]);
 
     // Merge results from all four sources
