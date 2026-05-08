@@ -588,7 +588,7 @@ async function tryAutoDev(vin: string): Promise<PricingResult | null> {
 }
 
 // ============================================================================
-// Source 3: VehicleDatabases.com (book values)
+// Source 4: VehicleDatabases.com (book values — demoted to tiebreaker)
 // ============================================================================
 
 async function tryVehicleDatabases(vin: string, mileage: number, requestedTrim?: string): Promise<PricingResult | null> {
