@@ -147,13 +147,19 @@ serve(async (req) => {
       const nhtsaDisplacement = nhtsa.displacement ? parseFloat(nhtsa.displacement) : null;
       const nhtsaCylinders = nhtsa.cylinders ? parseInt(nhtsa.cylinders) : null;
       const nhtsaHp = nhtsa.hp ? parseFloat(nhtsa.hp) : null;
+      const vaDisplacement = vinAudit.engineSize ? parseFloat(vinAudit.engineSize.replace("L","")) : null;
+      const vaCylinders = vinAudit.engineCylinders ? parseInt(String(vinAudit.engineCylinders)) : null;
+      const vaHp = vinAudit.engineHp ? parseFloat(String(vinAudit.engineHp)) : null;
+      const disp = nhtsaDisplacement || vaDisplacement;
+      const cyl = nhtsaCylinders || vaCylinders;
+      const hp = nhtsaHp || vaHp;
       let engineDetail: string | null = null;
       {
         const parts: string[] = [];
-        if (nhtsaDisplacement) parts.push(`${nhtsaDisplacement}L`);
+        if (disp) parts.push(`${disp}L`);
         if (nhtsa.configuration) parts.push(nhtsa.configuration);
-        if (nhtsaCylinders) parts.push(`${nhtsaCylinders}-cyl`);
-        if (nhtsaHp) parts.push(`${nhtsaHp}hp`);
+        if (cyl) parts.push(`${cyl}-cyl`);
+        if (hp) parts.push(`${hp}hp`);
         if (parts.length > 0) engineDetail = parts.join(" ");
       }
 
