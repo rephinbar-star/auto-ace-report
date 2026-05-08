@@ -28,11 +28,15 @@ serve(async (req) => {
       );
     }
 
-    // Call MarketCheck + NHTSA in parallel
-    const [specsRes, optionsRes, nhtsaRes] = await Promise.all([
+    // Call MarketCheck + NHTSA + VinAudit in parallel
+    const VINAUDIT_API_KEY = Deno.env.get("VINAUDIT_API_KEY");
+    const [specsRes, optionsRes, nhtsaRes, vinAuditRes] = await Promise.all([
       fetch(`https://api.marketcheck.com/v2/decode/car/neovin/${vin}/specs?api_key=${API_KEY}&include_generic=true`),
       fetch(`https://api.marketcheck.com/v2/decode/car/neovin/${vin}/options-packages?api_key=${API_KEY}`),
       fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/${vin}?format=json`),
+      VINAUDIT_API_KEY
+        ? fetch(`https://specs.vinaudit.com/?key=${encodeURIComponent(VINAUDIT_API_KEY)}&vin=${encodeURIComponent(vin)}&format=json`)
+        : Promise.resolve(new Response(null, { status: 204 })),
     ]);
 
     let specs: any = null;
@@ -84,7 +88,39 @@ serve(async (req) => {
       }
     }
 
-    // If MarketCheck failed but we have NHTSA data, build a response from NHTSA alone
+    // Parse VinAudit spec data as enrichment fallback
+    let vinAudit: Record<string, string | number | null> = {};
+    if (vinAuditRes.ok && vinAuditRes.status !== 204) {
+      try {
+        const vaData = await vinAuditRes.json();
+        console.log("VinAudit specs raw:", JSON.stringify(vaData).slice(0, 500));
+        if (vaData?.success !== false && vaData?.data) {
+          const d = vaData.data;
+          vinAudit = {
+            year: d.year || null,
+            make: d.make || null,
+            model: d.model || null,
+            trim: d.trim || null,
+            bodyStyle: d.body_style || null,
+            transmission: d.transmission || null,
+            drivetrain: d.drivetrain || null,
+            fuelType: d.fuel_type || null,
+            engineSize: d.engine_displacement ? `${d.engine_displacement}L` : null,
+            engineCylinders: d.engine_cylinders || null,
+            engineHp: d.horsepower || null,
+            engineTorque: d.torque || null,
+            msrp: d.msrp || null,
+            exteriorColor: d.exterior_color || null,
+            interiorColor: d.interior_color || null,
+          };
+          console.log(`VinAudit specs for ${vin}: ${vinAudit.year} ${vinAudit.make} ${vinAudit.model} ${vinAudit.trim || ""}`);
+        }
+      } catch (e) {
+        console.warn("Failed to parse VinAudit response:", e);
+      }
+    }
+
+    // If MarketCheck failed, try NHTSA + VinAudit fallback
     if (!specs && !optionsPackages) {
       const getVal = (variable: string): string | null => {
         const r = nhtsaResults.find((x: any) => x.Variable === variable);
@@ -94,26 +130,36 @@ serve(async (req) => {
       const nhtsaMake = getVal("Make");
       const nhtsaModel = getVal("Model");
 
-      if (!nhtsaYear || !nhtsaMake || !nhtsaModel) {
-        console.warn(`NHTSA fallback also insufficient for ${vin} — returning graceful fallback`);
+      const fallbackYear = nhtsaYear || vinAudit.year;
+      const fallbackMake = nhtsaMake || vinAudit.make;
+      const fallbackModel = nhtsaModel || vinAudit.model;
+
+      if (!fallbackYear || !fallbackMake || !fallbackModel) {
+        console.warn(`All VIN decode sources insufficient for ${vin} — returning graceful fallback`);
         return new Response(
           JSON.stringify({ success: false, error: "VIN decode temporarily unavailable", fallback: true }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      console.log(`MarketCheck unavailable, using NHTSA-only fallback for ${vin}`);
+      console.log(`MarketCheck unavailable, using NHTSA/VinAudit fallback for ${vin}`);
 
       const nhtsaDisplacement = nhtsa.displacement ? parseFloat(nhtsa.displacement) : null;
       const nhtsaCylinders = nhtsa.cylinders ? parseInt(nhtsa.cylinders) : null;
       const nhtsaHp = nhtsa.hp ? parseFloat(nhtsa.hp) : null;
+      const vaDisplacement = vinAudit.engineSize ? parseFloat(vinAudit.engineSize.replace("L","")) : null;
+      const vaCylinders = vinAudit.engineCylinders ? parseInt(String(vinAudit.engineCylinders)) : null;
+      const vaHp = vinAudit.engineHp ? parseFloat(String(vinAudit.engineHp)) : null;
+      const disp = nhtsaDisplacement || vaDisplacement;
+      const cyl = nhtsaCylinders || vaCylinders;
+      const hp = nhtsaHp || vaHp;
       let engineDetail: string | null = null;
       {
         const parts: string[] = [];
-        if (nhtsaDisplacement) parts.push(`${nhtsaDisplacement}L`);
+        if (disp) parts.push(`${disp}L`);
         if (nhtsa.configuration) parts.push(nhtsa.configuration);
-        if (nhtsaCylinders) parts.push(`${nhtsaCylinders}-cyl`);
-        if (nhtsaHp) parts.push(`${nhtsaHp}hp`);
+        if (cyl) parts.push(`${cyl}-cyl`);
+        if (hp) parts.push(`${hp}hp`);
         if (parts.length > 0) engineDetail = parts.join(" ");
       }
 
@@ -145,23 +191,23 @@ serve(async (req) => {
       const result = {
         success: true,
         data: {
-          year: parseInt(nhtsaYear),
-          make: nhtsaMake,
-          model: nhtsaModel,
-          trim: nhtsa.trim || null,
-          bodyStyle: nhtsa.bodyStyle || null,
-          transmission: nhtsa.transmission || null,
-          drivetrain: nhtsa.drivetrain || null,
-          fuelType: nhtsa.fuelType || null,
-          engineSize: nhtsaDisplacement ? `${nhtsaDisplacement}L` : null,
+          year: parseInt(fallbackYear as string),
+          make: fallbackMake as string,
+          model: fallbackModel as string,
+          trim: nhtsa.trim || vinAudit.trim || null,
+          bodyStyle: nhtsa.bodyStyle || vinAudit.bodyStyle || null,
+          transmission: nhtsa.transmission || vinAudit.transmission || null,
+          drivetrain: nhtsa.drivetrain || vinAudit.drivetrain || null,
+          fuelType: nhtsa.fuelType || vinAudit.fuelType || null,
+          engineSize: disp ? `${disp}L` : null,
           engine: engineDetail,
-          engineHp: nhtsaHp,
-          engineTorque: null,
-          engineCylinders: nhtsaCylinders,
+          engineHp: hp,
+          engineTorque: vinAudit.engineTorque || null,
+          engineCylinders: cyl,
           engineAspiration: null,
-          msrp: null,
-          exteriorColor: null,
-          interiorColor: null,
+          msrp: vinAudit.msrp || null,
+          exteriorColor: vinAudit.exteriorColor || null,
+          interiorColor: vinAudit.interiorColor || null,
           installedEquipment: Object.values(nhtsaEquipment).flat(),
           categorizedEquipment: nhtsaEquipment,
           optionPackages: [],
@@ -279,11 +325,11 @@ serve(async (req) => {
       }
     }
 
-    // Build engine detail string (MarketCheck first, NHTSA fallback)
-    const rawHp = specs?.engine_hp || (nhtsa.hp ? parseFloat(nhtsa.hp) : null);
-    const rawTorque = specs?.engine_torque || null;
-    const rawCylinders = specs?.engine_cylinders || (nhtsa.cylinders ? parseInt(nhtsa.cylinders) : null);
-    const rawDisplacement = specs?.engine_displacement || (nhtsa.displacement ? parseFloat(nhtsa.displacement) : null);
+    // Build engine detail string (MarketCheck first, NHTSA fallback, VinAudit tertiary)
+    const rawHp = specs?.engine_hp || (nhtsa.hp ? parseFloat(nhtsa.hp) : null) || vinAudit.engineHp;
+    const rawTorque = specs?.engine_torque || null || vinAudit.engineTorque;
+    const rawCylinders = specs?.engine_cylinders || (nhtsa.cylinders ? parseInt(nhtsa.cylinders) : null) || vinAudit.engineCylinders;
+    const rawDisplacement = specs?.engine_displacement || (nhtsa.displacement ? parseFloat(nhtsa.displacement) : null) || (vinAudit.engineSize ? parseFloat(vinAudit.engineSize.replace("L","")) : null);
     const rawAspiration = specs?.engine_aspiration || null;
     const rawConfiguration = specs?.engine_configuration || (nhtsa.configuration || null);
 
@@ -310,23 +356,23 @@ serve(async (req) => {
     const result = {
       success: true,
       data: {
-        year: specs?.year || null,
-        make: str(specs?.make),
-        model: str(specs?.model),
-        trim: str(specs?.trim) || nhtsa.trim || null,
-        bodyStyle: str(specs?.body_type) || nhtsa.bodyStyle || null,
-        transmission: str(specs?.transmission) || nhtsa.transmission || null,
-        drivetrain: str(specs?.drivetrain) || nhtsa.drivetrain || null,
-        fuelType: str(specs?.fuel_type) || nhtsa.fuelType || null,
+        year: specs?.year || vinAudit.year || null,
+        make: str(specs?.make) || vinAudit.make || null,
+        model: str(specs?.model) || vinAudit.model || null,
+        trim: str(specs?.trim) || nhtsa.trim || vinAudit.trim || null,
+        bodyStyle: str(specs?.body_type) || nhtsa.bodyStyle || vinAudit.bodyStyle || null,
+        transmission: str(specs?.transmission) || nhtsa.transmission || vinAudit.transmission || null,
+        drivetrain: str(specs?.drivetrain) || nhtsa.drivetrain || vinAudit.drivetrain || null,
+        fuelType: str(specs?.fuel_type) || nhtsa.fuelType || vinAudit.fuelType || null,
         engineSize: rawDisplacement ? `${rawDisplacement}L` : null,
         engine: engineDetail,
         engineHp: rawHp,
         engineTorque: rawTorque,
         engineCylinders: rawCylinders,
         engineAspiration: str(rawAspiration),
-        msrp: specs?.msrp || null,
-        exteriorColor: str(specs?.exterior_color),
-        interiorColor: str(specs?.interior_color),
+        msrp: specs?.msrp || vinAudit.msrp || null,
+        exteriorColor: str(specs?.exterior_color) || vinAudit.exteriorColor || null,
+        interiorColor: str(specs?.interior_color) || vinAudit.interiorColor || null,
         installedEquipment,
         categorizedEquipment,
         optionPackages: packages,
