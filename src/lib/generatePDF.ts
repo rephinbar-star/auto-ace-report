@@ -182,6 +182,7 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   const H = pdf.internal.pageSize.getHeight();
   const M = 14;
   const contentW = W - 2 * M;
+  const EXPERT_OPINION_FONT_SIZE = 13;
   let y = 0;
 
   const { vehicle, priceAssessment, riskAssessment, historyAnalysis, depreciationTable, images, dealerReview, serviceHistory, uvprsResult, tcoData, sellerType, pricingSources, hasServiceRecords, warrantyAnalysis, finalVerdict, recallData, vin } = data;
@@ -1006,9 +1007,9 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   // EXPERT OPINION
   // ══════════════════════════════════════════════
   // Keep "Expert Opinion" heading on the same page as its first line of body text
-  ensureSpace(14 + 11 * 0.4 + 2);
+  ensureSpace(14 + EXPERT_OPINION_FONT_SIZE * 0.4 + 2);
   sectionTitle("Expert Opinion");
-  wrappedText(riskAssessment.expertOpinion, 11, BLACK);
+  wrappedText(riskAssessment.expertOpinion, EXPERT_OPINION_FONT_SIZE, BLACK);
 
   // ══════════════════════════════════════════════
   // DEALER REVIEW (Pro only)
