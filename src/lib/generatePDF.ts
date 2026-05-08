@@ -1005,8 +1005,10 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   // ══════════════════════════════════════════════
   // EXPERT OPINION
   // ══════════════════════════════════════════════
+  // Keep "Expert Opinion" heading on the same page as its first line of body text
+  ensureSpace(14 + 11 * 0.4 + 2);
   sectionTitle("Expert Opinion");
-  wrappedText(riskAssessment.expertOpinion, 9, SLATE);
+  wrappedText(riskAssessment.expertOpinion, 11, BLACK);
 
   // ══════════════════════════════════════════════
   // DEALER REVIEW (Pro only)
