@@ -290,6 +290,24 @@ interface DealerAnalysisData {
   positives: string[];
 }
 
+async function pollAnalysisJob(jobId: string, timeoutMs = 240000): Promise<any> {
+  const start = Date.now();
+  let delay = 1500;
+  while (Date.now() - start < timeoutMs) {
+    const { data, error } = await supabase
+      .from("analysis_jobs")
+      .select("status, result, error")
+      .eq("id", jobId)
+      .maybeSingle();
+    if (error) throw error;
+    if (data?.status === "complete") return data.result;
+    if (data?.status === "failed") throw new Error(data.error || "Analysis failed");
+    await new Promise((r) => setTimeout(r, delay));
+    delay = Math.min(delay + 500, 4000);
+  }
+  throw new Error("Analysis timed out. Please try again.");
+}
+
 export default function ReportPage() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
@@ -696,18 +714,23 @@ export default function ReportPage() {
         console.log("Parsed analysis data:", data);
         setVehicleData(data);
         
-        // Call AI analysis
+        // Call AI analysis (async job: returns 202 with jobId, then poll)
         console.log("Calling analyze-vehicle edge function...");
-        const { data: result, error: invokeError } = await supabase.functions.invoke("analyze-vehicle", {
+        const { data: dispatch, error: invokeError } = await supabase.functions.invoke("analyze-vehicle", {
           body: data,
         });
 
-        console.log("Edge function response:", { result, invokeError });
+        console.log("Edge function dispatch:", { dispatch, invokeError });
 
         if (invokeError) {
           throw new Error(invokeError.message || "Failed to invoke analysis function");
         }
-        
+        if (!dispatch?.jobId) {
+          throw new Error(dispatch?.error || "Analysis did not start");
+        }
+
+        const result = await pollAnalysisJob(dispatch.jobId);
+
         if (result?.success) {
           console.log("AI aiFindings returned:", JSON.stringify(result.analysis?.aiFindings ?? "MISSING"));
           setAnalysis(result.analysis);
@@ -865,10 +888,12 @@ export default function ReportPage() {
     setIsRefreshingPricing(true);
     try {
       // Re-run the full analysis which includes fresh pricing lookup
-      const { data: result, error: invokeError } = await supabase.functions.invoke("analyze-vehicle", {
+      const { data: dispatch, error: invokeError } = await supabase.functions.invoke("analyze-vehicle", {
         body: vehicleData,
       });
       if (invokeError) throw invokeError;
+      if (!dispatch?.jobId) throw new Error(dispatch?.error || "Analysis did not start");
+      const result = await pollAnalysisJob(dispatch.jobId);
       if (result?.success) {
         // Preserve existing pricing if new analysis returned $0 values
         const newAnalysis = result.analysis;

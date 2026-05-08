@@ -1,6 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { checkRateLimit, getClientIp, RATE_LIMITS } from "../_shared/rate-limiter.ts";
 import { OPENROUTER_BASE_URL, openRouterHeaders } from "../_shared/openrouter.ts";
+
+// EdgeRuntime is provided by Supabase Edge runtime
+declare const EdgeRuntime: { waitUntil: (p: Promise<unknown>) => void };
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -188,26 +192,26 @@ serve(async (req) => {
   try {
     // Rate limiting for unauthenticated requests
     const clientIp = getClientIp(req);
-    const rateLimit = checkRateLimit(clientIp, { 
-      ...RATE_LIMITS.heavy, 
-      keyPrefix: 'analyze-vehicle' 
+    const rateLimit = checkRateLimit(clientIp, {
+      ...RATE_LIMITS.heavy,
+      keyPrefix: 'analyze-vehicle'
     });
-    
+
     if (!rateLimit.allowed) {
       console.log(`Rate limited: ${clientIp}`);
       return new Response(
-        JSON.stringify({ 
-          success: false, 
+        JSON.stringify({
+          success: false,
           error: "Too many requests. Please try again later.",
-          retryAfter: rateLimit.retryAfter 
+          retryAfter: rateLimit.retryAfter
         }),
-        { 
-          status: 429, 
-          headers: { 
-            ...corsHeaders, 
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
             "Content-Type": "application/json",
             "Retry-After": String(rateLimit.retryAfter || 60)
-          } 
+          }
         }
       );
     }
@@ -219,6 +223,74 @@ serve(async (req) => {
       throw new Error("OPENROUTER_API_KEY is not configured");
     }
 
+    // Async job mode: create a job row, run analysis in the background,
+    // return 202 immediately so the client can poll for results.
+    const authHeader = req.headers.get("Authorization") || "";
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+    // Identify the user from the JWT so we can attach the job to them
+    let userId: string | null = null;
+    if (authHeader.startsWith("Bearer ")) {
+      const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+        global: { headers: { Authorization: authHeader } },
+      });
+      const { data: u } = await userClient.auth.getUser();
+      userId = u?.user?.id ?? null;
+    }
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Authentication required" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { data: job, error: jobErr } = await serviceClient
+      .from("analysis_jobs")
+      .insert({ user_id: userId, status: "processing", input: vehicleData as unknown as Record<string, unknown> })
+      .select("id")
+      .single();
+    if (jobErr || !job) {
+      console.error("Failed to create analysis job:", jobErr);
+      throw new Error("Failed to create analysis job");
+    }
+
+    const jobId = job.id as string;
+    console.log(`Created analysis job ${jobId} for user ${userId}`);
+
+    EdgeRuntime.waitUntil((async () => {
+      try {
+        const payload = await runAnalysis(vehicleData);
+        await serviceClient
+          .from("analysis_jobs")
+          .update({ status: "complete", result: payload })
+          .eq("id", jobId);
+        console.log(`Job ${jobId} complete`);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Analysis failed";
+        console.error(`Job ${jobId} failed:`, message);
+        await serviceClient
+          .from("analysis_jobs")
+          .update({ status: "failed", error: message })
+          .eq("id", jobId);
+      }
+    })());
+
+    return new Response(
+      JSON.stringify({ success: true, jobId, status: "processing" }),
+      { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("analyze-vehicle dispatch error:", error);
+    return new Response(
+      JSON.stringify({ success: false, error: error instanceof Error ? error.message : "Failed to start analysis" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
+
+async function runAnalysis(vehicleData: VehicleData): Promise<Record<string, unknown>> {
+  try {
     const { vehicle, condition, financing, history } = vehicleData;
 
     // Fetch MPG, pricing, and maintenance data in parallel
@@ -1252,36 +1324,27 @@ Provide your expert analysis.`;
       (analysis as any).monthlyOwnership = monthlyOwnership;
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        analysis,
-        mpgData: {
-          mpgCity: mpgData.mpgCity,
-          mpgHighway: mpgData.mpgHighway,
-          mpgCombined: mpgData.mpgCombined,
-          fuelType: mpgData.fuelType,
-          isEstimate: mpgData.isEstimate,
-        },
-        monthlyOwnership, // also at top-level for convenience
-        pricingSources: hasPricing ? pricingData.citations : [],
-        maintenanceSources: hasMaintenance ? maintenanceData.citations : [],
-        sourceBreakdown: pricingData?.sourceBreakdown || [],
-        detectedSellerType: condition.sellerType,
-        pricingDataUnavailable: pricingUnavailable,
-        pricingSource: pricingData?.pricingSource || (pricingUnavailable ? "estimated" : "market"),
-        contributingSources: pricingData?.contributingSources || [],
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return {
+      success: true,
+      analysis,
+      mpgData: {
+        mpgCity: mpgData.mpgCity,
+        mpgHighway: mpgData.mpgHighway,
+        mpgCombined: mpgData.mpgCombined,
+        fuelType: mpgData.fuelType,
+        isEstimate: mpgData.isEstimate,
+      },
+      monthlyOwnership,
+      pricingSources: hasPricing ? pricingData.citations : [],
+      maintenanceSources: hasMaintenance ? maintenanceData.citations : [],
+      sourceBreakdown: pricingData?.sourceBreakdown || [],
+      detectedSellerType: condition.sellerType,
+      pricingDataUnavailable: pricingUnavailable,
+      pricingSource: pricingData?.pricingSource || (pricingUnavailable ? "estimated" : "market"),
+      contributingSources: pricingData?.contributingSources || [],
+    };
   } catch (error) {
     console.error("Analysis error:", error);
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error instanceof Error ? error.message : "Analysis failed" 
-      }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    throw error instanceof Error ? error : new Error("Analysis failed");
   }
-});
+}
