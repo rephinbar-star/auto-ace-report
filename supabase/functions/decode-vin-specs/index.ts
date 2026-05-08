@@ -88,6 +88,38 @@ serve(async (req) => {
       }
     }
 
+    // Parse VinAudit spec data as enrichment fallback
+    let vinAudit: Record<string, string | number | null> = {};
+    if (vinAuditRes.ok && vinAuditRes.status !== 204) {
+      try {
+        const vaData = await vinAuditRes.json();
+        console.log("VinAudit specs raw:", JSON.stringify(vaData).slice(0, 500));
+        if (vaData?.success !== false && vaData?.data) {
+          const d = vaData.data;
+          vinAudit = {
+            year: d.year || null,
+            make: d.make || null,
+            model: d.model || null,
+            trim: d.trim || null,
+            bodyStyle: d.body_style || null,
+            transmission: d.transmission || null,
+            drivetrain: d.drivetrain || null,
+            fuelType: d.fuel_type || null,
+            engineSize: d.engine_displacement ? `${d.engine_displacement}L` : null,
+            engineCylinders: d.engine_cylinders || null,
+            engineHp: d.horsepower || null,
+            engineTorque: d.torque || null,
+            msrp: d.msrp || null,
+            exteriorColor: d.exterior_color || null,
+            interiorColor: d.interior_color || null,
+          };
+          console.log(`VinAudit specs for ${vin}: ${vinAudit.year} ${vinAudit.make} ${vinAudit.model} ${vinAudit.trim || ""}`);
+        }
+      } catch (e) {
+        console.warn("Failed to parse VinAudit response:", e);
+      }
+    }
+
     // If MarketCheck failed but we have NHTSA data, build a response from NHTSA alone
     if (!specs && !optionsPackages) {
       const getVal = (variable: string): string | null => {
