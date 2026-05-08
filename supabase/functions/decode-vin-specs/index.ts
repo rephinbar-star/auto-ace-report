@@ -28,11 +28,15 @@ serve(async (req) => {
       );
     }
 
-    // Call MarketCheck + NHTSA in parallel
-    const [specsRes, optionsRes, nhtsaRes] = await Promise.all([
+    // Call MarketCheck + NHTSA + VinAudit in parallel
+    const VINAUDIT_API_KEY = Deno.env.get("VINAUDIT_API_KEY");
+    const [specsRes, optionsRes, nhtsaRes, vinAuditRes] = await Promise.all([
       fetch(`https://api.marketcheck.com/v2/decode/car/neovin/${vin}/specs?api_key=${API_KEY}&include_generic=true`),
       fetch(`https://api.marketcheck.com/v2/decode/car/neovin/${vin}/options-packages?api_key=${API_KEY}`),
       fetch(`https://vpic.nhtsa.dot.gov/api/vehicles/decodevin/${vin}?format=json`),
+      VINAUDIT_API_KEY
+        ? fetch(`https://specs.vinaudit.com/?key=${encodeURIComponent(VINAUDIT_API_KEY)}&vin=${encodeURIComponent(vin)}&format=json`)
+        : Promise.resolve(new Response(null, { status: 204 })),
     ]);
 
     let specs: any = null;
