@@ -174,17 +174,15 @@ serve(async (req) => {
       autoDevPromise, marketCheckPromise, vinAuditPromise, dealerTypePromise,
     ]);
 
-    // Merge results from all four sources
+    // Merge results from all three sources
     const allSources: SourceValuation[] = [
       ...(autoDevResult?.sourceBreakdown || []),
-      ...(vdbResult?.sourceBreakdown || []),
       ...(marketCheckResult?.sourceBreakdown || []),
       ...(vinAuditResult?.sourceBreakdown || []),
     ];
 
     const allCitations: string[] = [
       ...(autoDevResult?.citations || []),
-      ...(vdbResult?.citations || []),
       ...(marketCheckResult?.citations || []),
       ...(vinAuditResult?.citations || []),
     ];
@@ -192,7 +190,6 @@ serve(async (req) => {
 
     const contextParts: string[] = [];
     if (autoDevResult?.pricingContext) contextParts.push(autoDevResult.pricingContext);
-    if (vdbResult?.pricingContext) contextParts.push(vdbResult.pricingContext);
     if (marketCheckResult?.pricingContext) contextParts.push(marketCheckResult.pricingContext);
     if (vinAuditResult?.pricingContext) contextParts.push(vinAuditResult.pricingContext);
     const mergedContext = contextParts.join("\n\n");
@@ -200,7 +197,6 @@ serve(async (req) => {
     // Track which sources contributed
     const contributingSources: string[] = [];
     if (autoDevResult?.sourceBreakdown?.length) contributingSources.push("auto.dev");
-    if (vdbResult?.sourceBreakdown?.length) contributingSources.push("VehicleDatabases");
     if (marketCheckResult?.sourceBreakdown?.length) contributingSources.push("MarketCheck");
     if (vinAuditResult?.sourceBreakdown?.length) contributingSources.push("VinAudit");
 
