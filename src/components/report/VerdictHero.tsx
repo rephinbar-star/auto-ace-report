@@ -198,16 +198,6 @@ export const VerdictHero = forwardRef<HTMLDivElement, VerdictHeroProps>(({
           {/* Action row */}
           <div className="flex flex-wrap gap-3 mt-3">
             <Button variant="outline" size="sm" className="h-9 text-[13px] border-border-card"
-              onClick={onReAnalyze} disabled={isRefreshing}>
-              {isRefreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-              {isRefreshing ? "Re-Analyzing..." : "Re-Analyze"}
-            </Button>
-            <Button variant="outline" size="sm" className="h-9 text-[13px] border-border-card"
-              onClick={onUploadHistory} disabled={isRefreshing}>
-              <Upload className="mr-2 h-4 w-4" />
-              Upload CarFax/AutoCheck
-            </Button>
-            <Button variant="outline" size="sm" className="h-9 text-[13px] border-border-card"
               onClick={onDownloadPDF} disabled={isDownloading}>
               {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
               {isDownloading ? "Generating..." : "Download PDF"}
@@ -222,6 +212,16 @@ export const VerdictHero = forwardRef<HTMLDivElement, VerdictHeroProps>(({
               }}>
               <Share2 className="mr-2 h-4 w-4" />
               Share Report
+            </Button>
+            <Button variant="outline" size="sm" className="h-9 text-[13px] border-border-card"
+              onClick={onReAnalyze} disabled={isRefreshing}>
+              {isRefreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+              {isRefreshing ? "Re-Analyzing..." : "Re-Analyze"}
+            </Button>
+            <Button variant="outline" size="sm" className="h-9 text-[13px] border-border-card"
+              onClick={onUploadHistory} disabled={isRefreshing}>
+              <Upload className="mr-2 h-4 w-4" />
+              Upload CarFax/AutoCheck
             </Button>
           </div>
         </div>
