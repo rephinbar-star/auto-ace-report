@@ -224,7 +224,6 @@ export const VerdictHero = forwardRef<HTMLDivElement, VerdictHeroProps>(({
               Upload CarFax/AutoCheck
             </Button>
           </div>
-          </div>
         </div>
 
         {/* Right zone — verdict */}
