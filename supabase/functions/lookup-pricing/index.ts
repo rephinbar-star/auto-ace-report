@@ -178,27 +178,35 @@ serve(async (req) => {
       autoDevPromise, vdbPromise, marketCheckPromise, vinAuditPromise, dealerTypePromise,
     ]);
 
-    // Merge results
+    // Merge results from all four sources
     const allSources: SourceValuation[] = [
       ...(autoDevResult?.sourceBreakdown || []),
       ...(vdbResult?.sourceBreakdown || []),
+      ...(marketCheckResult?.sourceBreakdown || []),
+      ...(vinAuditResult?.sourceBreakdown || []),
     ];
 
     const allCitations: string[] = [
       ...(autoDevResult?.citations || []),
       ...(vdbResult?.citations || []),
+      ...(marketCheckResult?.citations || []),
+      ...(vinAuditResult?.citations || []),
     ];
     const uniqueCitations = [...new Set(allCitations)];
 
     const contextParts: string[] = [];
     if (autoDevResult?.pricingContext) contextParts.push(autoDevResult.pricingContext);
     if (vdbResult?.pricingContext) contextParts.push(vdbResult.pricingContext);
+    if (marketCheckResult?.pricingContext) contextParts.push(marketCheckResult.pricingContext);
+    if (vinAuditResult?.pricingContext) contextParts.push(vinAuditResult.pricingContext);
     const mergedContext = contextParts.join("\n\n");
 
     // Track which sources contributed
     const contributingSources: string[] = [];
     if (autoDevResult?.sourceBreakdown?.length) contributingSources.push("auto.dev");
     if (vdbResult?.sourceBreakdown?.length) contributingSources.push("VehicleDatabases");
+    if (marketCheckResult?.sourceBreakdown?.length) contributingSources.push("MarketCheck");
+    if (vinAuditResult?.sourceBreakdown?.length) contributingSources.push("VinAudit");
 
     // Weighted Confidence Aggregation across all sources
     const tradeInEntries = buildEntries(allSources, "tradeIn");
