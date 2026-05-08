@@ -256,7 +256,7 @@ export const VerdictHero = forwardRef<HTMLDivElement, VerdictHeroProps>(({
               size="sm"
               className="flex-1 h-8 text-[11px] px-2 min-w-0 border-border-card bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors"
             >
-              <span className="truncate">Get Insurance Quote</span>
+              <span className="truncate font-bold">Get Insurance Quote</span>
             </Button>
           </div>
         </div>
