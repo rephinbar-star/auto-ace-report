@@ -41,6 +41,39 @@ export type Database = {
         }
         Relationships: []
       }
+      analysis_jobs: {
+        Row: {
+          created_at: string
+          error: string | null
+          id: string
+          input: Json | null
+          result: Json | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          input?: Json | null
+          result?: Json | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          input?: Json | null
+          result?: Json | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       marketplace_listings: {
         Row: {
           asking_price: number
