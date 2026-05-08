@@ -223,6 +223,24 @@ export const VerdictHero = forwardRef<HTMLDivElement, VerdictHeroProps>(({
               <Share2 className="mr-2 h-4 w-4" />
               Share Report
             </Button>
+            {isPaid && onCheatSheetClick && (
+              <Button
+                size="sm"
+                className={cn(
+                  "h-9 text-[13px] transition-colors",
+                  verdict.toLowerCase() === "avoid"
+                    ? "text-white"
+                    : "bg-[hsl(140,60%,92%)] text-[hsl(140,60%,25%)] hover:bg-[hsl(140,60%,40%)] hover:text-white"
+                )}
+                style={verdict.toLowerCase() === "avoid" ? { backgroundColor: verdictHsl } : undefined}
+                onClick={onCheatSheetClick}
+              >
+                Negotiation Sheet
+              </Button>
+            )}
+            <Button variant="outline" size="sm" className="h-9 text-[13px] border-border-card bg-[hsl(30,100%,95%)] hover:bg-[hsl(30,100%,50%)] hover:text-white transition-colors">
+              Get Insurance Quote
+            </Button>
           </div>
         </div>
 
@@ -263,28 +281,6 @@ export const VerdictHero = forwardRef<HTMLDivElement, VerdictHeroProps>(({
             )}
           </div>
 
-          {/* CTA rows */}
-          <div className="flex flex-col gap-2 mt-3">
-            <div className="flex flex-wrap gap-2">
-              {isPaid && onCheatSheetClick && (
-                <Button
-                  className={cn(
-                    "flex-1 min-w-0 transition-colors",
-                    verdict.toLowerCase() === "avoid"
-                      ? "text-white"
-                      : "bg-[hsl(140,60%,92%)] text-[hsl(140,60%,25%)] hover:bg-[hsl(140,60%,40%)] hover:text-white"
-                  )}
-                  style={verdict.toLowerCase() === "avoid" ? { backgroundColor: verdictHsl } : undefined}
-                  onClick={onCheatSheetClick}
-                >
-                  Negotiation Sheet
-                </Button>
-              )}
-              <Button variant="outline" className="flex-1 min-w-0 border-border-card bg-[hsl(30,100%,95%)] hover:bg-[hsl(30,100%,50%)] hover:text-white transition-colors">
-                Get Insurance Quote
-              </Button>
-            </div>
-          </div>
         </div>
       </div>
     </div>
