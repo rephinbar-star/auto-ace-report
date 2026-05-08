@@ -870,10 +870,12 @@ export default function ReportPage() {
     setIsRefreshingPricing(true);
     try {
       // Re-run the full analysis which includes fresh pricing lookup
-      const { data: result, error: invokeError } = await supabase.functions.invoke("analyze-vehicle", {
+      const { data: dispatch, error: invokeError } = await supabase.functions.invoke("analyze-vehicle", {
         body: vehicleData,
       });
       if (invokeError) throw invokeError;
+      if (!dispatch?.jobId) throw new Error(dispatch?.error || "Analysis did not start");
+      const result = await pollAnalysisJob(dispatch.jobId);
       if (result?.success) {
         // Preserve existing pricing if new analysis returned $0 values
         const newAnalysis = result.analysis;
