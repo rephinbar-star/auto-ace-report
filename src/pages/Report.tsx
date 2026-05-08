@@ -696,18 +696,23 @@ export default function ReportPage() {
         console.log("Parsed analysis data:", data);
         setVehicleData(data);
         
-        // Call AI analysis
+        // Call AI analysis (async job: returns 202 with jobId, then poll)
         console.log("Calling analyze-vehicle edge function...");
-        const { data: result, error: invokeError } = await supabase.functions.invoke("analyze-vehicle", {
+        const { data: dispatch, error: invokeError } = await supabase.functions.invoke("analyze-vehicle", {
           body: data,
         });
 
-        console.log("Edge function response:", { result, invokeError });
+        console.log("Edge function dispatch:", { dispatch, invokeError });
 
         if (invokeError) {
           throw new Error(invokeError.message || "Failed to invoke analysis function");
         }
-        
+        if (!dispatch?.jobId) {
+          throw new Error(dispatch?.error || "Analysis did not start");
+        }
+
+        const result = await pollAnalysisJob(dispatch.jobId);
+
         if (result?.success) {
           console.log("AI aiFindings returned:", JSON.stringify(result.analysis?.aiFindings ?? "MISSING"));
           setAnalysis(result.analysis);
