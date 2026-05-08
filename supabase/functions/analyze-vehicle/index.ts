@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { checkRateLimit, getClientIp, RATE_LIMITS } from "../_shared/rate-limiter.ts";
+import { OPENROUTER_BASE_URL, openRouterHeaders } from "../_shared/openrouter.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -212,10 +213,10 @@ serve(async (req) => {
     }
 
     const vehicleData: VehicleData = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
 
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    if (!OPENROUTER_API_KEY) {
+      throw new Error("OPENROUTER_API_KEY is not configured");
     }
 
     const { vehicle, condition, financing, history } = vehicleData;
@@ -730,14 +731,11 @@ IMPORTANT: When writing the finalVerdictJustification and expertOpinion, you MUS
 
 Provide your expert analysis.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+      headers: openRouterHeaders(),
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "anthropic/claude-sonnet-4.6",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },

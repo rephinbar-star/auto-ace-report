@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { OPENROUTER_BASE_URL, openRouterHeaders } from "../_shared/openrouter.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -45,7 +46,7 @@ serve(async (req) => {
     }
 
     const firecrawlKey = Deno.env.get("FIRECRAWL_API_KEY");
-    const lovableKey = Deno.env.get("LOVABLE_API_KEY");
+    const openRouterKey = Deno.env.get("OPENROUTER_API_KEY");
 
     if (!firecrawlKey) {
       logStep("Firecrawl API key not configured");
