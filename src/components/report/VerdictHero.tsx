@@ -196,7 +196,7 @@ export const VerdictHero = forwardRef<HTMLDivElement, VerdictHeroProps>(({
           })()}
 
           {/* Action row */}
-          <div className="flex flex-nowrap items-center justify-between gap-3 mt-6 w-full">
+          <div className="flex flex-nowrap items-center justify-center gap-3 mt-[44px] w-full">
             <Button variant="outline" size="sm" className="h-9 text-[12px] px-2.5 border-border-card whitespace-nowrap shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md hover:bg-accent"
               onClick={onDownloadPDF} disabled={isDownloading}>
               {isDownloading ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin shrink-0" /> : <Download className="mr-1.5 h-4 w-4 shrink-0" />}
