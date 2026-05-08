@@ -223,7 +223,7 @@ serve(async (req) => {
           fairMarketDealer: dealerResult.value,
           fairMarketTradeIn: tradeInResult.value,
         }
-      : autoDevResult?.computedValues || vdbResult?.computedValues;
+      : autoDevResult?.computedValues;
 
     // Asking-price fallback when all sources return zero
     let pricingDataUnavailable = false;
