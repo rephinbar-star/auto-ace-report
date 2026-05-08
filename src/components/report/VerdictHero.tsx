@@ -264,12 +264,12 @@ export const VerdictHero = forwardRef<HTMLDivElement, VerdictHeroProps>(({
           </div>
 
           {/* CTA buttons */}
-          <div className="mt-4 space-y-2">
+          <div className="mt-4 flex gap-2">
             {isPaid && onCheatSheetClick && (
               <Button
                 size="sm"
                 className={cn(
-                  "w-full h-9 text-[13px] transition-colors",
+                  "flex-1 h-8 text-[11px] px-2 min-w-0 transition-colors",
                   verdict.toLowerCase() === "avoid"
                     ? "text-white"
                     : "bg-[hsl(140,60%,92%)] text-[hsl(140,60%,25%)] hover:bg-[hsl(140,60%,40%)] hover:text-white"
@@ -277,15 +277,15 @@ export const VerdictHero = forwardRef<HTMLDivElement, VerdictHeroProps>(({
                 style={verdict.toLowerCase() === "avoid" ? { backgroundColor: verdictHsl } : undefined}
                 onClick={onCheatSheetClick}
               >
-                Negotiation Sheet
+                <span className="truncate">Negotiation Sheet</span>
               </Button>
             )}
             <Button
               variant="outline"
               size="sm"
-              className="w-full h-9 text-[13px] border-border-card bg-[hsl(30,100%,95%)] hover:bg-[hsl(30,100%,50%)] hover:text-white transition-colors"
+              className="flex-1 h-8 text-[11px] px-2 min-w-0 border-border-card bg-[hsl(30,100%,95%)] hover:bg-[hsl(30,100%,50%)] hover:text-white transition-colors"
             >
-              Get Insurance Quote
+              <span className="truncate">Get Insurance Quote</span>
             </Button>
           </div>
         </div>
