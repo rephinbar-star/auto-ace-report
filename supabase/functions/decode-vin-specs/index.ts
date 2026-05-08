@@ -315,11 +315,11 @@ serve(async (req) => {
       }
     }
 
-    // Build engine detail string (MarketCheck first, NHTSA fallback)
-    const rawHp = specs?.engine_hp || (nhtsa.hp ? parseFloat(nhtsa.hp) : null);
-    const rawTorque = specs?.engine_torque || null;
-    const rawCylinders = specs?.engine_cylinders || (nhtsa.cylinders ? parseInt(nhtsa.cylinders) : null);
-    const rawDisplacement = specs?.engine_displacement || (nhtsa.displacement ? parseFloat(nhtsa.displacement) : null);
+    // Build engine detail string (MarketCheck first, NHTSA fallback, VinAudit tertiary)
+    const rawHp = specs?.engine_hp || (nhtsa.hp ? parseFloat(nhtsa.hp) : null) || vinAudit.engineHp;
+    const rawTorque = specs?.engine_torque || null || vinAudit.engineTorque;
+    const rawCylinders = specs?.engine_cylinders || (nhtsa.cylinders ? parseInt(nhtsa.cylinders) : null) || vinAudit.engineCylinders;
+    const rawDisplacement = specs?.engine_displacement || (nhtsa.displacement ? parseFloat(nhtsa.displacement) : null) || (vinAudit.engineSize ? parseFloat(vinAudit.engineSize.replace("L","")) : null);
     const rawAspiration = specs?.engine_aspiration || null;
     const rawConfiguration = specs?.engine_configuration || (nhtsa.configuration || null);
 
