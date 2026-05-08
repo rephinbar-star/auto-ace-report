@@ -290,6 +290,24 @@ interface DealerAnalysisData {
   positives: string[];
 }
 
+async function pollAnalysisJob(jobId: string, timeoutMs = 240000): Promise<any> {
+  const start = Date.now();
+  let delay = 1500;
+  while (Date.now() - start < timeoutMs) {
+    const { data, error } = await supabase
+      .from("analysis_jobs")
+      .select("status, result, error")
+      .eq("id", jobId)
+      .maybeSingle();
+    if (error) throw error;
+    if (data?.status === "complete") return data.result;
+    if (data?.status === "failed") throw new Error(data.error || "Analysis failed");
+    await new Promise((r) => setTimeout(r, delay));
+    delay = Math.min(delay + 500, 4000);
+  }
+  throw new Error("Analysis timed out. Please try again.");
+}
+
 export default function ReportPage() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
