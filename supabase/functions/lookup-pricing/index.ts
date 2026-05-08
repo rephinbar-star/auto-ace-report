@@ -143,8 +143,8 @@ function buildEntries(
 }
 
 /**
- * 2-source pricing chain: auto.dev + VehicleDatabases
- * MarketCheck used only for dealer-type detection (1 call/report).
+ * 3-source pricing chain: MarketCheck + VinAudit + auto.dev
+ * VehicleDatabases excluded from price calculations.
  * Falls back to asking-price estimation when all sources return zero.
  */
 serve(async (req) => {
