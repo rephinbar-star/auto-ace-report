@@ -334,6 +334,17 @@ async function runAnalysis(vehicleData: VehicleData): Promise<Record<string, unk
       }
     }
 
+    // Tier 7a: Lien filter. When sellerType is any dealer, strip lien-related entries from
+    // history.issues before they reach the prompt — dealers handle lien clearance as part of
+    // acquisition, so historical liens in CarFax are not buyer risks. For private sales, the
+    // entries flow through unchanged (liens ARE material in a private-party transaction).
+    const sellerIsDealer = !["private", "individual"].includes((condition.sellerType || "").toLowerCase());
+    const filteredHistoryIssues = !history?.issues?.length
+      ? []
+      : (sellerIsDealer
+        ? history.issues.filter(i => !/\blien\b|title.?transfer|title.?washing|title.?encumbrance|lien.?holder/i.test(i))
+        : history.issues);
+
     const systemPrompt = `You are an expert automotive analyst with 30+ years of master mechanic experience across ALL vehicle types — sedans, SUVs, pickup trucks, minivans, sports cars, exotic high-end cars, electric vehicles, and hydrogen vehicles. You are also a professional pre-owned vehicle buyer who has purchased vehicles from auctions, dealerships, and private individuals, and you know exactly what red flags to look for that indicate high mechanical and financial risk. You are trained in depth on automotive technology up to present day, including all electronics, ADAS systems, hybrid/EV drivetrains, and infotainment systems. You are a master mechanic capable of troubleshooting automotive issues on all vehicle types, brands, models, and trim levels.
 
 POWERTRAIN-AWARE ANALYSIS:
