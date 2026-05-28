@@ -984,6 +984,10 @@ export default function ReportPage() {
         }
         const now = new Date();
         setPricingLastUpdated(now);
+        if (result.daysOnMarket != null) {
+          setDaysOnMarket(result.daysOnMarket);
+          setDaysOnMarketAsOf(result.daysOnMarketAsOf ? new Date(result.daysOnMarketAsOf) : now);
+        }
         sonnerToast.success("Analysis refreshed with latest market data");
 
         // Persist to DB if this is a saved report
