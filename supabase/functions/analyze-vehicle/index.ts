@@ -1051,7 +1051,7 @@ Provide your expert analysis.`;
                   finalVerdict: {
                     type: "object",
                     properties: {
-                      verdict: { type: "string", enum: ["Buy", "Negotiate", "Walk Away"], description: "Clear recommendation: Buy, Negotiate, or Walk Away" },
+                      verdict: { type: "string", enum: ["Buy", "Conditional Buy", "Caution", "Avoid"], description: "Clear recommendation: Buy, Conditional Buy, Caution, or Avoid" },
                       justification: { type: "string", description: "Brief 1-2 sentence justification for the verdict" },
                     },
                     required: ["verdict", "justification"],
