@@ -1238,8 +1238,15 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   y += 5;
 
   if (finalVerdict) {
-    const verdictColor: [number, number, number] = finalVerdict.verdict === "Buy" ? GREEN
-      : finalVerdict.verdict === "Negotiate" ? AMBER : RED;
+    // Use the canonical UVPRS verdict (Option B) so the PDF badge matches the on-screen badge.
+    // The AI finalVerdict.justification is still shown as advisory prose below.
+    const canonicalVerdict = uvprsResult?.verdict ?? finalVerdict.verdict;
+    const vLower = canonicalVerdict.toLowerCase();
+    const verdictColor: [number, number, number] =
+      vLower === "avoid" || vLower === "walk away" ? RED
+      : vLower === "caution" || vLower === "conditional buy" || vLower === "negotiate" ? AMBER
+      : GREEN;
+
 
     pdf.setDrawColor(...verdictColor);
     pdf.setLineWidth(0.8);
