@@ -547,22 +547,23 @@ If dealRating is "excellent" AND risk score < 25:
 
 If vehicle is priced below trade-in value:
   Flag as a potential distress sale or title/condition concealment signal. Add to activeServiceFaults as a Class 3 information risk flag.
-FINAL RECOMMENDATION VERDICT: Every analysis MUST conclude with a clear, unambiguous verdict of exactly one of three options: "Buy", "Negotiate", or "Walk Away". The verdict MUST follow these conditional rules:
-- "Walk Away" conditions (ANY ONE triggers this): confirmed odometer rollback, salvage/flood/lemon title, 5+ open safety recalls, confirmed frame/structural damage, safety-critical unresolved recall (airbag, steering, fuel system).
-- "Negotiate" conditions (ANY ONE triggers this, unless Walk Away applies): odometer discrepancy >25k miles, 3-4 open recalls, service gap >60k miles (severe), chronic recurring fault with >$2k/incident estimate, asking price >15% above fair market value.
+FINAL RECOMMENDATION VERDICT: Every analysis MUST conclude with a clear, unambiguous verdict of exactly one of four options: "Buy", "Conditional Buy", "Caution", or "Avoid". The verdict MUST follow these conditional rules:
+- "Avoid" conditions (ANY ONE triggers this): confirmed odometer rollback, salvage/flood/lemon title, 5+ open safety recalls, confirmed frame/structural damage, safety-critical unresolved recall (airbag, steering, fuel system).
+- "Caution" conditions (ANY ONE triggers this, unless "Avoid" applies): odometer discrepancy >25k miles, 3-4 open recalls, service gap >60k miles (severe), chronic recurring fault with >$2k/incident estimate.
+- "Conditional Buy" conditions (when no "Avoid" or "Caution" trigger applies): asking price >15% above fair market value with no structural risk factors, or moderate service-history gaps that can be resolved by buyer-side due diligence.
 - "Buy" ONLY when NONE of the above conditions apply AND overall risk assessment supports it.
 The justification MUST reference the specific triggering condition(s). The word "high-risk" in expertOpinion is incompatible with a "Buy" verdict.
 
 VERDICT-SCORE CONSISTENCY ENFORCEMENT:
-The finalVerdict.verdict must be consistent with the computed UVPRS risk score:
+The finalVerdict.verdict must be consistent with the computed UVPRS risk score, using the deterministic bands the rendered badge will use:
 
-Score 0-30: "Buy" is permitted (not required).
-Score 31-50: "Negotiate" is the expected verdict. "Buy" requires explicit written justification of why score understates actual risk.
-Score 51-70: "Negotiate" or "Walk Away" only. "Buy" is prohibited.
-Score 71-100: "Walk Away" is strongly indicated. "Negotiate" permitted only when score reflects a single fixable issue (open recall, price). "Buy" is absolutely prohibited.
+Score 0-24: "Buy" is the expected verdict.
+Score 25-44: "Conditional Buy" is the expected verdict. "Buy" requires explicit written justification of why score overstates actual risk.
+Score 45-64: "Caution" is the expected verdict. "Conditional Buy" permitted only when score reflects a single fixable issue (open recall, price overage at a reputable dealer). "Buy" is prohibited.
+Score 65-100: "Avoid" is the expected verdict. "Caution" permitted only when score reflects a single fixable issue. "Buy" and "Conditional Buy" are prohibited.
 
 If floorOverrides.triggered is true:
-  finalVerdict.verdict MUST be "Negotiate" or "Walk Away" regardless of weighted score. "Buy" is prohibited when any floor override is active.
+  finalVerdict.verdict MUST be "Caution" or "Avoid" regardless of weighted score. "Buy" and "Conditional Buy" are prohibited when any floor override is active.
 
 IMPORTANT: These rules apply to the verdict field in the tool call output. The expertOpinion prose must be consistent with this verdict — not tell a different story.
 
