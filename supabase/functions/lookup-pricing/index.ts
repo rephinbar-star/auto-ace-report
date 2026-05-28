@@ -45,6 +45,9 @@ interface PricingResult {
   pricingDataUnavailable?: boolean;
   pricingSource?: "market" | "estimated";
   contributingSources?: string[];
+  daysOnMarket?: number | null;
+  daysOnMarketAsOf?: string | null;
+  daysOnMarketFirstSeenDate?: string | null;
 }
 
 // Source reliability weights — 3-source weighted aggregation
@@ -284,6 +287,9 @@ serve(async (req) => {
         pricingDataUnavailable,
         pricingSource,
         contributingSources,
+        daysOnMarket: marketCheckResult?.daysOnMarket ?? null,
+        daysOnMarketAsOf: marketCheckResult?.daysOnMarketAsOf ?? null,
+        daysOnMarketFirstSeenDate: marketCheckResult?.daysOnMarketFirstSeenDate ?? null,
       } as PricingResult,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -324,6 +330,7 @@ async function tryMarketCheck(vin: string): Promise<PricingResult | null> {
     let activePrices: number[] = [];
     let soldPrices: number[] = [];
     let daysOnMarket: number | null = null;
+    let firstSeenDate: string | null = null;
 
     if (activeRes.ok) {
       const activeData = await activeRes.json();
@@ -332,8 +339,17 @@ async function tryMarketCheck(vin: string): Promise<PricingResult | null> {
         const price = listing?.price || listing?.asking_price;
         if (price && typeof price === "number" && price > 0) activePrices.push(price);
       }
-      if (listings[0]?.dom) daysOnMarket = listings[0].dom;
-      console.log(`MarketCheck /active: ${activePrices.length} listing(s) for ${vin}`);
+      // Pick the listing with the highest DOM (the one that's been listed longest = the actual subject vehicle)
+      let bestDom = -1;
+      for (const l of listings) {
+        const d = typeof l?.dom === "number" ? l.dom : null;
+        if (d !== null && d > bestDom) {
+          bestDom = d;
+          daysOnMarket = d;
+          firstSeenDate = l?.first_seen_at_date || l?.first_seen_date || null;
+        }
+      }
+      console.log(`MarketCheck /active: ${activePrices.length} listing(s) for ${vin}, dom=${daysOnMarket}, firstSeen=${firstSeenDate}`);
     } else {
       console.warn(`MarketCheck /active failed: ${activeRes.status}`);
     }
@@ -400,6 +416,9 @@ async function tryMarketCheck(vin: string): Promise<PricingResult | null> {
           tradeIn: fairMarketTradeIn > 0 ? fairMarketTradeIn : null,
         },
       ],
+      daysOnMarket,
+      daysOnMarketAsOf: new Date().toISOString(),
+      daysOnMarketFirstSeenDate: firstSeenDate,
     };
   } catch (err) {
     console.error("MarketCheck pricing error:", err);

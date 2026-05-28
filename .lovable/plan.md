@@ -1,73 +1,62 @@
-
 ## Goal
-Switch all production LLM calls from the Lovable AI Gateway to OpenRouter (OpenAI-compatible). Perplexity sonar lookups stay direct.
 
-## Step 1 — Add secret
-Request `OPENROUTER_API_KEY` (user pastes `sk-or-v1-...`).
+Capture a real "days on market" value for each report, store it, surface it in the UI/PDF with attribution, and ground the AI on it so the LLM stops inventing listing-age claims.
 
-## Step 2 — Shared helper
-Create `supabase/functions/_shared/openrouter.ts`:
+## Source of truth
 
-```ts
-export const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
+MarketCheck `/v2/search/car/active` is already called inside `supabase/functions/lookup-pricing/index.ts` and the response's `listings[0].dom` is already read into a local `daysOnMarket` variable (line ~335). Today that value is only stringified into the pricing context blob — it isn't returned as structured data, stored, or shown anywhere. We will plumb it through the existing pipeline.
 
-export function openRouterHeaders() {
-  return {
-    "Authorization": `Bearer ${Deno.env.get("OPENROUTER_API_KEY")}`,
-    "Content-Type": "application/json",
-    "HTTP-Referer": "https://carwise.expert",
-    "X-Title": "CarWise",
-  };
-}
-```
+No new third-party integrations, no new API keys.
 
-## Step 3 — Model migration map
+## Scope
 
-| Edge function | Old (Lovable Gateway) | New (OpenRouter) | Reason |
-|---|---|---|---|
-| `analyze-vehicle` | `google/gemini-3-flash-preview` | `anthropic/claude-sonnet-4.6` | Heaviest reasoning |
-| `generate-cheat-sheet` | `google/gemini-3-flash-preview` | `anthropic/claude-haiku-4.5` | Light text gen |
-| `analyze-dealer` | `google/gemini-3-flash-preview` | `anthropic/claude-haiku-4.5` | Light JSON gen |
-| `scrape-listing` | `google/gemini-3-flash-preview` | `anthropic/claude-haiku-4.5` | Text extraction, no vision |
-| `extract-from-screenshot` | `google/gemini-3-flash-preview` | `google/gemini-2.5-flash` | Vision task |
-| `parse-history-report` (3-flash structured call, line 504) | `google/gemini-3-flash-preview` | `anthropic/claude-haiku-4.5` | Structured extraction |
-| `parse-history-report` (2.5-flash vision OCR, lines 149/264/376) | `google/gemini-2.5-flash` | **unchanged — stays on Lovable Gateway** | Vision OCR |
+### 1. Edge function: `lookup-pricing`
+- Add `daysOnMarket: number | null` and `daysOnMarketAsOf: string | null` (ISO date) to the returned `PricingResult` / `PricingData`.
+- Also capture `first_seen_at_date` (or equivalent) from the same listing for accuracy.
+- Keep the existing pricing-context text line as a redundancy.
 
-## Step 4 — Per-function fetch refactor
-For each migrated call:
-- Import: `import { OPENROUTER_BASE_URL, openRouterHeaders } from "../_shared/openrouter.ts";`
-- Replace key check: drop `LOVABLE_API_KEY` requirement (or keep only where Lovable Gateway is still used — i.e. `parse-history-report`).
-- Replace `fetch("https://ai.gateway.lovable.dev/v1/chat/completions", { headers: { Authorization: Bearer ${LOVABLE_API_KEY}, ... } })` with:
+### 2. Edge function: `analyze-vehicle`
+- Extend the `PricingData` interface to include the new fields.
+- Pass them into the deterministic data block of the user prompt under a new `LISTING AGE` section (same lock-style treatment as mileage/financing) so the AI must use the exact number or say "not available".
+- Return them on the analysis result payload that the client persists.
 
-```ts
-const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
-  method: "POST",
-  headers: openRouterHeaders(),
-  body: JSON.stringify({
-    model: "anthropic/claude-sonnet-4.6", // varies per function
-    messages: [...],                      // unchanged
-    // existing tools / tool_choice / response_format / temperature preserved
-  }),
-});
-```
+### 3. Database: `vehicle_reports`
+- Migration adds two columns:
+  - `days_on_market integer NULL`
+  - `days_on_market_as_of timestamptz NULL`
+- No RLS changes (existing policies cover all columns).
 
-- Response parsing (`response.choices[0].message.content` and tool_calls path) is unchanged — OpenRouter is OpenAI-compatible.
-- Preserve all existing error handling for 429 / 402 (OpenRouter returns the same status codes for rate limit / insufficient credits).
+### 4. Client: `src/pages/Report.tsx` + types
+- Add `daysOnMarket?: number | null` and `daysOnMarketAsOf?: string | null` to `VehicleCondition` (or a sibling field on the analysis result — whichever matches where the rest of the listing metadata lives).
+- Persist them when writing `vehicle_reports`.
+- Hydrate them when loading an existing report.
 
-## Step 5 — Perplexity functions
-- `lookup-mpg`: unchanged (`sonar`).
-- `lookup-gas-price`: unchanged (`sonar`).
-- `lookup-maintenance`: upgrade `sonar` → `sonar-pro` (single string change at line 54).
+### 5. UI surface
+- In the MetricsStrip / listing-summary area of the report, add a small "Listed N days ago" chip next to seller type, only when the value exists. Source attribution: "via MarketCheck".
+- In `src/lib/generatePDF.ts`, add the same line to the listing summary block in the exported PDF.
+- When the value is missing, render nothing (no "AI estimated" fallback — honest absence).
 
-## Step 6 — Pre-deploy preview
-Before deploying, surface for review:
-1. Updated `analyze-vehicle/index.ts` lines around 733–740 (new `OPENROUTER_BASE_URL`, `openRouterHeaders()`, and `model: "anthropic/claude-sonnet-4.6"`).
-2. The shared `_shared/openrouter.ts` file contents.
-3. Confirmation that `parse-history-report` vision OCR calls (lines 142, 257, 369) remain on the Lovable Gateway with `gemini-2.5-flash`, and only the line-497 structured call moved.
-
-After approval, deploy: `analyze-vehicle`, `generate-cheat-sheet`, `analyze-dealer`, `scrape-listing`, `extract-from-screenshot`, `parse-history-report`, `lookup-maintenance`.
+### 6. AI grounding
+- In `analyze-vehicle`'s system prompt, add a `LISTING AGE LOCK` block alongside the existing locks:
+  - "Days on market is EXACTLY {N} as of {date} (MarketCheck). Do not state any other figure. If not provided, do not claim a listing age."
 
 ## Out of scope
-- No client-side changes.
-- No DB / config.toml changes.
-- No changes to non-LLM helpers (MarketCheck, VinAudit, auto.dev, NHTSA, Firecrawl).
+- Scraping listing-age from non-MarketCheck sources (Carvana/CarMax/Autotrader pages) — defer until we see how often MarketCheck returns `dom`.
+- Backfilling historical reports — new field, new reports only.
+- Trend analysis ("price has dropped X times") — separate feature.
+
+## Files touched
+
+```text
+supabase/functions/lookup-pricing/index.ts        (return new fields)
+supabase/functions/analyze-vehicle/index.ts       (interface + prompt + payload)
+supabase/migrations/<new>                         (2 columns on vehicle_reports)
+src/types/vehicle.ts                              (type additions)
+src/pages/Report.tsx                              (persist + hydrate)
+src/components/report/MetricsStrip.tsx            (chip)
+src/lib/generatePDF.ts                            (PDF line)
+```
+
+## Risks
+- MarketCheck doesn't always populate `dom` (especially on aggregator-republished listings). Behavior is graceful: field stays `null`, chip is hidden, AI lock instructs "do not claim a listing age".
+- Stale values: we stamp `as_of` and only refresh when pricing is refreshed (same cadence as the existing pricing-refresh flow).
