@@ -11,7 +11,7 @@ const Index = () => {
   return (
     <>
       <SEO 
-        description="CarWise provides expert AI-powered car buying analysis. Get fair market prices, 5-year depreciation forecasts, Carfax analysis, and professional risk assessments for any used or new vehicle."
+        description="Expert AI car buying analysis: fair market prices, depreciation forecasts, Carfax parsing, and risk assessments for any vehicle."
         keywords="car buying guide, used car analysis, fair car price, car depreciation calculator, vehicle value estimator, Carfax analysis, car buying decision, auto purchase advisor, VIN decoder, car loan calculator"
       />
       <div className="flex min-h-screen flex-col">

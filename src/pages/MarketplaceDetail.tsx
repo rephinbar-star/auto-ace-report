@@ -173,7 +173,7 @@ function PhotoGallery({ images, title }: { images: string[]; title: string }) {
               >
                 <img
                   src={img}
-                  alt={`Thumbnail ${absIdx + 1}`}
+                  alt={`${title} — thumbnail ${absIdx + 1}`}
                   className="w-full h-full object-cover"
                   onError={(e) => { (e.target as HTMLImageElement).src = "/placeholder.svg"; }}
                 />

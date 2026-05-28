@@ -623,7 +623,7 @@ function MarketplaceListForm() {
                 <div className="grid grid-cols-4 gap-2">
                   {photoPreviews.map((src, i) => (
                     <div key={i} className="relative group aspect-square rounded-md overflow-hidden border border-border">
-                      <img src={src} alt={`Photo ${i + 1}`} className="w-full h-full object-cover" />
+                      <img src={src} alt={`${previewTitle || "Vehicle listing"} — photo ${i + 1}`} className="w-full h-full object-cover" />
                       {i === 0 && (
                         <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] text-center py-0.5">
                           Main
@@ -649,7 +649,7 @@ function MarketplaceListForm() {
           <Card className="overflow-hidden">
             {photoPreviews[0] ? (
               <div className="aspect-video w-full overflow-hidden bg-muted">
-                <img src={photoPreviews[0]} alt="Main photo" className="w-full h-full object-cover" />
+                <img src={photoPreviews[0]} alt={`${previewTitle || "Vehicle listing"} — primary exterior photo`} className="w-full h-full object-cover" />
               </div>
             ) : (
               <div className="aspect-video w-full bg-muted flex items-center justify-center">

@@ -166,7 +166,7 @@ export function FeedbackWidget() {
                       <Camera className="h-3 w-3" />
                       <span>Screenshot attached</span>
                     </div>
-                    <img src={screenshotPreview} alt="Screenshot" className="rounded border w-full h-auto max-h-24 object-cover object-top" />
+                    <img src={screenshotPreview} alt="Page screenshot attached to feedback" className="rounded border w-full h-auto max-h-24 object-cover object-top" />
                   </div>
                 )}
 
