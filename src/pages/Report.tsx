@@ -1292,6 +1292,8 @@ export default function ReportPage() {
           recalls: recallData.recalls,
         } : undefined,
         vin: vehicle.vin || undefined,
+        daysOnMarket,
+        daysOnMarketAsOf,
       });
       sonnerToast.success("PDF downloaded successfully!");
     } catch (error) {
