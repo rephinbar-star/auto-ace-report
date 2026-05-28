@@ -172,6 +172,8 @@ const sampleComparisonVehicles: VehicleReport[] = [
     sales_tax_rate: null,
     fees: null,
     down_payment: null,
+    days_on_market: null,
+    days_on_market_as_of: null,
   },
   {
     id: "sample-3",
