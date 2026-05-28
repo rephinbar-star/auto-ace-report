@@ -568,7 +568,7 @@ If floorOverrides.triggered is true:
 IMPORTANT: These rules apply to the verdict field in the tool call output. The expertOpinion prose must be consistent with this verdict — not tell a different story.
 
 CONSISTENCY RULES (MANDATORY):
-- If finalVerdict.verdict is "Walk Away", expertOpinion MUST NOT contain "buy", "negotiate", "good deal", "excellent deal", or equivalent purchase-positive phrasing. Paragraph 4 must explicitly tell the user to avoid or walk away.
+- If finalVerdict.verdict is "Avoid", expertOpinion MUST NOT contain "buy", "good deal", "excellent deal", "conditional buy", or equivalent purchase-positive phrasing. Paragraph 4 must explicitly tell the user to avoid the purchase.
 - If percentDifference is above 0, the vehicle is priced above the relevant market benchmark. In that case, expertOpinion MUST NOT call the pricing or deal rating "excellent" or "good". Use the actual computed dealRating and exact dollar difference provided.
 - If the vehicle is above private-party FMV but below dealer retail, explain that those are different benchmarks rather than implying it is an excellent deal.
 
