@@ -799,6 +799,10 @@ export default function ReportPage() {
             setPricingSources(result.pricingSources);
             setPricingLastUpdated(new Date());
           }
+          if (result.daysOnMarket != null) {
+            setDaysOnMarket(result.daysOnMarket);
+            setDaysOnMarketAsOf(result.daysOnMarketAsOf ? new Date(result.daysOnMarketAsOf) : new Date());
+          }
           if (result.maintenanceSources?.length) {
             setMaintenanceSources(result.maintenanceSources);
           }
