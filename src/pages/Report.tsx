@@ -184,19 +184,17 @@ function sanitizeExpertOpinion({
 
 /** Reconcile AI verdict with UVPRS score — always take the higher-risk signal */
 function getFinalVerdict(
-  aiVerdict: string | undefined,
   uvprsScore: number | undefined,
-  floorTriggered: boolean,
   pricingDataUnavailable?: boolean
-): "Conditional Buy" | "Caution" | "Avoid" | "Insufficient Data" {
+): "Buy" | "Conditional Buy" | "Caution" | "Avoid" | "Insufficient Data" {
   if (pricingDataUnavailable) return "Insufficient Data";
-  const riskLevels: Record<string, number> = { "Walk Away": 3, "Negotiate": 2, "Buy": 1 };
-  const aiLevel = riskLevels[aiVerdict || "Buy"] ?? 1;
-  const scoreLevel = uvprsScore == null ? 1 : uvprsScore > 70 ? 3 : uvprsScore > 50 ? 2 : 1;
-  const floorLevel = floorTriggered ? 2 : 1;
-  const finalLevel = Math.max(aiLevel, scoreLevel, floorLevel);
-  return finalLevel >= 3 ? "Avoid" : finalLevel >= 2 ? "Caution" : "Conditional Buy";
+  if (uvprsScore == null) return "Insufficient Data";
+  // The displayed verdict derives solely from the deterministic UVPRS score, which already
+  // incorporates every floor and penalty. The AI's free-form verdict is advisory prose only
+  // (shown as justification) and no longer escalates the badge above the score band.
+  return getRiskLevel(uvprsScore).verdict;
 }
+
 /** Synthesize AiFindings from legacy DB fields for reports saved before the aiFindings schema existed */
 function synthesizeAiFindingsFromReport(report: any): AiFindings {
   const faults: import("@/types/vehicle").ActiveServiceFault[] = [];
