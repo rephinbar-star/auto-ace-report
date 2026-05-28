@@ -301,7 +301,18 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   pdf.setFont("helvetica", "normal");
   pdf.setTextColor(...SLATE);
   pdf.text(`${vehicle.mileage.toLocaleString()} miles  |  Asking ${fmt(vehicle.askingPrice)}`, M, y);
-  y += 8;
+  y += 5;
+  if (daysOnMarket != null) {
+    const asOfDate = daysOnMarketAsOf
+      ? (daysOnMarketAsOf instanceof Date ? daysOnMarketAsOf : new Date(daysOnMarketAsOf))
+      : null;
+    const asOfLabel = asOfDate && !isNaN(asOfDate.getTime())
+      ? ` (as of ${asOfDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })})`
+      : "";
+    pdf.text(`Listed ${daysOnMarket} day${daysOnMarket === 1 ? "" : "s"} ago${asOfLabel} · via MarketCheck`, M, y);
+    y += 5;
+  }
+  y += 3;
 
   // ══════════════════════════════════════════════
   // QUICK STATS (4 cards)
