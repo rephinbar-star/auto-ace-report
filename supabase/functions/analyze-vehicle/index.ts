@@ -579,6 +579,27 @@ These three figures must appear in P3 when a financing scenario is provided. For
 FINANCING HALLUCINATION PREVENTION (CRITICAL):
 When referencing loan terms, APR, monthly payments, or lease terms in expertOpinion or finalVerdictJustification, you MUST use ONLY the exact values from the FINANCING section provided in the data. Do NOT fabricate, round, or substitute different financing parameters. If financing type is "cash" or was skipped, do not reference loan/lease terms at all.
 
+VEHICLE SPECIFICATION LOCK (CRITICAL — same authority as the mileage and financing locks):
+The engine, transmission, drivetrain, and chassis generation are GROUND TRUTH only when explicitly provided in the VEHICLE SPECIFICATIONS section of the data.
+- Use the EXACT engine, transmission, and drivetrain given. Never infer, "correct," upgrade, or substitute a different powertrain (e.g., do not call a 3.0T a 4.0T; do not rename a ZF 8-speed automatic as a dual-clutch/S-tronic/DSG; do not change AWD/RWD/FWD).
+- If a specification is NOT provided, write "not specified" for that field and do NOT guess it from the make/model/trim. Absence of data is not license to invent.
+- NEVER raise a reliability concern, failure pattern, or repair cost for a component you are not certain the vehicle has. In particular, do NOT cite transmission-type-specific failures (e.g., dual-clutch mechatronic or clutch-pack rebuilds) unless the provided transmission spec confirms that exact transmission type.
+- Chassis generation: do NOT assert a generation code (e.g., "C7.5", "C8", "F30", "W205") unless it is provided. If unprovided, refer to the vehicle by its model year only, and never use two conflicting generation codes for the same vehicle anywhere in the report.
+
+ODOMETER & AGE LOCK:
+- The current odometer reading is EXACTLY ${condition.mileage.toLocaleString()} miles. Do NOT state any other number as the vehicle's "current mileage" anywhere — not in header context, service analysis, the mileage factor, or prose. Do not invent a more "precise" odometer figure.
+- The vehicle's age is EXACTLY ${Math.max(1, new Date().getFullYear() - vehicle.year)} years (model year ${vehicle.year}). Use this single age value consistently across every section (warranty, mileage-for-age, depreciation).
+
+INTEREST & FINANCING ARITHMETIC LOCK:
+- NEVER compute loan interest, total interest, or monthly payment yourself. Use ONLY the exact figures provided in the FINANCING section (loan amount, term, APR, monthly payment, total interest). If a figure is not provided, do not state one.
+
+VERDICT-DRIVING FACTOR PROVENANCE:
+- Any factor used to justify a "Negotiate" or "Walk Away" verdict (lien, accident, recall, title issue, etc.) MUST be traceable to data explicitly provided in this prompt. Do NOT invent verdict-driving facts.
+- A routine dealer floor-plan lien (a lien a lender holds against dealer inventory) is normal and is NOT by itself a reason to negotiate or walk away. Only treat a lien as a risk if the provided data shows it attaches to the vehicle after sale.
+
+FAIR-OFFER PROSE CONSISTENCY:
+- Prose describing the fair offer MUST agree with the numeric fairOfferPrice you output. If fairOfferPrice is below private-party value, do not describe it as "at or above" market — describe it accurately relative to the stated benchmarks.
+
 REPAIR COST MODEL — EXPECTED VALUE:
 The depreciationTable repairCosts field must use probability-weighted expected values, NOT 100% of estimated costs.
 
