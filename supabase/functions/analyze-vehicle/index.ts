@@ -790,7 +790,7 @@ FINANCING (these are the EXACT terms entered by the user — reference ONLY thes
 - Type: ${financing.type}
 ${financing.type === "loan" ? `- Loan Amount: $${financing.loanAmount?.toLocaleString()}
 - Loan Term: EXACTLY ${financing.loanTerm} months (do NOT say 72, 84, or any other number unless this says so)
-- APR: EXACTLY ${financing.apr}% (do NOT say 8%, 7%, or any other rate unless this says so)` : ""}
+- APR: EXACTLY ${financing.apr}% (do NOT say 8%, 7%, or any other rate unless this says so)${loanInterestLine}` : ""}
 ${financing.type === "lease" ? `- Monthly Payment: $${financing.monthlyPayment}
 - Lease Term: ${financing.leaseTermMonths} months
 - Residual: $${financing.residualValue?.toLocaleString()}` : ""}
