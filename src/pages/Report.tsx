@@ -272,7 +272,7 @@ interface Analysis {
     warrantyNotes: string;
   };
   finalVerdict?: {
-    verdict: "Buy" | "Negotiate" | "Walk Away";
+    verdict: "Buy" | "Conditional Buy" | "Caution" | "Avoid";
     justification: string;
   };
   aiFindings?: AiFindings;
@@ -603,7 +603,7 @@ export default function ReportPage() {
             } : {}),
             ...(report.final_verdict ? {
               finalVerdict: {
-                verdict: report.final_verdict as "Buy" | "Negotiate" | "Walk Away",
+                verdict: report.final_verdict as "Buy" | "Conditional Buy" | "Caution" | "Avoid",
                 justification: report.final_verdict_justification || "",
               },
             } : {}),

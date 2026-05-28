@@ -421,8 +421,9 @@ Compare prior reported mileage readings (from CarFax, AutoCheck, or DMV records 
 OPEN SAFETY RECALLS OVERRIDE LOGIC:
 Cross-reference any open/unresolved NHTSA safety recalls mentioned in the history or known for this year/make/model:
 - 1-2 open recalls: Flag in findings, add 10 points to chassisSignal.
-- 3-4 open recalls: Set floor override to minimumScore 45, add 25 points to chassisSignal, verdict must be "Negotiate" or worse.
-- 5+ open recalls OR any safety-critical recall (airbag, steering, fuel system): Set floor override to minimumScore 60, verdict MUST be "Walk Away".
+- 3-4 open recalls: Set floor override to minimumScore 45, add 25 points to chassisSignal, verdict must be "Caution" or "Avoid".
+- 5+ open recalls (none safety-critical): Set floor override to minimumScore 60, verdict must be "Caution" or "Avoid".
+- Any safety-critical unresolved recall (airbag, steering, fuel system) — by itself OR alongside other recalls: Set floor override to minimumScore 65, verdict MUST be "Avoid".
 
 SERVICE GAP SEVERITY TIERS:
 Classify the largest mileage gap between documented services:
@@ -430,7 +431,7 @@ Classify the largest mileage gap between documented services:
 - Minor (8,000-15,000 miles): gapSeverity = "minor"  
 - Moderate (15,001-30,000 miles): gapSeverity = "moderate"
 - Significant (30,001-60,000 miles): gapSeverity = "significant"
-- Severe (>60,000 miles): gapSeverity = "severe", verdict must be "Negotiate" or worse
+- Severe (>60,000 miles): gapSeverity = "severe", verdict must be "Caution" or "Avoid"
 - Unknown: gapSeverity = "unknown" — when NO history report was uploaded (not the same as confirmed gap)
 
 CRITICAL DISTINCTION — UNVERIFIED vs CONFIRMED SERVICE GAP:
@@ -546,27 +547,28 @@ If dealRating is "excellent" AND risk score < 25:
 
 If vehicle is priced below trade-in value:
   Flag as a potential distress sale or title/condition concealment signal. Add to activeServiceFaults as a Class 3 information risk flag.
-FINAL RECOMMENDATION VERDICT: Every analysis MUST conclude with a clear, unambiguous verdict of exactly one of three options: "Buy", "Negotiate", or "Walk Away". The verdict MUST follow these conditional rules:
-- "Walk Away" conditions (ANY ONE triggers this): confirmed odometer rollback, salvage/flood/lemon title, 5+ open safety recalls, confirmed frame/structural damage, safety-critical unresolved recall (airbag, steering, fuel system).
-- "Negotiate" conditions (ANY ONE triggers this, unless Walk Away applies): odometer discrepancy >25k miles, 3-4 open recalls, service gap >60k miles (severe), chronic recurring fault with >$2k/incident estimate, asking price >15% above fair market value.
+FINAL RECOMMENDATION VERDICT: Every analysis MUST conclude with a clear, unambiguous verdict of exactly one of four options: "Buy", "Conditional Buy", "Caution", or "Avoid". The verdict MUST follow these conditional rules:
+- "Avoid" conditions (ANY ONE triggers this): confirmed odometer rollback, salvage/flood/lemon title, 5+ open safety recalls, confirmed frame/structural damage, safety-critical unresolved recall (airbag, steering, fuel system).
+- "Caution" conditions (ANY ONE triggers this, unless "Avoid" applies): odometer discrepancy >25k miles, 3-4 open recalls, service gap >60k miles (severe), chronic recurring fault with >$2k/incident estimate.
+- "Conditional Buy" conditions (when no "Avoid" or "Caution" trigger applies): asking price >15% above fair market value with no structural risk factors, or moderate service-history gaps that can be resolved by buyer-side due diligence.
 - "Buy" ONLY when NONE of the above conditions apply AND overall risk assessment supports it.
 The justification MUST reference the specific triggering condition(s). The word "high-risk" in expertOpinion is incompatible with a "Buy" verdict.
 
 VERDICT-SCORE CONSISTENCY ENFORCEMENT:
-The finalVerdict.verdict must be consistent with the computed UVPRS risk score:
+The finalVerdict.verdict must be consistent with the computed UVPRS risk score, using the deterministic bands the rendered badge will use:
 
-Score 0-30: "Buy" is permitted (not required).
-Score 31-50: "Negotiate" is the expected verdict. "Buy" requires explicit written justification of why score understates actual risk.
-Score 51-70: "Negotiate" or "Walk Away" only. "Buy" is prohibited.
-Score 71-100: "Walk Away" is strongly indicated. "Negotiate" permitted only when score reflects a single fixable issue (open recall, price). "Buy" is absolutely prohibited.
+Score 0-24: "Buy" is the expected verdict.
+Score 25-44: "Conditional Buy" is the expected verdict. "Buy" requires explicit written justification of why score overstates actual risk.
+Score 45-64: "Caution" is the expected verdict. "Conditional Buy" permitted only when score reflects a single fixable issue (open recall, price overage at a reputable dealer). "Buy" is prohibited.
+Score 65-100: "Avoid" is the expected verdict. "Caution" permitted only when score reflects a single fixable issue. "Buy" and "Conditional Buy" are prohibited.
 
 If floorOverrides.triggered is true:
-  finalVerdict.verdict MUST be "Negotiate" or "Walk Away" regardless of weighted score. "Buy" is prohibited when any floor override is active.
+  finalVerdict.verdict MUST be "Caution" or "Avoid" regardless of weighted score. "Buy" and "Conditional Buy" are prohibited when any floor override is active.
 
 IMPORTANT: These rules apply to the verdict field in the tool call output. The expertOpinion prose must be consistent with this verdict — not tell a different story.
 
 CONSISTENCY RULES (MANDATORY):
-- If finalVerdict.verdict is "Walk Away", expertOpinion MUST NOT contain "buy", "negotiate", "good deal", "excellent deal", or equivalent purchase-positive phrasing. Paragraph 4 must explicitly tell the user to avoid or walk away.
+- If finalVerdict.verdict is "Avoid", expertOpinion MUST NOT contain "buy", "good deal", "excellent deal", "conditional buy", or equivalent purchase-positive phrasing. Paragraph 4 must explicitly tell the user to avoid the purchase.
 - If percentDifference is above 0, the vehicle is priced above the relevant market benchmark. In that case, expertOpinion MUST NOT call the pricing or deal rating "excellent" or "good". Use the actual computed dealRating and exact dollar difference provided.
 - If the vehicle is above private-party FMV but below dealer retail, explain that those are different benchmarks rather than implying it is an excellent deal.
 
@@ -574,7 +576,7 @@ EXPERT OPINION STRUCTURE (MANDATORY 4-PARAGRAPH FORMAT):
 P1: Open with the most critical finding and verdict orientation. If odometer issues exist, lead with those. Then recalls. Then the single highest-risk finding. State the verdict direction clearly.
 P2: Mechanical and historical concerns with specific dollar estimates. Reference reliability concern costs, chronic systems, and service history gaps. Use actual dollar figures from RepairPal/CarEdge data.
 P3: Financial analysis — price vs market positioning, depreciation outlook, TCO implications. Reference the exact computed price differences provided. When discussing financing, you MUST use the EXACT loan/lease terms from the FINANCING section above (term, APR, monthly payment). Do NOT invent or assume different financing parameters.
-P4: Actionable conclusion — specific pre-purchase inspection demands (what to check, estimated cost), or clear walk-away reasoning with the triggering condition. This paragraph must match finalVerdict exactly.
+P4: Actionable conclusion — specific pre-purchase inspection demands (what to check, estimated cost), or clear avoidance reasoning with the triggering condition. This paragraph must match finalVerdict exactly.
 
 BREAKEVEN AND ABANDONMENT ANALYSIS (MANDATORY):
 Using the depreciationTable data, compute and include in expertOpinion P3:
@@ -611,18 +613,18 @@ INTEREST & FINANCING ARITHMETIC LOCK:
 - NEVER compute loan interest, total interest, or monthly payment yourself. Use ONLY the exact figures provided in the FINANCING section (loan amount, term, APR, monthly payment, total interest). If a figure is not provided, do not state one.
 
 VERDICT-DRIVING FACTOR PROVENANCE:
-- Any factor used to justify a "Negotiate" or "Walk Away" verdict (lien, accident, recall, title issue, etc.) MUST be traceable to data explicitly provided in this prompt. Do NOT invent verdict-driving facts.
+- Any factor used to justify a "Conditional Buy", "Caution", or "Avoid" verdict (lien, accident, recall, title issue, etc.) MUST be traceable to data explicitly provided in this prompt. Do NOT invent verdict-driving facts.
 - See the LIEN INTERPRETATION RULE below for how to handle lien data based on seller type. A routine dealer floor-plan lien is never a buyer risk.
 
 FAIR-OFFER PROSE CONSISTENCY:
 - Prose describing the fair offer MUST agree with the numeric fairOfferPrice you output. If fairOfferPrice is below private-party value, do not describe it as "at or above" market — describe it accurately relative to the stated benchmarks.
 
 VERDICT VOCABULARY LOCK (PROSE — CRITICAL):
-ALL narrative output — including expertOpinion, finalVerdict.justification, vehicleHealth.concerns, riskFactors.depreciationRisk, the Caution / summary box, and any other prose field — MUST describe the overall buy/skip recommendation using ONLY this exact vocabulary: "Buy", "Conditional Buy", "Caution", or "Avoid".
-- You may NOT use "Walk Away", "Negotiate", "Pass", "Skip", "Reject", or any other synonym to describe the verdict in prose.
-- Translate as you write prose: where you would have said "Negotiate", say "Conditional Buy" (if the deal can be salvaged by price negotiation) or "Caution" (if elevated risk warrants extra scrutiny even at a fair price). Where you would have said "Walk Away", say "Avoid".
-- Do NOT write sentences like "The verdict is Walk Away", "the recommendation is Walk Away", or "mandate a Negotiate verdict". Write "The verdict is Avoid" or "warrants a Caution verdict at minimum" instead.
-- The structured finalVerdict.verdict field schema is unchanged for backward compatibility, but its value is NOT displayed to users — the prose vocabulary IS what users read. Internal contradictions between the badge (which users see) and your prose are unacceptable.
+ALL narrative output — including expertOpinion, finalVerdict.justification, vehicleHealth.concerns, riskFactors.depreciationRisk, the Caution / summary box, and any other prose field — MUST use ONLY the canonical four-tier vocabulary defined above: "Buy", "Conditional Buy", "Caution", or "Avoid".
+- You may NOT use "Walk Away", "Negotiate", "Pass", "Skip", "Reject", or any other synonym anywhere in prose.
+- Do NOT write sentences like "The verdict is Walk Away", "triggers a 'Walk Away' threshold", or "mandate a Negotiate verdict" — even in scare-quotes. Use only "Buy", "Conditional Buy", "Caution", or "Avoid" verbatim.
+- The structured finalVerdict.verdict field MUST also use this same four-tier vocabulary — the schema enum has been updated accordingly. Internal contradictions between the score-derived badge and your prose are unacceptable.
+
 
 LIEN INTERPRETATION RULE (CRITICAL — supersedes any prior lien guidance):
 A "lien" entry in a vehicle history report (CarFax / AutoCheck) is the NORMAL default for any vehicle that was financed at any point during its ownership history. The presence of a historical lien record does NOT mean a current title encumbrance exists at the point of sale.
@@ -839,7 +841,7 @@ ${history ? `VEHICLE HISTORY (historyReportProvided = true):
 - Accidents: ${history.accidentCount || 0}
 - Previous Owners: ${history.ownerCount || "Unknown"}
 - Title Status: ${history.titleStatus || "Unknown"}
-${history.issues?.length ? `- Known Issues: ${history.issues.join(", ")}` : ""}` : "No vehicle history report provided (historyReportProvided = false). Service history is UNVERIFIED — do NOT treat this as a confirmed service gap. Use moderate/unknown language for service-related assessments."}
+${filteredHistoryIssues.length ? `- Known Issues: ${filteredHistoryIssues.join(", ")}` : ""}` : "No vehicle history report provided (historyReportProvided = false). Service history is UNVERIFIED — do NOT treat this as a confirmed service gap. Use moderate/unknown language for service-related assessments."}
 ${geoRiskBlock}
 ${recallsBlock}
 
@@ -1049,7 +1051,7 @@ Provide your expert analysis.`;
                   finalVerdict: {
                     type: "object",
                     properties: {
-                      verdict: { type: "string", enum: ["Buy", "Negotiate", "Walk Away"], description: "Clear recommendation: Buy, Negotiate, or Walk Away" },
+                      verdict: { type: "string", enum: ["Buy", "Conditional Buy", "Caution", "Avoid"], description: "Clear recommendation: Buy, Conditional Buy, Caution, or Avoid" },
                       justification: { type: "string", description: "Brief 1-2 sentence justification for the verdict" },
                     },
                     required: ["verdict", "justification"],
@@ -1327,24 +1329,24 @@ Provide your expert analysis.`;
         (analysis.priceAssessment as any).priceDifference = 0;
         (analysis.priceAssessment as any).percentDifference = 0;
       }
-      // Force "Negotiate" only for USED vehicles missing market data.
+      // Force "Caution" only for USED vehicles missing market data.
       // Brand-new vehicles: allow AI verdict + UVPRS to stand.
       if (!isBrandNew && analysis?.finalVerdict) {
-        (analysis.finalVerdict as any).verdict = "Negotiate";
+        (analysis.finalVerdict as any).verdict = "Caution";
       }
     }
 
-    // High-mileage + unverified/severe service gap → minimum verdict "Negotiate"
+    // High-mileage + unverified/severe service gap → minimum verdict "Caution"
     // A price discount does not justify "Buy" on a high-mileage vehicle without history.
     const gapSev = analysis?.historyAnalysis?.serviceGap?.gapSeverity;
     const highMileageRisk = condition.mileage > 80000 && (gapSev === "severe" || gapSev === "unverified" || gapSev === "unknown");
     if (highMileageRisk && analysis?.finalVerdict) {
       const currentVerdict = String((analysis.finalVerdict as any).verdict || "").toLowerCase();
-      if (currentVerdict === "buy") {
-        console.log(`High-mileage minimum verdict rule fired: mileage=${condition.mileage}, gapSeverity=${gapSev} — downgrading Buy → Negotiate`);
-        (analysis.finalVerdict as any).verdict = "Negotiate";
+      if (currentVerdict === "buy" || currentVerdict === "conditional buy") {
+        console.log(`High-mileage minimum verdict rule fired: mileage=${condition.mileage}, gapSeverity=${gapSev} — downgrading ${currentVerdict} → Caution`);
+        (analysis.finalVerdict as any).verdict = "Caution";
         const existingJustification = (analysis.finalVerdict as any).justification || "";
-        (analysis.finalVerdict as any).justification = `High mileage (${condition.mileage.toLocaleString()} mi) combined with ${gapSev === "unverified" || gapSev === "unknown" ? "unverified" : "severe gaps in"} service history requires negotiation regardless of price position. ${existingJustification}`.trim();
+        (analysis.finalVerdict as any).justification = `High mileage (${condition.mileage.toLocaleString()} mi) combined with ${gapSev === "unverified" || gapSev === "unknown" ? "unverified" : "severe gaps in"} service history warrants Caution regardless of price position. ${existingJustification}`.trim();
       }
     }
 

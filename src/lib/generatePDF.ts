@@ -78,7 +78,7 @@ interface WarrantyAnalysis {
 }
 
 interface FinalVerdict {
-  verdict: "Buy" | "Negotiate" | "Walk Away";
+  verdict: "Buy" | "Conditional Buy" | "Caution" | "Avoid";
   justification: string;
 }
 
