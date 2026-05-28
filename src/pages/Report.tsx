@@ -1524,6 +1524,10 @@ export default function ReportPage() {
                       pricing_sources: analysisResult.pricingSources || [],
                       pricing_last_updated: new Date().toISOString(),
                       source_breakdown: analysisResult.sourceBreakdown || [],
+                      ...(analysisResult.daysOnMarket != null ? {
+                        days_on_market: analysisResult.daysOnMarket,
+                        days_on_market_as_of: (analysisResult.daysOnMarketAsOf ? new Date(analysisResult.daysOnMarketAsOf) : new Date()).toISOString(),
+                      } : {}),
                       ...(shouldSetVin ? { vin: extractedVin } : {}),
                     };
                     if (priceAssessment.fairMarketPrivate > 0 || priceAssessment.fairMarketDealer > 0) {
