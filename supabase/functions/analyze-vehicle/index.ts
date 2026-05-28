@@ -78,6 +78,9 @@ interface PricingData {
   pricingDataUnavailable?: boolean;
   pricingSource?: "market" | "estimated";
   contributingSources?: string[];
+  daysOnMarket?: number | null;
+  daysOnMarketAsOf?: string | null;
+  daysOnMarketFirstSeenDate?: string | null;
 }
 
 interface MaintenanceData {
