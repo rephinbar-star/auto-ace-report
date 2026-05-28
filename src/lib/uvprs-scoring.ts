@@ -822,5 +822,7 @@ export function calculateUVPRS(input: UVPRSInput): UVPRSResult {
     factors: factorResults,
     knownFactorCount: factorResults.filter(f => f.known).length,
     pricingDataUnavailable: input.pricingDataUnavailable,
+    baseScore: scoreBeforeFloors,
+    appliedAdjustments,
   };
 }
