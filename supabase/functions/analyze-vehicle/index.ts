@@ -593,6 +593,9 @@ ODOMETER & AGE LOCK:
 - The current odometer reading is EXACTLY ${condition.mileage.toLocaleString()} miles. Do NOT state any other number as the vehicle's "current mileage" anywhere — not in header context, service analysis, the mileage factor, or prose. Do not invent a more "precise" odometer figure.
 - The vehicle's age is EXACTLY ${Math.max(1, new Date().getFullYear() - vehicle.year)} years (model year ${vehicle.year}). Use this single age value consistently across every section (warranty, mileage-for-age, depreciation).
 
+LISTING AGE LOCK:
+- Days-on-market is GROUND TRUTH only when explicitly provided in the LISTING AGE section of the data block below. If a value is provided, use it EXACTLY — never round, estimate, or invent a different figure. If no value is provided, do NOT claim how long the vehicle has been listed anywhere in the report; phrase it as "listing age not available" if you must address it.
+
 INTEREST & FINANCING ARITHMETIC LOCK:
 - NEVER compute loan interest, total interest, or monthly payment yourself. Use ONLY the exact figures provided in the FINANCING section (loan amount, term, APR, monthly payment, total interest). If a figure is not provided, do not state one.
 
