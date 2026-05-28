@@ -1182,6 +1182,7 @@ export default function ReportPage() {
         },
         priceAssessment: {
           fairMarketPrivate: priceAssessment.fairMarketPrivate,
+          fairMarketDealer: priceAssessment.fairMarketDealer,
           fairMarketTradeIn: priceAssessment.fairMarketTradeIn,
           dealRating: priceAssessment.dealRating,
           priceDifference: priceAssessment.priceDifference,
