@@ -1253,7 +1253,7 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
     pdf.roundedRect(M, y, contentW, 36, 3, 3, "S");
 
     // Verdict badge
-    const verdictText = finalVerdict.verdict.toUpperCase();
+    const verdictText = canonicalVerdict.toUpperCase();
     pdf.setFillColor(...verdictColor);
     const vBadgeW = pdf.getStringUnitWidth(verdictText) * 9 / pdf.internal.scaleFactor + 10;
     pdf.roundedRect(M + (contentW - vBadgeW) / 2, y + 3, vBadgeW, 9, 2, 2, "F");
