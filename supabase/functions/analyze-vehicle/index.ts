@@ -817,6 +817,9 @@ GENERATION CONTEXT:
 ${hasPricing ? `REAL-TIME MARKET PRICING DATA (use these as your primary pricing reference):
 ${pricingData.pricingContext}` : ""}
 
+${pricingData?.daysOnMarket != null ? `LISTING AGE (MarketCheck, as of ${pricingData.daysOnMarketAsOf || "now"}):
+- Days on Market: EXACTLY ${pricingData.daysOnMarket} days${pricingData.daysOnMarketFirstSeenDate ? ` (first seen ${pricingData.daysOnMarketFirstSeenDate})` : ""}` : `LISTING AGE: not available — do NOT state any days-on-market or "listed N days ago" figure anywhere in the report.`}
+
 ${hasMaintenance ? `REAL-TIME REPAIR & MAINTENANCE COST DATA (use these as your primary cost reference):
 ${maintenanceData.maintenanceContext}` : ""}
 
