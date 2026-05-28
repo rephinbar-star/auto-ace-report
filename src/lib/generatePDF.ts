@@ -1004,12 +1004,12 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   }
 
   // Cost data sources after risk factors
-  if (deduplicatedSources.length > 0) {
+  if (deduplicatedMaintenanceSources.length > 0) {
     ensureSpace(10);
     pdf.setFontSize(7);
     pdf.setTextColor(...SLATE);
     pdf.setFont("helvetica", "normal");
-    pdf.text(`Cost Data Sources: ${deduplicatedSources.map(s => s.displayName).join(", ")}`, M, y);
+    pdf.text(`Cost Data Sources: ${deduplicatedMaintenanceSources.map(s => s.displayName).join(", ")}`, M, y);
     y += 5;
   }
 
