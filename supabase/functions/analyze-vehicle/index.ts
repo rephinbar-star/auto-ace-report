@@ -839,7 +839,7 @@ ${history ? `VEHICLE HISTORY (historyReportProvided = true):
 - Accidents: ${history.accidentCount || 0}
 - Previous Owners: ${history.ownerCount || "Unknown"}
 - Title Status: ${history.titleStatus || "Unknown"}
-${history.issues?.length ? `- Known Issues: ${history.issues.join(", ")}` : ""}` : "No vehicle history report provided (historyReportProvided = false). Service history is UNVERIFIED — do NOT treat this as a confirmed service gap. Use moderate/unknown language for service-related assessments."}
+${filteredHistoryIssues.length ? `- Known Issues: ${filteredHistoryIssues.join(", ")}` : ""}` : "No vehicle history report provided (historyReportProvided = false). Service history is UNVERIFIED — do NOT treat this as a confirmed service gap. Use moderate/unknown language for service-related assessments."}
 ${geoRiskBlock}
 ${recallsBlock}
 
