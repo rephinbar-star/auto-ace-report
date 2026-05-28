@@ -1386,6 +1386,9 @@ Provide your expert analysis.`;
       pricingDataUnavailable: pricingUnavailable,
       pricingSource: pricingData?.pricingSource || (pricingUnavailable ? "estimated" : "market"),
       contributingSources: pricingData?.contributingSources || [],
+      daysOnMarket: pricingData?.daysOnMarket ?? null,
+      daysOnMarketAsOf: pricingData?.daysOnMarketAsOf ?? null,
+      daysOnMarketFirstSeenDate: pricingData?.daysOnMarketFirstSeenDate ?? null,
     };
   } catch (error) {
     console.error("Analysis error:", error);

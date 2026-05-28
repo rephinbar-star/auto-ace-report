@@ -359,6 +359,8 @@ export default function ReportPage() {
     tradeInHigh?: number | null;
   }>>([]);
   const [pricingLastUpdated, setPricingLastUpdated] = useState<Date | null>(null);
+  const [daysOnMarket, setDaysOnMarket] = useState<number | null>(null);
+  const [daysOnMarketAsOf, setDaysOnMarketAsOf] = useState<Date | null>(null);
   const [isRefreshingPricing, setIsRefreshingPricing] = useState(false);
   const [pricingDataUnavailable, setPricingDataUnavailable] = useState(false);
   const [pricingSource, setPricingSource] = useState<"market" | "estimated">("market");
@@ -451,6 +453,8 @@ export default function ReportPage() {
         fuel_type: mpgData?.fuelType || null,
         pricing_sources: pricingSources.length > 0 ? pricingSources : null,
         pricing_last_updated: pricingLastUpdated?.toISOString() || null,
+        days_on_market: daysOnMarket,
+        days_on_market_as_of: daysOnMarketAsOf?.toISOString() || null,
         source_breakdown: sourceBreakdown.length > 0 ? sourceBreakdown : [],
         risk_score: uvprsResult?.totalScore ?? null,
         is_cpo: condition.isCPO || false,
@@ -633,6 +637,12 @@ export default function ReportPage() {
           if (report.pricing_last_updated) {
             setPricingLastUpdated(new Date(report.pricing_last_updated));
           }
+          if (report.days_on_market != null) {
+            setDaysOnMarket(report.days_on_market);
+          }
+          if (report.days_on_market_as_of) {
+            setDaysOnMarketAsOf(new Date(report.days_on_market_as_of));
+          }
           if (report.source_breakdown && Array.isArray(report.source_breakdown) && report.source_breakdown.length > 0) {
             setSourceBreakdown(report.source_breakdown as any);
           }
@@ -788,6 +798,10 @@ export default function ReportPage() {
           if (result.pricingSources?.length) {
             setPricingSources(result.pricingSources);
             setPricingLastUpdated(new Date());
+          }
+          if (result.daysOnMarket != null) {
+            setDaysOnMarket(result.daysOnMarket);
+            setDaysOnMarketAsOf(result.daysOnMarketAsOf ? new Date(result.daysOnMarketAsOf) : new Date());
           }
           if (result.maintenanceSources?.length) {
             setMaintenanceSources(result.maintenanceSources);
@@ -970,6 +984,10 @@ export default function ReportPage() {
         }
         const now = new Date();
         setPricingLastUpdated(now);
+        if (result.daysOnMarket != null) {
+          setDaysOnMarket(result.daysOnMarket);
+          setDaysOnMarketAsOf(result.daysOnMarketAsOf ? new Date(result.daysOnMarketAsOf) : now);
+        }
         sonnerToast.success("Analysis refreshed with latest market data");
 
         // Persist to DB if this is a saved report
@@ -990,6 +1008,10 @@ export default function ReportPage() {
             depreciation_table: depreciationTable as any,
             pricing_sources: result.pricingSources || [],
             pricing_last_updated: now.toISOString(),
+            ...(result.daysOnMarket != null ? {
+              days_on_market: result.daysOnMarket,
+              days_on_market_as_of: (result.daysOnMarketAsOf ? new Date(result.daysOnMarketAsOf) : now).toISOString(),
+            } : {}),
             source_breakdown: result.sourceBreakdown || [],
             ...(result.detectedSellerType ? { seller_type: result.detectedSellerType } : {}),
             ...(result.analysis.aiFindings ? { ai_findings: {
@@ -1270,6 +1292,8 @@ export default function ReportPage() {
           recalls: recallData.recalls,
         } : undefined,
         vin: vehicle.vin || undefined,
+        daysOnMarket,
+        daysOnMarketAsOf,
       });
       sonnerToast.success("PDF downloaded successfully!");
     } catch (error) {
@@ -1475,6 +1499,10 @@ export default function ReportPage() {
                     setPricingSources(analysisResult.pricingSources);
                     setPricingLastUpdated(new Date());
                   }
+                  if (analysisResult.daysOnMarket != null) {
+                    setDaysOnMarket(analysisResult.daysOnMarket);
+                    setDaysOnMarketAsOf(analysisResult.daysOnMarketAsOf ? new Date(analysisResult.daysOnMarketAsOf) : new Date());
+                  }
                   if (analysisResult.maintenanceSources?.length) {
                     setMaintenanceSources(analysisResult.maintenanceSources);
                   }
@@ -1498,6 +1526,10 @@ export default function ReportPage() {
                       pricing_sources: analysisResult.pricingSources || [],
                       pricing_last_updated: new Date().toISOString(),
                       source_breakdown: analysisResult.sourceBreakdown || [],
+                      ...(analysisResult.daysOnMarket != null ? {
+                        days_on_market: analysisResult.daysOnMarket,
+                        days_on_market_as_of: (analysisResult.daysOnMarketAsOf ? new Date(analysisResult.daysOnMarketAsOf) : new Date()).toISOString(),
+                      } : {}),
                       ...(shouldSetVin ? { vin: extractedVin } : {}),
                     };
                     if (priceAssessment.fairMarketPrivate > 0 || priceAssessment.fairMarketDealer > 0) {
@@ -1533,6 +1565,8 @@ export default function ReportPage() {
             warrantyStatus={analysis.warrantyAnalysis?.warrantyStatus || "unknown"}
             warrantyContext={warrantyContext}
             pricingDataUnavailable={pricingDataUnavailable}
+            daysOnMarket={daysOnMarket}
+            daysOnMarketAsOf={daysOnMarketAsOf}
             onHistoryTabChange={setHistoryTab}
           />
 

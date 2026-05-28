@@ -114,6 +114,8 @@ interface ReportData {
   finalVerdict?: FinalVerdict;
   recallData?: RecallData;
   vin?: string;
+  daysOnMarket?: number | null;
+  daysOnMarketAsOf?: Date | string | null;
 }
 
 // ── Color palette matching the website (teal primary) ──
@@ -186,7 +188,7 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   const EXPERT_OPINION_FONT_SIZE = 13;
   let y = 0;
 
-  const { vehicle, priceAssessment, riskAssessment, historyAnalysis, depreciationTable, images, dealerReview, serviceHistory, uvprsResult, tcoData, sellerType, pricingSources, maintenanceSources, hasServiceRecords, warrantyAnalysis, finalVerdict, recallData, vin } = data;
+  const { vehicle, priceAssessment, riskAssessment, historyAnalysis, depreciationTable, images, dealerReview, serviceHistory, uvprsResult, tcoData, sellerType, pricingSources, maintenanceSources, hasServiceRecords, warrantyAnalysis, finalVerdict, recallData, vin, daysOnMarket, daysOnMarketAsOf } = data;
 
   // Helper to deduplicate sources by domain
   const getDeduplicatedSources = (sources: string[]): { displayName: string; url: string }[] => {
@@ -299,7 +301,18 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   pdf.setFont("helvetica", "normal");
   pdf.setTextColor(...SLATE);
   pdf.text(`${vehicle.mileage.toLocaleString()} miles  |  Asking ${fmt(vehicle.askingPrice)}`, M, y);
-  y += 8;
+  y += 5;
+  if (daysOnMarket != null) {
+    const asOfDate = daysOnMarketAsOf
+      ? (daysOnMarketAsOf instanceof Date ? daysOnMarketAsOf : new Date(daysOnMarketAsOf))
+      : null;
+    const asOfLabel = asOfDate && !isNaN(asOfDate.getTime())
+      ? ` (as of ${asOfDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })})`
+      : "";
+    pdf.text(`Listed ${daysOnMarket} day${daysOnMarket === 1 ? "" : "s"} ago${asOfLabel} · via MarketCheck`, M, y);
+    y += 5;
+  }
+  y += 3;
 
   // ══════════════════════════════════════════════
   // QUICK STATS (4 cards)

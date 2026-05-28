@@ -35,6 +35,9 @@ export interface VehicleCondition {
   images?: string[];
   isCPO?: boolean;
   isBrandNew?: boolean;
+  daysOnMarket?: number | null;
+  daysOnMarketAsOf?: string | null;
+  daysOnMarketFirstSeenDate?: string | null;
 }
 
 export interface VehicleHistory {

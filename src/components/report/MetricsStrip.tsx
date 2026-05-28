@@ -23,6 +23,8 @@ interface MetricsStripProps {
   warrantyStatus: string;
   warrantyContext: string;
   pricingDataUnavailable?: boolean;
+  daysOnMarket?: number | null;
+  daysOnMarketAsOf?: Date | null;
   onHistoryTabChange?: (tab: string) => void;
 }
 
@@ -36,7 +38,8 @@ const colorClasses: Record<string, string> = {
 export function MetricsStrip({
   priceDifference, fairMarketPrivate, riskScore, riskLabel,
   healthScore, monthlyCostRange, openRecalls, resolvedRecalls,
-  warrantyStatus, warrantyContext, pricingDataUnavailable, onHistoryTabChange,
+  warrantyStatus, warrantyContext, pricingDataUnavailable,
+  daysOnMarket, daysOnMarketAsOf, onHistoryTabChange,
 }: MetricsStripProps) {
   const priceBelow = priceDifference <= 0;
   const priceToken = pricingDataUnavailable ? "neutral" : (priceBelow ? "risk-green" : "risk-red");
@@ -93,6 +96,19 @@ export function MetricsStrip({
       historyTab: "overview",
     },
   ];
+
+  if (daysOnMarket != null) {
+    const asOfLabel = daysOnMarketAsOf
+      ? daysOnMarketAsOf.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+      : null;
+    cards.push({
+      label: "LISTED",
+      value: `${daysOnMarket} day${daysOnMarket === 1 ? "" : "s"} ago`,
+      context: `via MarketCheck${asOfLabel ? ` · as of ${asOfLabel}` : ""}`,
+      colorToken: "neutral",
+      scrollTarget: "section-pricing",
+    });
+  }
 
   const handleClick = (card: MetricCard) => {
     if (card.historyTab && onHistoryTabChange) {
