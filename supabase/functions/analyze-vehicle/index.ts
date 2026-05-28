@@ -421,8 +421,9 @@ Compare prior reported mileage readings (from CarFax, AutoCheck, or DMV records 
 OPEN SAFETY RECALLS OVERRIDE LOGIC:
 Cross-reference any open/unresolved NHTSA safety recalls mentioned in the history or known for this year/make/model:
 - 1-2 open recalls: Flag in findings, add 10 points to chassisSignal.
-- 3-4 open recalls: Set floor override to minimumScore 45, add 25 points to chassisSignal, verdict must be "Negotiate" or worse.
-- 5+ open recalls OR any safety-critical recall (airbag, steering, fuel system): Set floor override to minimumScore 60, verdict MUST be "Walk Away".
+- 3-4 open recalls: Set floor override to minimumScore 45, add 25 points to chassisSignal, verdict must be "Caution" or "Avoid".
+- 5+ open recalls (none safety-critical): Set floor override to minimumScore 60, verdict must be "Caution" or "Avoid".
+- Any safety-critical unresolved recall (airbag, steering, fuel system) — by itself OR alongside other recalls: Set floor override to minimumScore 65, verdict MUST be "Avoid".
 
 SERVICE GAP SEVERITY TIERS:
 Classify the largest mileage gap between documented services:
