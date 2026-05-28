@@ -727,48 +727,75 @@ export function calculateUVPRS(input: UVPRSInput): UVPRSResult {
 
   totalScore = Math.round(Math.min(100, Math.max(0, totalScore)));
 
-  // ── Apply AI-reported floor overrides (secondary check — primary is server-side) ──
+  // ── Floor overrides & compound penalties (each recorded for breakdown transparency) ──
+  const scoreBeforeFloors = totalScore;
+  const appliedAdjustments: { reason: string; type: "floor" | "penalty"; delta: number }[] = [];
+
+  // A hard floor lifts the score to a minimum (used for disqualifying conditions).
+  const applyFloor = (min: number, reason: string) => {
+    if (totalScore < min) {
+      appliedAdjustments.push({ reason, type: "floor", delta: min - totalScore });
+      totalScore = min;
+    }
+  };
+
+  // A penalty adds points (used for compounding interactions) so the score still varies.
+  const applyPenalty = (points: number, reason: string) => {
+    const before = totalScore;
+    totalScore = Math.min(100, totalScore + points);
+    if (totalScore !== before) {
+      appliedAdjustments.push({ reason, type: "penalty", delta: totalScore - before });
+    }
+  };
+
+  // AI-reported floor overrides (secondary check — primary is server-side)
   if (input.aiFindings?.floorOverrides?.triggered && input.aiFindings.floorOverrides.minimumScore != null) {
-    totalScore = Math.max(totalScore, input.aiFindings.floorOverrides.minimumScore);
+    applyFloor(input.aiFindings.floorOverrides.minimumScore, "AI-reported floor override");
   }
 
-  // ── Hard floor overrides (tiered, highest applicable wins) ──
-  
-  // Floor 65: salvage/flood/rebuilt title, confirmed frame damage, confirmed odometer rollback
+  // Floor 65: salvage/flood/rebuilt title, confirmed frame damage
   if (input.titleStatus === "salvage" || input.titleStatus === "lemon" || input.titleStatus === "rebuilt") {
-    totalScore = Math.max(65, totalScore);
+    applyFloor(65, `Branded title (${input.titleStatus})`);
   }
   if (input.hasFrameDamage) {
-    totalScore = Math.max(65, totalScore);
+    applyFloor(65, "Confirmed frame/structural damage");
   }
 
-  // Floor 45: 3+ owners in <8 years, chronic recurring fault with >$2k/incident, asking price >25% above fair market
+  // Floor 45: 3+ owners in <8 years, chronic high-cost fault, asking >25% over market
   if (input.ownerCount != null && input.ownerCount >= 3 && age < 8) {
-    totalScore = Math.max(45, totalScore);
+    applyFloor(45, `${input.ownerCount} owners in under 8 years`);
   }
   if (input.aiFindings?.activeServiceFaults?.some(
-    f => (f.severityClass === 4 || f.severityClass === 5) && 
+    f => (f.severityClass === 4 || f.severityClass === 5) &&
          f.estimatedCostPerIncident != null && f.estimatedCostPerIncident >= 2000
   )) {
-    totalScore = Math.max(45, totalScore);
+    applyFloor(45, "Chronic/unresolved fault over $2,000 per incident");
   }
-  // Also check chronicRepairSystems (always, not just when aiFindings missing)
+  // Chronic repairs in a critical system
   if (input.chronicRepairSystems && input.chronicRepairSystems.length > 0) {
     const criticalSystems = ["transmission", "engine", "cooling", "electrical"];
     const hasCriticalChronic = input.chronicRepairSystems.some(s =>
       criticalSystems.some(cs => s.toLowerCase().includes(cs))
     );
     if (hasCriticalChronic) {
-      totalScore = Math.max(45, totalScore);
+      applyFloor(45, "Chronic repairs in a critical system");
     }
   }
   const mkt = input.fairMarketDealer || input.fairMarketPrivate;
   const pctOverMarket = mkt && mkt > 0 ? (input.askingPrice - mkt) / mkt : 0;
   if (pctOverMarket > 0.25) {
-    totalScore = Math.max(45, totalScore);
+    applyFloor(45, "Asking price more than 25% above market");
   }
 
-  // Compound floor 51: overpriced >10% AND has expensive known reliability concerns (>$4k total)
+  // Floor 35: AI identifies chassis-wide systemic defect (level 4+)
+  if (input.aiFindings?.chassisSignal?.level != null && input.aiFindings.chassisSignal.level >= 4) {
+    applyFloor(35, `Platform-wide defect (chassis signal level ${input.aiFindings.chassisSignal.level})`);
+  }
+
+  // Compound INTERACTION penalties — ADDITIVE and capped, not hard floors.
+  // Price-vs-market and reliability are already weighted factors; these add a modest nudge for
+  // the compounding effect instead of pinning the score to a flat value. This keeps the headline
+  // varying per vehicle and tracking the factor table (fixes the "identical 51 across cars" bug).
   if (pctOverMarket > 0.10) {
     const totalReliabilityCost = (input.aiFindings?.knownFailurePatterns ?? [])
       .reduce((sum, p) => {
@@ -776,19 +803,14 @@ export function calculateUVPRS(input: UVPRSInput): UVPRSResult {
         return sum + (costMap[p.costTier] ?? 1000);
       }, 0);
     if (totalReliabilityCost >= 4000) {
-      totalScore = Math.max(51, totalScore);
+      applyPenalty(10, "Overpriced (>10%) with $4k+ in known reliability concerns");
     }
   }
-
-  // Compound floor 51: overpriced >15% with ANY chronic repair systems
   if (pctOverMarket > 0.15 && input.chronicRepairSystems && input.chronicRepairSystems.length > 0) {
-    totalScore = Math.max(51, totalScore);
+    applyPenalty(8, "Overpriced (>15%) with chronic repair history");
   }
 
-  // Floor 35: AI identifies chassis-wide systemic defect (level 4+)
-  if (input.aiFindings?.chassisSignal?.level != null && input.aiFindings.chassisSignal.level >= 4) {
-    totalScore = Math.max(35, totalScore);
-  }
+  totalScore = Math.round(Math.min(100, Math.max(0, totalScore)));
 
   const { level, label, verdict } = getRiskLevel(totalScore);
 
