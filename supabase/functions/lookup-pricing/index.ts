@@ -287,6 +287,9 @@ serve(async (req) => {
         pricingDataUnavailable,
         pricingSource,
         contributingSources,
+        daysOnMarket: marketCheckResult?.daysOnMarket ?? null,
+        daysOnMarketAsOf: marketCheckResult?.daysOnMarketAsOf ?? null,
+        daysOnMarketFirstSeenDate: marketCheckResult?.daysOnMarketFirstSeenDate ?? null,
       } as PricingResult,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
