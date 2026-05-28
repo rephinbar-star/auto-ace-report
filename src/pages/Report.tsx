@@ -637,6 +637,12 @@ export default function ReportPage() {
           if (report.pricing_last_updated) {
             setPricingLastUpdated(new Date(report.pricing_last_updated));
           }
+          if (report.days_on_market != null) {
+            setDaysOnMarket(report.days_on_market);
+          }
+          if (report.days_on_market_as_of) {
+            setDaysOnMarketAsOf(new Date(report.days_on_market_as_of));
+          }
           if (report.source_breakdown && Array.isArray(report.source_breakdown) && report.source_breakdown.length > 0) {
             setSourceBreakdown(report.source_breakdown as any);
           }
