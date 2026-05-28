@@ -1,0 +1,25 @@
+# CarWise
+
+> AI-powered car buying analysis: fair price estimates, 5-year depreciation forecasts, history-report parsing, and risk assessments for smarter used and new vehicle purchases.
+
+CarWise helps car buyers decide whether a vehicle is fairly priced and worth buying. Users enter vehicle details (or a listing URL / VIN) and receive an expert-style report covering fair market value, deal rating, depreciation outlook, total cost of ownership, dealer trust, and a verdict.
+
+## Pages
+
+- [Home](/): Product overview and entry point to vehicle analysis.
+- [How It Works](/how-it-works): Step-by-step walkthrough of the analysis flow.
+- [Pricing](/pricing): Free, Premium, and Pro one-time report tiers.
+- [Sample Report](/sample-report): Example CarWise vehicle report.
+- [Marketplace](/marketplace): Browse vehicle listings analyzed by CarWise.
+- [List a Vehicle](/marketplace/list): Free form to submit a vehicle listing.
+- [Compare](/compare): Side-by-side comparison of multiple vehicles.
+- [Analyze](/analyze): Start a new vehicle analysis from scratch.
+- [FAQ](/faq): Frequently asked questions about CarWise.
+- [Help Center](/help): Tutorials, case studies, and feature guides.
+- [Roadmap](/roadmap): Changelog and upcoming features.
+- [Contact](/contact): Reach the CarWise team.
+
+## Optional
+
+- [Privacy Policy](/privacy)
+- [Terms of Service](/terms)

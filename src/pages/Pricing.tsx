@@ -168,11 +168,22 @@ export default function PricingPage() {
     return "Buy Report";
   };
 
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map((faq) => ({
+      "@type": "Question",
+      name: faq.question,
+      acceptedAnswer: { "@type": "Answer", text: faq.answer },
+    })),
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <SEO
         title="Pricing - CarWise"
         description="Choose the right CarWise report for your needs. Free basic analysis or pay-per-report for premium features."
+        jsonLd={faqJsonLd}
       />
       <Header />
 
@@ -193,6 +204,7 @@ export default function PricingPage() {
         {/* Pricing cards */}
         <section className="py-12 md:py-16">
           <div className="container mx-auto px-4">
+            <h2 className="sr-only">Available Plans</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
               {plans.map((plan) => (
                 <Card 

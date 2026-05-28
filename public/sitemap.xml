@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://carwise.expert/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://carwise.expert/how-it-works</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://carwise.expert/pricing</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://carwise.expert/sample-report</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://carwise.expert/marketplace</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://carwise.expert/marketplace/list</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://carwise.expert/compare</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://carwise.expert/analyze</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://carwise.expert/faq</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://carwise.expert/help</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://carwise.expert/contact</loc><changefreq>yearly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://carwise.expert/roadmap</loc><changefreq>monthly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://carwise.expert/privacy</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://carwise.expert/terms</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://carwise.expert/login</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://carwise.expert/signup</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+</urlset>
