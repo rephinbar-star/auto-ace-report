@@ -1329,24 +1329,24 @@ Provide your expert analysis.`;
         (analysis.priceAssessment as any).priceDifference = 0;
         (analysis.priceAssessment as any).percentDifference = 0;
       }
-      // Force "Negotiate" only for USED vehicles missing market data.
+      // Force "Caution" only for USED vehicles missing market data.
       // Brand-new vehicles: allow AI verdict + UVPRS to stand.
       if (!isBrandNew && analysis?.finalVerdict) {
-        (analysis.finalVerdict as any).verdict = "Negotiate";
+        (analysis.finalVerdict as any).verdict = "Caution";
       }
     }
 
-    // High-mileage + unverified/severe service gap → minimum verdict "Negotiate"
+    // High-mileage + unverified/severe service gap → minimum verdict "Caution"
     // A price discount does not justify "Buy" on a high-mileage vehicle without history.
     const gapSev = analysis?.historyAnalysis?.serviceGap?.gapSeverity;
     const highMileageRisk = condition.mileage > 80000 && (gapSev === "severe" || gapSev === "unverified" || gapSev === "unknown");
     if (highMileageRisk && analysis?.finalVerdict) {
       const currentVerdict = String((analysis.finalVerdict as any).verdict || "").toLowerCase();
-      if (currentVerdict === "buy") {
-        console.log(`High-mileage minimum verdict rule fired: mileage=${condition.mileage}, gapSeverity=${gapSev} — downgrading Buy → Negotiate`);
-        (analysis.finalVerdict as any).verdict = "Negotiate";
+      if (currentVerdict === "buy" || currentVerdict === "conditional buy") {
+        console.log(`High-mileage minimum verdict rule fired: mileage=${condition.mileage}, gapSeverity=${gapSev} — downgrading ${currentVerdict} → Caution`);
+        (analysis.finalVerdict as any).verdict = "Caution";
         const existingJustification = (analysis.finalVerdict as any).justification || "";
-        (analysis.finalVerdict as any).justification = `High mileage (${condition.mileage.toLocaleString()} mi) combined with ${gapSev === "unverified" || gapSev === "unknown" ? "unverified" : "severe gaps in"} service history requires negotiation regardless of price position. ${existingJustification}`.trim();
+        (analysis.finalVerdict as any).justification = `High mileage (${condition.mileage.toLocaleString()} mi) combined with ${gapSev === "unverified" || gapSev === "unknown" ? "unverified" : "severe gaps in"} service history warrants Caution regardless of price position. ${existingJustification}`.trim();
       }
     }
 
