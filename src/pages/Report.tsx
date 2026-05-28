@@ -453,6 +453,8 @@ export default function ReportPage() {
         fuel_type: mpgData?.fuelType || null,
         pricing_sources: pricingSources.length > 0 ? pricingSources : null,
         pricing_last_updated: pricingLastUpdated?.toISOString() || null,
+        days_on_market: daysOnMarket,
+        days_on_market_as_of: daysOnMarketAsOf?.toISOString() || null,
         source_breakdown: sourceBreakdown.length > 0 ? sourceBreakdown : [],
         risk_score: uvprsResult?.totalScore ?? null,
         is_cpo: condition.isCPO || false,
