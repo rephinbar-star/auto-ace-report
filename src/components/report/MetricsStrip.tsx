@@ -132,7 +132,7 @@ export function MetricsStrip({
           <p className={cn("text-lg font-bold mt-0.5 leading-tight", colorClasses[card.colorToken || "neutral"])}>
             {card.value}
           </p>
-          <p className="text-[11px] text-neutral mt-0.5 leading-tight">{card.context}</p>
+          <p className="text-[11px] text-neutral mt-0.5 leading-tight line-clamp-2">{card.context}</p>
         </button>
       ))}
     </div>
