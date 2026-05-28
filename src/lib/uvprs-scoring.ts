@@ -538,10 +538,12 @@ export function scoreSellerType(sellerType: string | null | undefined): { score:
 // ============================================================================
 
 export function getRiskLevel(score: number): { level: UVPRSResult["riskLevel"]; label: string; verdict: UVPRSResult["verdict"] } {
-  if (score <= 30) return { level: "low", label: "Low Risk", verdict: "Conditional Buy" };
-  if (score <= 40) return { level: "moderate", label: "Moderate Risk", verdict: "Conditional Buy" };
-  if (score <= 50) return { level: "elevated", label: "Elevated Risk", verdict: "Caution" };
-  if (score <= 70) return { level: "elevated", label: "Elevated Risk", verdict: "Caution" };
+  // Canonical verdict bands (Option B). Single source of truth for the displayed verdict.
+  // Avoid starts at 65 to match the disqualifier hard floors (salvage/frame), so a floored
+  // disqualifier reads "Avoid" rather than "Caution".
+  if (score < 25) return { level: "low", label: "Low Risk", verdict: "Buy" };
+  if (score < 45) return { level: "moderate", label: "Moderate Risk", verdict: "Conditional Buy" };
+  if (score < 65) return { level: "elevated", label: "Elevated Risk", verdict: "Caution" };
   return { level: "high", label: "High Risk", verdict: "Avoid" };
 }
 
