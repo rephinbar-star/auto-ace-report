@@ -1282,27 +1282,32 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
 
     y += 40;
   } else {
-    // Fallback: derive Buy/Negotiate/Walk Away from risk level
-    const riskLevel = uvprsResult
-      ? uvprsResult.riskLevel
-      : riskAssessment.level;
-
-    let derivedVerdict: "Buy" | "Negotiate" | "Walk Away";
+    // Fallback (no AI finalVerdict): use the canonical UVPRS verdict (Option B) so the PDF
+    // badge matches the on-screen badge and vocabulary.
+    const levelToVerdict = (lvl: string): "Buy" | "Conditional Buy" | "Caution" | "Avoid" => {
+      if (lvl === "low") return "Buy";
+      if (lvl === "moderate" || lvl === "medium") return "Conditional Buy";
+      if (lvl === "elevated") return "Caution";
+      return "Avoid"; // high
+    };
+    const derivedVerdict: "Buy" | "Conditional Buy" | "Caution" | "Avoid" =
+      uvprsResult?.verdict ?? levelToVerdict(riskAssessment.level);
     let derivedJustification: string;
-
-    if (riskLevel === "low") {
-      derivedVerdict = "Buy";
+    if (derivedVerdict === "Buy") {
       derivedJustification = "This vehicle shows low risk indicators across pricing, history, and reliability factors. The deal aligns well with market values and presents a sound purchase opportunity.";
-    } else if (riskLevel === "medium" || riskLevel === "moderate") {
-      derivedVerdict = "Negotiate";
-      derivedJustification = "This vehicle has moderate risk factors that warrant negotiation. Consider leveraging the identified concerns to negotiate a better price closer to the fair offer value.";
+    } else if (derivedVerdict === "Conditional Buy") {
+      derivedJustification = "This vehicle has moderate risk factors. It can be a sound purchase if the identified concerns are addressed and the price is negotiated toward the fair offer value.";
+    } else if (derivedVerdict === "Caution") {
+      derivedJustification = "This vehicle has elevated risk factors that warrant caution. Carefully weigh the identified concerns and negotiate toward the fair offer value before proceeding.";
     } else {
-      derivedVerdict = "Walk Away";
-      derivedJustification = "This vehicle presents significant risk flags including pricing, history, or reliability concerns. The risks outweigh potential value at the current asking price.";
+      derivedJustification = "This vehicle presents significant risk flags across pricing, history, or reliability. The risks outweigh potential value at the current asking price.";
     }
+    const vLower = derivedVerdict.toLowerCase();
+    const verdictColor: [number, number, number] =
+      vLower === "avoid" || vLower === "walk away" ? RED
+      : vLower === "caution" || vLower === "conditional buy" || vLower === "negotiate" ? AMBER
+      : GREEN;
 
-    const verdictColor: [number, number, number] = derivedVerdict === "Buy" ? GREEN
-      : derivedVerdict === "Negotiate" ? AMBER : RED;
 
     pdf.setDrawColor(...verdictColor);
     pdf.setLineWidth(0.8);
