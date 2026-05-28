@@ -1309,11 +1309,11 @@ export default function ReportPage() {
     high: "bg-danger text-danger-foreground",
   };
 
-  const floorTriggered = !!(analysis.aiFindings?.floorOverrides as any)?.triggered;
   const displayVerdict = getFinalVerdict(
     uvprsResult?.totalScore,
     pricingDataUnavailable
   );
+
 
   const overpaymentAmount = condition.askingPrice - priceAssessment.fairMarketPrivate;
   const overpaymentSignificant = priceAssessment.fairMarketPrivate > 0
