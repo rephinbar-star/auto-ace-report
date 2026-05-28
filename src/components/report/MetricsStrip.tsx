@@ -97,6 +97,19 @@ export function MetricsStrip({
     },
   ];
 
+  if (daysOnMarket != null) {
+    const asOfLabel = daysOnMarketAsOf
+      ? daysOnMarketAsOf.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+      : null;
+    cards.push({
+      label: "LISTED",
+      value: `${daysOnMarket} day${daysOnMarket === 1 ? "" : "s"} ago`,
+      context: `via MarketCheck${asOfLabel ? ` · as of ${asOfLabel}` : ""}`,
+      colorToken: "neutral",
+      scrollTarget: "section-pricing",
+    });
+  }
+
   const handleClick = (card: MetricCard) => {
     if (card.historyTab && onHistoryTabChange) {
       onHistoryTabChange(card.historyTab);
