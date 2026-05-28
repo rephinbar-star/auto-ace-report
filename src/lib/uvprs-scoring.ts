@@ -98,6 +98,10 @@ export interface UVPRSResult {
   factors: UVPRSFactorResult[];
   knownFactorCount: number;
   pricingDataUnavailable?: boolean;
+  // Auditability: weighted factor sum before any floor/penalty, and every adjustment that fired.
+  // Lets the UI explain why the headline score differs from the factor-table sum.
+  baseScore?: number;
+  appliedAdjustments?: { reason: string; type: "floor" | "penalty"; delta: number }[];
 }
 
 // ============================================================================
