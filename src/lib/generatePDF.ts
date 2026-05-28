@@ -108,6 +108,7 @@ interface ReportData {
   tcoData?: TCOData;
   sellerType?: string;
   pricingSources?: string[];
+  maintenanceSources?: string[];
   hasServiceRecords?: boolean;
   warrantyAnalysis?: WarrantyAnalysis;
   finalVerdict?: FinalVerdict;
@@ -185,7 +186,7 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   const EXPERT_OPINION_FONT_SIZE = 13;
   let y = 0;
 
-  const { vehicle, priceAssessment, riskAssessment, historyAnalysis, depreciationTable, images, dealerReview, serviceHistory, uvprsResult, tcoData, sellerType, pricingSources, hasServiceRecords, warrantyAnalysis, finalVerdict, recallData, vin } = data;
+  const { vehicle, priceAssessment, riskAssessment, historyAnalysis, depreciationTable, images, dealerReview, serviceHistory, uvprsResult, tcoData, sellerType, pricingSources, maintenanceSources, hasServiceRecords, warrantyAnalysis, finalVerdict, recallData, vin } = data;
 
   // Helper to deduplicate sources by domain
   const getDeduplicatedSources = (sources: string[]): { displayName: string; url: string }[] => {
@@ -205,6 +206,11 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
     return Array.from(seen.values());
   };
   const deduplicatedSources = pricingSources?.length ? getDeduplicatedSources(pricingSources) : [];
+  // Repair/maintenance cost attribution must use maintenance sources (RepairPal/CarEdge/etc.),
+  // NOT the pricing/valuation sources (MarketCheck/VinAudit). Fall back to empty if absent.
+  const deduplicatedMaintenanceSources = maintenanceSources?.length
+    ? getDeduplicatedSources(maintenanceSources)
+    : [];
 
   // ── Helpers ──
   const ensureSpace = (needed: number) => {
@@ -304,6 +310,10 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   const referenceValue = sellerType === "dealer" && priceAssessment.fairMarketDealer
     ? priceAssessment.fairMarketDealer
     : priceAssessment.fairMarketPrivate;
+  // Only call it "Dealer Retail Value" when an actual dealer-retail figure exists.
+  const referenceLabel = sellerType === "dealer"
+    ? (priceAssessment.fairMarketDealer ? "Dealer Retail Value" : "Fair Market Value")
+    : "Private Sale Value";
 
   const ratingColor = (r: string): [number, number, number] => {
     const map: Record<string, [number, number, number]> = {
@@ -321,7 +331,7 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   };
 
   const statCards = [
-    { label: sellerType === "dealer" ? "Dealer Retail Value" : "Private Sale Value", value: fmt(referenceValue), color: TEAL },
+    { label: referenceLabel, value: fmt(referenceValue), color: TEAL },
     { label: "Deal Rating", value: priceAssessment.dealRating.charAt(0).toUpperCase() + priceAssessment.dealRating.slice(1), color: ratingColor(priceAssessment.dealRating) },
     { label: "Risk Score", value: uvprsResult ? `${uvprsResult.totalScore} / 100` : riskAssessment.level, color: uvprsColor() },
     { label: "Fair Offer", value: fmt(riskAssessment.fairOfferPrice), color: GREEN },
@@ -945,12 +955,12 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   });
 
   // Cost data sources after depreciation table
-  if (deduplicatedSources.length > 0) {
+  if (deduplicatedMaintenanceSources.length > 0) {
     ensureSpace(10);
     pdf.setFontSize(7);
     pdf.setTextColor(...SLATE);
     pdf.setFont("helvetica", "normal");
-    pdf.text(`Repair & Maintenance Cost Sources: ${deduplicatedSources.map(s => s.displayName).join(", ")}`, M, y);
+    pdf.text(`Repair & Maintenance Cost Sources: ${deduplicatedMaintenanceSources.map(s => s.displayName).join(", ")}`, M, y);
     y += 5;
   }
 
@@ -994,12 +1004,12 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   }
 
   // Cost data sources after risk factors
-  if (deduplicatedSources.length > 0) {
+  if (deduplicatedMaintenanceSources.length > 0) {
     ensureSpace(10);
     pdf.setFontSize(7);
     pdf.setTextColor(...SLATE);
     pdf.setFont("helvetica", "normal");
-    pdf.text(`Cost Data Sources: ${deduplicatedSources.map(s => s.displayName).join(", ")}`, M, y);
+    pdf.text(`Cost Data Sources: ${deduplicatedMaintenanceSources.map(s => s.displayName).join(", ")}`, M, y);
     y += 5;
   }
 
