@@ -108,6 +108,7 @@ interface ReportData {
   tcoData?: TCOData;
   sellerType?: string;
   pricingSources?: string[];
+  maintenanceSources?: string[];
   hasServiceRecords?: boolean;
   warrantyAnalysis?: WarrantyAnalysis;
   finalVerdict?: FinalVerdict;
