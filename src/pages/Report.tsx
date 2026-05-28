@@ -1008,6 +1008,10 @@ export default function ReportPage() {
             depreciation_table: depreciationTable as any,
             pricing_sources: result.pricingSources || [],
             pricing_last_updated: now.toISOString(),
+            ...(result.daysOnMarket != null ? {
+              days_on_market: result.daysOnMarket,
+              days_on_market_as_of: (result.daysOnMarketAsOf ? new Date(result.daysOnMarketAsOf) : now).toISOString(),
+            } : {}),
             source_breakdown: result.sourceBreakdown || [],
             ...(result.detectedSellerType ? { seller_type: result.detectedSellerType } : {}),
             ...(result.analysis.aiFindings ? { ai_findings: {
