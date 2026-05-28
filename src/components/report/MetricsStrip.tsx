@@ -23,6 +23,8 @@ interface MetricsStripProps {
   warrantyStatus: string;
   warrantyContext: string;
   pricingDataUnavailable?: boolean;
+  daysOnMarket?: number | null;
+  daysOnMarketAsOf?: Date | null;
   onHistoryTabChange?: (tab: string) => void;
 }
 
