@@ -114,6 +114,8 @@ interface ReportData {
   finalVerdict?: FinalVerdict;
   recallData?: RecallData;
   vin?: string;
+  daysOnMarket?: number | null;
+  daysOnMarketAsOf?: Date | string | null;
 }
 
 // ── Color palette matching the website (teal primary) ──
