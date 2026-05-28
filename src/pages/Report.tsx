@@ -1220,6 +1220,7 @@ export default function ReportPage() {
           return { tco, annualMiles };
         })(),
         pricingSources,
+        maintenanceSources,
         hasServiceRecords: vehicleData?.history?.serviceRecords ?? false,
         warrantyAnalysis: analysis.warrantyAnalysis,
         finalVerdict: analysis.finalVerdict,
