@@ -576,7 +576,7 @@ EXPERT OPINION STRUCTURE (MANDATORY 4-PARAGRAPH FORMAT):
 P1: Open with the most critical finding and verdict orientation. If odometer issues exist, lead with those. Then recalls. Then the single highest-risk finding. State the verdict direction clearly.
 P2: Mechanical and historical concerns with specific dollar estimates. Reference reliability concern costs, chronic systems, and service history gaps. Use actual dollar figures from RepairPal/CarEdge data.
 P3: Financial analysis — price vs market positioning, depreciation outlook, TCO implications. Reference the exact computed price differences provided. When discussing financing, you MUST use the EXACT loan/lease terms from the FINANCING section above (term, APR, monthly payment). Do NOT invent or assume different financing parameters.
-P4: Actionable conclusion — specific pre-purchase inspection demands (what to check, estimated cost), or clear walk-away reasoning with the triggering condition. This paragraph must match finalVerdict exactly.
+P4: Actionable conclusion — specific pre-purchase inspection demands (what to check, estimated cost), or clear avoidance reasoning with the triggering condition. This paragraph must match finalVerdict exactly.
 
 BREAKEVEN AND ABANDONMENT ANALYSIS (MANDATORY):
 Using the depreciationTable data, compute and include in expertOpinion P3:
