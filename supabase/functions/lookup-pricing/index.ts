@@ -45,6 +45,9 @@ interface PricingResult {
   pricingDataUnavailable?: boolean;
   pricingSource?: "market" | "estimated";
   contributingSources?: string[];
+  daysOnMarket?: number | null;
+  daysOnMarketAsOf?: string | null;
+  daysOnMarketFirstSeenDate?: string | null;
 }
 
 // Source reliability weights — 3-source weighted aggregation
