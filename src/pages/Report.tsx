@@ -2655,15 +2655,16 @@ export default function ReportPage() {
             {/* Top band — verdict repeat */}
             <div className={cn("p-5 border-b-2", {
               "bg-risk-red/10 border-risk-red": displayVerdict === "Avoid",
-              "bg-risk-amber/10 border-risk-amber": displayVerdict === "Caution",
-              "bg-risk-green/10 border-risk-green": displayVerdict === "Conditional Buy",
+              "bg-risk-amber/10 border-risk-amber": displayVerdict === "Caution" || displayVerdict === "Conditional Buy",
+              "bg-risk-green/10 border-risk-green": displayVerdict === "Buy",
             })}>
               <div className="flex items-center gap-3 flex-wrap">
                 <Badge className={cn("text-base px-4 py-1", {
                   "bg-risk-red text-white": displayVerdict === "Avoid",
-                  "bg-risk-amber text-white": displayVerdict === "Caution",
-                  "bg-risk-green text-white": displayVerdict === "Conditional Buy",
+                  "bg-risk-amber text-white": displayVerdict === "Caution" || displayVerdict === "Conditional Buy",
+                  "bg-risk-green text-white": displayVerdict === "Buy",
                 })}>
+
                   {displayVerdict}
                 </Badge>
                 {uvprsResult && (
