@@ -1311,11 +1311,10 @@ export default function ReportPage() {
 
   const floorTriggered = !!(analysis.aiFindings?.floorOverrides as any)?.triggered;
   const displayVerdict = getFinalVerdict(
-    analysis.finalVerdict?.verdict,
     uvprsResult?.totalScore,
-    floorTriggered,
     pricingDataUnavailable
   );
+
   const overpaymentAmount = condition.askingPrice - priceAssessment.fairMarketPrivate;
   const overpaymentSignificant = priceAssessment.fairMarketPrivate > 0
     && !pricingDataUnavailable
