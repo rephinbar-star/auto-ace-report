@@ -413,6 +413,9 @@ async function tryMarketCheck(vin: string): Promise<PricingResult | null> {
           tradeIn: fairMarketTradeIn > 0 ? fairMarketTradeIn : null,
         },
       ],
+      daysOnMarket,
+      daysOnMarketAsOf: new Date().toISOString(),
+      daysOnMarketFirstSeenDate: firstSeenDate,
     };
   } catch (err) {
     console.error("MarketCheck pricing error:", err);
