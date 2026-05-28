@@ -359,6 +359,8 @@ export default function ReportPage() {
     tradeInHigh?: number | null;
   }>>([]);
   const [pricingLastUpdated, setPricingLastUpdated] = useState<Date | null>(null);
+  const [daysOnMarket, setDaysOnMarket] = useState<number | null>(null);
+  const [daysOnMarketAsOf, setDaysOnMarketAsOf] = useState<Date | null>(null);
   const [isRefreshingPricing, setIsRefreshingPricing] = useState(false);
   const [pricingDataUnavailable, setPricingDataUnavailable] = useState(false);
   const [pricingSource, setPricingSource] = useState<"market" | "estimated">("market");
