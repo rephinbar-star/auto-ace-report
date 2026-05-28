@@ -431,7 +431,7 @@ Classify the largest mileage gap between documented services:
 - Minor (8,000-15,000 miles): gapSeverity = "minor"  
 - Moderate (15,001-30,000 miles): gapSeverity = "moderate"
 - Significant (30,001-60,000 miles): gapSeverity = "significant"
-- Severe (>60,000 miles): gapSeverity = "severe", verdict must be "Negotiate" or worse
+- Severe (>60,000 miles): gapSeverity = "severe", verdict must be "Caution" or "Avoid"
 - Unknown: gapSeverity = "unknown" — when NO history report was uploaded (not the same as confirmed gap)
 
 CRITICAL DISTINCTION — UNVERIFIED vs CONFIRMED SERVICE GAP:
