@@ -760,6 +760,20 @@ Always provide specific dollar amounts, not ranges. Be direct and honest about r
       ? `\nCONFIRMED OPEN NHTSA RECALLS (${openRecalls.length} total):\n${openRecalls.map(r => `- ${r.component}: ${r.description} (Recall #${r.id})`).join("\n")}\nCRITICAL: Use ONLY these confirmed recall names in hero bullets and recall references. Do NOT infer or add recalls not listed above.`
       : "\nNo open NHTSA recalls confirmed for this VIN.";
 
+    // Deterministic loan-interest computation so the model never does the arithmetic itself.
+    let loanInterestLine = "";
+    if (financing.type === "loan" && financing.loanAmount && financing.loanTerm) {
+      const P = financing.loanAmount;
+      const n = financing.loanTerm;
+      const aprPct = financing.apr ?? 0;
+      const r = aprPct / 100 / 12;
+      const monthly = r > 0 ? (P * r) / (1 - Math.pow(1 + r, -n)) : P / n;
+      const totalInterest = Math.max(0, Math.round(monthly * n - P));
+      loanInterestLine = `
+- Monthly Payment: EXACTLY $${Math.round(monthly).toLocaleString()} (computed — use verbatim)
+- Total Interest Over Full Term: EXACTLY $${totalInterest.toLocaleString()} (computed — use this figure verbatim; NEVER compute interest yourself)`;
+    }
+
     const userPrompt = `Analyze this vehicle purchase:
 
 VEHICLE: ${vehicle.year} ${vehicle.make} ${vehicle.model}${vehicle.trim ? ` ${vehicle.trim}` : ""}
