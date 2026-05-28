@@ -613,7 +613,7 @@ INTEREST & FINANCING ARITHMETIC LOCK:
 - NEVER compute loan interest, total interest, or monthly payment yourself. Use ONLY the exact figures provided in the FINANCING section (loan amount, term, APR, monthly payment, total interest). If a figure is not provided, do not state one.
 
 VERDICT-DRIVING FACTOR PROVENANCE:
-- Any factor used to justify a "Negotiate" or "Walk Away" verdict (lien, accident, recall, title issue, etc.) MUST be traceable to data explicitly provided in this prompt. Do NOT invent verdict-driving facts.
+- Any factor used to justify a "Conditional Buy", "Caution", or "Avoid" verdict (lien, accident, recall, title issue, etc.) MUST be traceable to data explicitly provided in this prompt. Do NOT invent verdict-driving facts.
 - See the LIEN INTERPRETATION RULE below for how to handle lien data based on seller type. A routine dealer floor-plan lien is never a buyer risk.
 
 FAIR-OFFER PROSE CONSISTENCY:
