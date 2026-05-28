@@ -315,6 +315,8 @@ export type Database = {
           chronic_repair_systems: string[] | null
           condition: Database["public"]["Enums"]["vehicle_condition"]
           created_at: string
+          days_on_market: number | null
+          days_on_market_as_of: string | null
           deal_rating: Database["public"]["Enums"]["deal_rating"] | null
           depreciation_risk: string | null
           depreciation_table: Json | null
@@ -389,6 +391,8 @@ export type Database = {
           chronic_repair_systems?: string[] | null
           condition?: Database["public"]["Enums"]["vehicle_condition"]
           created_at?: string
+          days_on_market?: number | null
+          days_on_market_as_of?: string | null
           deal_rating?: Database["public"]["Enums"]["deal_rating"] | null
           depreciation_risk?: string | null
           depreciation_table?: Json | null
@@ -463,6 +467,8 @@ export type Database = {
           chronic_repair_systems?: string[] | null
           condition?: Database["public"]["Enums"]["vehicle_condition"]
           created_at?: string
+          days_on_market?: number | null
+          days_on_market_as_of?: string | null
           deal_rating?: Database["public"]["Enums"]["deal_rating"] | null
           depreciation_risk?: string | null
           depreciation_table?: Json | null
