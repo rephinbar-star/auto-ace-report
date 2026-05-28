@@ -1563,6 +1563,8 @@ export default function ReportPage() {
             warrantyStatus={analysis.warrantyAnalysis?.warrantyStatus || "unknown"}
             warrantyContext={warrantyContext}
             pricingDataUnavailable={pricingDataUnavailable}
+            daysOnMarket={daysOnMarket}
+            daysOnMarketAsOf={daysOnMarketAsOf}
             onHistoryTabChange={setHistoryTab}
           />
 
