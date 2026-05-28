@@ -206,6 +206,11 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
     return Array.from(seen.values());
   };
   const deduplicatedSources = pricingSources?.length ? getDeduplicatedSources(pricingSources) : [];
+  // Repair/maintenance cost attribution must use maintenance sources (RepairPal/CarEdge/etc.),
+  // NOT the pricing/valuation sources (MarketCheck/VinAudit). Fall back to empty if absent.
+  const deduplicatedMaintenanceSources = maintenanceSources?.length
+    ? getDeduplicatedSources(maintenanceSources)
+    : [];
 
   // ── Helpers ──
   const ensureSpace = (needed: number) => {
