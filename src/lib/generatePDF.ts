@@ -331,7 +331,7 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   };
 
   const statCards = [
-    { label: sellerType === "dealer" ? "Dealer Retail Value" : "Private Sale Value", value: fmt(referenceValue), color: TEAL },
+    { label: referenceLabel, value: fmt(referenceValue), color: TEAL },
     { label: "Deal Rating", value: priceAssessment.dealRating.charAt(0).toUpperCase() + priceAssessment.dealRating.slice(1), color: ratingColor(priceAssessment.dealRating) },
     { label: "Risk Score", value: uvprsResult ? `${uvprsResult.totalScore} / 100` : riskAssessment.level, color: uvprsColor() },
     { label: "Fair Offer", value: fmt(riskAssessment.fairOfferPrice), color: GREEN },
