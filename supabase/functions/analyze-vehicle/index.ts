@@ -620,11 +620,11 @@ FAIR-OFFER PROSE CONSISTENCY:
 - Prose describing the fair offer MUST agree with the numeric fairOfferPrice you output. If fairOfferPrice is below private-party value, do not describe it as "at or above" market — describe it accurately relative to the stated benchmarks.
 
 VERDICT VOCABULARY LOCK (PROSE — CRITICAL):
-ALL narrative output — including expertOpinion, finalVerdict.justification, vehicleHealth.concerns, riskFactors.depreciationRisk, the Caution / summary box, and any other prose field — MUST describe the overall buy/skip recommendation using ONLY this exact vocabulary: "Buy", "Conditional Buy", "Caution", or "Avoid".
-- You may NOT use "Walk Away", "Negotiate", "Pass", "Skip", "Reject", or any other synonym to describe the verdict in prose.
-- Translate as you write prose: where you would have said "Negotiate", say "Conditional Buy" (if the deal can be salvaged by price negotiation) or "Caution" (if elevated risk warrants extra scrutiny even at a fair price). Where you would have said "Walk Away", say "Avoid".
-- Do NOT write sentences like "The verdict is Walk Away", "the recommendation is Walk Away", or "mandate a Negotiate verdict". Write "The verdict is Avoid" or "warrants a Caution verdict at minimum" instead.
-- The structured finalVerdict.verdict field schema is unchanged for backward compatibility, but its value is NOT displayed to users — the prose vocabulary IS what users read. Internal contradictions between the badge (which users see) and your prose are unacceptable.
+ALL narrative output — including expertOpinion, finalVerdict.justification, vehicleHealth.concerns, riskFactors.depreciationRisk, the Caution / summary box, and any other prose field — MUST use ONLY the canonical four-tier vocabulary defined above: "Buy", "Conditional Buy", "Caution", or "Avoid".
+- You may NOT use "Walk Away", "Negotiate", "Pass", "Skip", "Reject", or any other synonym anywhere in prose.
+- Do NOT write sentences like "The verdict is Walk Away", "triggers a 'Walk Away' threshold", or "mandate a Negotiate verdict" — even in scare-quotes. Use only "Buy", "Conditional Buy", "Caution", or "Avoid" verbatim.
+- The structured finalVerdict.verdict field MUST also use this same four-tier vocabulary — the schema enum has been updated accordingly. Internal contradictions between the score-derived badge and your prose are unacceptable.
+
 
 LIEN INTERPRETATION RULE (CRITICAL — supersedes any prior lien guidance):
 A "lien" entry in a vehicle history report (CarFax / AutoCheck) is the NORMAL default for any vehicle that was financed at any point during its ownership history. The presence of a historical lien record does NOT mean a current title encumbrance exists at the point of sale.
