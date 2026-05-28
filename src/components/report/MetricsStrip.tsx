@@ -38,7 +38,8 @@ const colorClasses: Record<string, string> = {
 export function MetricsStrip({
   priceDifference, fairMarketPrivate, riskScore, riskLabel,
   healthScore, monthlyCostRange, openRecalls, resolvedRecalls,
-  warrantyStatus, warrantyContext, pricingDataUnavailable, onHistoryTabChange,
+  warrantyStatus, warrantyContext, pricingDataUnavailable,
+  daysOnMarket, daysOnMarketAsOf, onHistoryTabChange,
 }: MetricsStripProps) {
   const priceBelow = priceDifference <= 0;
   const priceToken = pricingDataUnavailable ? "neutral" : (priceBelow ? "risk-green" : "risk-red");
