@@ -712,6 +712,46 @@ export default function ReportPage() {
       try {
         const data = JSON.parse(stored);
         console.log("Parsed analysis data:", data);
+        // Plumbing fix (#14/#15): decode powertrain specs BEFORE analysis so the AI receives
+        // ground-truth engine/transmission/drivetrain instead of guessing from make/model/trim.
+        // No-op when specs are already present (VIN flow) or when no VIN was entered (manual flow).
+        if (data?.vehicle?.vin && !data.vehicle.engine && !data.vehicle.transmission) {
+          try {
+            const { data: specsResult } = await supabase.functions.invoke("decode-vin-specs", {
+              body: { vin: data.vehicle.vin },
+            });
+            if (specsResult?.success && specsResult.data) {
+              const d = specsResult.data;
+              const decodedMake = (d.make || "").toLowerCase().trim();
+              const enteredMake = (data.vehicle.make || "").toLowerCase().trim();
+              // Skip enrichment if the VIN decodes to a different make (likely a wrong/typo'd VIN)
+              if (!decodedMake || !enteredMake || decodedMake === enteredMake) {
+                data.vehicle = {
+                  ...data.vehicle,
+                  engine: d.engine || data.vehicle.engine,
+                  engineSize: d.engineSize || data.vehicle.engineSize,
+                  engineHp: d.engineHp || data.vehicle.engineHp,
+                  engineTorque: d.engineTorque || data.vehicle.engineTorque,
+                  engineCylinders: d.engineCylinders || data.vehicle.engineCylinders,
+                  engineAspiration: d.engineAspiration || data.vehicle.engineAspiration,
+                  transmission: d.transmission || data.vehicle.transmission,
+                  drivetrain: d.drivetrain || data.vehicle.drivetrain,
+                  fuelType: d.fuelType || data.vehicle.fuelType,
+                  bodyStyle: d.bodyStyle || data.vehicle.bodyStyle,
+                  msrp: d.msrp || data.vehicle.msrp,
+                  trim: d.trim || data.vehicle.trim,
+                  installedEquipment: d.installedEquipment || data.vehicle.installedEquipment,
+                  optionPackages: d.optionPackages || data.vehicle.optionPackages,
+                };
+                console.log("Pre-analysis VIN decode merged powertrain specs into payload");
+              } else {
+                console.warn(`VIN ${data.vehicle.vin} decodes to ${d.make} but entry is ${data.vehicle.make} — skipping pre-analysis enrichment`);
+              }
+            }
+          } catch (e) {
+            console.error("Pre-analysis VIN decode failed (continuing without enrichment):", e);
+          }
+        }
         setVehicleData(data);
         
         // Call AI analysis (async job: returns 202 with jobId, then poll)
