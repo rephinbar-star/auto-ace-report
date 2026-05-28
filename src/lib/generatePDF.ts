@@ -310,6 +310,10 @@ export async function generateReportPDF(data: ReportData): Promise<void> {
   const referenceValue = sellerType === "dealer" && priceAssessment.fairMarketDealer
     ? priceAssessment.fairMarketDealer
     : priceAssessment.fairMarketPrivate;
+  // Only call it "Dealer Retail Value" when an actual dealer-retail figure exists.
+  const referenceLabel = sellerType === "dealer"
+    ? (priceAssessment.fairMarketDealer ? "Dealer Retail Value" : "Fair Market Value")
+    : "Private Sale Value";
 
   const ratingColor = (r: string): [number, number, number] => {
     const map: Record<string, [number, number, number]> = {
