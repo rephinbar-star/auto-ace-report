@@ -429,13 +429,28 @@ export function scoreModelYearReliability(input: {
   else if (avgAnnualRepair < 1500) baseScore = 65; // Poor — entry German luxury
   else baseScore = 85;                              // Very Poor — flagship luxury / known-bad
 
-  // Platform-wide chassis signal (0-5 → up to +20 points for severe platform defects)
+  // Tier 8.1: chassisSignal adjustment is tiered, not linear, so a level-1 minor observation
+  // doesn't penalize a genuinely reliable platform. Only level 3+ adds meaningful weight.
   const chassisLevel = input.aiFindings?.chassisSignal?.level ?? 0;
-  const chassisAdjustment = Math.min(20, chassisLevel * 4);
+  let chassisAdjustment: number;
+  if (chassisLevel >= 4) chassisAdjustment = 20;
+  else if (chassisLevel === 3) chassisAdjustment = 10;
+  else if (chassisLevel === 2) chassisAdjustment = 4;
+  else chassisAdjustment = 0; // level 0-1: no penalty (minor or no platform concern)
 
-  // Many known failure patterns indicate model-specific reliability concerns (up to +20)
-  const failureCount = input.aiFindings?.knownFailurePatterns?.length ?? 0;
-  const patternAdjustment = Math.min(20, failureCount * 3);
+  // Tier 8.1: weight known failure patterns by costTier rather than counting them naively.
+  // The AI is instructed to list EVERY known failure pattern for the model — including minor
+  // wear items (brakes, battery, tires) — so a raw count overweights reliable cars that happen
+  // to have many enumerated low-severity items. Only critical/major items penalize meaningfully.
+  const patternAdjustmentRaw = (input.aiFindings?.knownFailurePatterns ?? [])
+    .reduce((sum, p) => {
+      const tier = String((p as any).costTier || "").toLowerCase();
+      if (tier === "critical") return sum + 5;
+      if (tier === "major") return sum + 2;
+      if (tier === "moderate") return sum + 0.5;
+      return sum; // minor or unknown: no contribution
+    }, 0);
+  const patternAdjustment = Math.min(20, Math.round(patternAdjustmentRaw));
 
   const finalScore = Math.max(0, Math.min(100, baseScore + chassisAdjustment + patternAdjustment));
 
