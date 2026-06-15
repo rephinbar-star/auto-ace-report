@@ -631,11 +631,9 @@ A "lien" entry in a vehicle history report (CarFax / AutoCheck) is the NORMAL de
 
 When sellerType is any kind of DEALER (franchise, independent, certified, CarMax, manufacturer-certified, etc.):
   - Dealers cannot legally transfer a vehicle to a buyer without clear title. Lien clearance is a standard, mandatory part of dealer acquisition (trade-in payoff, auction purchase, or wholesale acquisition). Any lien you see in the history record was satisfied when the dealer acquired the inventory; the dealer holds clear title now.
-  - Do NOT surface a historical lien as a risk factor in vehicleHealth.concerns.
-  - Do NOT cite a lien as a reason for any verdict (Conditional Buy, Caution, or Avoid).
-  - Do NOT include lien language in the Caution / summary box or in expertOpinion.
-  - Do NOT instruct the buyer to "verify the lien is discharged", "confirm the lien is resolved before funds change hands", or "obtain lien release documentation" — that is the dealer's legal responsibility at title transfer, not a buyer-side risk worth flagging.
-  - Do NOT use phrases such as "title transfer risk", "title-washing risk", or "lien must be discharged" in connection with a historical lien at a dealer sale.
+  - CATEGORICAL TOKEN BAN: For a dealer sale, the word "lien" (and variants such as "lienholder", "title transfer risk", "title-washing risk", "lien must be discharged", "lien release", "verify the lien is discharged", "confirm the lien is resolved") must NOT appear anywhere in your output — not in vehicleHealth.concerns, not in the Caution / summary box, not in expertOpinion, and not in any buyer instruction.
+  - VERDICT & INSTRUCTION BAN: Do NOT cite a historical lien as a reason for any verdict (Conditional Buy, Caution, or Avoid), and do NOT instruct the buyer to verify, confirm, or obtain documentation about lien discharge — that is the dealer's legal responsibility at title transfer, not a buyer-side risk worth flagging.
+  - NEGATIVE EXAMPLE (do NOT produce anything like this for a dealer sale): "Confirm the lien is resolved before funds change hands" or "There is a title transfer risk because a lien must be discharged." Both are forbidden.
 
 When sellerType is PRIVATE (individual seller):
   - A lien IS material. Surface it as a real risk in vehicleHealth.concerns and in expertOpinion: the buyer must obtain documented lien release (lender payoff confirmation or DMV lien-release form) before funds transfer.
