@@ -378,6 +378,7 @@ export default function ReportPage() {
   const fromComparison = searchParams.get("from") === "compare";
   const comparisonIds = searchParams.get("ids") || "";
   const backToComparisonUrl = fromComparison ? `/compare?ids=${comparisonIds}` : null;
+  const fromAdmin = searchParams.get("from") === "admin";
 
   const handleSaveReport = async (skipNavigation = false): Promise<boolean> => {
     if (!analysis || !vehicleData) return false;
@@ -1406,6 +1407,14 @@ export default function ReportPage() {
       <main className="flex-1 bg-surface-muted py-8 pb-20 md:pb-8">
         <div className="mx-auto max-w-[900px] px-4 space-y-6">
           {/* Back Navigation */}
+          {fromAdmin && (
+            <Button variant="ghost" className="mb-4 -ml-2" asChild>
+              <Link to="/admin">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Admin
+              </Link>
+            </Button>
+          )}
           {backToComparisonUrl && (
             <Button variant="ghost" className="mb-4 -ml-2" asChild>
               <Link to={backToComparisonUrl}>

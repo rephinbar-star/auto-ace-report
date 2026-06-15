@@ -678,9 +678,12 @@ export default function AdminPage() {
                                         </p>
                                         <div className="grid gap-1.5">
                                           {sub.reports.map((report) => (
-                                            <div
+                                            <button
                                               key={report.id}
-                                              className="flex items-center justify-between rounded-md border bg-background px-3 py-2 text-sm"
+                                              type="button"
+                                              onClick={() => navigate(`/report/${report.id}?from=admin`)}
+                                              className="flex w-full items-center justify-between rounded-md border bg-background px-3 py-2 text-sm text-left transition-colors hover:bg-muted hover:border-primary/50"
+                                              title="View full report"
                                             >
                                               <div className="flex items-center gap-3">
                                                 <span className="font-medium">
@@ -724,7 +727,7 @@ export default function AdminPage() {
                                                   {format(new Date(report.createdAt), "MMM d, yyyy")}
                                                 </span>
                                               </div>
-                                            </div>
+                                            </button>
                                           ))}
                                         </div>
                                       </div>
