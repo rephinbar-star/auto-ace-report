@@ -1407,6 +1407,14 @@ export default function ReportPage() {
       <main className="flex-1 bg-surface-muted py-8 pb-20 md:pb-8">
         <div className="mx-auto max-w-[900px] px-4 space-y-6">
           {/* Back Navigation */}
+          {fromAdmin && (
+            <Button variant="ghost" className="mb-4 -ml-2" asChild>
+              <Link to="/admin">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Admin
+              </Link>
+            </Button>
+          )}
           {backToComparisonUrl && (
             <Button variant="ghost" className="mb-4 -ml-2" asChild>
               <Link to={backToComparisonUrl}>
