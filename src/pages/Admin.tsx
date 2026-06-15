@@ -727,7 +727,7 @@ export default function AdminPage() {
                                                   {format(new Date(report.createdAt), "MMM d, yyyy")}
                                                 </span>
                                               </div>
-                                            </div>
+                                            </button>
                                           ))}
                                         </div>
                                       </div>
