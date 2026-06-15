@@ -378,6 +378,7 @@ export default function ReportPage() {
   const fromComparison = searchParams.get("from") === "compare";
   const comparisonIds = searchParams.get("ids") || "";
   const backToComparisonUrl = fromComparison ? `/compare?ids=${comparisonIds}` : null;
+  const fromAdmin = searchParams.get("from") === "admin";
 
   const handleSaveReport = async (skipNavigation = false): Promise<boolean> => {
     if (!analysis || !vehicleData) return false;
