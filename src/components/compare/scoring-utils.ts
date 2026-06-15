@@ -321,8 +321,17 @@ export function calculateReliabilityScore(
   make: string,
   reliabilityConcerns: unknown
 ): ScoreBreakdownItem {
-  // Get brand reliability score (1-10 scale)
-  const brandScore = BRAND_RELIABILITY[make] ?? BRAND_RELIABILITY["default"];
+  // Get brand reliability score (1-10 scale). Tier 8: case-insensitive lookup so
+  // UPPERCASE makes from VIN decode resolve correctly against Title Case table keys.
+  const normalizedMake = (make || "").trim();
+  let brandScore: number | undefined = BRAND_RELIABILITY[normalizedMake];
+  if (brandScore === undefined) {
+    const lowerMake = normalizedMake.toLowerCase();
+    const match = Object.entries(BRAND_RELIABILITY).find(
+      ([k]) => k.toLowerCase() === lowerMake
+    );
+    brandScore = match ? match[1] : (BRAND_RELIABILITY["default"] ?? 5);
+  }
   
   // Convert to 0-6 points (60% of 10 max)
   const brandPoints = Math.round((brandScore / 10) * 6);

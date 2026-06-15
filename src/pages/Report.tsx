@@ -905,6 +905,7 @@ export default function ReportPage() {
       const result = calculateUVPRS({
         year: vehicle.year,
         make: vehicle.make,
+        model: vehicle.model,  // Tier 8: enables model-aware reliability description
         mileage: condition.mileage,
         askingPrice: vehicleData.financing?.negotiatedPrice ?? condition.askingPrice,
         titleStatus: history?.titleStatus || null,
@@ -928,6 +929,7 @@ export default function ReportPage() {
         sellerType,
         isBrandNew: condition?.isBrandNew ?? null,
         aiFindings: analysis.aiFindings ?? null,
+        depreciationTable: analysis.depreciationTable ?? null,  // Tier 8: feeds model-aware reliability scorer
         pricingDataUnavailable: pricingDataUnavailable,
       });
       console.log("[UVPRS-DEBUG] result:", result.totalScore, result.factors.map(f => `${f.key}=${f.score}(known=${f.known})`));
