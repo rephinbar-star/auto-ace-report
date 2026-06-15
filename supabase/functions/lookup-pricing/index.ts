@@ -339,9 +339,14 @@ async function tryMarketCheck(vin: string): Promise<PricingResult | null> {
         const price = listing?.price || listing?.asking_price;
         if (price && typeof price === "number" && price > 0) activePrices.push(price);
       }
-      // Pick the listing with the highest DOM (the one that's been listed longest = the actual subject vehicle)
+      // Pick the listing with the highest DOM (the one that's been listed longest = the actual subject vehicle).
+      // Tier 8: filter to used/cpo inventory types only. MarketCheck's daysOnMarket reflects total time
+      // the VIN has appeared in their database — for a current/recent-model-year vehicle, that figure
+      // includes the original new-car listing window. We only want days-on-market as a USED listing.
       let bestDom = -1;
       for (const l of listings) {
+        const invType = String(l?.inventory_type || "").toLowerCase();
+        if (invType !== "used" && invType !== "cpo") continue; // skip new-car listings (and unknowns)
         const d = typeof l?.dom === "number" ? l.dom : null;
         if (d !== null && d > bestDom) {
           bestDom = d;

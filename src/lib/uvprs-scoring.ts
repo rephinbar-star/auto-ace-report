@@ -18,7 +18,7 @@
  */
 
 import { BRAND_RELIABILITY } from "@/components/compare/scoring-utils";
-import type { AiFindings, ActiveServiceFault, KnownFailurePattern, ChassisSignal } from "@/types/vehicle";
+import type { AiFindings, ActiveServiceFault, KnownFailurePattern, ChassisSignal, DepreciationYear } from "@/types/vehicle";
 
 // ============================================================================
 // Types
@@ -28,6 +28,7 @@ export interface UVPRSInput {
   // Vehicle info
   year: number;
   make: string;
+  model?: string | null;  // Tier 8: for model-aware reliability description
   mileage: number;
   askingPrice: number;
 
@@ -73,6 +74,11 @@ export interface UVPRSInput {
 
   // AI Findings (dynamic layer)
   aiFindings?: AiFindings | null;
+
+  // Tier 8: AI-emitted depreciation table feeds the model-aware reliability scorer.
+  // Year-by-year repair costs are sourced from RepairPal/CarEdge/TrueDelta/Edmunds via
+  // lookup-maintenance, so they're a make/model/year-specific signal.
+  depreciationTable?: DepreciationYear[] | null;
 
   // Legacy fields kept for backward compat (no longer used in scoring)
   warrantyMonthsRemaining?: number | null;
@@ -365,12 +371,82 @@ export function scoreTitleStatus(status: string | null | undefined): { score: nu
 }
 
 /**
- * D) Brand/Model reliability (renamed from "Brand Reliability" to "Model-Year Reliability")
+ * D) Brand reliability — case-insensitive make lookup (Tier 8 fix).
+ * Used as a fallback when the model-aware scorer can't run (no depreciation table).
  */
 export function scoreBrandReliability(make: string): number {
-  const brandScore = BRAND_RELIABILITY[make] ?? BRAND_RELIABILITY["default"] ?? 5;
+  const normalizedMake = (make || "").trim();
+  // Try exact match first (Title Case keys: "Honda", "Toyota", etc.)
+  let brandScore: number | undefined = BRAND_RELIABILITY[normalizedMake];
+  // Fall back to case-insensitive match so UPPERCASE makes from VIN decode resolve correctly
+  if (brandScore === undefined) {
+    const lowerMake = normalizedMake.toLowerCase();
+    const match = Object.entries(BRAND_RELIABILITY).find(
+      ([k]) => k.toLowerCase() === lowerMake
+    );
+    brandScore = match ? match[1] : (BRAND_RELIABILITY["default"] ?? 5);
+  }
   const risk = Math.round(Math.max(0, Math.min(100, 100 - (brandScore / 10) * 100)));
   return risk;
+}
+
+/**
+ * D-2) Model-Year Reliability — model-aware scorer (Tier 8).
+ *
+ * Derives a reliability score from already-fetched authoritative data instead of
+ * the static brand table:
+ *   - Years 1-3 average annual repair cost from depreciationTable (sourced from
+ *     RepairPal/CarEdge/TrueDelta/Edmunds via lookup-maintenance)
+ *   - chassisSignal.level adjustment (platform-wide defects, 0-5 scale)
+ *   - knownFailurePatterns count adjustment (model-specific issues)
+ *
+ * Returns null when AI data isn't available, so the caller falls back to the
+ * brand-level scorer. Years 1-3 average is used to smooth Y1 warranty effects
+ * without being dominated by late-life numbers.
+ */
+export function scoreModelYearReliability(input: {
+  depreciationTable?: DepreciationYear[] | null;
+  aiFindings?: AiFindings | null;
+}): { score: number; label: string; avgAnnualRepair: number } | null {
+  const table = input.depreciationTable;
+  if (!table || table.length === 0) return null;
+
+  const yearsToAvg = table
+    .slice(0, 3)
+    .filter((y) => typeof y.repairCosts === "number" && y.repairCosts >= 0);
+  if (yearsToAvg.length === 0) return null;
+
+  const avgAnnualRepair = Math.round(
+    yearsToAvg.reduce((sum, y) => sum + (y.repairCosts || 0), 0) / yearsToAvg.length
+  );
+
+  // Annual repair cost → base reliability risk score (lower cost = lower risk)
+  let baseScore: number;
+  if (avgAnnualRepair < 500) baseScore = 5;        // Excellent — CR-V / Camry territory
+  else if (avgAnnualRepair < 700) baseScore = 15;  // Above Average
+  else if (avgAnnualRepair < 900) baseScore = 30;  // Average — mainstream sedans/SUVs
+  else if (avgAnnualRepair < 1200) baseScore = 50; // Below Average
+  else if (avgAnnualRepair < 1500) baseScore = 65; // Poor — entry German luxury
+  else baseScore = 85;                              // Very Poor — flagship luxury / known-bad
+
+  // Platform-wide chassis signal (0-5 → up to +20 points for severe platform defects)
+  const chassisLevel = input.aiFindings?.chassisSignal?.level ?? 0;
+  const chassisAdjustment = Math.min(20, chassisLevel * 4);
+
+  // Many known failure patterns indicate model-specific reliability concerns (up to +20)
+  const failureCount = input.aiFindings?.knownFailurePatterns?.length ?? 0;
+  const patternAdjustment = Math.min(20, failureCount * 3);
+
+  const finalScore = Math.max(0, Math.min(100, baseScore + chassisAdjustment + patternAdjustment));
+
+  let label: string;
+  if (finalScore <= 10) label = "Excellent";
+  else if (finalScore <= 25) label = "Above average";
+  else if (finalScore <= 50) label = "Average";
+  else if (finalScore <= 70) label = "Below average";
+  else label = "Poor";
+
+  return { score: finalScore, label, avgAnnualRepair };
 }
 
 /**
@@ -601,13 +677,36 @@ export function calculateUVPRS(input: UVPRSInput): UVPRSResult {
       : "Unknown — neutral score applied",
   });
 
-  // 3. Model-Year Reliability (renamed from Brand Reliability)
-  const brand = scoreBrandReliability(input.make);
+  // 3. Model-Year Reliability — model-aware when AI emitted a depreciation table,
+  // brand-level (case-insensitive) fallback otherwise.
+  const modelYear = scoreModelYearReliability({
+    depreciationTable: input.depreciationTable,
+    aiFindings: input.aiFindings,
+  });
+
+  let reliabilityScore: number;
+  let reliabilityDescription: string;
+  if (modelYear) {
+    reliabilityScore = modelYear.score;
+    const vehicleLabel = input.model
+      ? `${input.year} ${input.make} ${input.model}`
+      : `${input.year} ${input.make}`;
+    reliabilityDescription = `${vehicleLabel} — ${modelYear.label} reliability ($${modelYear.avgAnnualRepair.toLocaleString()}/yr avg)`;
+  } else {
+    reliabilityScore = scoreBrandReliability(input.make);
+    const brandLabel =
+      reliabilityScore <= 10 ? "Excellent"
+      : reliabilityScore <= 25 ? "Good"
+      : reliabilityScore <= 50 ? "Average"
+      : "Below average";
+    reliabilityDescription = `${input.make} — ${brandLabel} reliability (brand-level estimate)`;
+  }
+
   factorResults.push({
     key: "brand", label: "Model-Year Reliability",
-    score: brand, weight: WEIGHTS.brand, weighted: 0,
+    score: reliabilityScore, weight: WEIGHTS.brand, weighted: 0,
     known: true,
-    description: `${input.make} — ${brand <= 10 ? "Excellent" : brand <= 25 ? "Good" : brand <= 50 ? "Average" : "Below average"} reliability`,
+    description: reliabilityDescription,
   });
 
   // 4. Mileage-for-Age (subsumes vehicle age)
