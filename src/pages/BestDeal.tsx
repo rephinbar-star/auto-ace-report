@@ -15,6 +15,8 @@ import { ProgramOfferCard } from "@/components/best-deal/ProgramOfferCard";
 import { SourcesChecked } from "@/components/best-deal/SourcesChecked";
 import { supabase } from "@/integrations/supabase/client";
 import type { BestDealResponse, BestDealSearchParams } from "@/types/best-deal";
+import { DEFAULT_LEASE_ASSUMPTIONS, DEFAULT_PURCHASE_ASSUMPTIONS } from "@/types/best-deal";
+import { LEASE_TERM_CHOICES } from "@/lib/best-deal/deal-math";
 
 const DEFAULTS: BestDealSearchParams = {
   dealType: "any",
@@ -26,9 +28,8 @@ const DEFAULTS: BestDealSearchParams = {
   zip: "",
   radius: 100,
   brand: null,
-  termMonths: 72,
-  aprPercent: 7.49,
-  downPayment: 0,
+  purchaseAssumptions: { ...DEFAULT_PURCHASE_ASSUMPTIONS },
+  leaseAssumptions: { ...DEFAULT_LEASE_ASSUMPTIONS },
 };
 
 function paramsFromUrl(sp: URLSearchParams): BestDealSearchParams {
@@ -59,11 +60,23 @@ function paramsFromUrl(sp: URLSearchParams): BestDealSearchParams {
       ? Number(sp.get("radius"))
       : 100) as BestDealSearchParams["radius"],
     brand: sp.get("brand") || null,
-    termMonths: ([48, 60, 72, 84].includes(Number(sp.get("term")))
-      ? Number(sp.get("term"))
-      : 72) as BestDealSearchParams["termMonths"],
-    aprPercent: numberOrNull("apr") ?? 7.49,
-    downPayment: numberOrNull("down") ?? 0,
+    purchaseAssumptions: {
+      termMonths: ([48, 60, 72, 84].includes(Number(sp.get("term")))
+        ? Number(sp.get("term"))
+        : 72) as BestDealSearchParams["purchaseAssumptions"]["termMonths"],
+      aprPercent: numberOrNull("apr") ?? 7.49,
+      downPayment: numberOrNull("down") ?? 0,
+    },
+    leaseAssumptions: {
+      termMonths: ((LEASE_TERM_CHOICES as readonly number[]).includes(Number(sp.get("leaseTerm")))
+        ? Number(sp.get("leaseTerm"))
+        : 36) as BestDealSearchParams["leaseAssumptions"]["termMonths"],
+      capCostReduction: numberOrNull("capReduction") ?? 0,
+      moneyFactor: numberOrNull("mf"),
+      residualPercent: numberOrNull("residual"),
+      acquisitionFee: numberOrNull("acqFee") ?? 0,
+      salesTaxPercent: numberOrNull("leaseTax"),
+    },
   };
 }
 
@@ -78,9 +91,17 @@ function urlFromParams(p: BestDealSearchParams): URLSearchParams {
   if (p.vehicleType !== "any") sp.set("vehicleType", p.vehicleType);
   if (p.powertrain !== "any") sp.set("powertrain", p.powertrain);
   if (p.brand) sp.set("brand", p.brand);
-  if (p.termMonths !== 72) sp.set("term", String(p.termMonths));
-  if (p.aprPercent !== 7.49) sp.set("apr", String(p.aprPercent));
-  if (p.downPayment) sp.set("down", String(p.downPayment));
+  const pa = p.purchaseAssumptions;
+  if (pa.termMonths !== 72) sp.set("term", String(pa.termMonths));
+  if (pa.aprPercent !== 7.49) sp.set("apr", String(pa.aprPercent));
+  if (pa.downPayment) sp.set("down", String(pa.downPayment));
+  const la = p.leaseAssumptions;
+  if (la.termMonths !== 36) sp.set("leaseTerm", String(la.termMonths));
+  if (la.capCostReduction) sp.set("capReduction", String(la.capCostReduction));
+  if (la.moneyFactor !== null) sp.set("mf", String(la.moneyFactor));
+  if (la.residualPercent !== null) sp.set("residual", String(la.residualPercent));
+  if (la.acquisitionFee) sp.set("acqFee", String(la.acquisitionFee));
+  if (la.salesTaxPercent !== null) sp.set("leaseTax", String(la.salesTaxPercent));
   return sp;
 }
 
