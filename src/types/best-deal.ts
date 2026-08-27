@@ -5,6 +5,28 @@ export type VehicleTypeFilter = "any" | "sedan" | "truck" | "suv";
 export type PowertrainFilter = "any" | "ev" | "hybrid" | "gas";
 export type MileageFilter = "any" | "7500" | "10000" | "12000" | "15000";
 
+export interface PurchaseAssumptions {
+  termMonths: 48 | 60 | 72 | 84;
+  aprPercent: number;
+  downPayment: number;
+}
+
+export const DEFAULT_PURCHASE_ASSUMPTIONS: PurchaseAssumptions = {
+  termMonths: 72,
+  aprPercent: 7.49,
+  downPayment: 0,
+};
+
+export type { LeaseAssumptions, LeaseTermMonths } from "@/lib/best-deal/deal-math";
+export {
+  DEFAULT_LEASE_ASSUMPTIONS,
+  LEASE_TERM_CHOICES,
+  validateLeaseAssumptions,
+  estimateLeasePayment,
+} from "@/lib/best-deal/deal-math";
+
+import type { LeaseAssumptions } from "@/lib/best-deal/deal-math";
+
 export interface BestDealSearchParams {
   dealType: DealTypeFilter;
   maxMonthlyPayment: number | null;
@@ -15,9 +37,10 @@ export interface BestDealSearchParams {
   zip: string;
   radius: 25 | 50 | 100;
   brand: string | null;
-  termMonths: 48 | 60 | 72 | 84;
-  aprPercent: number;
-  downPayment: number;
+  /** Purchase-only finance assumptions used for CarWise purchase estimates. */
+  purchaseAssumptions: PurchaseAssumptions;
+  /** Lease-only assumptions used for CarWise lease estimates. */
+  leaseAssumptions: LeaseAssumptions;
 }
 
 export type ValidationStatus =
