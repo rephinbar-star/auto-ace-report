@@ -24,8 +24,8 @@ const bounds: ScoreBounds = {
 
 describe("amortizedMonthlyPayment", () => {
   it("computes a standard amortized payment", () => {
-    // $30,000 @ 7.49% for 72 months ≈ $518.62
-    expect(amortizedMonthlyPayment(30000, 7.49, 72, 0)).toBeCloseTo(518.62, 1);
+    // $30,000 @ 7.49% for 72 months ≈ $518.56
+    expect(amortizedMonthlyPayment(30000, 7.49, 72, 0)).toBeCloseTo(518.56, 1);
   });
 
   it("applies the down payment to the principal", () => {
