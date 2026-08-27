@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
@@ -13,8 +13,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  SOLUTION_LINKS,
+  SOLUTION_STATUS_LABEL,
+  getNavContext,
+  isSolutionActive,
+  type SolutionStatus,
+} from "@/lib/nav-context";
 
-const navigation = [
+const analysisNavigation = [
   { name: "Home", href: "/" },
   { name: "Marketplace", href: "/marketplace", accent: true },
   { name: "Sample Reports", href: "/sample-report" },
@@ -22,12 +29,40 @@ const navigation = [
   { name: "Pricing", href: "/pricing" },
 ];
 
+const solutionsNavigation = [
+  { name: "Home", href: "/" },
+  { name: "Pricing", href: "/pricing" },
+];
+
+function StatusBadge({ status }: { status: SolutionStatus }) {
+  if (status === "live") return null;
+  const isBeta = status === "beta";
+  return (
+    <span
+      className={cn(
+        "rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ring-1",
+        isBeta
+          ? "bg-blue-500/15 text-blue-500 ring-blue-500/30"
+          : "bg-muted text-muted-foreground ring-border"
+      )}
+    >
+      {isBeta ? "Beta" : "Soon"}
+    </span>
+  );
+}
+
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const { user, isAuthenticated, signOut } = useAuth();
+  const navContext = getNavContext(location.pathname);
+  const isSolutionsContext = navContext === "solutions";
+  const navigation = isSolutionsContext ? solutionsNavigation : analysisNavigation;
+  const activeSolution = SOLUTION_LINKS.find((s) =>
+    isSolutionActive(s.href, location.pathname)
+  );
 
   const handleSignOut = async () => {
     await signOut();
@@ -56,27 +91,75 @@ export function Header() {
         {/* Desktop navigation */}
         <div className="hidden items-center gap-8 md:flex">
           {navigation.map((item) => (
-            <Link
-              key={item.name}
-              to={item.href}
-              className={cn(
-                "text-sm font-medium transition-colors relative flex items-center gap-1",
-                (item as any).accent
-                  ? "text-blue-500 font-semibold animate-[pulse_2.5s_ease-in-out_infinite] hover:text-blue-400"
-                  : location.pathname === item.href
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-primary"
+            <Fragment key={item.name}>
+              <Link
+                to={item.href}
+                className={cn(
+                  "text-sm font-medium transition-colors relative flex items-center gap-1",
+                  (item as any).accent
+                    ? "text-blue-500 font-semibold animate-[pulse_2.5s_ease-in-out_infinite] hover:text-blue-400"
+                    : location.pathname === item.href
+                      ? "text-primary"
+                      : "text-muted-foreground hover:text-primary"
+                )}
+                aria-current={location.pathname === item.href ? "page" : undefined}
+              >
+                {item.name}
+                {(item as any).accent && (
+                  <span className="rounded-full bg-blue-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-blue-500 ring-1 ring-blue-500/30">
+                    New
+                  </span>
+                )}
+              </Link>
+
+              {/* Solutions dropdown sits between Home and Pricing */}
+              {isSolutionsContext && item.href === "/" && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className={cn(
+                        "flex items-center gap-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm",
+                        activeSolution ? "text-primary" : "text-muted-foreground hover:text-primary"
+                      )}
+                    >
+                      {activeSolution ? activeSolution.name : "Solutions"}
+                      <ChevronDown className="h-4 w-4" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-72">
+                    {SOLUTION_LINKS.map((s) => (
+                      <DropdownMenuItem key={s.href} asChild>
+                        <Link
+                          to={s.href}
+                          className="cursor-pointer flex-col items-start gap-0.5"
+                          aria-current={
+                            isSolutionActive(s.href, location.pathname) ? "page" : undefined
+                          }
+                        >
+                          <span className="flex w-full items-center gap-2">
+                            <span
+                              className={cn(
+                                "text-sm font-medium",
+                                isSolutionActive(s.href, location.pathname) && "text-primary"
+                              )}
+                            >
+                              {s.name}
+                            </span>
+                            <StatusBadge status={s.status} />
+                            <span className="sr-only">{SOLUTION_STATUS_LABEL[s.status]}</span>
+                          </span>
+                          <span className="text-xs text-muted-foreground">{s.description}</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
-            >
-              {item.name}
-              {(item as any).accent && (
-                <span className="rounded-full bg-blue-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-blue-500 ring-1 ring-blue-500/30">
-                  New
-                </span>
-              )}
-            </Link>
+            </Fragment>
           ))}
         </div>
+
 
         {/* Desktop CTA */}
         <div className="hidden items-center gap-2 md:flex">
@@ -153,9 +236,11 @@ export function Header() {
               <Button asChild variant="ghost">
                 <Link to="/login">Log In</Link>
               </Button>
-              <Button asChild>
-                <Link to="/analyze">Start Analysis</Link>
-              </Button>
+              {!isSolutionsContext && (
+                <Button asChild>
+                  <Link to="/analyze">Start Analysis</Link>
+                </Button>
+              )}
             </>
           )}
         </div>
@@ -281,28 +366,49 @@ export function Header() {
                 )}
               </Link>
             ))}
+
+            {isSolutionsContext && (
+              <div className="pt-2">
+                <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Solutions
+                </p>
+                {SOLUTION_LINKS.map((s) => (
+                  <Link
+                    key={s.href}
+                    to={s.href}
+                    className={cn(
+                      "flex items-center gap-2 rounded-lg px-3 py-2 text-base font-medium transition-colors",
+                      isSolutionActive(s.href, location.pathname)
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-muted"
+                    )}
+                    aria-current={
+                      isSolutionActive(s.href, location.pathname) ? "page" : undefined
+                    }
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    {s.name}
+                    <StatusBadge status={s.status} />
+                    <span className="sr-only">{SOLUTION_STATUS_LABEL[s.status]}</span>
+                  </Link>
+                ))}
+              </div>
+            )}
+
             <div className="flex flex-col gap-2 pt-4">
-              {isAuthenticated ? (
-                <>
-                  <Button asChild className="w-full">
-                    <Link to="/analyze" onClick={() => setMobileMenuOpen(false)}>
-                      Start Analysis
-                    </Link>
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button asChild variant="outline" className="w-full">
-                    <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
-                      Log In
-                    </Link>
-                  </Button>
-                  <Button asChild className="w-full">
-                    <Link to="/analyze" onClick={() => setMobileMenuOpen(false)}>
-                      Start Analysis
-                    </Link>
-                  </Button>
-                </>
+              {!isAuthenticated && (
+                <Button asChild variant="outline" className="w-full">
+                  <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
+                    Log In
+                  </Link>
+                </Button>
+              )}
+              {!isSolutionsContext && (
+                <Button asChild className="w-full">
+                  <Link to="/analyze" onClick={() => setMobileMenuOpen(false)}>
+                    Start Analysis
+                  </Link>
+                </Button>
               )}
             </div>
           </div>
