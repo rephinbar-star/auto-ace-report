@@ -41,6 +41,13 @@ import {
   type SourceCheck,
 } from "./offer-normalization.ts";
 import {
+  auditLeaseCost,
+  emptyLeaseCostComponents,
+  evaluateAgainstLimit,
+  rankProgramOffers,
+} from "./lease-cost.ts";
+import { resolveLeaseTaxRate } from "./tax-resolver.ts";
+import {
   discoverDealerSpecials,
   runProgramAdapters,
   runSeedDealerSources,
@@ -710,14 +717,73 @@ Deno.serve(async (req) => {
     // Offers we independently matched to nearby inventory sort first, but they
     // still live in the "Programs worth checking" section unless VIN-specific.
     const programOffers = [...split.actionable, ...split.programs];
-    const programs = programOffers
-      .sort((a, b) => {
-        const conf = { high: 0, medium: 1, low: 2 } as const;
-        if (conf[a.confidence] !== conf[b.confidence]) return conf[a.confidence] - conf[b.confidence];
-        return (a.effectiveMonthly ?? 99999) - (b.effectiveMonthly ?? 99999);
-      })
-      .slice(0, 12);
+    // ── Lease-cost audit: advertised vs parsed vs CarWise estimate ───────────
+    const taxRate = resolveLeaseTaxRate(
+      parsed.zip,
+      parsed.leaseAssumptions?.salesTaxPercent ?? null
+    );
 
+    const auditedOffers = programOffers.map((o) => {
+      const components = {
+        ...emptyLeaseCostComponents(),
+        advertisedMonthlyBeforeTax: o.advertisedMonthlyBeforeTax ?? o.monthly ?? null,
+        advertisedMonthlyTaxStatus: o.advertisedMonthlyTaxStatus ?? "unknown",
+        advertisedCapReduction: o.advertisedCapReduction ?? o.downPayment ?? null,
+        advertisedTotalDAS: o.advertisedTotalDAS ?? o.totalDueAtSigning ?? null,
+        totalDASIncludesFirstPayment: null,
+        firstPayment: o.firstPayment ?? null,
+        acquisitionFee: o.acquisitionFee ?? null,
+        securityDeposit: o.securityDeposit ?? null,
+        docFee: o.docFee ?? null,
+        registrationTitleLicense: o.registrationTitleLicense ?? null,
+        upfrontTaxes: o.upfrontTaxes ?? null,
+        dispositionFee: o.dispositionFee ?? null,
+      };
+      const audit = auditLeaseCost({
+        components,
+        termMonths: o.termMonths,
+        taxRatePercent: taxRate.ratePercent,
+        taxRateSource: taxRate.sourceUrl ?? taxRate.sourceName,
+        taxRateLabel: taxRate.label,
+        unknownFeeEstimate: null,
+      });
+
+      const warnings = [...audit.costWarnings];
+      const monthlyVerdict = evaluateAgainstLimit(
+        audit.allInEffectiveMonthlyLow,
+        audit.allInEffectiveMonthlyHigh,
+        parsed.maxMonthlyPayment
+      );
+      if (monthlyVerdict === "may_exceed") {
+        warnings.push({
+          code: "may_exceed_max_monthly",
+          message: "May exceed your maximum monthly once taxes and mandatory fees are included.",
+        });
+      }
+      const dasVerdict = evaluateAgainstLimit(
+        audit.estimatedTotalDASLow,
+        audit.estimatedTotalDASHigh,
+        parsed.maxDueAtSigning
+      );
+      if (dasVerdict === "may_exceed") {
+        warnings.push({
+          code: "may_exceed_max_das",
+          message: "May exceed your maximum due at signing once unknown signing charges are added.",
+        });
+      }
+
+      return {
+        offer: { ...o, ...audit, costWarnings: warnings },
+        monthlyVerdict,
+        dasVerdict,
+      };
+    });
+
+    const programs = rankProgramOffers(
+      auditedOffers
+        .filter((a) => a.monthlyVerdict !== "exceeds" && a.dasVerdict !== "exceeds")
+        .map((a) => a.offer)
+    ).slice(0, 12);
 
     // ── Benchmark validation (isolated; never fails the search) ──────────────
     let docs = new Map<string, Awaited<ReturnType<typeof loadBenchmarkDocuments>> extends Map<string, infer D> ? D : never>();

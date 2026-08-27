@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { AlertTriangle, Pencil, RefreshCw, SearchX } from "lucide-react";
+import { AlertTriangle, Info, Pencil, RefreshCw, SearchX } from "lucide-react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { SEO } from "@/components/seo/SEO";
@@ -174,7 +174,7 @@ export default function BestDealPage() {
                 </Card>
               )}
 
-              {!loading && !error && response?.success && deals.length === 0 && (
+              {!loading && !error && response?.success && deals.length === 0 && programs.length === 0 && (
                 <Card className="border-2">
                   <CardContent className="flex flex-col items-center gap-4 py-10 text-center">
                     <SearchX className="h-10 w-10 text-muted-foreground" />
@@ -193,6 +193,20 @@ export default function BestDealPage() {
                   </CardContent>
                 </Card>
               )}
+
+              {!loading && !error && response?.success && deals.length === 0 && programs.length > 0 && (
+                <Card className="border-2 border-primary/30">
+                  <CardContent className="flex items-start gap-3 py-4 text-sm">
+                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                    <p className="text-muted-foreground">
+                      No VIN-matched advertised lease offers were found. We did find the following
+                      dealer and regional programs worth checking — inventory for these programs is
+                      not confirmed, so a matching vehicle must still be located and verified.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+
 
               {!loading && !error && sourcesChecked.length > 0 && (
                 <SourcesChecked checks={sourcesChecked} />
