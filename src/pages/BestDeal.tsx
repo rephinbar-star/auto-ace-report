@@ -32,7 +32,7 @@ const DEFAULTS: BestDealSearchParams = {
   leaseAssumptions: { ...DEFAULT_LEASE_ASSUMPTIONS },
 };
 
-function paramsFromUrl(sp: URLSearchParams): BestDealSearchParams {
+export function paramsFromUrl(sp: URLSearchParams): BestDealSearchParams {
   const numberOrNull = (key: string) => {
     const raw = sp.get(key);
     if (!raw) return null;
@@ -80,7 +80,7 @@ function paramsFromUrl(sp: URLSearchParams): BestDealSearchParams {
   };
 }
 
-function urlFromParams(p: BestDealSearchParams): URLSearchParams {
+export function urlFromParams(p: BestDealSearchParams): URLSearchParams {
   const sp = new URLSearchParams();
   sp.set("zip", p.zip);
   sp.set("radius", String(p.radius));
