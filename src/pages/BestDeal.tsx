@@ -254,7 +254,19 @@ export default function BestDealPage() {
                   </div>
                   <div className="space-y-4">
                     {programs.map((offer) => (
-                      <ProgramOfferCard key={offer.id} offer={offer} />
+                      <ProgramOfferCard
+                        key={offer.id}
+                        offer={offer}
+                        onUseOverride={(a) =>
+                          setForm((prev) => ({
+                            ...prev,
+                            leaseAssumptions: {
+                              ...prev.leaseAssumptions,
+                              [a.field]: a.value,
+                            },
+                          }))
+                        }
+                      />
                     ))}
                   </div>
                 </section>

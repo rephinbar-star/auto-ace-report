@@ -111,6 +111,15 @@ export interface BestDeal {
 }
 
 export type {
+  ProgramTermRecord,
+  ResolvedProgramTerms,
+  ResolvedAssumption,
+  GlobalPrefill,
+  TermAuthority,
+  ParsedLenderTerms,
+} from "@/lib/best-deal/program-terms";
+
+export type {
   NormalizedOffer,
   OfferSourceType,
   OfferConfidence,
@@ -120,6 +129,7 @@ export type {
 } from "@/lib/best-deal/offer-normalization";
 
 import type { NormalizedOffer, SourceCheck } from "@/lib/best-deal/offer-normalization";
+import type { GlobalPrefill } from "@/lib/best-deal/program-terms";
 
 export interface BestDealResponse {
   success: boolean;
@@ -142,4 +152,21 @@ export interface BestDealResponse {
   /** Per-source outcome for the "Sources checked" summary. */
   sourcesChecked?: SourceCheck[];
   sourceSummary?: { success: number; noMatch: number; unavailable: number; notConfigured: number };
+  /** Resolved lease tax rate and where it came from (user override vs ZIP). */
+  taxResolution?: {
+    ratePercent: number | null;
+    label: string;
+    sourceName: string;
+    sourceUrl: string | null;
+    asOf: string;
+    confidence: "high" | "medium" | "low";
+    origin: "user" | "auto_zip";
+    note: string | null;
+  };
+  /** Global Advanced-assumptions prefill, only when every result agrees. */
+  assumptionPrefill?: {
+    moneyFactor: GlobalPrefill;
+    residualPercent: GlobalPrefill;
+    acquisitionFee: GlobalPrefill;
+  };
 }

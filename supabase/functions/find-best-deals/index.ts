@@ -48,6 +48,11 @@ import {
 } from "./lease-cost.ts";
 import { resolveLeaseTaxRate } from "./tax-resolver.ts";
 import {
+  resolveGlobalPrefill,
+  resolveProgramTerms,
+  type ProgramTermRecord,
+} from "./program-terms.ts";
+import {
   discoverDealerSpecials,
   runProgramAdapters,
   runSeedDealerSources,
@@ -153,8 +158,10 @@ function parseRequest(body: Record<string, unknown>): SearchRequest {
       optionalNumber(lease.capCostReduction ?? 0, 0, 200_000, "Cap-cost reduction") ?? 0,
     moneyFactor: optionalNumber(lease.moneyFactor, 0, 0.02, "Money factor"),
     residualPercent: optionalNumber(lease.residualPercent, 10, 100, "Residual value"),
-    acquisitionFee: optionalNumber(lease.acquisitionFee ?? 0, 0, 5_000, "Acquisition fee") ?? 0,
+    acquisitionFee: optionalNumber(lease.acquisitionFee, 0, 5_000, "Acquisition fee"),
     salesTaxPercent: optionalNumber(lease.salesTaxPercent, 0, 20, "Lease sales-tax rate"),
+    salesTaxOrigin:
+      lease.salesTaxOrigin === "user" ? "user" : lease.salesTaxOrigin === "auto_zip" ? "auto_zip" : null,
   };
   if ((leaseAssumptions.moneyFactor === null) !== (leaseAssumptions.residualPercent === null)) {
     throw new ValidationError(
@@ -718,10 +725,40 @@ Deno.serve(async (req) => {
     // still live in the "Programs worth checking" section unless VIN-specific.
     const programOffers = [...split.actionable, ...split.programs];
     // ── Lease-cost audit: advertised vs parsed vs CarWise estimate ───────────
-    const taxRate = resolveLeaseTaxRate(
-      parsed.zip,
-      parsed.leaseAssumptions?.salesTaxPercent ?? null
-    );
+    // User override first, then the ZIP-derived maintained-dataset estimate.
+    const userTaxOverride =
+      parsed.leaseAssumptions?.salesTaxOrigin === "user"
+        ? parsed.leaseAssumptions.salesTaxPercent
+        : null;
+    const taxRate = resolveLeaseTaxRate(parsed.zip, userTaxOverride);
+    const searchState = stateForZip(parsed.zip);
+
+    // Lender-term records published by the sources we already fetched. Each
+    // record stays bound to its own vehicle/term/mileage/region — there is no
+    // global money factor or residual across a multi-vehicle search.
+    const termRecords: ProgramTermRecord[] = programOffers
+      .filter((o) => o.lenderTerms && (o.lenderTerms.moneyFactor !== null || o.lenderTerms.residualPercent !== null || o.lenderTerms.acquisitionFee !== null))
+      .map((o) => ({
+        id: o.id,
+        sourceName: o.sourceName,
+        sourceUrl: o.sourceUrl,
+        authority: o.termAuthority ?? "community",
+        retrievedAt: o.retrievedAt,
+        expiresAt: o.expiresAt,
+        geographicScope: o.geographicScope,
+        regionStates: o.regionStates ?? null,
+        year: o.year,
+        make: o.make,
+        model: o.model,
+        trim: o.trim,
+        termMonths: o.termMonths,
+        annualMileage: o.annualMileage,
+        creditTier: o.lenderTerms!.creditTier,
+        moneyFactor: o.lenderTerms!.moneyFactor,
+        residualPercent: o.lenderTerms!.residualPercent,
+        acquisitionFee: o.lenderTerms!.acquisitionFee,
+        acquisitionFeeIsBrandLevel: o.lenderTerms!.acquisitionFeeIsBrandLevel,
+      }));
 
     const auditedOffers = programOffers.map((o) => {
       const components = {
@@ -772,8 +809,21 @@ Deno.serve(async (req) => {
         });
       }
 
+      // Per-result lender terms: resolved for THIS vehicle/term/mileage/region.
+      const resolvedTerms = resolveProgramTerms(termRecords, {
+        year: o.year,
+        make: o.make,
+        model: o.model,
+        trim: o.trim,
+        termMonths: o.termMonths ?? parsed.leaseAssumptions.termMonths,
+        annualMileage:
+          o.annualMileage ??
+          (parsed.annualMileage === "any" ? null : Number(parsed.annualMileage)),
+        state: searchState,
+      });
+
       return {
-        offer: { ...o, ...audit, costWarnings: warnings },
+        offer: { ...o, ...audit, costWarnings: warnings, resolvedTerms },
         monthlyVerdict,
         dasVerdict,
       };
@@ -792,8 +842,6 @@ Deno.serve(async (req) => {
     } catch (err) {
       console.error("Benchmark load failed:", err);
     }
-
-    const searchState = stateForZip(parsed.zip);
 
     const deals = top.map((entry, index) => {
       const c = entry.candidate;
@@ -955,6 +1003,30 @@ Deno.serve(async (req) => {
       retrievedAt,
       notices,
       programs,
+      taxResolution: {
+        ratePercent: taxRate.ratePercent,
+        label: taxRate.label,
+        sourceName: taxRate.sourceName,
+        sourceUrl: taxRate.sourceUrl,
+        asOf: taxRate.asOf,
+        confidence: taxRate.confidence,
+        origin: userTaxOverride !== null ? "user" : "auto_zip",
+        note: taxRate.note,
+      },
+      assumptionPrefill: {
+        moneyFactor: resolveGlobalPrefill(
+          programs.map((p) => p.resolvedTerms ?? { moneyFactor: null, residualPercent: null, acquisitionFee: null, rejected: [] }),
+          "moneyFactor"
+        ),
+        residualPercent: resolveGlobalPrefill(
+          programs.map((p) => p.resolvedTerms ?? { moneyFactor: null, residualPercent: null, acquisitionFee: null, rejected: [] }),
+          "residualPercent"
+        ),
+        acquisitionFee: resolveGlobalPrefill(
+          programs.map((p) => p.resolvedTerms ?? { moneyFactor: null, residualPercent: null, acquisitionFee: null, rejected: [] }),
+          "acquisitionFee"
+        ),
+      },
       sourcesChecked,
       sourceSummary: summarizeSourceChecks(sourcesChecked),
       validationSources: BENCHMARK_SOURCES.map((s) => ({

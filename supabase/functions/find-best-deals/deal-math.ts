@@ -296,10 +296,15 @@ export interface LeaseAssumptions {
   moneyFactor: number | null;
   /** Residual value as a percent of MSRP, e.g. 58. Never guessed by CarWise. */
   residualPercent: number | null;
-  /** Acquisition fee in dollars. */
-  acquisitionFee: number;
+  /** Acquisition fee in dollars. Null = Auto (resolved per program when published). */
+  acquisitionFee: number | null;
   /** Lease sales-tax rate percent. When null, payments are labeled pre-tax. */
   salesTaxPercent: number | null;
+  /**
+   * Where salesTaxPercent came from: "auto_zip" (derived from the maintained
+   * ZIP dataset) or "user" (manual override that must never be overwritten).
+   */
+  salesTaxOrigin: "auto_zip" | "user" | null;
 }
 
 export const DEFAULT_LEASE_ASSUMPTIONS: LeaseAssumptions = {
@@ -307,8 +312,9 @@ export const DEFAULT_LEASE_ASSUMPTIONS: LeaseAssumptions = {
   capCostReduction: 0,
   moneyFactor: null,
   residualPercent: null,
-  acquisitionFee: 0,
+  acquisitionFee: null,
   salesTaxPercent: null,
+  salesTaxOrigin: null,
 };
 
 export interface LeaseEstimate {
@@ -387,7 +393,7 @@ export function validateLeaseAssumptions(a: LeaseAssumptions): Record<string, st
   ) {
     errors.residualPercent = "Residual value is a percent of MSRP between 10 and 100.";
   }
-  if (!isFiniteNumber(a.acquisitionFee) || a.acquisitionFee < 0 || a.acquisitionFee > 5_000) {
+  if (a.acquisitionFee !== null && (!isFiniteNumber(a.acquisitionFee) || a.acquisitionFee < 0 || a.acquisitionFee > 5_000)) {
     errors.acquisitionFee = "Enter an acquisition fee between $0 and $5,000.";
   }
   if (
