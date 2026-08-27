@@ -441,8 +441,9 @@ Deno.serve(async (req) => {
     }
 
     let parsed: SearchRequest;
+    const body_debug = ((await req.json()) ?? {}) as Record<string, unknown>;
     try {
-      parsed = parseRequest((await req.json()) ?? {});
+      parsed = parseRequest(body_debug);
     } catch (err) {
       return json(
         {
@@ -456,6 +457,38 @@ Deno.serve(async (req) => {
     }
 
     const apiKey = Deno.env.get("MARKETCHECK_API_KEY");
+    if ((body_debug as any).__probe && apiKey) {
+      const combos: Record<string, Record<string,string>> = {
+        minimal: { zip: parsed.zip, radius: "100", rows: "1" },
+        country: { zip: parsed.zip, radius: "100", rows: "1", country: "us" },
+        hasprice: { zip: parsed.zip, radius: "100", rows: "1", has_price: "true" },
+        dedup: { zip: parsed.zip, radius: "100", rows: "1", dedup: "true" },
+        photo: { zip: parsed.zip, radius: "100", rows: "1", photo_links: "true" },
+        lease: { zip: parsed.zip, radius: "100", rows: "1", car_type: "new", include_lease: "true" },
+        finance: { zip: parsed.zip, radius: "100", rows: "1", include_finance: "true" },
+        newonly: { zip: parsed.zip, radius: "100", rows: "1", car_type: "new" },
+      };
+      const out: Record<string, unknown> = {};
+      for (const [name, params] of Object.entries(combos)) {
+        const u = new URL(MC_BASE);
+        u.searchParams.set("api_key", apiKey);
+        for (const [k, v] of Object.entries(params)) u.searchParams.set(k, v);
+        try {
+          const r = await fetch(u.toString());
+          const t = await r.text();
+          let nf: unknown = t.slice(0, 120);
+          try { nf = JSON.parse(t).num_found; } catch { /* keep raw */ }
+          out[name] = { status: r.status, num_found: nf };
+          if (name === "lease" || name === "finance") {
+            try { out[name + "_sample"] = JSON.stringify(JSON.parse(t).listings?.[0] ?? {}).slice(0, 1500); } catch { /* ignore */ }
+          }
+        } catch (e) {
+          out[name] = { error: String(e) };
+        }
+      }
+      return json({ probe: out });
+    }
+
     if (!apiKey) {
       return json(
         {
