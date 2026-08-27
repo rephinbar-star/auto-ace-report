@@ -9,7 +9,7 @@ const solutions = [
       "Search for strong lease and purchase opportunities based on budget, location, vehicle type, powertrain, mileage allowance, and due-at-signing preferences.",
     ctaLabel: "Explore best deals",
     href: "/best-deal",
-    status: "Coming soon" as const,
+    status: "Available in beta" as const,
   },
   {
     icon: Scale,

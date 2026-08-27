@@ -12,7 +12,7 @@ export interface SolutionCardProps {
   description: string;
   ctaLabel: string;
   href: string;
-  status: "Available now" | "Coming soon";
+  status: "Available now" | "Available in beta" | "Coming soon";
   featured?: boolean;
 }
 
@@ -26,6 +26,7 @@ export function SolutionCard({
   featured = false,
 }: SolutionCardProps) {
   const isAvailable = status === "Available now";
+  const isBeta = status === "Available in beta";
 
   return (
     <Card
@@ -48,10 +49,11 @@ export function SolutionCard({
             <Icon className={cn("h-6 w-6", featured ? "text-primary" : "text-primary")} />
           </div>
           <Badge
-            variant={isAvailable ? "default" : "secondary"}
+            variant={isAvailable || isBeta ? "default" : "secondary"}
             className={cn(
               "shrink-0",
-              isAvailable && "bg-success text-success-foreground hover:bg-success/90"
+              isAvailable && "bg-success text-success-foreground hover:bg-success/90",
+              isBeta && "bg-primary text-primary-foreground hover:bg-primary/90"
             )}
           >
             {status}
