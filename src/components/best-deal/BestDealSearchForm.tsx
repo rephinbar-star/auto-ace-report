@@ -294,9 +294,11 @@ export function BestDealSearchForm({ value, onChange, onSubmit, loading }: Props
                 <div className="rounded-xl border bg-card/50 p-4" data-testid="lease-assumptions">
                   <h3 className="text-sm font-semibold text-foreground">Lease assumptions</h3>
                   <p className="mb-4 mt-1 text-sm text-muted-foreground">
-                    Money factor and residual value are lender/program inputs — CarWise never
-                    guesses them. Advertised lease offers are still ranked from their published
-                    terms without these optional fields.
+                    Money factor, residual value and acquisition fee default to{" "}
+                    <strong>Auto — use current program data when available</strong>. CarWise
+                    resolves them per vehicle from published program data and never guesses,
+                    back-solves them from an advertised payment, or reads an APR as a money factor.
+                    Anything you type here becomes a global override for every result.
                   </p>
                   <div className="grid gap-4 sm:grid-cols-3">
                     <div className="space-y-2">
@@ -338,56 +340,134 @@ export function BestDealSearchForm({ value, onChange, onSubmit, loading }: Props
                       {fieldError("capCostReduction")}
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="bd-money-factor">Money factor (optional)</Label>
+                      <Label htmlFor="bd-money-factor">Money factor</Label>
                       <Input
                         id="bd-money-factor"
                         inputMode="decimal"
-                        placeholder="0.00125"
+                        placeholder="Auto — use current program data when available"
                         value={value.leaseAssumptions.moneyFactor ?? ""}
                         aria-invalid={Boolean(leaseErrors.moneyFactor)}
                         onChange={(e) => setLease("moneyFactor", numeric(e.target.value))}
                       />
+                      {value.leaseAssumptions.moneyFactor !== null && (
+                        <Button
+                          type="button"
+                          variant="link"
+                          className="h-auto p-0 text-xs"
+                          onClick={() => setLease("moneyFactor", null)}
+                        >
+                          Reset to Auto
+                        </Button>
+                      )}
                       {fieldError("moneyFactor")}
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="bd-residual">Residual value (% of MSRP, optional)</Label>
+                      <Label htmlFor="bd-residual">Residual value (% of MSRP)</Label>
                       <Input
                         id="bd-residual"
                         inputMode="decimal"
-                        placeholder="58"
+                        placeholder="Auto — use current program data when available"
                         value={value.leaseAssumptions.residualPercent ?? ""}
                         aria-invalid={Boolean(leaseErrors.residualPercent)}
                         onChange={(e) => setLease("residualPercent", numeric(e.target.value))}
                       />
+                      {value.leaseAssumptions.residualPercent !== null && (
+                        <Button
+                          type="button"
+                          variant="link"
+                          className="h-auto p-0 text-xs"
+                          onClick={() => setLease("residualPercent", null)}
+                        >
+                          Reset to Auto
+                        </Button>
+                      )}
                       {fieldError("residualPercent")}
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="bd-acq-fee">Acquisition fee ($, optional)</Label>
+                      <Label htmlFor="bd-acq-fee">Acquisition fee ($)</Label>
                       <Input
                         id="bd-acq-fee"
                         inputMode="numeric"
-                        value={value.leaseAssumptions.acquisitionFee}
+                        placeholder="Auto — captive/brand fee when published"
+                        value={value.leaseAssumptions.acquisitionFee ?? ""}
                         aria-invalid={Boolean(leaseErrors.acquisitionFee)}
-                        onChange={(e) => setLease("acquisitionFee", numeric(e.target.value) ?? 0)}
+                        onChange={(e) => setLease("acquisitionFee", numeric(e.target.value))}
                       />
+                      {value.leaseAssumptions.acquisitionFee !== null && (
+                        <Button
+                          type="button"
+                          variant="link"
+                          className="h-auto p-0 text-xs"
+                          onClick={() => setLease("acquisitionFee", null)}
+                        >
+                          Reset to Auto
+                        </Button>
+                      )}
                       {fieldError("acquisitionFee")}
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="bd-lease-tax">Lease sales-tax rate (%, optional)</Label>
+                      <Label htmlFor="bd-lease-tax">Lease sales-tax rate (%)</Label>
                       <Input
                         id="bd-lease-tax"
                         inputMode="decimal"
-                        placeholder="Leave blank for pre-tax"
+                        placeholder="Enter a ZIP to auto-fill the local estimate"
                         value={value.leaseAssumptions.salesTaxPercent ?? ""}
                         aria-invalid={Boolean(leaseErrors.salesTaxPercent)}
-                        onChange={(e) => setLease("salesTaxPercent", numeric(e.target.value))}
+                        onChange={(e) =>
+                          onChange({
+                            ...value,
+                            leaseAssumptions: {
+                              ...value.leaseAssumptions,
+                              salesTaxPercent: numeric(e.target.value),
+                              salesTaxOrigin: "user",
+                            },
+                          })
+                        }
                       />
-                      <p className="text-xs text-muted-foreground">
-                        If blank, any calculated lease payment is labeled pre-tax.
-                      </p>
+                      {value.leaseAssumptions.salesTaxOrigin === "auto_zip" &&
+                        value.leaseAssumptions.salesTaxPercent !== null && (
+                          <p className="text-xs text-muted-foreground" data-testid="tax-provenance">
+                            Auto-filled from ZIP {value.zip} · estimated local rate (
+                            {zipTax?.sourceName ?? "maintained dataset"}, data as of{" "}
+                            {TAX_DATASET_AS_OF}). This is an estimate, not a quoted contract rate.
+                          </p>
+                        )}
+                      {value.leaseAssumptions.salesTaxOrigin === "user" && (
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground">
+                            You entered this rate — it overrides the ZIP estimate and is kept when
+                            other fields change.
+                          </p>
+                          {zipTax?.ratePercent !== null && zipTax !== null && (
+                            <Button
+                              type="button"
+                              variant="link"
+                              className="h-auto p-0 text-xs"
+                              onClick={() =>
+                                onChange({
+                                  ...value,
+                                  leaseAssumptions: {
+                                    ...value.leaseAssumptions,
+                                    salesTaxPercent: zipTax.ratePercent,
+                                    salesTaxOrigin: "auto_zip",
+                                  },
+                                })
+                              }
+                            >
+                              Reset to ZIP rate
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                      {value.leaseAssumptions.salesTaxPercent === null && (
+                        <p className="text-xs text-muted-foreground">
+                          If blank, any calculated lease payment is labeled pre-tax.
+                        </p>
+                      )}
                       {fieldError("salesTaxPercent")}
                     </div>
                   </div>
+
                 </div>
               )}
 
