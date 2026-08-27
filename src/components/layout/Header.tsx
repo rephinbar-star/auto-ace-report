@@ -13,8 +13,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
+import {
+  SOLUTION_LINKS,
+  SOLUTION_STATUS_LABEL,
+  getNavContext,
+  isSolutionActive,
+  type SolutionStatus,
+} from "@/lib/nav-context";
 
-const navigation = [
+const analysisNavigation = [
   { name: "Home", href: "/" },
   { name: "Marketplace", href: "/marketplace", accent: true },
   { name: "Sample Reports", href: "/sample-report" },
@@ -22,12 +29,40 @@ const navigation = [
   { name: "Pricing", href: "/pricing" },
 ];
 
+const solutionsNavigation = [
+  { name: "Home", href: "/" },
+  { name: "Pricing", href: "/pricing" },
+];
+
+function StatusBadge({ status }: { status: SolutionStatus }) {
+  if (status === "live") return null;
+  const isBeta = status === "beta";
+  return (
+    <span
+      className={cn(
+        "rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ring-1",
+        isBeta
+          ? "bg-blue-500/15 text-blue-500 ring-blue-500/30"
+          : "bg-muted text-muted-foreground ring-border"
+      )}
+    >
+      {isBeta ? "Beta" : "Soon"}
+    </span>
+  );
+}
+
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const { user, isAuthenticated, signOut } = useAuth();
+  const navContext = getNavContext(location.pathname);
+  const isSolutionsContext = navContext === "solutions";
+  const navigation = isSolutionsContext ? solutionsNavigation : analysisNavigation;
+  const activeSolution = SOLUTION_LINKS.find((s) =>
+    isSolutionActive(s.href, location.pathname)
+  );
 
   const handleSignOut = async () => {
     await signOut();
