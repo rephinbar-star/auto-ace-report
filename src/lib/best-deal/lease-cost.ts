@@ -378,6 +378,13 @@ export function auditLeaseCost(input: LeaseAuditInput): LeaseCostAudit {
       message: "The advertised payment excludes taxes and mandatory fees.",
     });
   }
+  if (c.advertisedMonthlyTaxStatus === "unknown") {
+    warnings.push({
+      code: "taxes_and_fees_excluded",
+      message:
+        "The advertisement does not state whether tax is included. CarWise conservatively treats tax as additional.",
+    });
+  }
   if (!taxKnown) {
     warnings.push({
       code: "tax_rate_unknown",
@@ -449,7 +456,14 @@ export function auditLeaseCost(input: LeaseAuditInput): LeaseCostAudit {
 
   let completeness: CostCompleteness;
   if (taxedMonthly === null || term === null || lowEffective === null) completeness = "incomplete";
-  else if (!unknownFees && taxKnown && (dasHigh !== null && dasLow === dasHigh)) completeness = "complete";
+  else if (
+    !unknownFees &&
+    taxKnown &&
+    c.advertisedMonthlyTaxStatus !== "unknown" &&
+    dasHigh !== null &&
+    dasLow === dasHigh
+  )
+    completeness = "complete";
   else completeness = "estimated_range";
 
   return {
