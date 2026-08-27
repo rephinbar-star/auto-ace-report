@@ -15,7 +15,7 @@ import { ProgramOfferCard } from "@/components/best-deal/ProgramOfferCard";
 import { SourcesChecked } from "@/components/best-deal/SourcesChecked";
 import { supabase } from "@/integrations/supabase/client";
 import type { BestDealResponse, BestDealSearchParams } from "@/types/best-deal";
-import { DEFAULTS, paramsFromUrl, urlFromParams } from "@/lib/best-deal/search-params";
+import { paramsFromUrl, urlFromParams } from "@/lib/best-deal/search-params";
 
 function summarize(p: BestDealSearchParams): string[] {
   const chips: string[] = [`ZIP ${p.zip}`, `${p.radius} mi`];
