@@ -1,7 +1,13 @@
 import { AlertTriangle, ExternalLink, Info, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import type { NormalizedOffer, OfferSourceType } from "@/types/best-deal";
+import { Button } from "@/components/ui/button";
+import { AUTHORITY_LABEL } from "@/lib/best-deal/program-terms";
+import type {
+  NormalizedOffer,
+  OfferSourceType,
+  ResolvedAssumption,
+} from "@/types/best-deal";
 
 const SOURCE_LABEL: Record<OfferSourceType, string> = {
   inventory_specific: "Local inventory",
@@ -55,7 +61,74 @@ function Figure({
   );
 }
 
-export function ProgramOfferCard({ offer }: { offer: NormalizedOffer }) {
+function ResolvedTermRow({
+  label,
+  resolved,
+  format,
+  onUseOverride,
+}: {
+  label: string;
+  resolved: ResolvedAssumption | null;
+  format: (v: number) => string;
+  onUseOverride?: (a: ResolvedAssumption) => void;
+}) {
+  if (!resolved) {
+    return (
+      <div className="flex flex-wrap items-baseline gap-x-2 text-xs">
+        <span className="text-muted-foreground">{label}:</span>
+        <span className="font-medium text-muted-foreground">
+          Unknown — no current published program data
+        </span>
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-2 text-xs">
+      <span className="text-muted-foreground">{label}:</span>
+      <span className="font-semibold text-foreground">{format(resolved.value)}</span>
+      <Badge variant="outline" className="text-[10px]">
+        Found online
+      </Badge>
+      <span className="text-muted-foreground">
+        {AUTHORITY_LABEL[resolved.authority]} ·{" "}
+        <a
+          href={resolved.sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer nofollow"
+          className="text-primary hover:underline"
+        >
+          {resolved.sourceName}
+        </a>{" "}
+        · {resolved.geographicScope} · term {resolved.termMatch} · mileage {resolved.mileageMatch} ·
+        retrieved {new Date(resolved.retrievedAt).toLocaleDateString()}
+        {resolved.expiresAt
+          ? ` · expires ${new Date(resolved.expiresAt).toLocaleDateString()}`
+          : ""}
+        {resolved.conditional
+          ? ` · conditional: requires ${resolved.creditTier ?? "qualifying credit"}`
+          : ""}
+      </span>
+      {onUseOverride && (
+        <Button
+          type="button"
+          variant="link"
+          className="h-auto p-0 text-[11px]"
+          onClick={() => onUseOverride(resolved)}
+        >
+          Use as my override
+        </Button>
+      )}
+    </div>
+  );
+}
+
+export function ProgramOfferCard({
+  offer,
+  onUseOverride,
+}: {
+  offer: NormalizedOffer;
+  onUseOverride?: (a: ResolvedAssumption) => void;
+}) {
   const title =
     [offer.year, offer.make, offer.model].filter(Boolean).join(" ") ||
     offer.programName ||
@@ -217,6 +290,32 @@ export function ProgramOfferCard({ offer }: { offer: NormalizedOffer }) {
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
             {offer.limitedDataNote}
           </p>
+        )}
+
+        {offer.resolvedTerms && (
+          <div className="space-y-1 rounded-lg border border-dashed p-3">
+            <p className="text-xs font-semibold text-foreground">
+              Lender terms resolved for this vehicle
+            </p>
+            <ResolvedTermRow
+              label="Money factor"
+              resolved={offer.resolvedTerms.moneyFactor}
+              format={(v) => v.toFixed(5)}
+              onUseOverride={onUseOverride}
+            />
+            <ResolvedTermRow
+              label="Residual"
+              resolved={offer.resolvedTerms.residualPercent}
+              format={(v) => `${v}%`}
+              onUseOverride={onUseOverride}
+            />
+            <ResolvedTermRow
+              label="Acquisition fee"
+              resolved={offer.resolvedTerms.acquisitionFee}
+              format={(v) => `$${Math.round(v).toLocaleString()}`}
+              onUseOverride={onUseOverride}
+            />
+          </div>
         )}
 
         <details className="rounded-md border border-border/60 p-2">
