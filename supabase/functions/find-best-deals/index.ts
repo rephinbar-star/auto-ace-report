@@ -171,11 +171,13 @@ function buildUrl(
   if (req.brand) url.searchParams.set("make", req.brand);
   if (req.vehicleType !== "any") url.searchParams.set("body_type", BODY_TYPE_MAP[req.vehicleType]);
   applyPowertrain(url, req.powertrain);
+  // NOTE: `include_lease` / `include_finance` return zero rows on the current
+  // MarketCheck entitlement, so we do not send them. Lease candidates are
+  // restricted to new inventory and only accepted when the upstream payload
+  // actually carries `leasing_options`; otherwise we report limited data
+  // rather than fabricating lease terms.
   if (mode === "lease") {
     url.searchParams.set("car_type", "new");
-    url.searchParams.set("include_lease", "true");
-  } else {
-    url.searchParams.set("include_finance", "true");
   }
   return url.toString();
 }
@@ -211,7 +213,6 @@ async function fetchCandidates(
       }
       const data = await res.json();
       const page = (data.listings ?? []) as McListing[];
-      console.log(`MC ${mode} start=${start} num_found=${data.num_found ?? 0} rows=${page.length} sample=${JSON.stringify(page[0] ?? {}).slice(0, 600)}`);
       listings.push(...page);
       if (page.length < ROWS) break;
     } catch (err) {
@@ -441,9 +442,8 @@ Deno.serve(async (req) => {
     }
 
     let parsed: SearchRequest;
-    const body_debug = ((await req.json()) ?? {}) as Record<string, unknown>;
     try {
-      parsed = parseRequest(body_debug);
+      parsed = parseRequest((await req.json()) ?? {});
     } catch (err) {
       return json(
         {
@@ -457,37 +457,6 @@ Deno.serve(async (req) => {
     }
 
     const apiKey = Deno.env.get("MARKETCHECK_API_KEY");
-    if ((body_debug as any).__probe && apiKey) {
-      const combos: Record<string, Record<string,string>> = {
-        minimal: { zip: parsed.zip, radius: "100", rows: "1" },
-        country: { zip: parsed.zip, radius: "100", rows: "1", country: "us" },
-        hasprice: { zip: parsed.zip, radius: "100", rows: "1", has_price: "true" },
-        dedup: { zip: parsed.zip, radius: "100", rows: "1", dedup: "true" },
-        photo: { zip: parsed.zip, radius: "100", rows: "1", photo_links: "true" },
-        lease: { zip: parsed.zip, radius: "100", rows: "5", car_type: "new", has_price: "true", photo_links: "true" },
-        finance: { zip: parsed.zip, radius: "100", rows: "5", car_type: "used", has_price: "true" },
-        newonly: { zip: parsed.zip, radius: "100", rows: "1", car_type: "new" },
-      };
-      const out: Record<string, unknown> = {};
-      for (const [name, params] of Object.entries(combos)) {
-        const u = new URL(MC_BASE);
-        u.searchParams.set("api_key", apiKey);
-        for (const [k, v] of Object.entries(params)) u.searchParams.set(k, v);
-        try {
-          const r = await fetch(u.toString());
-          const t = await r.text();
-          let nf: unknown = t.slice(0, 120);
-          try { nf = JSON.parse(t).num_found; } catch { /* keep raw */ }
-          out[name] = { status: r.status, num_found: nf };
-          if (name === "lease" || name === "finance") {
-            try { out[name + "_sample"] = JSON.stringify(JSON.parse(t).listings ?? []).slice(0, 4000); } catch { /* ignore */ }
-          }
-        } catch (e) {
-          out[name] = { error: String(e) };
-        }
-      }
-      return json({ probe: out });
-    }
 
     if (!apiKey) {
       return json(
@@ -527,9 +496,15 @@ Deno.serve(async (req) => {
     const byKey = new Map<string, Candidate>();
     let leaseCount = 0;
     let purchaseCount = 0;
+    let leaseListingsScanned = 0;
+    let leaseFieldsSeen = 0;
     fetched.forEach((f, i) => {
       const mode = modes[i];
       for (const raw of f.listings) {
+        if (mode === "lease") {
+          leaseListingsScanned++;
+          if (raw && typeof raw === "object" && raw.leasing_options) leaseFieldsSeen++;
+        }
         const c = normalize(raw, mode, parsed);
         if (!c || !passesFilters(c, parsed)) continue;
         if (mode === "lease") leaseCount++;
@@ -541,6 +516,12 @@ Deno.serve(async (req) => {
         }
       }
     });
+
+    if (leaseListingsScanned > 0 && leaseFieldsSeen === 0) {
+      notices.push(
+        "Advertised lease terms were not returned by the inventory provider for this area, so no lease opportunities can be shown. Purchase results are unaffected."
+      );
+    }
 
     const candidates = [...byKey.values()];
 
