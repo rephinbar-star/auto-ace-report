@@ -364,28 +364,49 @@ export function Header() {
                 )}
               </Link>
             ))}
+
+            {isSolutionsContext && (
+              <div className="pt-2">
+                <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Solutions
+                </p>
+                {SOLUTION_LINKS.map((s) => (
+                  <Link
+                    key={s.href}
+                    to={s.href}
+                    className={cn(
+                      "flex items-center gap-2 rounded-lg px-3 py-2 text-base font-medium transition-colors",
+                      isSolutionActive(s.href, location.pathname)
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-muted"
+                    )}
+                    aria-current={
+                      isSolutionActive(s.href, location.pathname) ? "page" : undefined
+                    }
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    {s.name}
+                    <StatusBadge status={s.status} />
+                    <span className="sr-only">{SOLUTION_STATUS_LABEL[s.status]}</span>
+                  </Link>
+                ))}
+              </div>
+            )}
+
             <div className="flex flex-col gap-2 pt-4">
-              {isAuthenticated ? (
-                <>
-                  <Button asChild className="w-full">
-                    <Link to="/analyze" onClick={() => setMobileMenuOpen(false)}>
-                      Start Analysis
-                    </Link>
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button asChild variant="outline" className="w-full">
-                    <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
-                      Log In
-                    </Link>
-                  </Button>
-                  <Button asChild className="w-full">
-                    <Link to="/analyze" onClick={() => setMobileMenuOpen(false)}>
-                      Start Analysis
-                    </Link>
-                  </Button>
-                </>
+              {!isAuthenticated && (
+                <Button asChild variant="outline" className="w-full">
+                  <Link to="/login" onClick={() => setMobileMenuOpen(false)}>
+                    Log In
+                  </Link>
+                </Button>
+              )}
+              {!isSolutionsContext && (
+                <Button asChild className="w-full">
+                  <Link to="/analyze" onClick={() => setMobileMenuOpen(false)}>
+                    Start Analysis
+                  </Link>
+                </Button>
               )}
             </div>
           </div>
