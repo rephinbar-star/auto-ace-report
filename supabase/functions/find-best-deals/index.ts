@@ -464,8 +464,8 @@ Deno.serve(async (req) => {
         hasprice: { zip: parsed.zip, radius: "100", rows: "1", has_price: "true" },
         dedup: { zip: parsed.zip, radius: "100", rows: "1", dedup: "true" },
         photo: { zip: parsed.zip, radius: "100", rows: "1", photo_links: "true" },
-        lease: { zip: parsed.zip, radius: "100", rows: "1", car_type: "new", include_lease: "true" },
-        finance: { zip: parsed.zip, radius: "100", rows: "1", include_finance: "true" },
+        lease: { zip: parsed.zip, radius: "100", rows: "5", car_type: "new", has_price: "true", photo_links: "true" },
+        finance: { zip: parsed.zip, radius: "100", rows: "5", car_type: "used", has_price: "true" },
         newonly: { zip: parsed.zip, radius: "100", rows: "1", car_type: "new" },
       };
       const out: Record<string, unknown> = {};
@@ -480,7 +480,7 @@ Deno.serve(async (req) => {
           try { nf = JSON.parse(t).num_found; } catch { /* keep raw */ }
           out[name] = { status: r.status, num_found: nf };
           if (name === "lease" || name === "finance") {
-            try { out[name + "_sample"] = JSON.stringify(JSON.parse(t).listings?.[0] ?? {}).slice(0, 1500); } catch { /* ignore */ }
+            try { out[name + "_sample"] = JSON.stringify(JSON.parse(t).listings ?? []).slice(0, 4000); } catch { /* ignore */ }
           }
         } catch (e) {
           out[name] = { error: String(e) };
