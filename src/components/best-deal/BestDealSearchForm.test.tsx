@@ -171,6 +171,7 @@ describe("URL round-trip", () => {
         residualPercent: 58,
         acquisitionFee: 995,
         salesTaxPercent: 7.75,
+        salesTaxOrigin: "user",
       },
       purchaseAssumptions: { termMonths: 60, aprPercent: 5.9, downPayment: 3000 },
     };

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, Loader2, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,7 @@ import type {
   PurchaseAssumptions,
 } from "@/types/best-deal";
 import { LEASE_TERM_CHOICES, validateLeaseAssumptions } from "@/lib/best-deal/deal-math";
+import { resolveLeaseTaxRate, TAX_DATASET_AS_OF } from "@/lib/best-deal/tax-resolver";
 
 const BRANDS = [
   "Acura", "Audi", "BMW", "Buick", "Cadillac", "Chevrolet", "Chrysler", "Dodge",
