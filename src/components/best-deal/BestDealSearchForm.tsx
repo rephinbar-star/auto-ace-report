@@ -17,7 +17,12 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-import type { BestDealSearchParams } from "@/types/best-deal";
+import type {
+  BestDealSearchParams,
+  LeaseAssumptions,
+  PurchaseAssumptions,
+} from "@/types/best-deal";
+import { LEASE_TERM_CHOICES, validateLeaseAssumptions } from "@/lib/best-deal/deal-math";
 
 const BRANDS = [
   "Acura", "Audi", "BMW", "Buick", "Cadillac", "Chevrolet", "Chrysler", "Dodge",
@@ -37,11 +42,20 @@ interface Props {
 export function BestDealSearchForm({ value, onChange, onSubmit, loading }: Props) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [zipError, setZipError] = useState<string | null>(null);
+  const [leaseErrors, setLeaseErrors] = useState<Record<string, string>>({});
 
   const set = <K extends keyof BestDealSearchParams>(
     key: K,
     next: BestDealSearchParams[K]
   ) => onChange({ ...value, [key]: next });
+
+  const setLease = <K extends keyof LeaseAssumptions>(key: K, next: LeaseAssumptions[K]) =>
+    onChange({ ...value, leaseAssumptions: { ...value.leaseAssumptions, [key]: next } });
+
+  const setPurchase = <K extends keyof PurchaseAssumptions>(
+    key: K,
+    next: PurchaseAssumptions[K]
+  ) => onChange({ ...value, purchaseAssumptions: { ...value.purchaseAssumptions, [key]: next } });
 
   const numeric = (raw: string): number | null => {
     const cleaned = raw.replace(/[^0-9.]/g, "");
@@ -57,10 +71,25 @@ export function BestDealSearchForm({ value, onChange, onSubmit, loading }: Props
       return;
     }
     setZipError(null);
+    const errors =
+      value.dealType === "purchase" ? {} : validateLeaseAssumptions(value.leaseAssumptions);
+    setLeaseErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      setAdvancedOpen(true);
+      return;
+    }
     onSubmit();
   };
 
   const showMileage = value.dealType === "lease" || value.dealType === "any";
+  const showLeaseAssumptions = value.dealType === "lease" || value.dealType === "any";
+  const showPurchaseAssumptions = value.dealType === "purchase" || value.dealType === "any";
+  const fieldError = (key: string) =>
+    leaseErrors[key] ? (
+      <p className="text-xs text-destructive" role="alert">
+        {leaseErrors[key]}
+      </p>
+    ) : null;
 
   return (
     <Card className="border-2 bg-gradient-card shadow-card">
@@ -115,7 +144,7 @@ export function BestDealSearchForm({ value, onChange, onSubmit, loading }: Props
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="any">Any</SelectItem>
+                  <SelectItem value="any">Lease + Purchase</SelectItem>
                   <SelectItem value="lease">Lease</SelectItem>
                   <SelectItem value="purchase">Purchase</SelectItem>
                 </SelectContent>
@@ -230,57 +259,165 @@ export function BestDealSearchForm({ value, onChange, onSubmit, loading }: Props
                 <ChevronDown
                   className={cn("mr-2 h-4 w-4 transition-transform", advancedOpen && "rotate-180")}
                 />
-                Advanced assumptions for purchase estimates
+                Advanced assumptions
               </Button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="pt-4">
-              <div className="rounded-xl border bg-card/50 p-4">
-                <p className="mb-4 text-sm text-muted-foreground">
-                  These assumptions are used only when a listing has no advertised finance
-                  payment. Estimates are calculated before taxes and fees.
-                </p>
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="bd-term">Loan term</Label>
-                    <Select
-                      value={String(value.termMonths)}
-                      onValueChange={(v) =>
-                        set("termMonths", Number(v) as BestDealSearchParams["termMonths"])
-                      }
-                    >
-                      <SelectTrigger id="bd-term">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {[48, 60, 72, 84].map((t) => (
-                          <SelectItem key={t} value={String(t)}>
-                            {t} months
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="bd-apr">APR (%)</Label>
-                    <Input
-                      id="bd-apr"
-                      inputMode="decimal"
-                      value={value.aprPercent}
-                      onChange={(e) => set("aprPercent", numeric(e.target.value) ?? 0)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="bd-down">Down payment ($)</Label>
-                    <Input
-                      id="bd-down"
-                      inputMode="numeric"
-                      value={value.downPayment}
-                      onChange={(e) => set("downPayment", numeric(e.target.value) ?? 0)}
-                    />
+            <CollapsibleContent className="space-y-4 pt-4">
+              {showLeaseAssumptions && (
+                <div className="rounded-xl border bg-card/50 p-4" data-testid="lease-assumptions">
+                  <h3 className="text-sm font-semibold text-foreground">Lease assumptions</h3>
+                  <p className="mb-4 mt-1 text-sm text-muted-foreground">
+                    Money factor and residual value are lender/program inputs — CarWise never
+                    guesses them. Advertised lease offers are still ranked from their published
+                    terms without these optional fields.
+                  </p>
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="bd-lease-term">Preferred lease term</Label>
+                      <Select
+                        value={String(value.leaseAssumptions.termMonths)}
+                        onValueChange={(v) =>
+                          setLease("termMonths", Number(v) as LeaseAssumptions["termMonths"])
+                        }
+                      >
+                        <SelectTrigger id="bd-lease-term">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {LEASE_TERM_CHOICES.map((t) => (
+                            <SelectItem key={t} value={String(t)}>
+                              {t} months
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {fieldError("termMonths")}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="bd-cap-reduction">Cap-cost reduction / cash down ($)</Label>
+                      <Input
+                        id="bd-cap-reduction"
+                        inputMode="numeric"
+                        value={value.leaseAssumptions.capCostReduction}
+                        aria-invalid={Boolean(leaseErrors.capCostReduction)}
+                        onChange={(e) =>
+                          setLease("capCostReduction", numeric(e.target.value) ?? 0)
+                        }
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Cash applied to reduce the lease balance. This is not the same as your
+                        Maximum due at signing search limit.
+                      </p>
+                      {fieldError("capCostReduction")}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="bd-money-factor">Money factor (optional)</Label>
+                      <Input
+                        id="bd-money-factor"
+                        inputMode="decimal"
+                        placeholder="0.00125"
+                        value={value.leaseAssumptions.moneyFactor ?? ""}
+                        aria-invalid={Boolean(leaseErrors.moneyFactor)}
+                        onChange={(e) => setLease("moneyFactor", numeric(e.target.value))}
+                      />
+                      {fieldError("moneyFactor")}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="bd-residual">Residual value (% of MSRP, optional)</Label>
+                      <Input
+                        id="bd-residual"
+                        inputMode="decimal"
+                        placeholder="58"
+                        value={value.leaseAssumptions.residualPercent ?? ""}
+                        aria-invalid={Boolean(leaseErrors.residualPercent)}
+                        onChange={(e) => setLease("residualPercent", numeric(e.target.value))}
+                      />
+                      {fieldError("residualPercent")}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="bd-acq-fee">Acquisition fee ($, optional)</Label>
+                      <Input
+                        id="bd-acq-fee"
+                        inputMode="numeric"
+                        value={value.leaseAssumptions.acquisitionFee}
+                        aria-invalid={Boolean(leaseErrors.acquisitionFee)}
+                        onChange={(e) => setLease("acquisitionFee", numeric(e.target.value) ?? 0)}
+                      />
+                      {fieldError("acquisitionFee")}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="bd-lease-tax">Lease sales-tax rate (%, optional)</Label>
+                      <Input
+                        id="bd-lease-tax"
+                        inputMode="decimal"
+                        placeholder="Leave blank for pre-tax"
+                        value={value.leaseAssumptions.salesTaxPercent ?? ""}
+                        aria-invalid={Boolean(leaseErrors.salesTaxPercent)}
+                        onChange={(e) => setLease("salesTaxPercent", numeric(e.target.value))}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        If blank, any calculated lease payment is labeled pre-tax.
+                      </p>
+                      {fieldError("salesTaxPercent")}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
+
+              {showPurchaseAssumptions && (
+                <div
+                  className="rounded-xl border bg-card/50 p-4"
+                  data-testid="purchase-assumptions"
+                >
+                  <h3 className="text-sm font-semibold text-foreground">Purchase assumptions</h3>
+                  <p className="mb-4 mt-1 text-sm text-muted-foreground">
+                    These assumptions are used only when a listing has no advertised finance
+                    payment. Computed payments are labeled CarWise estimates before taxes and fees.
+                  </p>
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="bd-term">Finance term</Label>
+                      <Select
+                        value={String(value.purchaseAssumptions.termMonths)}
+                        onValueChange={(v) =>
+                          setPurchase("termMonths", Number(v) as PurchaseAssumptions["termMonths"])
+                        }
+                      >
+                        <SelectTrigger id="bd-term">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[48, 60, 72, 84].map((t) => (
+                            <SelectItem key={t} value={String(t)}>
+                              {t} months
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="bd-apr">APR (%)</Label>
+                      <Input
+                        id="bd-apr"
+                        inputMode="decimal"
+                        value={value.purchaseAssumptions.aprPercent}
+                        onChange={(e) => setPurchase("aprPercent", numeric(e.target.value) ?? 0)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="bd-down">Down payment ($)</Label>
+                      <Input
+                        id="bd-down"
+                        inputMode="numeric"
+                        value={value.purchaseAssumptions.downPayment}
+                        onChange={(e) => setPurchase("downPayment", numeric(e.target.value) ?? 0)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </CollapsibleContent>
+
           </Collapsible>
 
           <div className="sticky bottom-4 z-10 lg:static">

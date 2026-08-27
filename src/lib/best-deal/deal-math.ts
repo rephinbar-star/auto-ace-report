@@ -280,3 +280,131 @@ export function paymentLabel(basis: PaymentBasis, dealType: DealType): string {
   }
   return "CarWise estimate before tax & fees";
 }
+
+// ── Lease assumptions ────────────────────────────────────────────────────────
+
+/** Common lease term choices offered in the Best Deal advanced assumptions. */
+export const LEASE_TERM_CHOICES = [24, 27, 30, 36, 39, 42, 48] as const;
+export type LeaseTermMonths = (typeof LEASE_TERM_CHOICES)[number];
+
+export interface LeaseAssumptions {
+  /** Preferred lease term in months. */
+  termMonths: LeaseTermMonths;
+  /** Cash applied to reduce the lease balance (NOT the max due-at-signing filter). */
+  capCostReduction: number;
+  /** Lender money factor, e.g. 0.00125. Never guessed by CarWise. */
+  moneyFactor: number | null;
+  /** Residual value as a percent of MSRP, e.g. 58. Never guessed by CarWise. */
+  residualPercent: number | null;
+  /** Acquisition fee in dollars. */
+  acquisitionFee: number;
+  /** Lease sales-tax rate percent. When null, payments are labeled pre-tax. */
+  salesTaxPercent: number | null;
+}
+
+export const DEFAULT_LEASE_ASSUMPTIONS: LeaseAssumptions = {
+  termMonths: 36,
+  capCostReduction: 0,
+  moneyFactor: null,
+  residualPercent: null,
+  acquisitionFee: 0,
+  salesTaxPercent: null,
+};
+
+export interface LeaseEstimate {
+  /** Monthly payment shown to the user (tax included only when a rate is given). */
+  monthly: number;
+  /** Payment before sales tax. */
+  preTaxMonthly: number;
+  taxIncluded: boolean;
+}
+
+/**
+ * Deterministic lease payment estimate.
+ *
+ * Requires a real selling price, a real MSRP, and BOTH the lender money factor
+ * and residual percent supplied by the user. Anything missing returns null —
+ * CarWise never back-solves lender inputs.
+ */
+export function estimateLeasePayment(
+  sellingPrice: number | null | undefined,
+  msrp: number | null | undefined,
+  assumptions: LeaseAssumptions
+): LeaseEstimate | null {
+  if (!isFiniteNumber(sellingPrice) || sellingPrice <= 0) return null;
+  if (!isFiniteNumber(msrp) || msrp <= 0) return null;
+  const { termMonths, moneyFactor, residualPercent } = assumptions;
+  if (!isFiniteNumber(termMonths) || termMonths <= 0) return null;
+  if (!isFiniteNumber(moneyFactor) || moneyFactor < 0) return null;
+  if (!isFiniteNumber(residualPercent) || residualPercent <= 0) return null;
+
+  const capReduction = isFiniteNumber(assumptions.capCostReduction)
+    ? Math.max(0, assumptions.capCostReduction)
+    : 0;
+  const acqFee = isFiniteNumber(assumptions.acquisitionFee)
+    ? Math.max(0, assumptions.acquisitionFee)
+    : 0;
+
+  const residualValue = msrp * (residualPercent / 100);
+  const adjustedCap = sellingPrice + acqFee - capReduction;
+  if (adjustedCap <= 0) return null;
+
+  const depreciation = (adjustedCap - residualValue) / termMonths;
+  const rentCharge = (adjustedCap + residualValue) * moneyFactor;
+  const preTaxMonthly = depreciation + rentCharge;
+  if (!Number.isFinite(preTaxMonthly) || preTaxMonthly <= 0) return null;
+
+  const taxRate = isFiniteNumber(assumptions.salesTaxPercent) ? assumptions.salesTaxPercent : null;
+  const taxIncluded = taxRate !== null && taxRate > 0;
+  const monthly = taxIncluded ? preTaxMonthly * (1 + taxRate / 100) : preTaxMonthly;
+
+  return {
+    monthly: round2(monthly),
+    preTaxMonthly: round2(preTaxMonthly),
+    taxIncluded,
+  };
+}
+
+/**
+ * Friendly, field-keyed validation for the lease assumptions panel.
+ * Returns an empty object when everything is acceptable.
+ */
+export function validateLeaseAssumptions(a: LeaseAssumptions): Record<string, string> {
+  const errors: Record<string, string> = {};
+
+  if (!(LEASE_TERM_CHOICES as readonly number[]).includes(a.termMonths)) {
+    errors.termMonths = "Choose one of the standard lease terms.";
+  }
+  if (!isFiniteNumber(a.capCostReduction) || a.capCostReduction < 0 || a.capCostReduction > 200_000) {
+    errors.capCostReduction = "Enter a cash amount between $0 and $200,000.";
+  }
+  if (a.moneyFactor !== null && (!isFiniteNumber(a.moneyFactor) || a.moneyFactor < 0 || a.moneyFactor > 0.02)) {
+    errors.moneyFactor = "Money factor is usually between 0.00001 and 0.02000.";
+  }
+  if (
+    a.residualPercent !== null &&
+    (!isFiniteNumber(a.residualPercent) || a.residualPercent < 10 || a.residualPercent > 100)
+  ) {
+    errors.residualPercent = "Residual value is a percent of MSRP between 10 and 100.";
+  }
+  if (!isFiniteNumber(a.acquisitionFee) || a.acquisitionFee < 0 || a.acquisitionFee > 5_000) {
+    errors.acquisitionFee = "Enter an acquisition fee between $0 and $5,000.";
+  }
+  if (
+    a.salesTaxPercent !== null &&
+    (!isFiniteNumber(a.salesTaxPercent) || a.salesTaxPercent < 0 || a.salesTaxPercent > 20)
+  ) {
+    errors.salesTaxPercent = "Enter a sales-tax rate between 0% and 20%.";
+  }
+
+  const hasMf = a.moneyFactor !== null && !errors.moneyFactor;
+  const hasResidual = a.residualPercent !== null && !errors.residualPercent;
+  if (hasMf !== hasResidual && (a.moneyFactor !== null || a.residualPercent !== null)) {
+    const message =
+      "Money factor and residual value are both required for a CarWise-calculated lease estimate.";
+    if (!hasMf) errors.moneyFactor = message;
+    if (!hasResidual) errors.residualPercent = message;
+  }
+
+  return errors;
+}

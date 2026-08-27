@@ -15,74 +15,7 @@ import { ProgramOfferCard } from "@/components/best-deal/ProgramOfferCard";
 import { SourcesChecked } from "@/components/best-deal/SourcesChecked";
 import { supabase } from "@/integrations/supabase/client";
 import type { BestDealResponse, BestDealSearchParams } from "@/types/best-deal";
-
-const DEFAULTS: BestDealSearchParams = {
-  dealType: "any",
-  maxMonthlyPayment: null,
-  annualMileage: "any",
-  maxDueAtSigning: null,
-  vehicleType: "any",
-  powertrain: "any",
-  zip: "",
-  radius: 100,
-  brand: null,
-  termMonths: 72,
-  aprPercent: 7.49,
-  downPayment: 0,
-};
-
-function paramsFromUrl(sp: URLSearchParams): BestDealSearchParams {
-  const numberOrNull = (key: string) => {
-    const raw = sp.get(key);
-    if (!raw) return null;
-    const n = Number(raw);
-    return Number.isFinite(n) ? n : null;
-  };
-  const oneOf = <T extends string>(key: string, allowed: readonly T[], fallback: T): T => {
-    const raw = sp.get(key);
-    return raw && (allowed as readonly string[]).includes(raw) ? (raw as T) : fallback;
-  };
-
-  return {
-    dealType: oneOf("dealType", ["any", "lease", "purchase"] as const, "any"),
-    maxMonthlyPayment: numberOrNull("maxMonthly"),
-    annualMileage: oneOf(
-      "mileage",
-      ["any", "7500", "10000", "12000", "15000"] as const,
-      "any"
-    ),
-    maxDueAtSigning: numberOrNull("maxDue"),
-    vehicleType: oneOf("vehicleType", ["any", "sedan", "truck", "suv"] as const, "any"),
-    powertrain: oneOf("powertrain", ["any", "ev", "hybrid", "gas"] as const, "any"),
-    zip: (sp.get("zip") ?? "").replace(/\D/g, "").slice(0, 5),
-    radius: ([25, 50, 100].includes(Number(sp.get("radius")))
-      ? Number(sp.get("radius"))
-      : 100) as BestDealSearchParams["radius"],
-    brand: sp.get("brand") || null,
-    termMonths: ([48, 60, 72, 84].includes(Number(sp.get("term")))
-      ? Number(sp.get("term"))
-      : 72) as BestDealSearchParams["termMonths"],
-    aprPercent: numberOrNull("apr") ?? 7.49,
-    downPayment: numberOrNull("down") ?? 0,
-  };
-}
-
-function urlFromParams(p: BestDealSearchParams): URLSearchParams {
-  const sp = new URLSearchParams();
-  sp.set("zip", p.zip);
-  sp.set("radius", String(p.radius));
-  if (p.dealType !== "any") sp.set("dealType", p.dealType);
-  if (p.maxMonthlyPayment) sp.set("maxMonthly", String(p.maxMonthlyPayment));
-  if (p.annualMileage !== "any") sp.set("mileage", p.annualMileage);
-  if (p.maxDueAtSigning !== null) sp.set("maxDue", String(p.maxDueAtSigning));
-  if (p.vehicleType !== "any") sp.set("vehicleType", p.vehicleType);
-  if (p.powertrain !== "any") sp.set("powertrain", p.powertrain);
-  if (p.brand) sp.set("brand", p.brand);
-  if (p.termMonths !== 72) sp.set("term", String(p.termMonths));
-  if (p.aprPercent !== 7.49) sp.set("apr", String(p.aprPercent));
-  if (p.downPayment) sp.set("down", String(p.downPayment));
-  return sp;
-}
+import { paramsFromUrl, urlFromParams } from "@/lib/best-deal/search-params";
 
 function summarize(p: BestDealSearchParams): string[] {
   const chips: string[] = [`ZIP ${p.zip}`, `${p.radius} mi`];

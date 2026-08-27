@@ -8,6 +8,10 @@
 import { checkRateLimit, getClientIp, RATE_LIMITS } from "../_shared/rate-limiter.ts";
 import {
   amortizedMonthlyPayment,
+  estimateLeasePayment,
+  DEFAULT_LEASE_ASSUMPTIONS,
+  LEASE_TERM_CHOICES,
+  type LeaseAssumptions,
   badgeForScore,
   cohortAdvantagePercent,
   discountFromMsrp,
@@ -96,6 +100,7 @@ interface SearchRequest {
   termMonths: number;
   aprPercent: number;
   downPayment: number;
+  leaseAssumptions: LeaseAssumptions;
 }
 
 class ValidationError extends Error {}
@@ -122,11 +127,33 @@ function parseRequest(body: Record<string, unknown>): SearchRequest {
   const radiusRaw = Number(body.radius ?? 100);
   const radius = [25, 50, 100].includes(radiusRaw) ? radiusRaw : 100;
 
-  const termRaw = Number(body.termMonths ?? 72);
+  const purchase = (body.purchaseAssumptions ?? {}) as Record<string, unknown>;
+  const lease = (body.leaseAssumptions ?? {}) as Record<string, unknown>;
+
+  const termRaw = Number(purchase.termMonths ?? body.termMonths ?? 72);
   const termMonths = [48, 60, 72, 84].includes(termRaw) ? termRaw : 72;
 
-  const aprPercent = optionalNumber(body.aprPercent ?? 7.49, 0, 30, "APR") ?? 7.49;
-  const downPayment = optionalNumber(body.downPayment ?? 0, 0, 500_000, "Down payment") ?? 0;
+  const aprPercent = optionalNumber(purchase.aprPercent ?? body.aprPercent ?? 7.49, 0, 30, "APR") ?? 7.49;
+  const downPayment =
+    optionalNumber(purchase.downPayment ?? body.downPayment ?? 0, 0, 500_000, "Down payment") ?? 0;
+
+  const leaseTermRaw = Number(lease.termMonths ?? DEFAULT_LEASE_ASSUMPTIONS.termMonths);
+  const leaseAssumptions: LeaseAssumptions = {
+    termMonths: ((LEASE_TERM_CHOICES as readonly number[]).includes(leaseTermRaw)
+      ? leaseTermRaw
+      : DEFAULT_LEASE_ASSUMPTIONS.termMonths) as LeaseAssumptions["termMonths"],
+    capCostReduction:
+      optionalNumber(lease.capCostReduction ?? 0, 0, 200_000, "Cap-cost reduction") ?? 0,
+    moneyFactor: optionalNumber(lease.moneyFactor, 0, 0.02, "Money factor"),
+    residualPercent: optionalNumber(lease.residualPercent, 10, 100, "Residual value"),
+    acquisitionFee: optionalNumber(lease.acquisitionFee ?? 0, 0, 5_000, "Acquisition fee") ?? 0,
+    salesTaxPercent: optionalNumber(lease.salesTaxPercent, 0, 20, "Lease sales-tax rate"),
+  };
+  if ((leaseAssumptions.moneyFactor === null) !== (leaseAssumptions.residualPercent === null)) {
+    throw new ValidationError(
+      "Money factor and residual value are both required for a CarWise-calculated lease estimate."
+    );
+  }
 
   const brandRaw = typeof body.brand === "string" ? body.brand.trim() : "";
   const brand = brandRaw && brandRaw.toLowerCase() !== "any" ? brandRaw.slice(0, 40) : null;
@@ -148,6 +175,7 @@ function parseRequest(body: Record<string, unknown>): SearchRequest {
     termMonths,
     aprPercent,
     downPayment,
+    leaseAssumptions,
   };
 }
 
@@ -340,7 +368,25 @@ function normalize(listing: McListing, mode: DealType, req: SearchRequest): Cand
   if (mode === "lease") {
     const lease = (listing.leasing_options ?? {}) as McListing;
     const monthly = num(lease.estimated_monthly_payment);
-    if (!monthly) return null; // never fabricate lease terms
+    if (!monthly) {
+      // No advertised lease terms. Only calculate when the listing carries a real
+      // price + MSRP AND the user supplied lender money factor and residual.
+      const est = estimateLeasePayment(price, msrp, req.leaseAssumptions);
+      if (!est) return null; // never fabricate lease terms
+      return {
+        ...base,
+        monthlyPayment: est.monthly,
+        paymentBasis: "estimated",
+        termMonths: req.leaseAssumptions.termMonths,
+        advertisedDownPayment: null,
+        effectiveMonthly: leaseEffectiveMonthly(
+          est.monthly,
+          req.leaseAssumptions.capCostReduction,
+          req.leaseAssumptions.termMonths
+        ),
+        leaseValueRatio: leaseValueRatio(est.monthly, msrp),
+      };
+    }
     const down = num(lease.down_payment) ?? 0;
     const term = Number.isFinite(Number(lease.lease_term)) ? Number(lease.lease_term) : null;
     const effective = leaseEffectiveMonthly(monthly, down, term);
@@ -737,7 +783,10 @@ Deno.serve(async (req) => {
         if (c.effectiveMonthly !== null) {
           evidence.push({
             label: "Effective monthly cost",
-            detail: `$${Math.round(c.effectiveMonthly)}/mo including the advertised down payment amortized over ${c.termMonths ?? "an unstated"} ${c.termMonths ? "months" : "term"}.`,
+            detail:
+              c.paymentBasis === "estimated"
+                ? `$${Math.round(c.effectiveMonthly)}/mo CarWise estimate including your $${parsed.leaseAssumptions.capCostReduction} cap-cost reduction amortized over ${c.termMonths} months (${parsed.leaseAssumptions.salesTaxPercent === null ? "pre-tax" : "tax included"}).`
+                : `$${Math.round(c.effectiveMonthly)}/mo including the advertised down payment amortized over ${c.termMonths ?? "an unstated"} ${c.termMonths ? "months" : "term"}.`,
           });
         }
         if (c.leaseValueRatio !== null) {
@@ -809,7 +858,10 @@ Deno.serve(async (req) => {
         cohortAdvantagePercent: entry.cohortAdv,
         monthlyPayment: c.monthlyPayment,
         paymentBasis: c.paymentBasis,
-        paymentLabel: paymentLabel(c.paymentBasis, c.dealType),
+        paymentLabel:
+          c.paymentBasis === "estimated" && c.dealType === "lease"
+            ? `CarWise estimate (${parsed.leaseAssumptions.salesTaxPercent === null ? "pre-tax" : "tax included"}) from your money factor & residual`
+            : paymentLabel(c.paymentBasis, c.dealType),
         termMonths: c.termMonths,
         advertisedDownPayment: c.advertisedDownPayment,
         effectiveMonthly: c.effectiveMonthly,
