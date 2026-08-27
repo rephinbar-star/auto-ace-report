@@ -6,6 +6,8 @@
 
 import type { LeaseCostAudit } from "./lease-cost.ts";
 
+import type { ParsedLenderTerms, ResolvedProgramTerms, TermAuthority } from "./program-terms.ts";
+
 export type OfferSourceType =
   | "inventory_specific"
   | "dealer_advertised"
@@ -64,6 +66,14 @@ export interface NormalizedOffer extends Partial<LeaseCostAudit> {
   limitedDataNote: string | null;
   hasMatchedInventory: boolean;
   citations: SourceCitation[];
+  /** Lender terms explicitly published in this offer's disclosure, if any. */
+  lenderTerms?: ParsedLenderTerms;
+  /** Source authority used when ranking competing lender-term records. */
+  termAuthority?: TermAuthority;
+  /** States this program applies to; null means national. */
+  regionStates?: string[] | null;
+  /** Per-result resolved money factor / residual / acquisition fee. */
+  resolvedTerms?: ResolvedProgramTerms;
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
