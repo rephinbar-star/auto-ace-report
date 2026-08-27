@@ -32,3 +32,5 @@ verify_jwt = false
 
 [functions.cleanup-incomplete-signups]
 verify_jwt = false
+[functions.find-best-deals]
+verify_jwt = false
