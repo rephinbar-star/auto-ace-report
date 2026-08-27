@@ -12,7 +12,7 @@ export interface SolutionCardProps {
   description: string;
   ctaLabel: string;
   href: string;
-  status: "Available now" | "Coming soon";
+  status: "Available now" | "Available in beta" | "Coming soon";
   featured?: boolean;
 }
 
