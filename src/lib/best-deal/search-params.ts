@@ -59,8 +59,14 @@ export function paramsFromUrl(sp: URLSearchParams): BestDealSearchParams {
       capCostReduction: numberOrNull("capReduction") ?? 0,
       moneyFactor: numberOrNull("mf"),
       residualPercent: numberOrNull("residual"),
-      acquisitionFee: numberOrNull("acqFee") ?? 0,
+      acquisitionFee: numberOrNull("acqFee"),
       salesTaxPercent: numberOrNull("leaseTax"),
+      salesTaxOrigin:
+        sp.get("leaseTaxSrc") === "user"
+          ? "user"
+          : numberOrNull("leaseTax") !== null
+            ? "auto_zip"
+            : null,
     },
   };
 }
@@ -87,5 +93,6 @@ export function urlFromParams(p: BestDealSearchParams): URLSearchParams {
   if (la.residualPercent !== null) sp.set("residual", String(la.residualPercent));
   if (la.acquisitionFee) sp.set("acqFee", String(la.acquisitionFee));
   if (la.salesTaxPercent !== null) sp.set("leaseTax", String(la.salesTaxPercent));
+  if (la.salesTaxOrigin === "user") sp.set("leaseTaxSrc", "user");
   return sp;
 }
