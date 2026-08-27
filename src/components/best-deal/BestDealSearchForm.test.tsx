@@ -188,3 +188,29 @@ describe("URL round-trip", () => {
     expect(parsed.leaseAssumptions).toEqual(DEFAULTS.leaseAssumptions);
   });
 });
+
+describe("ZIP-derived lease sales tax", () => {
+  async function openAdvanced() {
+    fireEvent.click(screen.getByRole("button", { name: /advanced assumptions/i }));
+    return screen.findByLabelText(/Lease sales-tax rate/i);
+  }
+
+  it("auto-fills the ZIP-derived rate and shows provenance", async () => {
+    render(<Harness initial={{ dealType: "lease" }} />);
+    const input = (await openAdvanced()) as HTMLInputElement;
+    expect(Number(input.value)).toBeCloseTo(7.75, 2);
+    expect(screen.getByTestId("tax-provenance").textContent).toMatch(/Auto-filled from ZIP 92011/i);
+  });
+
+  it("keeps a manual override and can reset to the ZIP rate", async () => {
+    render(<Harness initial={{ dealType: "lease" }} />);
+    const input = (await openAdvanced()) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "9.25" } });
+    expect((screen.getByLabelText(/Lease sales-tax rate/i) as HTMLInputElement).value).toBe("9.25");
+    expect(screen.queryByTestId("tax-provenance")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /reset to zip rate/i }));
+    expect(
+      Number((screen.getByLabelText(/Lease sales-tax rate/i) as HTMLInputElement).value)
+    ).toBeCloseTo(7.75, 2);
+  });
+});
