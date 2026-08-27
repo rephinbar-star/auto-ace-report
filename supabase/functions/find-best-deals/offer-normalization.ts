@@ -1,13 +1,7 @@
 /**
- * Pure, deterministic normalization helpers shared by the multi-source
- * "best deal" engine. No network, no randomness, no I/O — this module is
- * duplicated verbatim into the edge function so both sides agree on the math.
- *
- * Vocabulary rules enforced here:
- *  - Advertised monthly is kept separate from total due at signing, cap-cost
- *    reduction / down payment, and fees.
- *  - We never silently mix "total due at signing" with "down payment".
- *  - Conditional incentives are surfaced, never assumed.
+ * Pure, deterministic normalization helpers for the multi-source "best deal"
+ * engine. Duplicated verbatim from `src/lib/best-deal/offer-normalization.ts`
+ * so client and server agree on the math. No network, no randomness, no I/O.
  */
 
 export type OfferSourceType =
@@ -71,10 +65,6 @@ export interface NormalizedOffer {
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-/**
- * The source states a TOTAL due at signing that includes the first payment.
- * effective = monthly + max(0, totalDueAtSigning - monthly) / term
- */
 export function effectiveMonthlyFromTotalDueAtSigning(
   monthly: number,
   totalDueAtSigning: number,
@@ -86,7 +76,6 @@ export function effectiveMonthlyFromTotalDueAtSigning(
   return round2(monthly + Math.max(0, das - monthly) / termMonths);
 }
 
-/** The source states only a down payment / cap-cost reduction. */
 export function effectiveMonthlyFromDownPayment(
   monthly: number,
   downPayment: number,
@@ -101,11 +90,8 @@ export function effectiveMonthlyFromDownPayment(
 export interface UpfrontInput {
   monthly: number | null;
   termMonths: number | null;
-  /** Stated as a TOTAL due at signing figure. */
   totalDueAtSigning?: number | null;
-  /** Stated as down payment / cap-cost reduction only. */
   downPayment?: number | null;
-  /** True when the source explicitly says the total includes the first payment. */
   totalIncludesFirstPayment?: boolean;
 }
 
@@ -173,7 +159,6 @@ export function computeEffectiveMonthly(input: UpfrontInput): EffectiveMonthlyRe
   };
 }
 
-// ── Conditional eligibility ─────────────────────────────────────────────────
 const ELIGIBILITY_PATTERNS: Array<[RegExp, string]> = [
   [/\bloyalty\b/i, "Loyalty"],
   [/\bconquest\b/i, "Conquest"],
@@ -200,7 +185,6 @@ export function detectConditionalEligibility(text: string | null | undefined): s
   return found;
 }
 
-// ── Expiration ──────────────────────────────────────────────────────────────
 export function parseExpiration(text: string | null | undefined): string | null {
   if (!text) return null;
   const m = text.match(
@@ -212,7 +196,6 @@ export function parseExpiration(text: string | null | undefined): string | null 
   return parsed.toISOString();
 }
 
-/** An offer is rejected when its published expiration is in the past. */
 export function isExpired(expiresAt: string | null, now: Date = new Date()): boolean {
   if (!expiresAt) return false;
   const t = new Date(expiresAt).getTime();
@@ -220,7 +203,6 @@ export function isExpired(expiresAt: string | null, now: Date = new Date()): boo
   return t < now.getTime();
 }
 
-// ── Mileage handling ────────────────────────────────────────────────────────
 export type MileageMatch = "exact" | "differs" | "unknown";
 
 export function compareMileage(
@@ -242,7 +224,6 @@ export function compareMileage(
   };
 }
 
-// ── Confidence ──────────────────────────────────────────────────────────────
 export function scoreConfidence(args: {
   sourceType: OfferSourceType;
   hasMatchedInventory: boolean;
@@ -267,7 +248,6 @@ export function scoreConfidence(args: {
   return "low";
 }
 
-// ── Deduplication ───────────────────────────────────────────────────────────
 function programKey(o: NormalizedOffer): string {
   return [
     o.year ?? "?",
@@ -303,10 +283,6 @@ function mergeInto(primary: NormalizedOffer, other: NormalizedOffer): Normalized
   };
 }
 
-/**
- * Deduplicates exact VIN matches first, then probable duplicates on
- * year/make/model/trim/program. All source citations survive the merge.
- */
 export function dedupeOffers(offers: NormalizedOffer[]): NormalizedOffer[] {
   const byVin = new Map<string, NormalizedOffer>();
   const passthrough: NormalizedOffer[] = [];
@@ -331,7 +307,6 @@ export function dedupeOffers(offers: NormalizedOffer[]): NormalizedOffer[] {
   const out: NormalizedOffer[] = [];
 
   for (const offer of stage1) {
-    // VIN-specific inventory is never merged away by program similarity.
     if (offer.vin) {
       out.push(offer);
       continue;
@@ -349,10 +324,6 @@ export function dedupeOffers(offers: NormalizedOffer[]): NormalizedOffer[] {
   return [...out, ...byProgram.values()];
 }
 
-/**
- * Programs without independently matched local inventory must never be
- * presented as in-stock deals.
- */
 export function splitActionableAndPrograms(offers: NormalizedOffer[]): {
   actionable: NormalizedOffer[];
   programs: NormalizedOffer[];
@@ -370,7 +341,6 @@ export function splitActionableAndPrograms(offers: NormalizedOffer[]): {
   return { actionable, programs };
 }
 
-// ── Sources-checked summary ─────────────────────────────────────────────────
 export type SourceCheckStatus = "success" | "no_match" | "unavailable" | "not_configured";
 
 export interface SourceCheck {
