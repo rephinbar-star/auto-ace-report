@@ -87,6 +87,17 @@ export interface BestDeal {
   validations: ValidationResult[];
 }
 
+export type {
+  NormalizedOffer,
+  OfferSourceType,
+  OfferConfidence,
+  SourceCheck,
+  SourceCheckStatus,
+  SourceCitation,
+} from "@/lib/best-deal/offer-normalization";
+
+import type { NormalizedOffer, SourceCheck } from "@/lib/best-deal/offer-normalization";
+
 export interface BestDealResponse {
   success: boolean;
   error?: string;
@@ -103,4 +114,9 @@ export interface BestDealResponse {
   retrievedAt: string;
   notices: string[];
   validationSources: { sourceName: string; sourceUrl: string; status: ValidationStatus }[];
+  /** Published programs/offers from non-inventory sources (never shown as in stock). */
+  programs?: NormalizedOffer[];
+  /** Per-source outcome for the "Sources checked" summary. */
+  sourcesChecked?: SourceCheck[];
+  sourceSummary?: { success: number; noMatch: number; unavailable: number; notConfigured: number };
 }

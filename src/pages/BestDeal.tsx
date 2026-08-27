@@ -11,6 +11,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { BestDealSearchForm } from "@/components/best-deal/BestDealSearchForm";
 import { DealResultCard } from "@/components/best-deal/DealResultCard";
 import { ValidationExplainer } from "@/components/best-deal/ValidationExplainer";
+import { ProgramOfferCard } from "@/components/best-deal/ProgramOfferCard";
+import { SourcesChecked } from "@/components/best-deal/SourcesChecked";
 import { supabase } from "@/integrations/supabase/client";
 import type { BestDealResponse, BestDealSearchParams } from "@/types/best-deal";
 
@@ -147,6 +149,8 @@ export default function BestDealPage() {
   };
 
   const deals = response?.deals ?? [];
+  const programs = response?.programs ?? [];
+  const sourcesChecked = response?.sourcesChecked ?? [];
   const summaryChips = useMemo(() => (submitted ? summarize(submitted) : []), [submitted]);
 
   return (
@@ -257,6 +261,10 @@ export default function BestDealPage() {
                 </Card>
               )}
 
+              {!loading && !error && sourcesChecked.length > 0 && (
+                <SourcesChecked checks={sourcesChecked} />
+              )}
+
               {!loading && !error && deals.length > 0 && (
                 <>
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -284,6 +292,25 @@ export default function BestDealPage() {
                     mileage allowance, credit tier, and availability directly with the dealer.
                   </p>
                 </>
+              )}
+
+              {!loading && !error && programs.length > 0 && (
+                <section className="space-y-4">
+                  <div>
+                    <h2 className="text-xl font-bold tracking-tight text-foreground">
+                      Programs worth checking
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      Published OEM, regional, dealer, and independent-index offers. These are not
+                      confirmed in-stock vehicles unless a matching nearby vehicle was found.
+                    </p>
+                  </div>
+                  <div className="space-y-4">
+                    {programs.map((offer) => (
+                      <ProgramOfferCard key={offer.id} offer={offer} />
+                    ))}
+                  </div>
+                </section>
               )}
             </div>
           </div>

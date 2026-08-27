@@ -24,10 +24,13 @@ export function ValidationExplainer() {
       </CollapsibleTrigger>
       <CollapsibleContent className="space-y-3 border-t px-4 py-4 text-sm text-muted-foreground">
         <p>
-          Rankings come only from live dealer inventory data. Separately, CarWise makes a single
-          polite server-side request per search to public benchmark pages and compares them to
-          each result.
+          CarWise searches inventory and published offers across multiple independent sources:
+          live local dealer inventory, published OEM and regional programs, public dealer specials
+          pages, and independent lease/deal indexes. Each result states which kind of source it
+          came from, and a published program is never shown as if it were in stock unless CarWise
+          separately found an eligible nearby vehicle.
         </p>
+
         <ul className="space-y-2">
           <li>
             <strong className="text-foreground">Corroborated</strong> — the source publishes
