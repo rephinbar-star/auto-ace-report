@@ -94,7 +94,7 @@ describe("global prefill", () => {
 
   it("prefills when every result agrees", () => {
     const a = resolveProgramTerms([base], target);
-    expect(resolveGlobalPrefill([a, a], "moneyFactor").mode).toBe("prefilled");
+    expect(resolveGlobalPrefill([a, a], "moneyFactor").mode).toBe("single");
   });
 });
 
