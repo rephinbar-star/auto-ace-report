@@ -211,6 +211,7 @@ async function fetchCandidates(
       }
       const data = await res.json();
       const page = (data.listings ?? []) as McListing[];
+      console.log(`MC ${mode} start=${start} num_found=${data.num_found ?? 0} rows=${page.length} sample=${JSON.stringify(page[0] ?? {}).slice(0, 600)}`);
       listings.push(...page);
       if (page.length < ROWS) break;
     } catch (err) {
