@@ -34,6 +34,9 @@ const RoadmapPage = lazy(() => import("./pages/Roadmap"));
 const MarketplacePage = lazy(() => import("./pages/Marketplace"));
 const MarketplaceListPage = lazy(() => import("./pages/MarketplaceList"));
 const MarketplaceDetailPage = lazy(() => import("./pages/MarketplaceDetail"));
+const BestDealPage = lazy(() => import("./pages/BestDeal"));
+const BestValuePage = lazy(() => import("./pages/BestValue"));
+const NegativeEquityPage = lazy(() => import("./pages/NegativeEquity"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // Loading fallback component
