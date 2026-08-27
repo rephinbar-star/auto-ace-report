@@ -80,7 +80,7 @@ describe("Best Deal empty states", () => {
       expect(screen.getByText(/No VIN-matched advertised lease offers/i)).toBeTruthy()
     );
     expect(screen.queryByText(/No matching opportunities right now/i)).toBeNull();
-    expect(screen.getByText(/Programs worth checking/i)).toBeTruthy();
+    expect(screen.getAllByText(/Programs worth checking/i).length).toBeGreaterThan(0);
   });
 
   it("renders the global no-results card only when deals and programs are both empty", async () => {
