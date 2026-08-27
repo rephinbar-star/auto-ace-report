@@ -783,7 +783,10 @@ Deno.serve(async (req) => {
         if (c.effectiveMonthly !== null) {
           evidence.push({
             label: "Effective monthly cost",
-            detail: `$${Math.round(c.effectiveMonthly)}/mo including the advertised down payment amortized over ${c.termMonths ?? "an unstated"} ${c.termMonths ? "months" : "term"}.`,
+            detail:
+              c.paymentBasis === "estimated"
+                ? `$${Math.round(c.effectiveMonthly)}/mo CarWise estimate including your $${parsed.leaseAssumptions.capCostReduction} cap-cost reduction amortized over ${c.termMonths} months (${parsed.leaseAssumptions.salesTaxPercent === null ? "pre-tax" : "tax included"}).`
+                : `$${Math.round(c.effectiveMonthly)}/mo including the advertised down payment amortized over ${c.termMonths ?? "an unstated"} ${c.termMonths ? "months" : "term"}.`,
           });
         }
         if (c.leaseValueRatio !== null) {
@@ -855,7 +858,10 @@ Deno.serve(async (req) => {
         cohortAdvantagePercent: entry.cohortAdv,
         monthlyPayment: c.monthlyPayment,
         paymentBasis: c.paymentBasis,
-        paymentLabel: paymentLabel(c.paymentBasis, c.dealType),
+        paymentLabel:
+          c.paymentBasis === "estimated" && c.dealType === "lease"
+            ? `CarWise estimate (${parsed.leaseAssumptions.salesTaxPercent === null ? "pre-tax" : "tax included"}) from your money factor & residual`
+            : paymentLabel(c.paymentBasis, c.dealType),
         termMonths: c.termMonths,
         advertisedDownPayment: c.advertisedDownPayment,
         effectiveMonthly: c.effectiveMonthly,
