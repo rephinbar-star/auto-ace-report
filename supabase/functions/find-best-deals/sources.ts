@@ -20,6 +20,11 @@ import {
   type OfferSourceType,
   type SourceCheck,
 } from "./offer-normalization.ts";
+import {
+  emptyLeaseCostComponents,
+  parseLeaseDisclosure,
+  type LeaseCostComponents,
+} from "./lease-cost.ts";
 
 const USER_AGENT =
   "CarWiseExpertDealBot/1.0 (+https://carwise.expert; contact carwise.expert@gmail.com)";
@@ -308,6 +313,8 @@ interface ParsedSnippet {
   expiresAt: string | null;
   eligibility: string[];
   applicabilityText: string;
+  components: LeaseCostComponents;
+  disclosureText: string;
 }
 
 function parseVehicleIdentity(window: string): { year: number | null; make: string | null; model: string | null } {
@@ -332,7 +339,7 @@ function parseVehicleIdentity(window: string): { year: number | null; make: stri
 }
 
 /** Extracts defensible offer snippets from visible page text. */
-export function parseOffersFromText(text: string): ParsedSnippet[] {
+export function parseOffersFromText(text: string, extraDisclosure = ""): ParsedSnippet[] {
   const out: ParsedSnippet[] = [];
   const monthlyRe = /\$\s?([0-9][0-9,]{1,4})\s*(?:\/|\s)?\s*(?:per\s+)?(?:mo\b|month)/gi;
   let m: RegExpExecArray | null;
@@ -340,24 +347,18 @@ export function parseOffersFromText(text: string): ParsedSnippet[] {
     const monthly = Number(m[1].replace(/,/g, ""));
     if (!Number.isFinite(monthly) || monthly < 79 || monthly > 5000) continue;
     const window = text.slice(Math.max(0, m.index - 260), m.index + 420);
+    // Full offer container / disclosure / footnote text, not a narrow window.
+    const disclosureText = `${text.slice(Math.max(0, m.index - 900), m.index + 1800)} ${extraDisclosure}`
+      .replace(/\s+/g, " ")
+      .trim();
+    const components = parseLeaseDisclosure(disclosureText, { monthly });
 
     const termMatch = window.match(/\b(24|27|30|33|36|39|42|48|60|72|84)\s*(?:-|\s)?\s*month/i);
     const termMonths = termMatch ? Number(termMatch[1]) : null;
 
-    const dasMatch = window.match(
-      /\$\s?([0-9][0-9,]{2,7})\s*(?:total\s+)?due at (?:lease )?signing|due at (?:lease )?signing[^$]{0,40}\$\s?([0-9][0-9,]{2,7})/i
-    );
-    const totalDueAtSigning = dasMatch
-      ? Number((dasMatch[1] ?? dasMatch[2] ?? "").replace(/,/g, "")) || null
-      : null;
-
-    const downMatch = window.match(
-      /\$\s?([0-9][0-9,]{2,7})\s*(?:cash )?(?:down|cap(?:italized)? cost reduction)\b|(?:down payment|cap cost reduction)[^$]{0,30}\$\s?([0-9][0-9,]{2,7})/i
-    );
-    const downPayment =
-      totalDueAtSigning === null && downMatch
-        ? Number((downMatch[1] ?? downMatch[2] ?? "").replace(/,/g, "")) || null
-        : null;
+    // Cap-cost reduction is never treated as a total due at signing.
+    const totalDueAtSigning = components.advertisedTotalDAS;
+    const downPayment = components.advertisedCapReduction;
 
     const mileageMatch = window.match(/\b(7,?500|10,?000|12,?000|15,?000)\s*(?:miles?|mi)\b/i);
     const annualMileage = mileageMatch ? Number(mileageMatch[1].replace(/,/g, "")) : null;
@@ -374,9 +375,11 @@ export function parseOffersFromText(text: string): ParsedSnippet[] {
       downPayment,
       annualMileage,
       msrp,
-      expiresAt: parseExpiration(window),
-      eligibility: detectConditionalEligibility(window),
+      expiresAt: parseExpiration(disclosureText),
+      eligibility: detectConditionalEligibility(disclosureText),
       applicabilityText: window.replace(/\s+/g, " ").trim().slice(0, 280),
+      components,
+      disclosureText: disclosureText.slice(0, 1200),
     });
   }
   return out;
@@ -411,8 +414,11 @@ function toNormalized(
     retrievedAt,
   };
 
+  const offerId = nextId("offer");
+  parsedComponentsById.set(offerId, snippet.components);
+
   return {
-    id: nextId("offer"),
+    id: offerId,
     sourceName: source.name,
     sourceUrl: source.url,
     sourceType: source.sourceType,
@@ -447,12 +453,57 @@ function toNormalized(
     limitedDataNote: eff.note,
     hasMatchedInventory: false,
     citations: [citation],
+    // Raw parsed cost components; the full audit (tax, ranges) runs in index.ts.
+    advertisedMonthlyBeforeTax: snippet.components.advertisedMonthlyBeforeTax,
+    advertisedMonthlyTaxStatus: snippet.components.advertisedMonthlyTaxStatus,
+    advertisedCapReduction: snippet.components.advertisedCapReduction,
+    advertisedTotalDAS: snippet.components.advertisedTotalDAS,
+    firstPayment: snippet.components.firstPayment,
+    acquisitionFee: snippet.components.acquisitionFee,
+    securityDeposit: snippet.components.securityDeposit,
+    docFee: snippet.components.docFee,
+    registrationTitleLicense: snippet.components.registrationTitleLicense,
+    upfrontTaxes: snippet.components.upfrontTaxes,
+    dispositionFee: snippet.components.dispositionFee,
   };
 }
+
+/** Parsed components keyed by offer id, consumed by the cost-audit stage. */
+export const parsedComponentsById = new Map<string, LeaseCostComponents>();
 
 export interface AdapterResult {
   check: SourceCheck;
   offers: NormalizedOffer[];
+}
+
+const DETAILS_HINT = /(offer[- ]details|details|disclaimer|terms|discloser|disclosure|footnote)/i;
+
+/** Finds one same-domain offer-details/terms/disclaimer link. No path guessing. */
+export function findDetailsLink(html: string, pageUrl: string): string | null {
+  if (!html) return null;
+  const re = /<a\b[^>]*href=["']([^"'#]+)["'][^>]*>([\s\S]{0,120}?)<\/a>/gi;
+  let m: RegExpExecArray | null;
+  let host: string;
+  try {
+    host = new URL(pageUrl).hostname.replace(/^www\./, "");
+  } catch {
+    return null;
+  }
+  while ((m = re.exec(html)) !== null) {
+    const label = stripHtml(m[2]);
+    if (!DETAILS_HINT.test(label) && !DETAILS_HINT.test(m[1])) continue;
+    if (/login|signin|account|subscribe/i.test(m[1])) continue;
+    try {
+      const abs = new URL(m[1], pageUrl);
+      if (abs.hostname.replace(/^www\./, "") !== host) continue;
+      if (abs.protocol !== "https:" && abs.protocol !== "http:") continue;
+      if (abs.toString() === pageUrl) continue;
+      return abs.toString();
+    } catch {
+      continue;
+    }
+  }
+  return null;
 }
 
 async function runCatalogSource(source: CatalogSource, maxOffers: number): Promise<AdapterResult> {
@@ -474,7 +525,21 @@ async function runCatalogSource(source: CatalogSource, maxOffers: number): Promi
     };
   }
   const text = doc.text || JSON.stringify(doc.jsonLd).slice(0, 200_000);
-  const snippets = parseOffersFromText(text).slice(0, maxOffers);
+
+  // At most one additional public "offer details / terms / disclaimer" page,
+  // politely fetched and cached. No login, CAPTCHA, or paywall bypass.
+  let extraDisclosure = "";
+  const detailsUrl = doc.rawHtml ? findDetailsLink(doc.rawHtml, source.url) : null;
+  if (detailsUrl) {
+    try {
+      const detailsDoc = await politeFetch(detailsUrl);
+      if (detailsDoc.ok) extraDisclosure = detailsDoc.text.slice(0, 40_000);
+    } catch {
+      /* details page is optional */
+    }
+  }
+
+  const snippets = parseOffersFromText(text, extraDisclosure).slice(0, maxOffers);
   const offers = snippets
     .map((s) => toNormalized(s, source, doc.retrievedAt))
     .filter((o): o is NormalizedOffer => o !== null);

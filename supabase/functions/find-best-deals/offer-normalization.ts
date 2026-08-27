@@ -4,6 +4,8 @@
  * so client and server agree on the math. No network, no randomness, no I/O.
  */
 
+import type { LeaseCostAudit } from "./lease-cost.ts";
+
 export type OfferSourceType =
   | "inventory_specific"
   | "dealer_advertised"
@@ -27,7 +29,8 @@ export interface SourceCitation {
   retrievedAt: string;
 }
 
-export interface NormalizedOffer {
+/** Lease-cost audit fields are optional so non-lease/legacy offers stay valid. */
+export interface NormalizedOffer extends Partial<LeaseCostAudit> {
   id: string;
   sourceName: string;
   sourceUrl: string;
