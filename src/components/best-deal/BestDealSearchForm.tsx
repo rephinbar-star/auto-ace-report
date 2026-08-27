@@ -17,7 +17,12 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-import type { BestDealSearchParams } from "@/types/best-deal";
+import type {
+  BestDealSearchParams,
+  LeaseAssumptions,
+  PurchaseAssumptions,
+} from "@/types/best-deal";
+import { LEASE_TERM_CHOICES, validateLeaseAssumptions } from "@/lib/best-deal/deal-math";
 
 const BRANDS = [
   "Acura", "Audi", "BMW", "Buick", "Cadillac", "Chevrolet", "Chrysler", "Dodge",
@@ -37,11 +42,20 @@ interface Props {
 export function BestDealSearchForm({ value, onChange, onSubmit, loading }: Props) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [zipError, setZipError] = useState<string | null>(null);
+  const [leaseErrors, setLeaseErrors] = useState<Record<string, string>>({});
 
   const set = <K extends keyof BestDealSearchParams>(
     key: K,
     next: BestDealSearchParams[K]
   ) => onChange({ ...value, [key]: next });
+
+  const setLease = <K extends keyof LeaseAssumptions>(key: K, next: LeaseAssumptions[K]) =>
+    onChange({ ...value, leaseAssumptions: { ...value.leaseAssumptions, [key]: next } });
+
+  const setPurchase = <K extends keyof PurchaseAssumptions>(
+    key: K,
+    next: PurchaseAssumptions[K]
+  ) => onChange({ ...value, purchaseAssumptions: { ...value.purchaseAssumptions, [key]: next } });
 
   const numeric = (raw: string): number | null => {
     const cleaned = raw.replace(/[^0-9.]/g, "");
@@ -57,10 +71,25 @@ export function BestDealSearchForm({ value, onChange, onSubmit, loading }: Props
       return;
     }
     setZipError(null);
+    const errors =
+      value.dealType === "purchase" ? {} : validateLeaseAssumptions(value.leaseAssumptions);
+    setLeaseErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      setAdvancedOpen(true);
+      return;
+    }
     onSubmit();
   };
 
   const showMileage = value.dealType === "lease" || value.dealType === "any";
+  const showLeaseAssumptions = value.dealType === "lease" || value.dealType === "any";
+  const showPurchaseAssumptions = value.dealType === "purchase" || value.dealType === "any";
+  const fieldError = (key: string) =>
+    leaseErrors[key] ? (
+      <p className="text-xs text-destructive" role="alert">
+        {leaseErrors[key]}
+      </p>
+    ) : null;
 
   return (
     <Card className="border-2 bg-gradient-card shadow-card">
@@ -115,7 +144,7 @@ export function BestDealSearchForm({ value, onChange, onSubmit, loading }: Props
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="any">Any</SelectItem>
+                  <SelectItem value="any">Lease + Purchase</SelectItem>
                   <SelectItem value="lease">Lease</SelectItem>
                   <SelectItem value="purchase">Purchase</SelectItem>
                 </SelectContent>
