@@ -79,6 +79,9 @@ const App = () => (
                 <Route path="/admin" element={<AdminPage />} />
                 <Route path="/roadmap" element={<RoadmapPage />} />
                 <Route path="/marketplace" element={<MarketplacePage />} />
+                <Route path="/best-deal" element={<BestDealPage />} />
+                <Route path="/best-value" element={<BestValuePage />} />
+                <Route path="/negative-equity" element={<NegativeEquityPage />} />
                 <Route path="/marketplace/list" element={<MarketplaceListPage />} />
                 <Route path="/marketplace/:id" element={<MarketplaceDetailPage />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
