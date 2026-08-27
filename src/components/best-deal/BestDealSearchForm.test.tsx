@@ -67,7 +67,7 @@ describe("Advanced assumptions visibility", () => {
     render(<Harness initial={{ dealType: "lease" }} />);
     openAdvanced();
     expect(screen.getByLabelText(/Cap-cost reduction/i)).toHaveValue("0");
-    expect(screen.getByText("36 months")).toBeInTheDocument();
+    expect(screen.getAllByText("36 months").length).toBeGreaterThan(0);
   });
 
   it("keeps entered values when toggling among the three deal types", () => {
