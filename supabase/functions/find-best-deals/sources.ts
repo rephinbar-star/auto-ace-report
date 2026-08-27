@@ -139,8 +139,46 @@ export async function politeFetch(url: string): Promise<FetchedDoc> {
     clearTimeout(timer);
   }
 
+  // Polite fallback: when a public page blocks a plain server request, retry
+  // once through the already-authorized Firecrawl scrape API (robots-aware).
+  // No login, CAPTCHA, or paywall is ever bypassed.
+  if (!doc.ok && /HTTP (403|429|503)|blocked or client-rendered|insufficient public content/.test(doc.reason ?? "")) {
+    const viaFirecrawl = await firecrawlScrape(url);
+    if (viaFirecrawl) doc = viaFirecrawl;
+  }
+
   cache.set(url, { doc, expiresAt: Date.now() + CACHE_TTL_MS });
   return doc;
+}
+
+async function firecrawlScrape(url: string): Promise<FetchedDoc | null> {
+  const apiKey = Deno.env.get("FIRECRAWL_API_KEY");
+  if (!apiKey) return null;
+  const retrievedAt = new Date().toISOString();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15_000);
+  try {
+    const res = await fetch("https://api.firecrawl.dev/v2/scrape", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ url, formats: ["markdown"], onlyMainContent: true }),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      console.error(`Firecrawl scrape failed [${res.status}] for ${url}`);
+      return null;
+    }
+    const data = await res.json();
+    const markdown: string | undefined = data?.markdown ?? data?.data?.markdown;
+    if (!markdown || markdown.length < 300) return null;
+    const text = markdown.replace(/[#*_>`|]/g, " ").replace(/\s+/g, " ").trim();
+    return { ok: true, text: text.slice(0, 400_000), jsonLd: [], rawHtml: "", retrievedAt };
+  } catch (err) {
+    console.error("Firecrawl scrape error:", err);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // ── Source catalog ───────────────────────────────────────────────────────────
@@ -283,6 +321,10 @@ function parseVehicleIdentity(window: string): { year: number | null; make: stri
     if (m) {
       make = candidate;
       model = m[1].replace(/\s+(lease|for|with|from|offer|special|deal|models?)$/i, "").trim() || null;
+      // Reject corporate/marketing noise that is not a model name.
+      if (model && /(retail|financial|services|location|dealer|dealership|owners?|customers?|drivers?|models|vehicles)/i.test(model)) {
+        model = null;
+      }
       break;
     }
   }
