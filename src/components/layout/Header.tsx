@@ -91,27 +91,75 @@ export function Header() {
         {/* Desktop navigation */}
         <div className="hidden items-center gap-8 md:flex">
           {navigation.map((item) => (
-            <Link
-              key={item.name}
-              to={item.href}
-              className={cn(
-                "text-sm font-medium transition-colors relative flex items-center gap-1",
-                (item as any).accent
-                  ? "text-blue-500 font-semibold animate-[pulse_2.5s_ease-in-out_infinite] hover:text-blue-400"
-                  : location.pathname === item.href
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-primary"
+            <Fragment key={item.name}>
+              <Link
+                to={item.href}
+                className={cn(
+                  "text-sm font-medium transition-colors relative flex items-center gap-1",
+                  (item as any).accent
+                    ? "text-blue-500 font-semibold animate-[pulse_2.5s_ease-in-out_infinite] hover:text-blue-400"
+                    : location.pathname === item.href
+                      ? "text-primary"
+                      : "text-muted-foreground hover:text-primary"
+                )}
+                aria-current={location.pathname === item.href ? "page" : undefined}
+              >
+                {item.name}
+                {(item as any).accent && (
+                  <span className="rounded-full bg-blue-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-blue-500 ring-1 ring-blue-500/30">
+                    New
+                  </span>
+                )}
+              </Link>
+
+              {/* Solutions dropdown sits between Home and Pricing */}
+              {isSolutionsContext && item.href === "/" && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      type="button"
+                      className={cn(
+                        "flex items-center gap-1 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-sm",
+                        activeSolution ? "text-primary" : "text-muted-foreground hover:text-primary"
+                      )}
+                    >
+                      {activeSolution ? activeSolution.name : "Solutions"}
+                      <ChevronDown className="h-4 w-4" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-72">
+                    {SOLUTION_LINKS.map((s) => (
+                      <DropdownMenuItem key={s.href} asChild>
+                        <Link
+                          to={s.href}
+                          className="cursor-pointer flex-col items-start gap-0.5"
+                          aria-current={
+                            isSolutionActive(s.href, location.pathname) ? "page" : undefined
+                          }
+                        >
+                          <span className="flex w-full items-center gap-2">
+                            <span
+                              className={cn(
+                                "text-sm font-medium",
+                                isSolutionActive(s.href, location.pathname) && "text-primary"
+                              )}
+                            >
+                              {s.name}
+                            </span>
+                            <StatusBadge status={s.status} />
+                            <span className="sr-only">{SOLUTION_STATUS_LABEL[s.status]}</span>
+                          </span>
+                          <span className="text-xs text-muted-foreground">{s.description}</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
-            >
-              {item.name}
-              {(item as any).accent && (
-                <span className="rounded-full bg-blue-500/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-blue-500 ring-1 ring-blue-500/30">
-                  New
-                </span>
-              )}
-            </Link>
+            </Fragment>
           ))}
         </div>
+
 
         {/* Desktop CTA */}
         <div className="hidden items-center gap-2 md:flex">
