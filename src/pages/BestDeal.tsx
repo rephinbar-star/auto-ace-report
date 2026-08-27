@@ -258,7 +258,7 @@ export default function BestDealPage() {
                         key={offer.id}
                         offer={offer}
                         onUseOverride={(a) =>
-                          setParams((prev) => ({
+                          setForm((prev) => ({
                             ...prev,
                             leaseAssumptions: {
                               ...prev.leaseAssumptions,
