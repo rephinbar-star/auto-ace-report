@@ -44,6 +44,32 @@ export function BestDealSearchForm({ value, onChange, onSubmit, loading }: Props
   const [zipError, setZipError] = useState<string | null>(null);
   const [leaseErrors, setLeaseErrors] = useState<Record<string, string>>({});
 
+  const leaseRelevant = value.dealType === "lease" || value.dealType === "any";
+  const zipValid = /^\d{5}$/.test(value.zip);
+  const zipTax = useMemo(
+    () => (zipValid ? resolveLeaseTaxRate(value.zip) : null),
+    [zipValid, value.zip]
+  );
+
+  // Auto-derive the lease sales-tax rate from the maintained ZIP dataset used
+  // by the analysis report. A manual override is never overwritten.
+  useEffect(() => {
+    if (!leaseRelevant || !zipTax || zipTax.ratePercent === null) return;
+    const la = value.leaseAssumptions;
+    if (la.salesTaxOrigin === "user") return;
+    if (la.salesTaxPercent === zipTax.ratePercent && la.salesTaxOrigin === "auto_zip") return;
+    onChange({
+      ...value,
+      leaseAssumptions: {
+        ...la,
+        salesTaxPercent: zipTax.ratePercent,
+        salesTaxOrigin: "auto_zip",
+      },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leaseRelevant, zipTax?.ratePercent]);
+
+
   const set = <K extends keyof BestDealSearchParams>(
     key: K,
     next: BestDealSearchParams[K]
