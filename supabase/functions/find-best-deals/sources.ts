@@ -21,6 +21,12 @@ import {
   type SourceCheck,
 } from "./offer-normalization.ts";
 import {
+  EMPTY_LENDER_TERMS,
+  parseLenderTerms,
+  type ParsedLenderTerms,
+  type TermAuthority,
+} from "./program-terms.ts";
+import {
   emptyLeaseCostComponents,
   parseLeaseDisclosure,
   type LeaseCostComponents,
@@ -315,6 +321,7 @@ interface ParsedSnippet {
   applicabilityText: string;
   components: LeaseCostComponents;
   disclosureText: string;
+  lenderTerms: ParsedLenderTerms;
 }
 
 function parseVehicleIdentity(window: string): { year: number | null; make: string | null; model: string | null } {
@@ -380,6 +387,9 @@ export function parseOffersFromText(text: string, extraDisclosure = ""): ParsedS
       applicabilityText: window.replace(/\s+/g, " ").trim().slice(0, 280),
       components,
       disclosureText: disclosureText.slice(0, 1200),
+      // Explicitly labeled lender terms only. An APR is never read as a money
+      // factor and nothing is back-solved from the advertised payment.
+      lenderTerms: parseLenderTerms(disclosureText),
     });
   }
   return out;
@@ -393,7 +403,14 @@ function nextId(prefix: string): string {
 
 function toNormalized(
   snippet: ParsedSnippet,
-  source: { name: string; url: string; sourceType: OfferSourceType; scope: string; dealType: CatalogSource["dealType"] },
+  source: {
+    name: string;
+    url: string;
+    sourceType: OfferSourceType;
+    scope: string;
+    dealType: CatalogSource["dealType"];
+    regionStates?: string[] | null;
+  },
   retrievedAt: string
 ): NormalizedOffer | null {
   if (isExpired(snippet.expiresAt)) return null;
@@ -465,7 +482,25 @@ function toNormalized(
     registrationTitleLicense: snippet.components.registrationTitleLicense,
     upfrontTaxes: snippet.components.upfrontTaxes,
     dispositionFee: snippet.components.dispositionFee,
+    lenderTerms: snippet.lenderTerms ?? { ...EMPTY_LENDER_TERMS },
+    termAuthority: authorityForSourceType(source.sourceType),
+    regionStates: source.regionStates ?? null,
   };
+}
+
+/** OEM/captive and dealer disclosures outrank independent and community data. */
+export function authorityForSourceType(sourceType: OfferSourceType): TermAuthority {
+  switch (sourceType) {
+    case "oem_regional":
+      return "oem_captive";
+    case "dealer_advertised":
+    case "inventory_specific":
+      return "dealer_disclosure";
+    case "independent_index":
+      return "independent";
+    default:
+      return "community";
+  }
 }
 
 /** Parsed components keyed by offer id, consumed by the cost-audit stage. */
