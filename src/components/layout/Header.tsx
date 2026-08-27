@@ -236,9 +236,11 @@ export function Header() {
               <Button asChild variant="ghost">
                 <Link to="/login">Log In</Link>
               </Button>
-              <Button asChild>
-                <Link to="/analyze">Start Analysis</Link>
-              </Button>
+              {!isSolutionsContext && (
+                <Button asChild>
+                  <Link to="/analyze">Start Analysis</Link>
+                </Button>
+              )}
             </>
           )}
         </div>
