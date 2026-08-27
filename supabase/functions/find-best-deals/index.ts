@@ -28,6 +28,24 @@ import {
   type BenchmarkVehicle,
   type ValidationResult,
 } from "./benchmarks.ts";
+import {
+  dedupeOffers,
+  compareMileage,
+  splitActionableAndPrograms,
+  summarizeSourceChecks,
+  type NormalizedOffer,
+  type SourceCheck,
+} from "./offer-normalization.ts";
+import {
+  discoverDealerSpecials,
+  runProgramAdapters,
+  runSeedDealerSources,
+  runWebDiscovery,
+  selectIndexSources,
+  selectOemSources,
+  type AdapterResult,
+} from "./sources.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -421,6 +439,9 @@ Deno.serve(async (req) => {
     purchaseCandidates: 0,
     retrievedAt,
     notices: [] as string[],
+    programs: [] as unknown[],
+    sourcesChecked: [] as unknown[],
+    sourceSummary: { success: 0, noMatch: 0, unavailable: 0, notConfigured: 0 },
     validationSources: [] as unknown[],
   };
 
@@ -573,6 +594,84 @@ Deno.serve(async (req) => {
     });
 
     const top = rankDeals(scored).slice(0, 10);
+
+    // ── Independent source adapters (isolated; never fail the inventory search) ─
+    const searchStateEarly = stateForZip(parsed.zip);
+    const dealerRefs = candidates.map((c) => ({
+      dealerName: c.dealerName,
+      vdpUrl: c.vdpUrl,
+      distanceMiles: c.distanceMiles,
+    }));
+    const nearestCity = candidates.find((c) => c.city)?.city ?? null;
+
+    const adapterGroups = await Promise.allSettled([
+      runProgramAdapters(selectOemSources(parsed.brand, searchStateEarly)),
+      runProgramAdapters(selectIndexSources(searchStateEarly)),
+      runSeedDealerSources(parsed.zip),
+      discoverDealerSpecials(dealerRefs, 5),
+      runWebDiscovery({
+        zip: parsed.zip,
+        city: nearestCity,
+        state: searchStateEarly,
+        brand: parsed.brand,
+        dealType: parsed.dealType,
+        powertrain: parsed.powertrain,
+      }).then((r) => [r] as AdapterResult[]),
+    ]);
+
+    const adapterResults: AdapterResult[] = adapterGroups.flatMap((g) =>
+      g.status === "fulfilled" ? g.value : []
+    );
+    const sourcesChecked: SourceCheck[] = [
+      {
+        sourceName: "MarketCheck live inventory",
+        sourceUrl: "https://www.marketcheck.com/",
+        sourceType: "inventory_specific",
+        status: candidates.length > 0 ? "success" : "no_match",
+        detail:
+          candidates.length > 0
+            ? `${candidates.length} nearby listings evaluated.`
+            : "No nearby listings matched these filters.",
+        offersFound: candidates.length,
+      },
+      ...adapterResults.map((r) => r.check),
+    ];
+
+    // Mark programs that we independently matched to an eligible nearby vehicle.
+    const inventoryIndex = new Set(
+      candidates
+        .filter((c) => c.year && c.make && c.model)
+        .map((c) => `${c.year}|${c.make!.toLowerCase()}|${c.model!.toLowerCase()}`)
+    );
+
+    const rawOffers: NormalizedOffer[] = adapterResults.flatMap((r) =>
+      r.offers.map((o) => {
+        const key =
+          o.year && o.make && o.model
+            ? `${o.year}|${o.make.toLowerCase()}|${o.model.toLowerCase()}`
+            : null;
+        const matched = key !== null && inventoryIndex.has(key);
+        const mileage = compareMileage(o.annualMileage, parsed.annualMileage);
+        return {
+          ...o,
+          hasMatchedInventory: matched,
+          limitedDataNote: [o.limitedDataNote, mileage.note].filter(Boolean).join(" ") || null,
+        };
+      })
+    );
+
+    const split = splitActionableAndPrograms(dedupeOffers(rawOffers));
+    // Offers we independently matched to nearby inventory sort first, but they
+    // still live in the "Programs worth checking" section unless VIN-specific.
+    const programOffers = [...split.actionable, ...split.programs];
+    const programs = programOffers
+      .sort((a, b) => {
+        const conf = { high: 0, medium: 1, low: 2 } as const;
+        if (conf[a.confidence] !== conf[b.confidence]) return conf[a.confidence] - conf[b.confidence];
+        return (a.effectiveMonthly ?? 99999) - (b.effectiveMonthly ?? 99999);
+      })
+      .slice(0, 12);
+
 
     // ── Benchmark validation (isolated; never fails the search) ──────────────
     let docs = new Map<string, Awaited<ReturnType<typeof loadBenchmarkDocuments>> extends Map<string, infer D> ? D : never>();
@@ -737,6 +836,9 @@ Deno.serve(async (req) => {
       purchaseCandidates: purchaseCount,
       retrievedAt,
       notices,
+      programs,
+      sourcesChecked,
+      sourceSummary: summarizeSourceChecks(sourcesChecked),
       validationSources: BENCHMARK_SOURCES.map((s) => ({
         sourceName: s.name,
         sourceUrl: s.url,
