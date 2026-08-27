@@ -372,10 +372,10 @@ export function parseLenderTerms(text: string): ParsedLenderTerms {
   let acquisitionFee: number | null = null;
   let acquisitionFeeIsBrandLevel = false;
   const feeMatch = flat.match(
-    /(acquisition|bank|lease\s+initiation)\s+fee[^$0-9]{0,24}\$?\s?([0-9][0-9,]{2,4})/i
+    /(?:(?:acquisition|bank|lease\s+initiation)\s+fee[^$0-9]{0,24}\$?\s?([0-9][0-9,]{2,4}))|(?:\$\s?([0-9][0-9,]{2,4})\s+(?:acquisition|bank|lease\s+initiation)\s+fee)/i
   );
   if (feeMatch) {
-    const value = Number(feeMatch[2].replace(/,/g, ""));
+    const value = Number((feeMatch[1] ?? feeMatch[2]).replace(/,/g, ""));
     if (Number.isFinite(value) && value >= 100 && value <= 5000) {
       acquisitionFee = value;
       acquisitionFeeIsBrandLevel = /financial services|captive|all\s+leases|every\s+lease/i.test(flat);
