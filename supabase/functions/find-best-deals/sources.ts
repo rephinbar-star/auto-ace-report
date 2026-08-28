@@ -883,16 +883,18 @@ export async function runWebDiscovery(args: {
   }
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  let timer: number | undefined;
   try {
-    const res = await firecrawlEnqueue(() =>
-      fetch("https://api.firecrawl.dev/v2/search", {
+    const res = await firecrawlEnqueue(() => {
+      // Start the timeout only once the request actually leaves the queue.
+      timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+      return fetch("https://api.firecrawl.dev/v2/search", {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({ query, limit: 6 }),
         signal: controller.signal,
-      })
-    );
+      });
+    });
     if (!res.ok) {
       const body = await res.text();
       if (res.status === 429) firecrawlCooldownUntil = Date.now() + FIRECRAWL_COOLDOWN_MS;
