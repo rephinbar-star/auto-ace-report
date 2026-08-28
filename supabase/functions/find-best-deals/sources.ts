@@ -162,35 +162,87 @@ export async function politeFetch(url: string): Promise<FetchedDoc> {
   return doc;
 }
 
+// Firecrawl throttling + circuit breaker. The fallback fans out across many
+// adapters concurrently, which previously produced bursts of HTTP 429s. Calls
+// are serialized with a minimum spacing, and repeated rate-limits open a
+// cooldown so the rest of the search degrades gracefully instead of retrying.
+const FIRECRAWL_MIN_INTERVAL_MS = 1200;
+const FIRECRAWL_COOLDOWN_MS = 5 * 60 * 1000;
+const FIRECRAWL_RATE_LIMIT_THRESHOLD = 2;
+let firecrawlQueue: Promise<unknown> = Promise.resolve();
+let firecrawlLastCallAt = 0;
+let firecrawlRateLimitHits = 0;
+let firecrawlCooldownUntil = 0;
+
+function firecrawlAvailable(): boolean {
+  return Date.now() >= firecrawlCooldownUntil;
+}
+
+/** Runs `fn` serialized behind the shared Firecrawl queue with min spacing. */
+function firecrawlEnqueue<T>(fn: () => Promise<T>): Promise<T> {
+  const run = firecrawlQueue.then(async () => {
+    const wait = FIRECRAWL_MIN_INTERVAL_MS - (Date.now() - firecrawlLastCallAt);
+    if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+    firecrawlLastCallAt = Date.now();
+    return await fn();
+  });
+  firecrawlQueue = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  return run;
+}
+
 async function firecrawlScrape(url: string): Promise<FetchedDoc | null> {
   const apiKey = Deno.env.get("FIRECRAWL_API_KEY");
   if (!apiKey) return null;
-  const retrievedAt = new Date().toISOString();
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15_000);
-  try {
-    const res = await fetch("https://api.firecrawl.dev/v2/scrape", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ url, formats: ["markdown"], onlyMainContent: true }),
-      signal: controller.signal,
-    });
-    if (!res.ok) {
-      console.error(`Firecrawl scrape failed [${res.status}] for ${url}`);
+  if (!firecrawlAvailable()) return null;
+
+  return await firecrawlEnqueue(async () => {
+    if (!firecrawlAvailable()) return null;
+    const retrievedAt = new Date().toISOString();
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15_000);
+    try {
+      const res = await fetch("https://api.firecrawl.dev/v2/scrape", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ url, formats: ["markdown"], onlyMainContent: true }),
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        if (res.status === 429) {
+          firecrawlRateLimitHits += 1;
+          if (firecrawlRateLimitHits >= FIRECRAWL_RATE_LIMIT_THRESHOLD) {
+            firecrawlCooldownUntil = Date.now() + FIRECRAWL_COOLDOWN_MS;
+            firecrawlRateLimitHits = 0;
+            console.warn(
+              `Firecrawl rate limited; pausing fallback scrapes for ${FIRECRAWL_COOLDOWN_MS / 1000}s.`,
+            );
+          }
+        }
+        console.error(`Firecrawl scrape failed [${res.status}] for ${url}`);
+        return null;
+      }
+      firecrawlRateLimitHits = 0;
+      const data = await res.json();
+      const markdown: string | undefined = data?.markdown ?? data?.data?.markdown;
+      if (!markdown || markdown.length < 300) return null;
+      const text = markdown.replace(/[#*_>`|]/g, " ").replace(/\s+/g, " ").trim();
+      return { ok: true, text: text.slice(0, 400_000), jsonLd: [], rawHtml: "", retrievedAt };
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        console.warn(`Firecrawl scrape timed out for ${url}`);
+      } else {
+        console.error("Firecrawl scrape error:", err);
+      }
       return null;
+    } finally {
+      clearTimeout(timer);
     }
-    const data = await res.json();
-    const markdown: string | undefined = data?.markdown ?? data?.data?.markdown;
-    if (!markdown || markdown.length < 300) return null;
-    const text = markdown.replace(/[#*_>`|]/g, " ").replace(/\s+/g, " ").trim();
-    return { ok: true, text: text.slice(0, 400_000), jsonLd: [], rawHtml: "", retrievedAt };
-  } catch (err) {
-    console.error("Firecrawl scrape error:", err);
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
+  });
 }
+
 
 // ── Source catalog ───────────────────────────────────────────────────────────
 export interface CatalogSource {
