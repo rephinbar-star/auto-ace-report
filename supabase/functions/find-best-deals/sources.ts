@@ -875,17 +875,27 @@ export async function runWebDiscovery(args: {
   ].filter(Boolean);
   const query = parts.join(" ");
 
+  if (!firecrawlAvailable()) {
+    return {
+      check: { ...base, status: "unavailable", detail: "Search provider is rate limited; skipped.", offersFound: 0 },
+      offers: [],
+    };
+  }
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
-    const res = await fetch("https://api.firecrawl.dev/v2/search", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ query, limit: 6 }),
-      signal: controller.signal,
-    });
+    const res = await firecrawlEnqueue(() =>
+      fetch("https://api.firecrawl.dev/v2/search", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ query, limit: 6 }),
+        signal: controller.signal,
+      })
+    );
     if (!res.ok) {
       const body = await res.text();
+      if (res.status === 429) firecrawlCooldownUntil = Date.now() + FIRECRAWL_COOLDOWN_MS;
       console.error(`Web discovery search failed [${res.status}]: ${body.slice(0, 200)}`);
       return {
         check: { ...base, status: "unavailable", detail: `Search provider returned HTTP ${res.status}.`, offersFound: 0 },
