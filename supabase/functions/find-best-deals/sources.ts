@@ -167,7 +167,11 @@ export async function politeFetch(url: string): Promise<FetchedDoc> {
 // are serialized with a minimum spacing, and repeated rate-limits open a
 // cooldown so the rest of the search degrades gracefully instead of retrying.
 const FIRECRAWL_MIN_INTERVAL_MS = 1200;
-const FIRECRAWL_COOLDOWN_MS = 5 * 60 * 1000;
+// Cooldowns are short and honor the provider's Retry-After hint so a
+// transient rate limit degrades one search briefly instead of blocking
+// every subsequent invocation of this isolate for minutes.
+const FIRECRAWL_DEFAULT_COOLDOWN_MS = 30_000;
+const FIRECRAWL_MAX_COOLDOWN_MS = 120_000;
 const FIRECRAWL_RATE_LIMIT_THRESHOLD = 2;
 let firecrawlQueue: Promise<unknown> = Promise.resolve();
 let firecrawlLastCallAt = 0;
@@ -176,6 +180,25 @@ let firecrawlCooldownUntil = 0;
 
 function firecrawlAvailable(): boolean {
   return Date.now() >= firecrawlCooldownUntil;
+}
+
+/**
+ * Records a 429. Only opens the cooldown after repeated hits, and sizes it
+ * from the provider's Retry-After header (clamped) instead of a flat window.
+ */
+function noteFirecrawlRateLimit(res?: Response): void {
+  firecrawlRateLimitHits += 1;
+  if (firecrawlRateLimitHits < FIRECRAWL_RATE_LIMIT_THRESHOLD) return;
+  firecrawlRateLimitHits = 0;
+  let cooldownMs = FIRECRAWL_DEFAULT_COOLDOWN_MS;
+  const retryAfter = res?.headers.get("retry-after");
+  if (retryAfter) {
+    const seconds = Number(retryAfter);
+    if (Number.isFinite(seconds) && seconds > 0) cooldownMs = seconds * 1000;
+  }
+  cooldownMs = Math.min(Math.max(cooldownMs, 5_000), FIRECRAWL_MAX_COOLDOWN_MS);
+  firecrawlCooldownUntil = Date.now() + cooldownMs;
+  console.warn(`Firecrawl rate limited; pausing fallback scrapes for ${cooldownMs / 1000}s.`);
 }
 
 /** Runs `fn` serialized behind the shared Firecrawl queue with min spacing. */
@@ -211,16 +234,7 @@ async function firecrawlScrape(url: string): Promise<FetchedDoc | null> {
         signal: controller.signal,
       });
       if (!res.ok) {
-        if (res.status === 429) {
-          firecrawlRateLimitHits += 1;
-          if (firecrawlRateLimitHits >= FIRECRAWL_RATE_LIMIT_THRESHOLD) {
-            firecrawlCooldownUntil = Date.now() + FIRECRAWL_COOLDOWN_MS;
-            firecrawlRateLimitHits = 0;
-            console.warn(
-              `Firecrawl rate limited; pausing fallback scrapes for ${FIRECRAWL_COOLDOWN_MS / 1000}s.`,
-            );
-          }
-        }
+        if (res.status === 429) noteFirecrawlRateLimit(res);
         console.error(`Firecrawl scrape failed [${res.status}] for ${url}`);
         return null;
       }
@@ -897,7 +911,7 @@ export async function runWebDiscovery(args: {
     });
     if (!res.ok) {
       const body = await res.text();
-      if (res.status === 429) firecrawlCooldownUntil = Date.now() + FIRECRAWL_COOLDOWN_MS;
+      if (res.status === 429) noteFirecrawlRateLimit(res);
       console.error(`Web discovery search failed [${res.status}]: ${body.slice(0, 200)}`);
       return {
         check: { ...base, status: "unavailable", detail: `Search provider returned HTTP ${res.status}.`, offersFound: 0 },
