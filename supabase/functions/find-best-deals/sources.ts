@@ -234,16 +234,7 @@ async function firecrawlScrape(url: string): Promise<FetchedDoc | null> {
         signal: controller.signal,
       });
       if (!res.ok) {
-        if (res.status === 429) {
-          firecrawlRateLimitHits += 1;
-          if (firecrawlRateLimitHits >= FIRECRAWL_RATE_LIMIT_THRESHOLD) {
-            firecrawlCooldownUntil = Date.now() + FIRECRAWL_COOLDOWN_MS;
-            firecrawlRateLimitHits = 0;
-            console.warn(
-              `Firecrawl rate limited; pausing fallback scrapes for ${FIRECRAWL_COOLDOWN_MS / 1000}s.`,
-            );
-          }
-        }
+        if (res.status === 429) noteFirecrawlRateLimit(res);
         console.error(`Firecrawl scrape failed [${res.status}] for ${url}`);
         return null;
       }
@@ -920,7 +911,7 @@ export async function runWebDiscovery(args: {
     });
     if (!res.ok) {
       const body = await res.text();
-      if (res.status === 429) firecrawlCooldownUntil = Date.now() + FIRECRAWL_COOLDOWN_MS;
+      if (res.status === 429) noteFirecrawlRateLimit(res);
       console.error(`Web discovery search failed [${res.status}]: ${body.slice(0, 200)}`);
       return {
         check: { ...base, status: "unavailable", detail: `Search provider returned HTTP ${res.status}.`, offersFound: 0 },
